@@ -34,8 +34,8 @@ FEATURE_KINDS = ("points", "circles", "lines")
 
 
 def _beam_beta(d, zeta, EI, names, minv, stride):
-    """Stiffness-proportional damping coefficient giving zeta in the beam's first bending mode, estimated as a
-    cantilever: w1 = sqrt(3 EI / (m_eff L^3)), m_eff = 0.24 m_beam + the lighter moving end body."""
+    """The beam's first bending frequency, estimated as a cantilever: w1 = sqrt(3 EI / (m_eff L^3)),
+    m_eff = 0.24 m_beam + the lighter moving end body (0 when unknown)."""
     L = d.get("__Ltot"); mb = d.get("__mtot") or 0.0
     if not L:
         return 0.0
@@ -49,8 +49,16 @@ def _beam_beta(d, zeta, EI, names, minv, stride):
     meff = 0.24 * mb + (min(tip) if tip else 0.0)
     if meff <= 0 or EI <= 0:
         return 0.0
-    w1 = math.sqrt(3.0 * EI / (meff * L ** 3))
-    return 2.0 * zeta / w1          # the caller caps it for stability (3 / w of a segment's stretch)
+    return math.sqrt(3.0 * EI / (meff * L ** 3))
+
+
+def beam_bend_damping(zeta, w1):
+    """(beta, low-pass frequency) of the beam's bending damper: beta = 2 zeta / w1 aimed at the first mode, behind a
+    low-pass at 3 w1. Above the cut-off the damper acts as a spring of beta wf k: capped at 2 k for stability."""
+    if w1 <= 0 or zeta <= 0:
+        return 0.0, 0.0
+    wf = 3.0 * w1
+    return min(2.0 * zeta / w1, 2.0 / wf), wf
 
 def _vec(v, ctx, where, n=2):
     from .model import resolve, num
@@ -283,7 +291,7 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             if zeta > 0:
                 mseg = d.get("__mseg__") or min([1.0 / B["minv"][3 * i] for i in (ia, ib) if i >= 0 and B["minv"][3 * i] > 0] or [1.0])
                 P[e, 2] = 2.0 * zeta / math.sqrt(P[e, 0] / (0.5 * mseg))
-                P[e, 3] = min(_beam_beta(d, zeta, EI, names, B["minv"], 3), 1.5 * P[e, 2] / zeta)
+                P[e, 3], P[e, 9] = beam_bend_damping(zeta, _beam_beta(d, zeta, EI, names, B["minv"], 3))
             hg = d.get("__hinge__")
             tx = np.zeros(0); tF = np.zeros(0)
             if hg is not None:
@@ -461,6 +469,9 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             if "csv" in d:
                 from .loadtable import compile_load
                 typ[e], tx, tF = compile_load(e, d, ctx, where, doc, P, tab_k)
+                from .loadtable import check_load_kind
+                rot_ = (isinstance(meas, dict) and "twist" in meas) or (isinstance(meas, str) and ".angle" in meas)
+                check_load_kind(d, rot_, where, doc)
             else:
                 P[e, 0] = gg("P")
         elif t == "drive":

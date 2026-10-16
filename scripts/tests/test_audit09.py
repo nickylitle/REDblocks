@@ -186,3 +186,64 @@ outputs:
   z: {body: b, quantity: z}
 run: {t_end: 0.001 s}
 """)
+
+
+@pytest.mark.parametrize("dim", ["2d", "3d"])
+def test_rigid_weld_on_long_light_arm_has_no_start_spike(dim):
+    g = "{ground: true, points: {o: [0, 0]}}" if dim == "2d" else "{ground: true, points: {o: [0, 0, 0]}}"
+    b = ("{dof: planar, mass: 1 kg, inertia: 0.01, at: [3, 0], points: {w: [-3, 0]}}" if dim == "2d" else
+         "{dof: free, mass: 1 kg, inertia: 0.01, at: [3, 0, 0], points: {w: [-3, 0, 0]}}")
+    o = run(f"""simblocks: 1
+name: t
+dim: {dim}
+gravity: 9.81
+bodies:
+  base: {g}
+  blk: {b}
+elements:
+  grip: {{type: weld, rigid: true, measure: [base.o, blk.w]}}
+outputs:
+  Fmax: {{element: grip, quantity: force, reduce: max}}
+  Mmax: {{element: grip, quantity: moment, reduce: max_abs}}
+run: {{t_end: 0.2 s, dt: 0.1 ms}}
+""")
+    assert o["Fmax"] == pytest.approx(9.81, rel=1e-6)
+    assert o["Mmax"] == pytest.approx(29.43, rel=1e-6)
+
+
+def test_beam_damping_reaches_the_first_mode():
+    import numpy as np
+    S = load_system("""simblocks: 1
+name: t
+dim: 3d
+bodies:
+  wall: {ground: true, points: {root: [0, 0, 0]}}
+  tip: {dof: free, mass: 1e-4 kg, inertia: 2e-7, at: [0, 0, 0.3], v0: [0.05, 0, 0], points: {p: [0, 0, 0]}}
+elements:
+  bar: {type: beam, E: 200 GPa, density: 7850 kg/m^3, section: {block: rectangle, b: 20 mm, h: 4 mm}, segments: 4,
+        damping: 0.05, measure: [wall.root, tip.p]}
+outputs:
+  x: {body: tip, quantity: x, reduce: max_abs}
+run: {t_end: 0.4 s, timeout: none}
+""")
+    o, H = S.run(history=True, n_log=20000)
+    t = H["t"]; x = H["tip.x"]
+    a1 = np.abs(x[(t > 0.0) & (t < 0.05)]).max(); a2 = np.abs(x[(t > 0.35) & (t < 0.4)]).max()
+    zeta = math.log(a1 / a2) / (227.7 * 0.35)
+    assert zeta == pytest.approx(0.05, rel=0.15)
+    assert o["_ledger_rel"] < 0.05
+
+
+def test_torque_table_on_a_translation_is_refused():
+    with pytest.raises(SpecError, match="is a torque"):
+        load_system("""simblocks: 1
+name: t
+dim: 1d
+bodies:
+  m: {dof: translation, mass: 1}
+elements:
+  push: {type: force, measure: m, csv: {x: [0, 1], y: [5, 5], y_unit: N m}}
+outputs:
+  x: {body: m, quantity: position}
+run: {t_end: 0.01 s}
+""")

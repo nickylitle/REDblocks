@@ -299,6 +299,9 @@ def compile_model(doc, overrides=None):
             if "csv" in d:
                 from .loadtable import compile_load
                 typ[e], tx, tF = compile_load(e, d, ctx, where, doc, P, tab_k)
+                from .loadtable import check_load_kind
+                nzb = [i for i in range(nb) if C[e, i] != 0.0]
+                check_load_kind(d, bool(nzb) and all(dof[i] == "rotation" for i in nzb), where, doc)
             else:
                 P[e, 0] = g("P")
         elif t == "drive":

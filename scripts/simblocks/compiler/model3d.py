@@ -398,9 +398,9 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                 mseg = d.get("__mseg__") or min([1.0 / float(np.max(B["minv"][i])) for i in (ia, ib)
                                                  if i >= 0 and np.max(B["minv"][i]) > 0] or [1.0])
                 P[e, 5] = 2.0 * zeta / math.sqrt(P[e, 0] / (0.5 * mseg))
-                from .model2d import _beam_beta
-                P[e, 8] = min(_beam_beta(d, zeta, min(d["__EIy"], d["__EIz"]), names, B["minv"], None),
-                              1.5 * P[e, 5] / zeta)     # explicit stability: beta <= 3 / w (segment stretch)
+                from .model2d import _beam_beta, beam_bend_damping
+                P[e, 8], P[e, 9] = beam_bend_damping(zeta, _beam_beta(d, zeta, min(d["__EIy"], d["__EIz"]), names,
+                                                                      B["minv"], None))
             hg = d.get("__hinge__"); tx = np.zeros(0); tF = np.zeros(0)
             if hg is not None:
                 P[e, 6] = 1.0; P[e, 7] = float(hg.get("ry", 1.0)); tx = np.ascontiguousarray(hg["acc_tab"], float); tF = np.ascontiguousarray(hg["F_tab"], float)
@@ -572,6 +572,9 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             if "csv" in d:
                 from .loadtable import compile_load
                 typ[e], tx, tF = compile_load(e, d, ctx, where, doc, P, tab_k)
+                from .loadtable import check_load_kind
+                rot_ = (isinstance(meas, dict) and "twist" in meas) or (isinstance(meas, str) and ".angle" in meas)
+                check_load_kind(d, rot_, where, doc)
             else:
                 P[e, 0] = gg("P")
         elif t == "drive":

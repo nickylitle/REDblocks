@@ -87,8 +87,19 @@ def _beam2(e, q, ba, bb, GA, GB, P, st, tab_x, tab_F, xg, dt, first):
     dd = 0.0
     if (P[2] > 0.0 or P[3] > 0.0) and not first:                    # stiffness-proportional damping, backward-difference rate
         rl = (L - xg[e, 0]) / dt; r1 = (th1 - xg[e, 1]) / dt; r2 = (th2 - xg[e, 2]) / dt
-        bb_ = P[3] if P[3] > 0.0 else P[2]          # bending at the first-mode rate, stretch at its own
-        Nd = P[2] * kA * rl; M1d = bb_ * kB * (4.0 * r1 + 2.0 * r2); M2d = bb_ * kB * (2.0 * r1 + 4.0 * r2)
+        Nd = P[2] * kA * rl
+        if P[9] > 0.0:
+            # bending: a damper aimed at the first mode, behind a low-pass at a few times its frequency (a Maxwell
+            # element), so the fast segment modes the explicit step cannot damp stably never see it
+            lp_ = P[9] * dt
+            if lp_ > 1.0:
+                lp_ = 1.0
+            st[5] += lp_ * (P[3] * kB * (4.0 * r1 + 2.0 * r2) - st[5])
+            st[6] += lp_ * (P[3] * kB * (2.0 * r1 + 4.0 * r2) - st[6])
+            M1d = st[5]; M2d = st[6]
+        else:
+            bb_ = P[3] if P[3] > 0.0 else P[2]
+            M1d = bb_ * kB * (4.0 * r1 + 2.0 * r2); M2d = bb_ * kB * (2.0 * r1 + 4.0 * r2)
         N += Nd; M1 += M1d; M2 += M2d
         dd = (Nd * rl + M1d * r1 + M2d * r2) * dt
     return N, M1, M2, L, th1, th2, ax, ay, bx, by, e1x, e1y, stored, dpl, dd
@@ -284,6 +295,65 @@ def _rows2(e, mk_, q, ba, bb, C, s0, GA, GB, GX, ref, J, cpos):
     return 1
 
 
+
+@njit(cache=True, nogil=True)
+def _jsolve2(mode, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam, aux,
+             JA, JO, rhs, re, rr, dt, first_pass):
+    """Every rigid-joint row at once: K x = rhs with K = J M^-1 J^T (a direct solve, so long levers and light
+    bodies converge in one go where row-by-row sweeps crawl). mode 0: velocities onto the constraints (current J);
+    mode 1: positions (SHAKE, moving along the start-of-step directions Jold). Returns the largest residual."""
+    n = 0
+    for e in range(ne):
+        if typ[e] != 15 or active[e] == 0:
+            continue
+        nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
+        for r in range(nr):
+            u = 0.0
+            for k in range(nq):
+                JA[n, k] = Jr[r, k]
+                JO[n, k] = Jold[e, r, k] if mode == 1 else Jr[r, k]
+                u += Jr[r, k] * v[k]
+            rhs[n] = -cps[r] if mode == 1 else -u
+            if mode == 1 and first_pass and abs(cps[r]) > aux[e, 3]:
+                aux[e, 3] = abs(cps[r])                  # largest drift seen before correction
+            re[n] = e; rr[n] = r; n += 1
+    if n == 0:
+        return 0.0
+    mx = 0.0
+    for i in range(n):
+        if abs(rhs[i]) > mx:
+            mx = abs(rhs[i])
+    if mx == 0.0:
+        return 0.0
+    K = np.zeros((n, n)); tr = 0.0
+    for i in range(n):
+        for j in range(n):
+            s_ = 0.0
+            for k in range(nq):
+                if JA[i, k] != 0.0 and JO[j, k] != 0.0:
+                    s_ += JA[i, k] * JO[j, k] * minv[k]
+            K[i, j] = s_
+        tr += K[i, i]
+    if tr <= 0.0:
+        return mx
+    for i in range(n):                                   # a whisker of regularisation: redundant rows (a closed
+        K[i, i] += 1e-12 * tr / n                        # loop) still solve, as the smallest impulses
+    x = np.linalg.solve(K, rhs[:n].copy())
+    for i in range(n):
+        if not np.isfinite(x[i]):
+            return mx
+    for j in range(n):
+        e = re[j]; r = rr[j]
+        for k in range(nq):
+            if JO[j, k] != 0.0:
+                if mode == 1:
+                    q[k] += minv[k] * JO[j, k] * x[j]
+                    v[k] += minv[k] * JO[j, k] * x[j] / dt
+                else:
+                    v[k] += minv[k] * JO[j, k] * x[j]
+        lam[e, r] += x[j] / dt if mode == 1 else x[j]
+    return mx
+
 @njit(cache=True, nogil=True)
 def _book_hits(cand, nc, jn, held, lossN, lossT, D, A):
     """Heat of rigid contacts this step (the kinetic energy their own impulses removed). A NEW hit books all of it.
@@ -323,7 +393,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     nb = mass.shape[0]; nq = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
     Q = np.zeros(nq)
-    st = np.zeros((ne, 5))
+    st = np.zeros((ne, 7))                     # beams: plastic rotations, accumulators, chord angle, damping state
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0
@@ -349,6 +419,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     vst = np.zeros(nq)                                       # velocities at the start of the step
     Jold = np.zeros((ne if nrig_ > 0 else 1, 2, nq)); nrow = np.zeros(ne, np.int64)   # SHAKE directions
     Jr = np.zeros((2, nq)); cps = np.zeros(2); lam = np.zeros((ne, 2)); keff = np.zeros(2); refc = np.zeros(ne)
+    nja = 2 * nrig_ if nrig_ > 0 else 1
+    JA = np.zeros((nja, nq)); JO = np.zeros((nja, nq)); rhs = np.zeros(nja)
+    rje = np.zeros(nja, np.int64); rjr = np.zeros(nja, np.int64)
     for e in range(ne):
         if typ[e] == 15 and mk[e] != MK_PIN:
             nr = _rows2(e, mk[e], q0, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
@@ -625,6 +698,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             # job (no motion along the row, no work), not a loss.
                             loss = 0.5 * u0 * u0 / kk
                             D[e] += loss; A[e] += loss
+            if nrig > 0:                                 # joints: finish the velocity rows with one direct solve
+                _jsolve2(0, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
+                         aux, JA, JO, rhs, rje, rjr, dt, False)
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]; aux[e, 2] = jt[e]
@@ -661,8 +737,15 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             Jold[e, r, k] = Jr[r, k]
         for k in range(nq):
             q[k] += dt * v[k] + Dq[k]
-        if nrig > 0:                                 # rigid joints: project positions back onto the constraints
-            for it in range(60):                     # one row at a time, repeated until every row closes
+        if nrig > 0:                                 # rigid joints: Newton steps of the direct position solve
+            for it in range(4):
+                if _jsolve2(1, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
+                            aux, JA, JO, rhs, rje, rjr, dt, it == 0) < 1e-12:
+                    break
+            for it in range(1):
+                _jsolve2(0, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
+                         aux, JA, JO, rhs, rje, rjr, dt, False)
+            for it in range(4):                     # row-by-row clean-up of anything the direct solve left
                 mx_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0:
@@ -689,7 +772,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
                 if mx_ < 1e-13:
                     break
-            for it in range(60):                     # RATTLE: velocities tangent to the constraints at the new
+            for it in range(4):                     # RATTLE: velocities tangent to the constraints at the new
                 mu_ = 0.0
                 for e in range(ne):                  # positions (numerical; any energy change shows in the ledger)
                     if typ[e] != 15 or active[e] == 0:

@@ -11,11 +11,10 @@ elastic-perfectly-plastic at Mp = sy Z of the section and material. Plastic hing
        In 3D each axis has its own strength: the table (or sy Z) is about the section's x axis, and the other axis
        yields at Zy / Z times that (sections give Zy; given_section takes it), on the yield surface
        (My / Mpy)^2 + (Mz / Mpz)^2 = 1. Without Zy both axes use the table.
-damping: fraction of critical aimed at the beam's first bending mode (estimated as a cantilever carrying its own
-         mass and the lighter end body); stretch and twist are damped at their own segment frequencies. It is
-         stiffness-proportional, and an explicit solver caps that for stability, so a long, flexible beam gets less
-         than asked (often well under 1 %). Treat it as numerical calm, not a material property; for real
-         structural damping of the first mode add a dashpot across the tip.
+damping: fraction of critical in the beam's first bending mode (estimated as a cantilever carrying its own mass
+         and the lighter end body). Bending is damped through a low-pass at three times that frequency, so the first
+         mode gets what was asked while the fast segment modes (which an explicit step cannot damp stably) are left
+         alone; stretch and twist are damped at their own segment frequencies. Up to about 0.3.
 orient (3D): the direction of the section's h axis at the start (default world z, or x for a vertical beam).
 Bending across orient uses I (Ix of the section), bending across the other axis uses Iy; torsion uses G J."""
 import math

@@ -369,9 +369,8 @@ elements:
   it bends along its length and vibrates; `end_mass: false` stops it adding half a segment's mass to each end body.
   `orient` (3D): the section's h direction (bending across it uses I / Ix). `hinge: auto` forms plastic hinges at
   Mp = sy Z (needs a material and a section with Z), or give a moment table. In 3D each axis yields on its own
-  strength (Zy from the section) on the surface (My/Mpy)^2 + (Mz/Mpz)^2 = 1. `damping`: fraction of critical aimed
-  at the first bending mode; an explicit solver caps it for stability, so a long flexible beam gets much less than
-  asked. For real first-mode damping add a dashpot across the tip.
+  strength (Zy from the section) on the surface (My/Mpy)^2 + (Mz/Mpz)^2 = 1. `damping`: fraction of critical in
+  the first bending mode (cantilever estimate; up to about 0.3). The fast segment modes are filtered out of it.
 - Contacts in 2D and 3D: penalty (kelvin_voigt, hertz, elastoplastic on a `{contact: ...}` measure), or `impact`
   (rigid) on the same measure. See the editor's Help > Contact and joint methods for when to use which.
 

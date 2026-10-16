@@ -199,3 +199,18 @@ def compile_load(e, d, ctx, where, doc, P, tab_k):
     P[e, 0] = 0.0; P[e, 1] = 1.0 if meas else 0.0; P[e, 2] = 1.0 if step else 0.0
     tab_k[e] = slope if meas else 0.0              # a load-deflection curve sets a time step like a spring
     return 13, tx, tF
+
+
+def check_load_kind(d, rotation, where, doc):
+    """A table's y unit must match what it pushes: a force on a translation, a torque on a rotation."""
+    spec = d.get("csv") or {}
+    if not isinstance(spec, dict):
+        return
+    yu = str(spec.get("y_unit", "N")); ky = _kind(yu)
+    f = doc.get("__file__", "")
+    if rotation and ky == "force":
+        raise SpecError(f"y_unit '{yu}' is a force, but this load turns a rotation: give a torque (N m, lbf in)",
+                        where, line_of(d, "csv"), f)
+    if not rotation and ky == "torque":
+        raise SpecError(f"y_unit '{yu}' is a torque, but this load pushes a translation: give a force (N, kN, lbf)",
+                        where, line_of(d, "csv"), f)
