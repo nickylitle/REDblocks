@@ -20,13 +20,10 @@ params:
 
 derived:
   shaft: {block: beam_plastic_spring, material: $shaft_mat, section: {circle: $d}, L: $L, support: ss_center}
-  E_t:  {block: material_property, material: $tooth_mat, prop: E}
-  nu_t: {block: material_property, material: $tooth_mat, prop: nu}
+  # a material goes straight into any E / nu / sy / Y argument: the block takes that property
+  Estar: {block: effective_modulus, E1: $tooth_mat, nu1: $tooth_mat, E2: $target_mat, nu2: $target_mat}
   Y_t:  {block: material_property, material: $tooth_mat, prop: sy}
-  E_o:  {block: material_property, material: $target_mat, prop: E}
-  nu_o: {block: material_property, material: $target_mat, prop: nu}
   Y_o:  {block: material_property, material: $target_mat, prop: sy}
-  Estar: {block: effective_modulus, E1: $E_t, nu1: $nu_t, E2: $E_o, nu2: $nu_o}
   tooth: {block: plastic_indentation_table, R: $R_tooth, Y: "=min($Y_t, $Y_o)", Estar: $Estar}
 
 bodies:

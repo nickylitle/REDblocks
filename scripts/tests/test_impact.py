@@ -1,4 +1,4 @@
-"""Rigid impact contact (impulses, restitution e, Coulomb mu): every joule lost is booked as heat."""
+"""Rigid impact contact (impulses, restitution e, Coulomb mu): every joule lost is booked as dissipated."""
 import numpy as np
 import pytest
 
@@ -7,7 +7,7 @@ from simblocks.compiler.system import load_system
 
 @pytest.mark.parametrize("e", [0.0, 0.5, 1.0])
 def test_1d_two_body_collision(e):
-    """m1 = 1 at 3 m/s hits m2 = 2 at rest: Newton's law of restitution; momentum kept; heat = 1/2 mu v^2 (1-e^2)."""
+    """m1 = 1 at 3 m/s hits m2 = 2 at rest: Newton's law of restitution; momentum kept; dissipated = 1/2 mu v^2 (1-e^2)."""
     S = load_system(f"""simblocks: 1
 name: t
 dim: 1d
@@ -19,7 +19,7 @@ elements:
 outputs:
   va: {{body: a, quantity: velocity}}
   vb: {{body: b, quantity: velocity}}
-  heat: {{element: hit, quantity: heat}}
+  heat: {{element: hit, quantity: dissipated}}
   J: {{element: hit, quantity: impulse, reduce: max}}
 run: {{t_end: 0.1 s, dt: 1e-5 s}}
 """)
@@ -51,7 +51,7 @@ bodies:
 elements:
   hit: {{type: impact, e: {e}, measure: {meas}}}
 outputs:
-  heat: {{element: hit, quantity: heat}}
+  heat: {{element: hit, quantity: dissipated}}
 run: {{t_end: {t_end} s, dt: 1e-4 s}}
 """), q
 
@@ -71,12 +71,12 @@ def test_drop_rebound_height_and_heat(dim, e):
 def test_heat_history_is_cumulative():
     S, q = _drop("2d", 0.5, t_end=1.5)
     o, H = S.run(history=True, n_log=3000)
-    h = H["hit.heat"]
+    h = H["hit.dissipated"]
     assert np.all(np.diff(h) >= -1e-12) and h[-1] == pytest.approx(o["heat"])
 
 
 def test_3d_sliding_ball_starts_rolling():
-    """Ball launched sliding at v0 with friction: rolls at 5/7 v0; heat = 1/2 m v0^2 (2/7)."""
+    """Ball launched sliding at v0 with friction: rolls at 5/7 v0; dissipated = 1/2 m v0^2 (2/7)."""
     S = load_system("""simblocks: 1
 name: t
 dim: 3d
@@ -89,7 +89,7 @@ elements:
 outputs:
   vx: {body: ball, quantity: vx}
   wy: {body: ball, quantity: wy}
-  heat: {element: hit, quantity: heat}
+  heat: {element: hit, quantity: dissipated}
 run: {t_end: 1.0 s, dt: 1e-4 s}
 """)
     o = S.run()
@@ -113,7 +113,7 @@ outputs:
   vay: {body: a, quantity: vy}
   vbx: {body: b, quantity: vx}
   vby: {body: b, quantity: vy}
-  heat: {element: hit, quantity: heat}
+  heat: {element: hit, quantity: dissipated}
 run: {t_end: 0.3 s, dt: 1e-5 s}
 """)
     o = S.run()

@@ -31,7 +31,7 @@ outputs:
   peak_floor_N:    {element: mounts, quantity: force, reduce: max_abs, unit: N, label: largest force into the floor}
   peak_travel_mm:  {body: instrument, quantity: position, reduce: max, unit: mm, label: how far it moves}
   peak_speed:      {body: instrument, quantity: velocity, reduce: max, unit: m/s}
-  heat_J:          {element: mounts, quantity: dissipated, unit: J, label: energy the rubber turned to heat}
+  dissipated_J:          {element: mounts, quantity: dissipated, unit: J, label: energy the rubber dissipated}
 
 failure:
   - {name: mount travel, metric: peak_travel_mm, limit: 15, fails_when: above,
@@ -41,12 +41,47 @@ run:
   t_end: 0.6 s
 
 editor:
+  layout:
+    b:instrument:
+    - 340
+    - 30
+    e:mounts:
+    - 650
+    - 1010
+    e:shock:
+    - 650
+    - 250
+    f:mount travel:
+    - 960
+    - 30
+    o:dissipated_J:
+    - 960
+    - 670
+    o:peak_floor_N:
+    - 960
+    - 470
+    o:peak_shock_kN:
+    - 960
+    - 270
+    o:peak_speed:
+    - 650
+    - 790
+    o:peak_travel_mm:
+    - 650
+    - 30
+    p:c_mount:
+    - 30
+    - 330
+    p:k_mount:
+    - 30
+    - 170
+    p:m:
+    - 30
+    - 30
   notes:
-    - x: 40
-      y: -170
-      text: |
-        **1D-2 Shock isolation.** A short shock (a CSV table of force against time) hits an instrument sitting on
-        rubber mounts. The shock is over long before the mounts can push back, so the instrument just leaves with the
-        impulse $J = \int F\,dt = 6.4$ N s and the mounts slow it down gently.
-        Textbook check: speed $J/m = 0.32$ m/s, travel $\approx v/\omega_n = 10$ mm, floor force $\approx k x = 200$ N:
-        a 2 kN hit reaches the floor as about 0.2 kN.
+  - text: '**1D-2 Shock isolation.** A short shock (a CSV table of force against time) hits an instrument sitting on rubber mounts. The shock is over long before the mounts can push back, so the instrument just leaves with the impulse $J = \int F\,dt = 6.4$ N s and the mounts slow it down gently. Textbook check: speed $J/m = 0.32$ m/s, travel $\approx v/\omega_n = 10$ mm, floor force $\approx k x = 200$ N: a 2 kN hit reaches the floor as about 0.2 kN.
+
+      '
+    x: 30
+    y: -166
+    width: 640

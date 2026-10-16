@@ -53,12 +53,53 @@ run:
   t_end: 8 s
 
 editor:
+  layout:
+    b:flywheel:
+    - 30
+    - 750
+    b:rotor:
+    - 30
+    - 170
+    e:bearings:
+    - 340
+    - 1710
+    e:motor:
+    - 340
+    - 30
+    e:shaft:
+    - 340
+    - 810
+    o:min_voltage_V:
+    - 650
+    - 230
+    o:peak_current_A:
+    - 650
+    - 30
+    o:rpm_end:
+    - 340
+    - 1490
+    o:shaft_torque:
+    - 650
+    - 430
+    o:t_3000rpm_s:
+    - 340
+    - 1230
+    p:bearing_drag:
+    - 30
+    - 1110
+    p:gear:
+    - 30
+    - 450
+    p:k_shaft:
+    - 30
+    - 590
+    p:kv:
+    - 30
+    - 30
   notes:
-    - x: 40
-      y: -170
-      text: |
-        **1D-3 Motor, gearbox and flywheel.** A battery-powered motor spins a flywheel through a 5:1 gearbox and a
-        slightly springy shaft. The motor block includes the battery sag and the ESC's current limit.
-        Textbook check: top speed $\approx kv \cdot V / \text{gear} = 1000 \times 16.8 / 5 = 3360$ rpm (a little less
-        with drag). While the ESC holds 60 A the torque is $\text{gear} \cdot K_t I_{max} = 2.9$ N m
-        ($K_t = 1/kv$ in SI), so the flywheel gains $\tau / J \approx 116$ rad/s every second.
+  - text: '**1D-3 Motor, gearbox and flywheel.** A battery-powered motor spins a flywheel through a 5:1 gearbox and a slightly springy shaft. The motor block includes the battery sag and the ESC''s current limit. Textbook check: top speed $\approx kv \cdot V / \text{gear} = 1000 \times 16.8 / 5 = 3360$ rpm (a little less with drag). While the ESC holds 60 A the torque is $\text{gear} \cdot K_t I_{max} = 2.9$ N m ($K_t = 1/kv$ in SI), so the flywheel gains $\tau / J \approx 116$ rad/s every second.
+
+      '
+    x: 30
+    y: -166
+    width: 640

@@ -69,6 +69,16 @@ textarea{width:100%;resize:vertical}
 #top .brand{font:700 11px var(--mono);letter-spacing:.14em;color:var(--acc);margin-right:10px;white-space:nowrap}
 #top .file{font:12px var(--mono);color:var(--ink2);margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30ch}
 #top .sp{flex:1}
+#top,#bar2{background:var(--bar)!important}
+#top label,#bar2 label,#top .file,#bar2 .dtinfo,#top .live,#bar2 .live{color:var(--bar-ink2)!important}
+#top .brand{color:var(--bar-ink)!important}
+#top .grp,#bar2 .grp{border-left-color:color-mix(in srgb,var(--bar-ink) 25%,transparent)!important}
+.node .hd{background:var(--hd)!important}
+.node .hd .kind,.node .hd .x,.node .hd .ib{color:var(--hd-ink2)!important}
+.node .hd input.nm{color:var(--hd-ink)!important}
+.node.note .hd{background:transparent!important;border-bottom:1px solid var(--hair)}
+.node.note .hd .kind,.node.note .hd .x{color:var(--ink3)!important}
+.node.note .hd .bar{display:none}
 #top .grp{display:flex;flex-wrap:nowrap;align-items:center;gap:5px;padding:0 6px;border-left:1px solid var(--hair)}
 #top .grp:first-of-type{border-left:0;padding-left:0}
 #top label{font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
@@ -166,6 +176,9 @@ textarea{width:100%;resize:vertical}
 .uv select{flex:0 0 auto;max-width:96px;padding:3px 2px;font:11.5px var(--mono);color:var(--ink2)}
 .uv input.bad{border-color:var(--fail)}
 .xp{font:10px var(--mono);color:var(--acc);padding:0 12px 2px 104px;margin-top:-2px}
+.row.need{animation:needflash .55s ease-in-out 5 alternate;border-radius:4px}
+.row.need input,.row.need select{border-color:var(--warn)!important;box-shadow:0 0 0 1px var(--warn)}
+@keyframes needflash{from{background:transparent}to{background:color-mix(in srgb,var(--warn) 30%,transparent)}}
 .sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair;z-index:6}   /* above a selected wire (wiresTop is z 5), so its end never cuts the socket */
 .sock.in{left:-7px}.sock.out{right:-7px}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
@@ -318,8 +331,8 @@ label.cpick button{padding:0 6px;font-size:12px}
 .node.image .cap{font:11.5px var(--sans);color:var(--ink2);padding:0 8px 7px;max-width:100%}
 .node.image .imbar{display:flex;gap:4px;align-items:center;padding:4px 6px;border-top:1px solid var(--hair)}
 .node.image .imbar input{min-width:0}
-.node.note{width:300px;background:var(--note-bg);border-color:color-mix(in srgb,var(--c-note) 45%,var(--edge))}
-.node.note .hd{background:color-mix(in srgb,var(--note-bg) 80%,var(--c-note))}
+.node.note{width:300px;background:var(--note-bg);border-color:var(--hair);border-left:3px solid var(--c-note);box-shadow:none}
+.node.note .hd{background:transparent}
 .note .nb{padding:8px 12px 10px;font:13px/1.5 var(--sans);color:var(--ink);cursor:text;min-height:40px;user-select:text;overflow-wrap:anywhere}
 .note .nb:empty::before{content:"Click to write. $x^2$ inline, $$\\int F\\,dt$$ on its own line.";color:var(--ink3)}
 .note .nb h4{margin:4px 0;font:600 14px var(--sans)} .note .nb ul{margin:4px 0;padding-left:18px} .note .nb p{margin:4px 0}
@@ -544,7 +557,7 @@ const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"elem
   failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"],
-  beam:["moment","torque","shear","hinge_set"], impact:["impulse","heat","friction_impulse"],
+  beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
   pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"]};
 const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", alpha:"damping factor", table:"yield table",
   break_at:"tears off at set", F_c:"friction force", v_eps:"slip speed scale", F_s:"static peak", v_s:"Stribeck speed",
@@ -964,7 +977,7 @@ function toDoc(){
   if ((S.groups || []).length) ed.groups = S.groups.map(g => ({name:g.name, collapsed:!!g.collapsed, x:Math.round(g.x), y:Math.round(g.y),
     members:g.members.map(id => byId(id)).filter(Boolean).map(nodeKey),
     expose:Object.fromEntries(Object.entries(g.expose || {}).map(([k, v]) => { const [id, key] = k.split("|"); const m = byId(id); return m ? [nodeKey(m) + "|" + key, v] : null; }).filter(Boolean))}));
-  const notes = S.nodes.filter(n => n.kind === "note").map(n => ({text:n.data.text || "", x:Math.round(n.x), y:Math.round(n.y)}));
+  const notes = S.nodes.filter(n => n.kind === "note").map(n => Object.assign({text:n.data.text || "", x:Math.round(n.x), y:Math.round(n.y)}, n.data.w ? {width:+n.data.w} : {}));
   if (notes.length) ed.notes = notes;
   const imgs = S.nodes.filter(n => n.kind === "image").map(n => Object.assign({path:n.data.path || "", x:Math.round(n.x), y:Math.round(n.y), width:+n.data.w || 360},
     n.data.caption ? {caption:n.data.caption} : {}));
@@ -1171,7 +1184,7 @@ function fromDoc(doc){
   if (ed.layout && typeof ed.layout === "object"){ let hit = 0;
     Object.entries(ed.layout).forEach(([k, xy]) => { const n = byKey(k); if (n && Array.isArray(xy)){ n.x = +xy[0] || 0; n.y = +xy[1] || 0; hit++; } });
     S.meta.hasLayout = hit > 0; }
-  (ed.notes || []).forEach(t => { const n = addNode("note", {text:String(t.text ?? "")}, +t.x || 0, +t.y || 0); });
+  (ed.notes || []).forEach(t => { const n = addNode("note", Object.assign({text:String(t.text ?? "")}, t.width ? {w:String(t.width)} : {}), +t.x || 0, +t.y || 0); });
   (ed.images || []).forEach(t => { addNode("image", {path:String(t.path ?? ""), w:String(t.width ?? 360), caption:String(t.caption ?? "")}, +t.x || 0, +t.y || 0); });
   (ed.groups || []).forEach((g, i) => { const members = (g.members || []).map(byKey).filter(Boolean).map(n => n.id); if (!members.length) return;
     const expose = {}; Object.entries(g.expose || {}).forEach(([k, v]) => { const [mk, key] = k.split("|"); const m = byKey(mk); if (m) expose[m.id + "|" + key] = !!v; });
@@ -1245,7 +1258,7 @@ const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force",
   e:"none", mu:"none", v_rest:"speed", k_rot:"rot_stiffness", c_rot:"rot_damping", k_twist:"rot_stiffness", c_twist:"rot_damping",
   friction:"force", length:"length", E:"stress", G:"stress", A:"area", I:"area_moment", Iy:"area_moment", Iz:"area_moment",
   J:"area_moment", EA:"force", density:"density", damping:"none", mass:"mass", segments:"none"};
-const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse", heat:"energy",
+const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse",
   friction_impulse:"impulse", drift:"none",
   force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
   current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
@@ -1693,6 +1706,7 @@ function render(){
     const el = document.createElement("div");
     el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
     el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
+    if (n.kind === "note" && +n.data.w > 0) el.style.width = Math.max(160, Math.min(1600, +n.data.w)) + "px";
     el.innerHTML = nodeHTML(n); world.appendChild(el);
   }
   for (const g of S.groups){
@@ -1882,11 +1896,11 @@ canvas.addEventListener("mousedown", e => {
     drag = moveDrag(e, g.members); return;
   }
   if (nodeEl){
+    // a node is highlighted only when the click both starts and ends on it (no flash when a button inside it
+    // deletes it, or when a click lands on a node that a menu just placed); dragging its header moves it at once
     const id = nodeEl.dataset.id, multi = e.shiftKey || e.ctrlKey || e.metaKey;
-    if (multi){ if (selSet.has(id)){ selSet.delete(id); setSel([...selSet]); } else setSel(id, true); }
-    else if (!selSet.has(id)){ wireSel = new Set(); setSel(id); }
-    else { sel = id; renderGroupPanel(); }
-    if (e.target.closest(".hd") && !e.target.closest("input,button") && selSet.has(id)) drag = moveDrag(e, [...selSet]);
+    pendSel = e.target.closest("button,[data-act],.x") ? null : {id, multi};
+    if (e.target.closest(".hd") && !e.target.closest("input,button")) drag = moveDrag(e, selSet.has(id) && !multi ? [...selSet] : [id]);
     return;
   }
   if (e.target.closest("#wires path,#wiresTop path")) return;
@@ -1930,7 +1944,16 @@ window.addEventListener("mousemove", e => {
     drawWires({a, b});
   }
 });
+let pendSel = null;
+function applyPendSel(p){
+  if (!byId(p.id) && !byGid(p.id)) return;
+  if (p.multi){ if (selSet.has(p.id)){ selSet.delete(p.id); setSel([...selSet]); } else setSel(p.id, true); }
+  else if (!selSet.has(p.id)){ wireSel = new Set(); setSel(p.id); }
+  else { sel = p.id; renderGroupPanel(); }
+}
 window.addEventListener("mouseup", e => {
+  if (pendSel){ const p = pendSel; pendSel = null; const el = e.target.closest && e.target.closest(".node");
+    if ((el && el.dataset.id === p.id) || (drag && drag.type === "move" && drag.moved)) applyPendSel(p); }
   if (!drag) return;
   const d = drag; drag = null; canvas.style.cursor = "";
   if (d.type === "move"){ if (d.moved) changed(false); return; }
@@ -2301,7 +2324,7 @@ function menuAll(){
     add("Bodies", "Body · ground", "fixed; can carry points, spheres and plane patches in world coordinates", COL.body, () => ["body", {name:"floor", dof:"ground"}], {words:"fixed wall floor 3d"});
     add("Elements", "Contact", "a point or sphere against a plane patch or sphere: pushes only while touching", COL.element, () => ["element", {name:"contact", type:"kelvin_voigt", mk:"contact", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hit impact touch penetration collision 3d"});
     add("Elements", "Ball joint (pin)", "holds two points together; two of them along a line make a hinge", COL.element, () => ["element", {name:"joint", type:"pin", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hinge axle bolt joint ball 3d"});
-    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost goes to heat", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 3d"});
+    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost is booked as dissipated", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 3d"});
     add("Elements", "Hinge", "two points held together and turning only about an axis; rigid: true for an exact joint", COL.element, () => ["element", {name:"hinge", type:"hinge", fields:{rigid:"true", axis:"z"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"revolute pivot joint axle 3d"});
     add("Elements", "Weld", "two bodies joined so they move and turn as one; rigid: true for an exact joint", COL.element, () => ["element", {name:"weld", type:"weld", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"fixed bonded bolted rigid joint 3d"});
     add("Elements", "Slider", "B's point runs along a line fixed in A (a guide rail); rigid: true for an exact joint", COL.element, () => ["element", {name:"slider", type:"slider", fields:{rigid:"true", axis:"x"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"prismatic rail guide linear joint 3d"});
@@ -2314,7 +2337,7 @@ function menuAll(){
     add("Bodies", "Body · ground", "fixed; can carry points, circles and lines in world coordinates", COL.body, () => ["body", {name:"floor", dof:"ground"}], {words:"fixed wall floor 2d"});
     add("Elements", "Contact", "a point or circle against a line or circle: pushes only while touching", COL.element, () => ["element", {name:"contact", type:"kelvin_voigt", mk:"contact", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hit impact touch penetration collision 2d"});
     add("Elements", "Pin joint", "holds two points together: a hinge or axle between bodies", COL.element, () => ["element", {name:"pin", type:"pin", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hinge axle bolt joint 2d"});
-    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost goes to heat", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 2d"});
+    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost is booked as dissipated", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 2d"});
     add("Elements", "Hinge", "two points held together; rigid: true for an exact joint", COL.element, () => ["element", {name:"hinge", type:"hinge", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"revolute pivot joint axle 2d"});
     add("Elements", "Weld", "two bodies joined so they move and turn as one; rigid: true for an exact joint", COL.element, () => ["element", {name:"weld", type:"weld", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"fixed bonded bolted rigid joint 2d"});
     add("Elements", "Slider", "B's point runs along a line fixed in A (a guide rail); rigid: true for an exact joint", COL.element, () => ["element", {name:"slider", type:"slider", fields:{rigid:"true", axis:"x"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"prismatic rail guide linear joint 2d"});
@@ -2519,7 +2542,27 @@ let lastRun = null, studyStale = true, plotKeys = null, liveBusy = false, liveAg
 const LIVE_MAX_S = 2.5, LIVE_MAX_WORKER_S = 20;   // a run on its own core never slows the editor, so it may take longer
 const liveOn = () => document.getElementById("bLive").checked;
 const varied = () => S.nodes.filter(n => n.kind === "sweep" || (n.kind === "mc" && parseInt(n.data.n) > 0));
+// Run, Study, Verify and Report first check every required box: empty ones flash in the warning colour
+function needCheck(){
+  const miss = [];
+  world.querySelectorAll(".node .row.req").forEach(row => {
+    if (row.querySelector(".linked")) return;
+    let fields = [...row.querySelectorAll("input:not([type=checkbox])")].filter(x => x.offsetParent !== null);
+    if (!fields.length) fields = [...row.querySelectorAll("select")].filter(x => x.offsetParent !== null && x.dataset.part !== "unit");
+    const empty = fields.length ? fields.every(x => String(x.value || "").trim() === "") : !!row.querySelector(".hint");
+    if (!empty) return;
+    const nd = row.closest(".node"); miss.push([row, nd]);
+  });
+  world.querySelectorAll(".row.need").forEach(r => r.classList.remove("need"));
+  if (!miss.length) return true;
+  miss.forEach(([r]) => { r.classList.remove("need"); void r.offsetWidth; r.classList.add("need"); });
+  setTimeout(() => world.querySelectorAll(".row.need").forEach(r => r.classList.remove("need")), 3200);
+  const names = [...new Set(miss.map(([, nd]) => { const n = byId(nd.dataset.id); return n && n.data.name ? n.data.name : "a node"; }))];
+  status("bad", `${miss.length} required box${miss.length === 1 ? " is" : "es are"} empty (${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""}): fill the flashing ones.`);
+  return false;
+}
 async function doRun(){
+  if (!needCheck()) return;
   await renderYaml(); status("busy", "Running…"); tab("pRes");
   const seq = ++runSeq, t0 = performance.now(); pcStart("run");
   const r = await API.call("run", yamlText, null, 600, filePath, true, true); pcStop();
@@ -2619,6 +2662,7 @@ function plot(){
 }
 window.addEventListener("resize", plot);
 async function doVerify(){
+  if (!needCheck()) return;
   await renderYaml(); status("busy", "Verifying (dt convergence, ledger, knockouts, limits, Monte Carlo)…"); tab("pVer");
   pcStart("verify"); const r = await API.call("verify", yamlText, S.meta.run.mc_n || null), pane = document.getElementById("pVer"); pcStop();
   if (!r.ok){ status("bad", r.error); pane.innerHTML = `<div class="empty">${esc(r.error)}</div>`; return; }
@@ -2630,6 +2674,7 @@ async function doVerify(){
   pane.innerHTML = h;
 }
 async function doReport(){
+  if (!needCheck()) return;
   if (!filePath){ status("busy", "Save the model first: the report goes in an out folder next to it."); if (!(await save())) return; }
   await renderYaml(); status("busy", "Verifying and writing the report…"); tab("pVer");
   pcStart("report"); const r = await API.call("report", yamlText, filePath, S.meta.run.mc_n || null), pane = document.getElementById("pVer"); pcStop();
@@ -2654,6 +2699,7 @@ const cores = () => parseInt(document.getElementById("bCores").value) || 1;
 function dur(s){ if (s < 90) return Math.max(1, Math.round(s)) + " s"; if (s < 5400) return Math.round(s / 60) + " min"; return (s / 3600).toFixed(1) + " h"; }
 let lastStudy = null;
 async function doStudy(){
+  if (!needCheck()) return;
   await renderYaml(); status("busy", "Sizing the study…");
   const e = await API.call("study_estimate", yamlText, cores());
   if (!e.ok){ status("bad", e.error); return; }
@@ -2799,10 +2845,11 @@ let SETTINGS = {recent:[]};
 async function refreshRecent(){ const r = await API.call("load_settings"); SETTINGS = r || {recent:[]};
   document.getElementById("bRecent").innerHTML = `<option value="">Recent</option>` + (SETTINGS.recent || []).map(p => `<option value="${esc(p)}">${esc(p.split(/[\\/]/).pop())}</option>`).join(""); }
 // ------------------------------------------------------------------------------------------------ files
-async function loadText(text, path){
+async function loadText(text, path, dataDir){
   const r = await API.call("import_yaml", text);
   if (!r.ok){ status("bad", "Could not read that file: " + r.error); return; }
-  fromDoc(r.doc); filePath = path || null; API.call("set_model_dir", filePath); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
+  // relative files (CSV loads, pictures) are read from the model's folder; an example's from where it ships
+  fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
   render(); if (!S.meta.hasLayout) arrange(); fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();
@@ -2894,7 +2941,7 @@ document.addEventListener("mousedown", e => { const m = document.getElementById(
 document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("orgMenu").style.display = "none"; });
 document.getElementById("bEx").addEventListener("change", async e => { const name = e.target.value; e.target.value = ""; if (!name) return;
   const ex = (window.__examples || []).find(x => x.name === name);
-  if (ex){ loadText(ex.text, null); if (ex.dir) API.call("set_model_dir", ex.dir + "/_example.yaml"); } });   // its CSVs and pictures sit beside it
+  if (ex){ await loadText(ex.text, null, ex.dir); viewFit(); } });   // its CSVs and pictures sit beside it
 // ------------------------------------------------------------------------------------------------ help view
 // The guide below is the app's manual. Every feature has a section; every node, element type, block and material has an
 // entry built from the live catalog, so custom blocks and materials appear here as soon as their folder is connected.
@@ -2911,6 +2958,186 @@ const GUIDE = [
    <li><b>Save</b> (${K("Ctrl+S")}) writes a plain YAML file. The same file runs from the command line with <code>simblocks run model.yaml</code>.</li>
   </ol>
   <p>Every node has a small <b>i</b> button. It shows a short description, and its <b>Full entry in Help</b> link brings you to the matching page here.</p>`},
+ {id:"ex-overview", grp:"Examples", t:"The nine examples", h:`
+  <p>Nine small models show how blocks connect, from one spring to a motor-driven robot arm. They are in the <b>Examples</b> menu (top bar). Each one opens with a note at the top saying what it models and a textbook number to compare against. Run it, then change one thing at a time.</p>
+  <table class="ht"><tr><th></th><th>Simple</th><th>Medium</th><th>Advanced</th></tr>
+  <tr><td><b>1D</b></td><td><a data-h="guide:ex-1d1">Mass on a spring and damper</a></td><td><a data-h="guide:ex-1d2">Shock isolation (CSV load)</a></td><td><a data-h="guide:ex-1d3">Motor, gearbox and flywheel</a></td></tr>
+  <tr><td><b>2D</b></td><td><a data-h="guide:ex-2d1">Pendulum on a hinge</a></td><td><a data-h="guide:ex-2d2">Ball bouncing down a ramp</a></td><td><a data-h="guide:ex-2d3">Four-bar linkage</a></td></tr>
+  <tr><td><b>3D</b></td><td><a data-h="guide:ex-3d1">Spinning top</a></td><td><a data-h="guide:ex-3d2">Drone arm (beam)</a></td><td><a data-h="guide:ex-3d3">Robot arm</a></td></tr></table>
+  <h3>How every model is built</h3>
+  <p><b>Bodies</b> are the things that move: they have mass (and inertia if they turn). <b>Elements</b> connect bodies and push on them: springs, dampers, contacts, joints, motors. An element always acts along a <b>measure</b>, a number worked out from the bodies' positions (a stretch, a gap, an angle). <b>Outputs</b> pick one number out of the run (the largest force, the time something happened). <b>Values</b> feed numbers with units into all of these.</p>
+  <p>Wires carry these things: value wires (numbers), body wires (which body an element acts on), signal wires (a history out of a run) and metric wires (a result). The <b>Canvas key</b> in the top right of the canvas shows the colours.</p>`},
+ {id:"ex-1d1", grp:"Examples", t:"1D-1 Mass on a spring and damper", h:`
+  <p class="exopen"><button data-ex="1D-1 Mass on a spring and damper">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A 1 kg mass sits on a spring (400 N/m) and a damper (4 N s/m), both tied to a fixed wall. It is pulled 10 mm and let go. It swings back and forth, each swing a little smaller, until it stops. This is the simplest dynamic system there is, and almost every vibration problem looks like it close up.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>Four value nodes</b> (m, k, c, x_start) hold the numbers with their units. Changing a value here changes it everywhere it is wired.</li>
+  <li><b>One body, mass</b>, with one coordinate: its position x. Its mass socket takes <i>m</i>; its x0 socket takes <i>x_start</i> (where it starts).</li>
+  <li><b>A spring element</b>. Its measure is just <code>mass</code>: the spring stretches by exactly the mass's position, because its other end is the wall (which never moves). Its force is $F = k x$, pulling the mass back.</li>
+  <li><b>A dashpot element</b> on the same measure. Its force is $F = c v$: it fights motion and dissipates its energy.</li>
+  <li><b>Outputs</b>: the lowest position (the first swing past zero), the largest spring force, the energy the damper dissipated, and where the mass ends up.</li></ul>
+  <h3>What to look at</h3>
+  <p>After a Run, open <b>Results</b>: the position history is a decaying wave. <i>dissipated_J</i> is almost exactly the 0.02 J stored in the spring at the start ($\\tfrac12 k x_0^2$): by the end, the damper has taken it all.</p>
+  <h3>Check it against the textbook</h3>
+  <p>Natural frequency $\\omega_n = \\sqrt{k/m} = 20$ rad/s, damping ratio $\\zeta = c / (2\\sqrt{k m}) = 0.1$. The damped period is $T_d = 2\\pi / (\\omega_n\\sqrt{1-\\zeta^2}) = 0.316$ s, and after half a period the mass reaches $-x_0 e^{-\\zeta\\omega_n T_d/2} = -7.29$ mm. The model gives -7.29 mm.</p>
+  <h3>Things to try</h3>
+  <ul><li>Set c to 40 N s/m ($\\zeta = 1$, critical damping): it creeps back with no overshoot.</li>
+  <li>Plug a <b>Range of values</b> node into k (100 to 1600 N/m) and press <b>Study</b> to see how the swing changes.</li>
+  <li>Give the spring its own <b>mass</b> (0.2 kg) and <b>segments</b> (8): the spring now vibrates along its length too.</li></ul>`},
+ {id:"ex-1d2", grp:"Examples", t:"1D-2 Shock isolation (CSV load)", h:`
+  <p class="exopen"><button data-ex="1D-2 Instrument on isolation mounts, hit by a shock pulse">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A 20 kg instrument sits on rubber mounts. A short, hard shock hits it: 2 kN for 5 ms. The question is how much of that force reaches the floor, and how far the instrument moves. This is how equipment is protected from impacts, drops and machinery nearby.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>One body</b>, the instrument, free to move along x.</li>
+  <li><b>A kelvin_voigt element</b> for the mounts: a spring and a damper side by side in one block ($F = k x + c v$). Its measure is the instrument's position, because the floor does not move. The force in this element is what the floor feels.</li>
+  <li><b>A load node set to CSV table</b> for the shock. The file <code>data/shock_pulse.csv</code> lists force (kN) against time (ms). The load node knows the units of both columns and joins the rows with a smooth curve. A CSV load is how you bring in a measured or designed load history.</li>
+  <li><b>A failure mode</b> on the travel: the mounts bottom out at 15 mm.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>peak_shock_kN</i> is about 2 kN, but <i>peak_floor_N</i> is under 200 N. The shock is over (5 ms) long before the mounts can push back (their period is 200 ms), so the instrument simply leaves with the shock's momentum and the mounts slow it down gently.</p>
+  <h3>Check it against the textbook</h3>
+  <p>The impulse is $J = \\int F\\,dt = 2\\,\\text{kN} \\times 5\\,\\text{ms} \\times 2/\\pi = 6.4$ N s, so the instrument starts moving at $v = J/m = 0.32$ m/s. An undamped mount would then stretch $v/\\omega_n = 10$ mm and push the floor with $k x = 200$ N. Damping trims both a little: the model gives 8.7 mm and 178 N.</p>
+  <h3>Things to try</h3>
+  <ul><li>Make the mounts ten times stiffer (200 kN/m): the travel drops, but the floor force rises. That is the isolation trade-off.</li>
+  <li>Change <b>between rows</b> on the load to <i>step</i> and see the force history change shape.</li>
+  <li>Make your own CSV (two columns, a header row is fine) and point the load node at it with the <b>…</b> button.</li></ul>`},
+ {id:"ex-1d3", grp:"Examples", t:"1D-3 Motor, gearbox and flywheel", h:`
+  <p class="exopen"><button data-ex="1D-3 Motor, gearbox and flywheel spin-up">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A battery-powered brushless motor spins a 200 mm steel flywheel through a 5:1 gearbox and a shaft that twists a little. The questions: how long to reach speed, what current the motor draws and how far the battery voltage sags.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>Two rotation bodies</b>: the motor's rotor and the flywheel. The flywheel has a <b>shape</b> (a disc, 100 mm radius, 20 mm thick, 1018 steel) instead of a typed inertia: the app works out $I = \\tfrac12 m R^2$ from the shape and the material's density.</li>
+  <li><b>A drive element</b> on the rotor. It holds the whole power chain: the battery (4 cells, internal resistance, capacity), the ESC (a 60 A current limit) and the motor (kv, winding resistance). Its outputs include current, battery current, bus voltage and state of charge.</li>
+  <li><b>A kelvin_voigt element</b> for the shaft, with measure <code>rotor / 5 - flywheel</code>. The 1/5 is the gearbox: the shaft twists by the gearbox output angle minus the flywheel angle, and its torque reaches the motor divided by 5.</li>
+  <li><b>A friction element</b> on the flywheel for bearing drag.</li></ul>
+  <h3>What to look at</h3>
+  <p>The current sits at 60 A (the ESC limit) while the flywheel is slow, then falls as the motor's back-EMF rises. <i>min_voltage_V</i> shows the battery sag under that load. <i>t_3000rpm_s</i> is the time to 90 % of top speed.</p>
+  <h3>Check it against the textbook</h3>
+  <p>Top speed is about $kv \\cdot V / \\text{gear} = 1000 \\times 16.8 / 5 = 3360$ rpm; the model ends at 3320 rpm (drag and battery sag take the rest). While the current is limited, the torque at the flywheel is $\\text{gear} \\times I_{max} / kv = 2.9$ N m (kv in SI), so it gains $\\tau / I \\approx 116$ rad/s every second.</p>
+  <h3>Things to try</h3>
+  <ul><li>Change gear to 3 or 8 and compare the spin-up time and top speed (a classic gearing trade-off).</li>
+  <li>Lower k_shaft to 20 N m/rad: the shaft now winds up and rings visibly in the shaft torque history.</li>
+  <li>Set throttle on the drive to 0.5.</li></ul>`},
+ {id:"ex-2d1", grp:"Examples", t:"2D-1 Pendulum on a hinge", h:`
+  <p class="exopen"><button data-ex="2D-1 Pendulum on a hinge">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A 0.5 m aluminium bar hangs from a hinge at its top end. It is let go at 30 degrees and swings under gravity. This is the first 2D model: bodies now move in x, y and spin, and they carry their own points.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>The wall</b> is a ground body (it never moves) with one point, <i>pivot</i>, at the origin.</li>
+  <li><b>The bar</b> is a moving body. Its <b>shape</b> is a rod (500 mm long, 200 mm² section, 6061 aluminium), so its mass and inertia are worked out for you. It starts with its centre placed so that its <i>top</i> point (250 mm above its centre, in its own frame) sits exactly on the pivot, tilted 30 degrees.</li>
+  <li><b>A hinge element</b> joins wall.pivot and bar.top. <code>rigid: true</code> makes it exact: the two points can never separate and there is no stiffness to choose. The hinge's force output is the reaction it carries.</li>
+  <li><b>Gravity</b> (9.81 in the side panel) pulls every body down.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>quarter_period_s</i> is the time to reach the bottom. <i>hinge_force_N</i> peaks at the bottom of the swing, where the hinge carries the bar's weight plus the force that keeps it on its circle. <i>hinge_drift</i> shows how far apart the joint's points ever got before being put back (micrometres or less).</p>
+  <h3>Check it against the textbook</h3>
+  <p>A bar pivoted at its end swings with $T = 2\\pi\\sqrt{2L/3g} = 1.158$ s for small swings; at 30 degrees the period is about 1.7 % longer, so a quarter period is 0.2946 s. The model gives 0.2946 s. At the bottom the hinge force is $m g + m r \\omega^2 = 3.18$ N, and the model gives 3.18 N.</p>
+  <h3>Things to try</h3>
+  <ul><li>Start it at 90 degrees: the period grows by about 18 %.</li>
+  <li>Remove <code>rigid: true</code> and give the hinge k = 1e5 N/m: the same pendulum on a stiff spring joint. Compare the time step it needs.</li>
+  <li>Add a dashpot with a twist measure between wall and bar to model hinge friction.</li></ul>`},
+ {id:"ex-2d2", grp:"Examples", t:"2D-2 Ball bouncing down a ramp", h:`
+  <p class="exopen"><button data-ex="2D-2 Ball bouncing down a ramp">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A rubber ball drops onto a 20 degree ramp, bounces down it, and rolls away along the floor. It shows contacts, friction and spin, and how lost energy is accounted for.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>Ground</b> carries two lines: the ramp and the floor.</li>
+  <li><b>The ball</b> has a disc <b>shape</b> (20 mm radius, TPU). A disc shape adds a circle feature named <i>outline</i> automatically, ready for contacts.</li>
+  <li><b>Two impact elements</b>, one for the ramp and one for the floor, each between ball.outline and a line. An impact is a rigid contact: there is no stiffness to guess, only the restitution <i>e</i> (how much bounce survives) and the friction coefficient <i>mu</i>. Friction is what makes the ball spin and finally roll.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>dissipated_ramp_J</i> and <i>dissipated_floor_J</i> are every joule each contact took out of the motion: lost bounce and sliding friction. The <i>dissipated</i> output of an impact is also a history (a running total), so you can see each bounce as a step. At the end the ball rolls without slipping: <i>vx_end</i> equals <i>spin_end</i> times the radius.</p>
+  <h3>Check it against the textbook</h3>
+  <p>Energy in is the drop in height, $m g \\Delta h$. Energy out is the final kinetic energy plus the energy both contacts dissipated. The energy ledger (<i>_ledger_rel</i> in the results) shows how well they agree: about 0.01 %. Rolling: $v = \\omega R$ to within 0.1 %.</p>
+  <h3>Things to try</h3>
+  <ul><li>Set e to 0: no bounce, the ball lands and rolls straight away.</li>
+  <li>Set mu to 0: the ball never spins and slides down the ramp.</li>
+  <li>Replace the impacts with kelvin_voigt contacts (a stiffness and damping) and compare: the soft contact squashes, the impact does not.</li></ul>`},
+ {id:"ex-2d3", grp:"Examples", t:"2D-3 Four-bar linkage", h:`
+  <p class="exopen"><button data-ex="2D-3 Four-bar linkage driven by a motor">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A crank, a coupler and a rocker, joined by four hinges to each other and to a fixed frame: a four-bar linkage, the mechanism inside wipers, pumps and many machines. A gearmotor turns the crank all the way round; the rocker swings back and forth.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>The frame</b> is ground with two pivot points 300 mm apart.</li>
+  <li><b>Three links</b> (crank 100 mm, coupler 300 mm, rocker 250 mm), each a rod <b>shape</b> in aluminium, each with points <i>a</i> and <i>b</i> at its ends. They start in a position where every joint meets.</li>
+  <li><b>Four rigid hinges</b>: frame.O2 to crank.a, crank.b to coupler.a, coupler.b to rocker.b, rocker.a to frame.O4.</li>
+  <li><b>A drive</b> on the crank's spin (<code>crank.rz</code>), with a 30:1 gearbox at 40 % throttle, and a little bearing friction.</li></ul>
+  <h3>What to look at</h3>
+  <p>The rocker's angle history swings between two limits while the crank runs round at a steady speed. The hinge forces show which joint works hardest; they rise and fall twice per crank turn.</p>
+  <h3>Check it against the textbook</h3>
+  <p>Grashof's rule: the shortest plus the longest link (100 + 300) is less than the other two (300 + 250), so the crank can turn fully (a crank-rocker). The rocker's end positions are where the crank and coupler line up, at 87.13 and 138.59 degrees; the model gives the same to 0.01 degree. The crank runs at $kv \\cdot V \\cdot \\text{throttle} / \\text{gear} = 50.4$ rpm.</p>
+  <h3>Things to try</h3>
+  <ul><li>Make the crank 200 mm long: Grashof fails and the linkage locks up part way round.</li>
+  <li>Hang a weight on the rocker (a body welded to it) and watch the motor current.</li>
+  <li>Plug a Range into throttle and Study the peak hinge force against speed.</li></ul>`},
+ {id:"ex-3d1", grp:"Examples", t:"3D-1 Spinning top", h:`
+  <p class="exopen"><button data-ex="3D-1 Spinning top">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A steel disc on a stem spins fast, tilted 20 degrees, with its tip on a ball joint. Gravity tries to tip it over; because it spins, it swings slowly round in a circle instead. This is gyroscopic precession, and it only appears in 3D.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>The floor</b> is ground with one point where the tip sits.</li>
+  <li><b>The top</b> is a free body (it slides and tumbles in every direction). Its <b>shape</b> is a disc whose centre is 50 mm up the stem (<code>at: [0, 0, $l]</code>), so its centre of mass and inertia are placed for you. <code>orient0</code> tilts it 20 degrees; <code>omega0</code> gives it its spin (plus the slow precession, so it starts smoothly).</li>
+  <li><b>A pin with rigid: true</b> is a ball joint: it holds the tip on its point but lets it turn every way.</li></ul>
+  <h3>What to look at</h3>
+  <p>The disc's x and y trace a circle; its height barely changes (<i>lowest_z_mm</i>). <i>quarter_turn_s</i> is the time to go a quarter of the way round.</p>
+  <h3>Check it against the textbook</h3>
+  <p>The simple gyroscope rule gives $\\Omega \\approx m g l / (I_s \\omega_s) = 3.07$ rad/s. The full steady-precession equation, $I_t \\Omega^2 \\cos\\theta - I_s \\omega_s \\Omega + m g l = 0$ (with $I_t$ about the tip), gives 3.25 rad/s, so a quarter turn takes 0.484 s. The model gives 0.484 s.</p>
+  <h3>Things to try</h3>
+  <ul><li>Halve the spin: it precesses twice as fast and wobbles more.</li>
+  <li>Start it with only the spin (delete the precession part of omega0): it nods up and down as it goes round (nutation).</li>
+  <li>Set the spin to zero: it simply falls over.</li></ul>`},
+ {id:"ex-3d2", grp:"Examples", t:"3D-2 Drone arm (beam)", h:`
+  <p class="exopen"><button data-ex="3D-2 Drone arm under a thrust punch">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>One arm of a drone: a 200 mm carbon tube clamped in the hub, with a 60 g motor at its end. The propeller thrust follows a CSV: spool up to hover, then a full-throttle punch. How far does the tip bend, and what bending moment reaches the hub?</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>A tube builder block</b> (<code>tube</code>, from the library) turns the tube's diameters into section properties: area, second moment, torsion constant.</li>
+  <li><b>The hub</b> is ground (held still) with a <i>root</i> point; <b>the motor</b> is a free body with a cylinder shape and a <i>mount</i> point.</li>
+  <li><b>A beam element</b> joins hub.root and motor.mount. It is deformable: it stretches, bends both ways and twists. The section comes in on a wire from the tube block; E, G and density are typed. <code>segments: 6</code> splits it into six pieces with their own mass so it can vibrate.</li>
+  <li><b>A load node set to CSV</b> pushes the motor up (<code>motor.z</code>) with the thrust history.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>tip_up_mm</i> is the largest upward bend; <i>root_moment</i> is the largest bending moment in the arm, checked against a failure mode. The beam's moment history shows a small overshoot each time the thrust changes.</p>
+  <h3>Check it against the textbook</h3>
+  <p>A cantilever with an end load: net load $P = 8 - 0.06 \\times 9.81 = 7.4$ N, tip deflection $P L^3 / 3 E I = 0.54$ mm, root moment $P L = 1.48$ N m. The model gives 0.59 mm and 1.63 N m: the extra is the arm's own weight and a little dynamic overshoot.</p>
+  <h3>Things to try</h3>
+  <ul><li>Use a 10/8 mm tube instead: the tip bends almost twice as far.</li>
+  <li>Make the thrust rise in 5 ms instead of 50 ms (edit the CSV): the overshoot grows.</li>
+  <li>Set <code>hinge: auto</code> and <code>material</code> on the beam to see where the tube would start to yield.</li></ul>`},
+ {id:"ex-3d3", grp:"Examples", t:"3D-3 Robot arm", h:`
+  <p class="exopen"><button data-ex="3D-3 Robot arm lifts a payload into a rubber stop">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A gearmotor at the shoulder lifts a two-link aluminium arm holding a 0.9 kg steel ball, until the arm hits a rubber stop at 60 degrees. Then the motor keeps pushing against the stop. This puts most of the 3D blocks together.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>The base</b> is ground: the shoulder point 300 mm up, and a small plane patch (the stop) placed where the arm will be at 60 degrees.</li>
+  <li><b>Upper arm, forearm and payload</b> are free bodies with box and sphere shapes in real materials.</li>
+  <li><b>Shoulder</b>: a rigid hinge about y. <b>Elbow</b>: a rigid hinge about y with a torsion spring and damper (<code>k_twist</code>, <code>c_twist</code>), so it gives a little under load. <b>Gripper</b>: a rigid weld holding the ball.</li>
+  <li><b>The motor</b> is a drive on a <b>twist measure</b>: the upper arm's turn relative to the base about -y (turning about -y raises the arm). A twist measure is how a motor sits between two bodies.</li>
+  <li><b>The stop</b> is a kelvin_voigt contact (a rubber bumper) between a point on the upper arm and the stop plane.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>t_hit_s</i> is when the arm reaches the stop; <i>stop_force_N</i> the hardest it presses; <i>peak_current_A</i> reaches the 15 A limit once the motor stalls against the stop. The elbow's twist history shows the forearm bouncing after the hit.</p>
+  <h3>Check it against the textbook</h3>
+  <p>To start lifting, the motor must beat the arm's weight moment, $\\sum m g x \\approx 11.5$ N m. Its stall torque is $\\text{gear} \\times I_{max} / kv = 72$ N m, so it lifts easily. Pressed against the stop, the static force is about (72 - 6) N m / 0.25 m = 260 N; the peak is higher because the arm arrives moving.</p>
+  <h3>Things to try</h3>
+  <ul><li>Swap the rubber stop for an <b>impact</b> element (rigid, with restitution) and compare the peak force.</li>
+  <li>Double the payload: the arm rises more slowly and the elbow sags further.</li>
+  <li>Lower k_elbow to 10 N m/rad and watch the forearm swing.</li></ul>`},
+ {id:"contactmethods", grp:"Building models", t:"Contact and joint methods", h:`
+  <p>Two things touch, or two parts are joined: there are several ways to model it, and they answer different questions. This page compares them so you can pick on purpose.</p>
+  <h3>Contacts</h3>
+  <table class="ht"><tr><th>Method</th><th>How it works</th><th>Gives you</th><th>Costs you</th><th>Use it for</th></tr>
+  <tr><td><b>Penalty</b> (kelvin_voigt or spring on a contact)</td><td>A stiff spring (and damper) that pushes once the parts overlap. $F = k\,s + c\,\dot s$</td><td>A force history, the squash, energy stored and returned</td><td>You choose k; a stiffer k needs a smaller time step; parts overlap a little</td><td>Bumpers, rubber, any contact whose stiffness you know</td></tr>
+  <tr><td><b>Hertz</b></td><td>Penalty with the curved-surface law $F = K s^{n}$ (n = 1.5 for balls)</td><td>Realistic peak force between curved metal parts</td><td>K from the materials and radii (blocks compute it)</td><td>Ball, roller, pin and tooth contacts that stay elastic</td></tr>
+  <tr><td><b>Elastoplastic table</b></td><td>Penalty with a yield table: loads elastically, then flows and keeps a dent</td><td>Peak force, permanent set, tearing through (break_at)</td><td>A table from a builder block (indentation, beam, plate)</td><td>Hits that dent, bend or punch: the answer is the damage</td></tr>
+  <tr><td><b>Impact</b> (rigid)</td><td>No overlap: an impulse sets the bounce speed to $e$ times the approach speed; friction up to $\mu$ times that impulse</td><td>Where things go and how much energy is lost (the dissipated output, a running total)</td><td>No force profile (the force output is impulse / dt) and no deformation</td><td>Bounces, drops, rattling parts, anything where only the motion matters</td></tr>
+  <tr><td>Contact friction</td><td>Coulomb friction riding on a penalty contact's normal force</td><td>Sliding, rolling and scraping on a soft contact</td><td>Needs a penalty contact under it</td><td>Wheels, skids, a tooth scraping a face</td></tr></table>
+  <p>Not built in, and why: <b>Lagrange multipliers / LCP</b> give exact non-overlap but need a solve every step and do not fit an explicit solver; the impact element gives the same rigid answer without it. <b>Augmented Lagrangian</b> and <b>Nitsche</b> methods belong to finite-element meshes. When the contact law is the physics (a dent, a rubber pad, a Hertz contact), penalty is the right choice, because its overlap is the real squash.</p>
+  <h3>Joints</h3>
+  <table class="ht"><tr><th>Method</th><th>How it works</th><th>Gives you</th><th>Costs you</th></tr>
+  <tr><td><b>Stiff spring joint</b> (pin, weld, hinge, slider with k)</td><td>A stiff spring-damper holds the points together</td><td>A joint that can give a little (bolted, bushed, flexible)</td><td>k sets the time step; points drift apart by force / k</td></tr>
+  <tr><td><b>Rigid joint</b> (rigid: true)</td><td>Constraint projection: after each step the positions are moved back onto the joint (each body by its inverse mass) and the velocities made consistent (SHAKE and RATTLE)</td><td>An exact joint: no stiffness to pick, no time-step cost; the force output is the reaction; drift shows the largest gap ever closed</td><td>Cannot model a joint that flexes (add k_twist or use a stiff joint for that)</td></tr></table>
+  <p>If one side of a rigid joint is much heavier (or ground), the light side does all the moving: pinning a part to the ground holds that part exactly. Two equal bodies share the correction. Momentum is never changed by a correction.</p>
+  <h3>Where the lost energy goes</h3>
+  <p>Every method books what it removes: dampers and friction as <b>dissipated</b>, a plastic table as plastic work, an impact as dissipated (its history is the running total), a rigid joint only when it catches a speed its points already had (a joint closing on moving parts). The <b>energy ledger</b> adds everything up and checks it against the change in kinetic and potential energy, so a missing joule shows up as <i>_ledger_rel</i>.</p>
+  <p><b>A known limit:</b> a rigid impact held pressed while rigid joints carry large forces through it (a motor stalled against a hard stop) shows the explicit step's error in the ledger; it shrinks as the time step shrinks. For a stop that is pressed for a long time, a stiff bumper (kelvin_voigt contact) is cleaner, as in the robot arm example.</p>`},
  {id:"canvas", grp:"Start here", t:"Canvas and navigation", h:`
   <table class="ht"><tr><th>Do this</th><th>To</th></tr>
   <tr><td>Drag empty space, or middle-drag anywhere</td><td>pan</td></tr>
@@ -3162,10 +3389,16 @@ function helpNav(q){
   nav.innerHTML = h;
 }
 function fmtSI(v, unit, k){ if (v === null || v === undefined || v !== v) return ""; return (+(v / k).toPrecision(4)).toLocaleString() + (unit ? " " + unit : ""); }
+// the example write-ups carry LaTeX ($...$): render it with the bundled KaTeX (other guide pages use $ for params)
+function helpTex(h){
+  if (!window.katex) return h;
+  const r = (src, disp) => { try { return katex.renderToString(src, {displayMode:disp, throwOnError:false, output:"html"}); } catch (e) { return src; } };
+  return h.replace(/\$\$([^$]+)\$\$/g, (m, x) => r(x, true)).replace(/\$([^$<>]+)\$/g, (m, x) => r(x, false));
+}
 async function helpShow(id){
   await helpData(); helpCur = id; const body = document.getElementById("hBody"); let h = "";
   if (id.startsWith("guide:")){ const g = GUIDE.find(x => "guide:" + x.id === id) || GUIDE[0];
-    h = `<div class="hk">${esc(g.grp)}</div><h2>${esc(g.t)}</h2>${g.h}`; }
+    h = `<div class="hk">${esc(g.grp)}</div><h2>${esc(g.t)}</h2>${g.id.startsWith("ex-") || g.id === "contactmethods" ? helpTex(g.h) : g.h}`; }
   else if (id.startsWith("node:")){ const k = id.slice(5);
     const I = k === "group" ? ["Group", null, "many nodes as one", "Folds selected nodes into one node. See the guide section on groups."] :
               k === "export" ? ["CSV export", null, "time histories to a file", "Writes element signals, states and body motion to CSV when you press Run. See the CSV export guide."] : NODE_INFO[k];
@@ -3210,6 +3443,8 @@ document.getElementById("hQ").addEventListener("input", e => helpNav(e.target.va
 document.getElementById("hQ").addEventListener("keydown", e => { if (e.key === "Enter"){ const a = document.querySelector("#hNav a[data-h]"); if (a) helpShow(a.dataset.h); } });
 document.getElementById("helpView").addEventListener("click", async e => {
   const a = e.target.closest("[data-h]"); if (a){ e.preventDefault(); helpShow(a.dataset.h); return; }
+  const ex = e.target.closest("[data-ex]"); if (ex){ const x = (window.__examples || []).find(z => z.name === ex.dataset.ex);
+    if (x){ helpClose(); await loadText(x.text, null, x.dir); viewFit(); } return; }
   const c = e.target.closest("[data-copy]"); if (c){ const t = document.getElementById(c.dataset.copy).textContent;
     try { await navigator.clipboard.writeText(t); c.textContent = "Copied"; setTimeout(() => c.textContent = "Copy", 1200); }
     catch (err) { const r = document.createRange(); r.selectNodeContents(document.getElementById(c.dataset.copy)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); c.textContent = "Selected: Ctrl+C"; } return; }
@@ -3265,14 +3500,23 @@ const THEMES = {
     p1:"#2563eb", p2:"#d97706", p3:"#059669", p4:"#7c3aed", p5:"#db2777"}},
   drafting: {name:"Drafting", note:"Vellum paper, blue-black ink, red markups: a printed schematic.", scheme:"light", t:{
     bg:"#f3efe2", grid:"#e2e6e2", panel:"#fbf9f2", panel2:"#efeadb", panel3:"#e6e0cd", edge:"#8f9aa6", hair:"#ddd6c2", selbg:"#d6e2ef", "note-bg":"#fffdf5", "group-hd":"#e8eaf2", ink:"#1b2a3a", ink2:"#3d4d5f", ink3:"#5e6a78", link:"#1f4f9a", acc:"#1f4f9a", accf:"#c0392b", pass:"#2e6b3a", warn:"#9a5c00", fail:"#c0392b", shadow:"rgba(40,50,70,.15)", "s-val":"#1f4f9a", "s-body":"#c0392b", "s-sig":"#4b5563", "s-state":"#6b3fa0", "s-metric":"#1b2a3a", "c-value":"#b07a1f", "c-builder":"#6b3fa0", "c-body":"#1f4f9a", "c-element":"#2e6b3a", "c-load":"#2e6b3a", "c-output":"#6b7684", "c-expr":"#2f6f6a", "c-fail":"#c0392b", "c-sweep":"#a46200", "c-mc":"#b03a6a", "c-export":"#2f6f8a", "c-group":"#4b4f9a", "c-note":"#8f9aa6", p1:"#1f4f9a", p2:"#c0392b", p3:"#2e6b3a", p4:"#6b3fa0", p5:"#9a5c00"}},
-  sage: {name:"Sage", note:"Soft leaf greens on paper white, with ochre, rust and lake-blue wires. Calm and outdoorsy.", scheme:"light", t:{
-    bg:"#f2f4ec", grid:"#e4e9dc", panel:"#fbfcf8", panel2:"#eef1e7", panel3:"#e2e7d9", edge:"#b3bea6", hair:"#dde3d3", selbg:"#d5e6cf", "note-bg":"#fdfbf0", "group-hd":"#e6ece0", ink:"#1f2b22", ink2:"#3c4a3f", ink3:"#56665a", link:"#2d6a3e", acc:"#3f7d4f", accf:"#a0522d", pass:"#2f6b3a", warn:"#8a5a00", fail:"#a3341a", shadow:"rgba(40,60,40,.14)", "s-val":"#a17805", "s-body":"#9c3924", "s-sig":"#5b717c", "s-state":"#693474", "s-metric":"#22352a", "c-value":"#b67b0f", "c-builder":"#87528b", "c-body":"#286997", "c-element":"#347e38", "c-load":"#347e38", "c-output":"#817872", "c-expr":"#41a190", "c-fail":"#973411", "c-sweep":"#e5c571", "c-mc":"#c46891", "c-export":"#7dc7ea", "c-group":"#8e8fcc", "c-note":"#b6a99a", p1:"#045b20", p2:"#ac893f", p3:"#26799f", p4:"#a03a0d", p5:"#632f6e"}},
-  texas: {name:"Texas", note:"Burnt orange and limestone on white, with charcoal text.", scheme:"light", t:{
-    bg:"#f6f4ef", grid:"#e9e6de", panel:"#ffffff", panel2:"#efece5", panel3:"#e4e0d6", edge:"#c4bfb0", hair:"#e2ded4", selbg:"#f6dcc8", "note-bg":"#fffaf2", "group-hd":"#ebe9e4", ink:"#333f48", ink2:"#4a5660", ink3:"#5c6770", link:"#a34a00", acc:"#bf5700", accf:"#005f86", pass:"#3b6e22", warn:"#8f5500", fail:"#b3122e", shadow:"rgba(51,63,72,.15)", "s-val":"#bf5700", "s-body":"#056392", "s-sig":"#747c80", "s-state":"#367120", "s-metric":"#333f48", "c-value":"#bf5700", "c-builder":"#764471", "c-body":"#0e6490", "c-element":"#4b8427", "c-load":"#4b8427", "c-output":"#8c8270", "c-expr":"#0798a8", "c-fail":"#bb0f31", "c-sweep":"#f6972f", "c-mc":"#ae597c", "c-export":"#8daac4", "c-group":"#3c454d", "c-note":"#ccc7bd", p1:"#bf5700", p2:"#006190", p3:"#292f34", p4:"#4f7114", p5:"#0ba2aa"}},
+  sage: {name:"Sage", note:"Matcha and moss greens on cream, with blush pink and a little sunflower and mushroom red. Soft and outdoorsy.", scheme:"light", t:{
+    bg:"#eef0e0", grid:"#e0e5cc", panel:"#f8f6e8", panel2:"#e9edd4", panel3:"#dce3c3", edge:"#b5c19c", hair:"#dfe4cc", selbg:"#f3dcdc", "note-bg":"#fbf8ea", "group-hd":"#e3e8cf", ink:"#2f3b29", ink2:"#46553d", ink3:"#5d6b52", link:"#3d5a30", acc:"#5f7f46", accf:"#c7807f", pass:"#3d6a2f", warn:"#7f560a", fail:"#a63f32", shadow:"rgba(60,75,50,.16)",
+    bar:"#c5d3a2", "bar-ink":"#2f3b29", "bar-ink2":"#46553d", hd:"#5f7a52", "hd-ink":"#f8f6e8", "hd-ink2":"#dfe8c8",
+    "s-val":"#5f7a1c", "s-body":"#b85a6c", "s-sig":"#4a7672", "s-state":"#7d5a3a", "s-metric":"#2f3b29",
+    "c-value":"#d9b23a", "c-builder":"#c46f7e", "c-body":"#5f7a52", "c-element":"#8fae5d", "c-load":"#8fae5d", "c-output":"#a0a6ad", "c-expr":"#4fa39a", "c-fail":"#b54a3c", "c-sweep":"#e08a3a", "c-mc":"#d79aa0", "c-export":"#3f6b8a", "c-group":"#c3cdb0", "c-note":"#9c7a62",
+    p1:"#2f4a28", p2:"#b85a6c", p3:"#6f8f1c", p4:"#7d5a3a", p5:"#a8811c"}},
+  texas: {name:"Texas", note:"Burnt orange bars and node headers over a white canvas, with charcoal text and limestone trim.", scheme:"light", t:{
+    bg:"#ffffff", grid:"#f3e9e1", panel:"#ffffff", panel2:"#f7f3ee", panel3:"#ece5dc", edge:"#d7c9bd", hair:"#efe6de", selbg:"#ffe0c7", "note-bg":"#fff8f1", "group-hd":"#f4ece4", ink:"#333f48", ink2:"#46525b", ink3:"#5c6770", link:"#a34a00", acc:"#bf5700", accf:"#005f86", pass:"#3d7a2a", warn:"#9a5b00", fail:"#b3122e", shadow:"rgba(51,63,72,.16)",
+    bar:"#bf5700", "bar-ink":"#ffffff", "bar-ink2":"#ffe9d6", hd:"#bf5700", "hd-ink":"#ffffff", "hd-ink2":"#ffe0c2",
+    "s-val":"#bf5700", "s-body":"#333f48", "s-sig":"#00818c", "s-state":"#005f86", "s-metric":"#3f7f2c",
+    "c-value":"#f8971f", "c-builder":"#005f86", "c-body":"#333f48", "c-element":"#579d42", "c-load":"#579d42", "c-output":"#9cadb7", "c-expr":"#2bb3a6", "c-fail":"#b3122e", "c-sweep":"#ffd600", "c-mc":"#a6cd57", "c-export":"#6a4c93", "c-group":"#c9c4b3", "c-note":"#a07850",
+    p1:"#bf5700", p2:"#333f48", p3:"#005f86", p4:"#3f7f2c", p5:"#00818c"}},
   goldenrod: {name:"Goldenrod", note:"Yellow paper with dark brown ink and goldenrod accents.", scheme:"light", t:{
     bg:"#fbf5dc", grid:"#f1e8c4", panel:"#fffdf3", panel2:"#f6eecd", panel3:"#eee3b8", edge:"#cbbb7c", hair:"#ece2bd", selbg:"#f5dc8a", "note-bg":"#fffbe8", "group-hd":"#f0e9cc", ink:"#2b2410", ink2:"#4a4020", ink3:"#615535", link:"#7a5300", acc:"#9a6a00", accf:"#8a1f4b", pass:"#3f6a1a", warn:"#845000", fail:"#b0261f", shadow:"rgba(90,70,10,.15)", "s-val":"#ae7c05", "s-body":"#004c79", "s-sig":"#6d645d", "s-state":"#7f1f4b", "s-metric":"#2b2410", "c-value":"#e6b413", "c-builder":"#813e7e", "c-body":"#1c66a2", "c-element":"#647c2e", "c-load":"#647c2e", "c-output":"#a39c8c", "c-expr":"#279891", "c-fail":"#bc2e29", "c-sweep":"#9aa004", "c-mc":"#ca6598", "c-export":"#7cbae4", "c-group":"#7d81b8", "c-note":"#cec8ae", p1:"#2f517b", p2:"#a77f17", p3:"#4e6928", p4:"#851d58", p5:"#a04309"}},
   candy: {name:"Candy", note:"Bubblegum pink with bold sweet-shop wires and a round, playful font.", scheme:"light", ui:"fredoka", t:{
-    bg:"#fde8f2", grid:"#f8d9e8", panel:"#ffffff", panel2:"#fdf0f6", panel3:"#f8dceb", edge:"#d68db3", hair:"#f0c6da", selbg:"#fbd0e5", "note-bg":"#fffbea", "group-hd":"#f3eaff",
+    bg:"#fbe0ee", grid:"#f4cfe2", panel:"#fff1f8", panel2:"#fbe1ee", panel3:"#f6cfe3", edge:"#d68db3", hair:"#efc2d8", selbg:"#f8c4de", "note-bg":"#fde9f3", "group-hd":"#efe2fb",
+    bar:"#f5b8d5", "bar-ink":"#7a1450", "bar-ink2":"#5c2048", hd:"#f9cfe4", "hd-ink":"#3b1433", "hd-ink2":"#7a3d66",
     ink:"#3b1433", ink2:"#683259", ink3:"#8c587d", link:"#a0246c", acc:"#d0337f", accf:"#c2580f", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(160,60,110,.2)",
     "s-val":"#00897b", "s-body":"#d6007a", "s-sig":"#2f5bff", "s-state":"#8a2be2", "s-metric":"#e05a00",
     "c-value":"#ee8420", "c-builder":"#9576ee", "c-body":"#3f95e8", "c-element":"#14b8a6", "c-load":"#14b8a6", "c-output":"#a8789b", "c-expr":"#0d9488",
@@ -3338,6 +3582,12 @@ function applyColors(){
   const {th, look, img, own} = curLook(), root = document.documentElement;
   Object.entries(THEMES.blueprint.t).forEach(([k, v]) => root.style.setProperty("--" + k, own[k] || (th.t && th.t[k]) || v));
   root.style.setProperty("color-scheme", th.scheme || "dark");
+  // optional: top bars and node headers in their own colour (Texas: burnt-orange bars, white canvas)
+  const T = Object.assign({}, THEMES.blueprint.t, th.t || {}, own);
+  root.style.setProperty("--bar", T.bar || T.panel); root.style.setProperty("--bar-ink", T["bar-ink"] || T.acc);
+  root.style.setProperty("--bar-ink2", T["bar-ink2"] || T.ink3);
+  root.style.setProperty("--hd", T.hd || T.panel2); root.style.setProperty("--hd-ink", T["hd-ink"] || T.ink);
+  root.style.setProperty("--hd-ink2", T["hd-ink2"] || T.ink3);
   root.style.setProperty("--wire-w", th.wire || "2.2");
   const ui = UI_FONTS[look.ui] || UI_FONTS.inter, mono = MONO_FONTS[look.mono] || MONO_FONTS.jetbrains;
   root.style.setProperty("--mono", mono.css);

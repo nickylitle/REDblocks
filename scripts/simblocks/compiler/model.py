@@ -5,6 +5,7 @@ Compiled.run(dt=None, history=False) -> dict of outputs (+ history)
 """
 import inspect
 import math
+import re
 
 import numpy as np
 
@@ -16,7 +17,7 @@ from . import engine1d as E
 TYPE_CODE = {"spring": 0, "dashpot": 1, "kelvin_voigt": 2, "elastoplastic": 3, "hertz": 4, "friction": 5,
              "drag": 6, "force": 7, "drive": 8, "impact": 14}
 AUX = {"plastic_set": 0, "broken": 2, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
-       "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "heat": 1, "friction_impulse": 2, "drift": 3}
+       "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3}
 KNOCK = "__knock__"          # override prefix: element switched off
 ELASTIC = "__elastic__"      # override prefix: elastoplastic element made elastic
 
@@ -76,6 +77,34 @@ def resolve(v, ctx, where):
 _CACHE = {}       # builder results keyed by (block, args): Monte Carlo reruns reuse unchanged builds
 
 
+_MAT_PROP = re.compile(r"^(E|nu|sy|Sy|su|Su|Y|rho|density|G)(\d*|_\w*)$")
+_PROP_ATTR = {"E": "E", "nu": "nu", "sy": "sy", "Sy": "sy", "Y": "sy", "su": "su", "Su": "su", "rho": "rho",
+              "density": "rho", "G": "G"}
+
+
+def _material_prop(text, k, block, where):
+    """A material name given where a block wants one of its properties: '4140 prehard' into E1 gives its E."""
+    from ..materials import get
+    from ..materials.curves import resolve_material
+    try:
+        m = get(text)
+    except Exception:
+        try:
+            m = get(resolve_material(text))
+        except Exception:
+            raise SpecError(f"block '{block}' argument '{k}' needs a number; '{text}' is not a number or a known "
+                            "material", where)
+    base = _MAT_PROP.match(k).group(1)
+    attr = _PROP_ATTR[base]
+    v = getattr(m, attr, None)
+    if attr == "G" and not v and getattr(m, "E", None):
+        nu = getattr(m, "nu", None) or 0.3
+        v = m.E / (2 * (1 + nu))
+    if v is None or (isinstance(v, float) and v != v):
+        raise SpecError(f"material '{text}' has no {attr} for block '{block}' argument '{k}'", where)
+    return float(v)
+
+
 def call_block(d, ctx, where):
     from ..registry import REGISTRY
     from ..materials import get
@@ -95,6 +124,9 @@ def call_block(d, ctx, where):
         val = resolve(x, ctx, f"{where}.{k}")
         if k == "mat" and isinstance(val, str):
             val = get(resolve_material(val))
+        elif isinstance(val, str) and _MAT_PROP.match(k):
+            # a material plugged straight into a property argument (E1, nu_t, sy, Y_o, rho...): take that property
+            val = _material_prop(val, k, name, where)
         args[k] = val
     missing = [p for p, prm in sig.parameters.items() if prm.default is inspect._empty and p not in args]
     if missing:
@@ -636,6 +668,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             H[f"{en}.force"] = LE[:, e * w]; H[f"{en}.measure"] = LE[:, e * w + 1]
             for qn, j in AUX.items():
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
+            if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
+                H[f"{en}.dissipated"] = LE[:, e * w + 3]
         _group_history(M, H)
         return R, H
     if history and dim2:
@@ -652,6 +686,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             H[f"{en}.force"] = LE[:, e * w]; H[f"{en}.measure"] = LE[:, e * w + 1]
             for qn, j in AUX.items():
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
+            if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
+                H[f"{en}.dissipated"] = LE[:, e * w + 3]
         _group_history(M, H)
         return R, H
     if history:
@@ -663,6 +699,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             H[f"{en}.force"] = LE[:, e * w]; H[f"{en}.measure"] = LE[:, e * w + 1]
             for qn, j in AUX.items():
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
+            if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
+                H[f"{en}.dissipated"] = LE[:, e * w + 3]
         _group_history(M, H)
         return R, H
     return R

@@ -38,11 +38,35 @@ run:
   dt: 0.2 ms
 
 editor:
+  layout:
+    b:bar:
+    - 30
+    - 390
+    b:wall:
+    - 30
+    - 170
+    e:hinge:
+    - 340
+    - 30
+    o:hinge_drift:
+    - 650
+    - 230
+    o:hinge_force_N:
+    - 650
+    - 30
+    o:max_speed_rad_s:
+    - 340
+    - 730
+    o:quarter_period_s:
+    - 340
+    - 470
+    p:L:
+    - 30
+    - 30
   notes:
-    - x: 40
-      y: -170
-      text: |
-        **2D-1 Pendulum on a hinge.** A bar hangs from a hinge at its top end and is let go at 30 degrees.
-        Gravity swings it; the hinge holds the top end exactly in place (rigid joint).
-        Textbook check: small swings take $T = 2\pi\sqrt{2L / 3g} = 1.158$ s; at 30 degrees it is about 1.7 % longer,
-        so the bar reaches the bottom after $T/4 \approx 0.295$ s.
+  - text: '**2D-1 Pendulum on a hinge.** A bar hangs from a hinge at its top end and is let go at 30 degrees. Gravity swings it; the hinge holds the top end exactly in place (rigid joint). Textbook check: small swings take $T = 2\pi\sqrt{2L / 3g} = 1.158$ s; at 30 degrees it is about 1.7 % longer, so the bar reaches the bottom after $T/4 \approx 0.295$ s.
+
+      '
+    x: 30
+    y: -146
+    width: 640

@@ -93,7 +93,7 @@ REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"
 OUTPUT_KEYS = {"element", "body", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
 ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
-                      "impulse", "heat", "friction_impulse", "drift"}
+                      "impulse", "friction_impulse", "drift"}
 BODY_QUANTITIES = {"position", "velocity", "kinetic_energy"}
 BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
                       "velocity", "kinetic_energy"}
@@ -104,7 +104,7 @@ EXPORT_COLUMN_KEYS = {"element", "body", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
-                 "impact": {"impulse", "heat", "friction_impulse"}}
+                 "impact": {"impulse", "dissipated", "friction_impulse"}}
 EXPORT_HEADERS = {"units", "plain", "none"}
 EXPORT_ON = {"run", "study"}
 FAIL_KEYS = {"name", "metric", "limit", "fails_when", "demand", "capacity", "origin", "assumption", "reach_metric"}

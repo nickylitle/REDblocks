@@ -42,9 +42,13 @@ ELEMENTS = [
     dict(name="drag", law="F = K v |v|", fields="K",
          what="Quadratic drag: windage on a spinning rotor, air drag on a body.",
          yaml="windage:\n  type: drag\n  measure: rotor\n  K: $K_wind      # from bar_windage_torque at omega = 1"),
-    dict(name="force", law="F = P (constant)", fields="P",
-         what="Constant push along the measure: gravity, a prescribed load.",
-         yaml="gravity:\n  type: force\n  measure: chassis\n  P: \"= -$m * 9.81\"      # sign follows your axis"),
+    dict(name="force", law="F = P (constant), or F(t) / F(s) from a CSV table", fields="P, or csv: {file, against, x_unit, y_unit, interpolation, x_col, y_col}",
+         what="A push along the measure. Constant (P), or following a table: against time (a measured or designed load "
+              "history) or against the measure itself (a load-deflection curve). The table comes from a CSV file (path "
+              "relative to the model's folder) or inline x / y lists; you give the units of both columns; rows are joined "
+              "linearly (default), held (step) or by a monotone cubic with no overshoot (smooth, PCHIP); the end values "
+              "hold outside the table.",
+         yaml="shock:\n  type: force\n  measure: instrument\n  csv: {file: data/shock.csv, against: time, x_unit: ms, y_unit: kN, interpolation: linear}"),
     dict(name="drive", law="DC motor + current-limited ESC + LiPo 1-RC pack", fields="kv, R, I_max, gear, cells, R0, R1, C1, capacity, throttle, J_rotor",
          what="Powers one rotation body. Tracks motor current, battery current, bus voltage and state of charge.",
          yaml="motor:\n  type: drive\n  measure: rotor\n  kv: 1100 rpm/V\n  R: 35 mohm\n  I_max: 60 A\n  gear: 1.5\n  cells: 5\n  R0: 0.15 ohm\n  capacity: 450 mAh"),
@@ -53,6 +57,44 @@ ELEMENTS = [
               "direction, so the bodies turn freely about it: a hinge in 2D, a ball joint in 3D (two pins along a line "
               "make a 3D hinge). Use k well above the other stiffnesses; the solver's time step follows it.",
          yaml="hinge:\n  type: pin\n  measure: [chassis.root, face.root]\n  k: 5e7 N/m\n  c: 200 N s/m"),
+    dict(name="impact", law="rigid contact: an impulse sets the separating speed to e x the approach speed; Coulomb friction mu",
+         fields="e (restitution 0-1), mu, v_rest",
+         what="A hard hit with no stiffness to choose. When the measure (a contact, or any measure where s > 0 means "
+              "overlap) would close within the step, an impulse reverses the approach speed times e, and friction up to mu "
+              "times that impulse acts along the surface (sticking if it can). Every joule removed is booked as dissipated energy "
+              "(the dissipated output; its history is the running total). A contact held closed (resting, or pressed by a motor) books only its "
+              "sliding friction. Use it when you care where things go and how much energy is lost, not the force profile: "
+              "the force output is impulse / dt. For peak forces, dents and deformation use a penalty contact "
+              "(kelvin_voigt, hertz, elastoplastic) instead. See Help > Contact and joint methods.",
+         yaml="bounce:\n  type: impact\n  e: 0.6\n  mu: 0.4\n  measure: {contact: [ball.outline, floor.top]}"),
+    dict(name="rope", law="F = k (L - length) + c dL/dt when L > length, else 0 (2d / 3d)", fields="k, c, length",
+         what="2D and 3D. Pulls two points together only once the distance between them exceeds its length: slack "
+              "otherwise. A tether, cable or strap.",
+         yaml="tether:\n  type: rope\n  measure: {distance: [post.top, load.hook], length: 1.2 m}\n  k: 50 kN/m\n  c: 20 N s/m"),
+    dict(name="weld", law="pin + rotation lock (2d / 3d)", fields="rigid, or k, c, k_rot, c_rot",
+         what="2D and 3D. Joins two bodies so they move and turn as one. rigid: true makes it exact (projected constraints: "
+              "no stiffness to choose, no time-step cost). Otherwise a stiff spring-damper in translation (k, c) and "
+              "rotation (k_rot, c_rot).",
+         yaml="bolted:\n  type: weld\n  rigid: true\n  measure: [frame.mount, motor.base]"),
+    dict(name="hinge", law="pin, plus (3D) a lock of the turns across its axis; optional torsion spring k_twist", fields="rigid, axis (3D), k_twist, c_twist, or k, c, k_rot",
+         what="2D and 3D. Two points held together, free to turn about the hinge axis (in 2D the plane's normal). "
+              "rigid: true makes it exact. k_twist / c_twist add a torsion spring and damper about the axis (a spring-loaded "
+              "joint, bearing drag). The force output is the reaction the hinge carries; drift is how far its points ever "
+              "got apart before being put back (rigid).",
+         yaml="elbow:\n  type: hinge\n  rigid: true\n  axis: y\n  k_twist: 60 N m/rad\n  measure: [upper.e, fore.e]"),
+    dict(name="slider", law="B's point held on a line fixed in A, free along it", fields="axis, rigid, or k, c; k_rot, friction",
+         what="2D and 3D. A guide rail: B's point may move only along the axis (given at the start, then turning with A). "
+              "rigid: true makes it exact. k_rot (any value when rigid) also stops B turning relative to A. friction adds "
+              "Coulomb drag along the rail. Its measure output is how far B has slid.",
+         yaml="carriage:\n  type: slider\n  rigid: true\n  axis: x\n  k_rot: 0\n  measure: [rail.o, cart.p]"),
+    dict(name="beam", law="co-rotational beam: N = EA/L0 (L - L0), end moments from EI (2D: one plane; 3D: two planes and GJ torsion)",
+         fields="section or A, I (Iy, J), E (G), material, density or mass, segments, damping, orient, hinge, end_mass",
+         what="2D and 3D. A deformable beam between two points: stretches, bends and (3D) twists, through any large "
+              "rotation. Give a material and a section block (or E, A, I, J), and segments: n to split it into n pieces "
+              "with node bodies carrying its mass (so it vibrates and whips). hinge: auto (or a moment table) forms "
+              "plastic hinges at Mp = sy Z. orient (3D) is the section's h direction. Outputs: moment, torque, shear, "
+              "hinge_set.",
+         yaml="arm:\n  type: beam\n  measure: [hub.root, motor.mount]\n  section: $tube\n  E: 70 GPa\n  density: 1550 kg/m^3\n  segments: 6"),
     dict(name="contact_friction", law="F = mu |F_n| tanh(v_t / v_eps), along the contact surface (2d / 3d)", fields="contact, mu, v_eps",
          what="2D and 3D. Sliding friction on a contact element: rides on that contact's normal force and acts along "
               "its surface, so it stops when the contact separates. Rolling, skidding and scraping come out of it.",
@@ -83,7 +125,19 @@ def _el_fig(name):
            "drive": FG._box(52, 32, 40, 26, "M") + '<line x1="92" y1="45" x2="118" y2="45" stroke="currentColor"/>',
            "pin": '<line x1="42" y1="45" x2="76" y2="45" stroke="currentColor" stroke-width="1.4"/>' + FG._circle(80, 45, 5, soft=False) +
                   '<line x1="84" y1="45" x2="118" y2="45" stroke="currentColor" stroke-width="1.4"/>',
-           "contact_friction": ""}[name]
+           "contact_friction": "",
+           "impact": "", "rope": '<path d="M42,45 q19,14 38,0 q19,-14 38,0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3"/>',
+           "weld": '<rect x="42" y="38" width="76" height="14" style="fill:var(--soft)" stroke="currentColor"/>',
+           "hinge": '<line x1="42" y1="45" x2="74" y2="45" stroke="currentColor" stroke-width="1.4"/>' + FG._circle(80, 45, 7, soft=False) +
+                    '<line x1="86" y1="45" x2="118" y2="45" stroke="currentColor" stroke-width="1.4"/>',
+           "slider": '<line x1="42" y1="58" x2="118" y2="58" stroke="currentColor" stroke-width="2"/>' +
+                     '<rect x="66" y="44" width="28" height="12" style="fill:var(--soft)" stroke="currentColor"/>',
+           "beam": '<path d="M42,45 C70,45 90,52 118,60" fill="none" stroke="currentColor" stroke-width="3"/>'}[name]
+    if name == "impact":                         # ball dropping onto a surface, with a bounce arrow
+        s = (FG._box(14, 62, 132, 10, "ground") + FG._circle(60, 40, 12) + FG._arrow(60, 10, 60, 26) +
+             FG._arrow(96, 58, 112, 30) + FG._text(30, 88, "hit: speed out = e x speed in"))
+        return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
+
     if name == "contact_friction":                 # block on a surface: normal force down, friction along it
         s = (FG._box(14, 54, 132, 12, "B") + FG._box(56, 28, 44, 26, "A") + FG._arrow(78, 14, 78, 27) + FG._arrow(56, 48, 34, 48) +
              FG._pt(78, 54) + FG._text(26, 84, "friction = mu x contact force"))

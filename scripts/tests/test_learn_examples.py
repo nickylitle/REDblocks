@@ -18,7 +18,7 @@ def test_1d_1_mass_spring_damper():
     zeta, wn = 0.1, 20.0
     Td = 2 * math.pi / (wn * math.sqrt(1 - zeta ** 2))
     assert o["first_trough_mm"] == pytest.approx(-10 * math.exp(-zeta * wn * Td / 2), rel=0.01)
-    assert o["heat_J"] == pytest.approx(0.5 * 400 * 0.01 ** 2, rel=0.01)     # nearly all the spring energy
+    assert o["dissipated_J"] == pytest.approx(0.5 * 400 * 0.01 ** 2, rel=0.01)     # nearly all the spring energy
     assert o["_ledger_rel"] < 1e-3
 
 
@@ -48,7 +48,7 @@ def test_2d_1_pendulum():
 def test_2d_2_ramp_bounce():
     o = run("2d_2_ramp_bounce.yaml")
     assert o["vx_end"] == pytest.approx(-o["spin_end"] * 0.02, rel=1e-3)        # rolling: v = w R
-    assert o["heat_ramp_J"] > 0 and o["heat_floor_J"] > 0
+    assert o["dissipated_ramp_J"] > 0 and o["dissipated_floor_J"] > 0
     assert o["_ledger_rel"] < 1e-3
 
 

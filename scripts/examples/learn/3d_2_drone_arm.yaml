@@ -54,12 +54,50 @@ run:
   t_end: 1.4 s
 
 editor:
+  layout:
+    b:hub:
+    - 30
+    - 170
+    b:motor:
+    - 30
+    - 530
+    e:arm:
+    - 650
+    - 30
+    e:thrust:
+    - 340
+    - 650
+    f:tube bending:
+    - 1270
+    - 30
+    o:peak_thrust_N:
+    - 650
+    - 1070
+    o:root_moment:
+    - 960
+    - 30
+    o:tip_down_mm:
+    - 340
+    - 430
+    o:tip_up_mm:
+    - 340
+    - 210
+    p:L_arm:
+    - 30
+    - 30
+    p:di:
+    - 30
+    - 1130
+    p:do:
+    - 30
+    - 390
+    p:tube:
+    - 340
+    - 30
   notes:
-    - x: 40
-      y: -170
-      text: |
-        **3D-2 Drone arm.** One arm of a drone: a carbon tube clamped in the hub with a 60 g motor at its end. The thrust
-        follows a CSV: spool up to hover (2.5 N), then a full-throttle punch (8 N) for 0.3 s.
-        Textbook check (cantilever with an end load): net load $P = 8 - 0.06 \times 9.81 = 7.4$ N, tip deflection
-        $P L^3 / 3 E I = 0.54$ mm and root moment $P L = 1.48$ N m. The thrust rises in 50 ms, slower than the arm's
-        vibration, so the dynamic overshoot is small.
+  - text: '**3D-2 Drone arm.** One arm of a drone: a carbon tube clamped in the hub with a 60 g motor at its end. The thrust follows a CSV: spool up to hover (2.5 N), then a full-throttle punch (8 N) for 0.3 s. Textbook check (cantilever with an end load): net load $P = 8 - 0.06 \times 9.81 = 7.4$ N, tip deflection $P L^3 / 3 E I = 0.54$ mm and root moment $P L = 1.48$ N m. The thrust rises in 50 ms, slower than the arm''s vibration, so the dynamic overshoot is small.
+
+      '
+    x: 30
+    y: -165
+    width: 640
