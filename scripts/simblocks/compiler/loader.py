@@ -104,7 +104,8 @@ EXPORT_COLUMN_KEYS = {"element", "body", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
-                 "impact": {"impulse", "dissipated", "friction_impulse"}}
+                 "impact": {"impulse", "dissipated", "friction_impulse"},
+                 "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"}}
 EXPORT_HEADERS = {"units", "plain", "none"}
 EXPORT_ON = {"run", "study"}
 FAIL_KEYS = {"name", "metric", "limit", "fails_when", "demand", "capacity", "origin", "assumption", "reach_metric"}

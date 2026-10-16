@@ -62,8 +62,8 @@ ELEMENTS = [
          what="A hard hit with no stiffness to choose. When the measure (a contact, or any measure where s > 0 means "
               "overlap) would close within the step, an impulse reverses the approach speed times e, and friction up to mu "
               "times that impulse acts along the surface (sticking if it can). Every joule removed is booked as dissipated energy "
-              "(the dissipated output; its history is the running total). A contact held closed (resting, or pressed by a motor) books only its "
-              "sliding friction. Use it when you care where things go and how much energy is lost, not the force profile: "
+              "(the dissipated output; its history is the running total). A contact held closed (resting, or pressed by a motor) does not "
+              "bounce and books only the friction of real sliding (none while it sticks). Use it when you care where things go and how much energy is lost, not the force profile: "
               "the force output is impulse / dt. For peak forces, dents and deformation use a penalty contact "
               "(kelvin_voigt, hertz, elastoplastic) instead. See Help > Contact and joint methods.",
          yaml="bounce:\n  type: impact\n  e: 0.6\n  mu: 0.4\n  measure: {contact: [ball.outline, floor.top]}"),

@@ -12,7 +12,8 @@ csv keys
                  (rad, deg) against a measure. Default s / m.
   y_unit         unit of the y column: a force (N, kN, lbf) or a torque (N m, lbf in) for a rotation. Default N.
   interpolation  linear (default), step (hold each value until the next x) or smooth (monotone cubic, PCHIP: no
-                 overshoot between points).
+                 overshoot between points; next to a flat stretch it rounds the corners and can add a few % of area,
+                 so use linear when the impulse must match the table exactly).
   x_col, y_col   which columns: a number (1 = first) or the header text. Default the first two.
 Outside the table the end values are held. A header row (any non-numeric cell) is skipped; '#' starts a comment.
 The force acts like P on a force element: positive pushes the measure positive."""
@@ -111,7 +112,9 @@ def _read_csv(path, xc, yc, where, ln, f):
     def col(c, name):
         if c is None:
             return 0 if name == "x" else 1
-        if isinstance(c, int) or (isinstance(c, str) and c.strip().isdigit()):
+        if isinstance(c, int) or (isinstance(c, str) and c.strip().lstrip("-").isdigit()):
+            if int(c) < 1:
+                raise SpecError(f"{name}_col counts from 1 (the first column), got {c}", where, ln, f)
             return int(c) - 1
         if header and str(c) in header:
             return header.index(str(c))
@@ -169,7 +172,11 @@ def load_table(d, ctx, where, doc):
     else:
         if "x" not in spec or "y" not in spec:
             raise SpecError("csv needs file (a path) or both x and y lists", where, ln, f)
-        xs = [float(v) for v in spec["x"]]; ys = [float(v) for v in spec["y"]]
+        try:
+            xs = [float(v) for v in spec["x"]]; ys = [float(v) for v in spec["y"]]
+        except (TypeError, ValueError):
+            raise SpecError("inline x and y are plain numbers in x_unit and y_unit (e.g. x: [0, 1, 2], x_unit: ms), "
+                            "not quantities with units", where, ln, f)
         if len(xs) != len(ys):
             raise SpecError("x and y have different lengths", where, ln, f)
     if len(xs) < 1:

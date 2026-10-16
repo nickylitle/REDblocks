@@ -124,7 +124,8 @@ def call_block(d, ctx, where):
         val = resolve(x, ctx, f"{where}.{k}")
         if k == "mat" and isinstance(val, str):
             val = get(resolve_material(val))
-        elif isinstance(val, str) and _MAT_PROP.match(k):
+        elif isinstance(val, str) and _MAT_PROP.match(k) and not (k == "G" and "gear" in (py.__doc__ or "").lower()):
+            # (a block whose G is a gear ratio never takes a material there)
             # a material plugged straight into a property argument (E1, nu_t, sy, Y_o, rho...): take that property
             val = _material_prop(val, k, name, where)
         args[k] = val
@@ -304,6 +305,8 @@ def compile_model(doc, overrides=None):
             kv = g("kv"); G = g("gear", 1.0)
             P[e, :] = [1.0 / kv, g("R"), g("I_max"), G, g("cells"), g("R0"), g("R1", 0.0), g("C1", 0.0),
                        g("capacity"), g("throttle", 1.0)]
+            if not 0.0 <= P[e, 9] <= 1.0:
+                raise SpecError("throttle is a fraction of full duty, 0 to 1", where, line_of(d, "throttle"), f)
             Jr = g("J_rotor", 0.0)
             nz = [i for i in range(nb) if C[e, i] != 0.0]
             if len(nz) != 1 or dof[nz[0]] != "rotation":
@@ -506,19 +509,19 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     try:
         if dim3:
             from . import engine3d as E3
-            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw) = E3.run_engine3d(
+            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk) = E3.run_engine3d(
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
                 a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
                 a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
         elif dim2:
             from . import engine2d as E2
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg) = E2.run_engine2d(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk) = E2.run_engine2d(
                 n, dt, a["q0"], a["v0"], a["minv"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"],
                 a["active"], a["mk"], a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
                 a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
         else:
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se) = E.run_engine(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk) = E.run_engine(
                 n, dt, a["q0"], a["v0"], a["m"], a["typ"], a["one_sided"], a["active"], a["P"], a["C"], a["s0"],
                 a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
     finally:
@@ -540,7 +543,13 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             internal += abs(A[e] - ((S1[e] - S0[e]) + D[e] - IN[e]))
     imp = [e for e in range(len(A)) if a["typ"][e] == 14]
     hits = float(sum(aux[e, 3] for e in imp)) if imp else 0.0      # energy carried into rigid impacts
-    scale = max(KE0, KE1, inputs, abs(Wg), np.abs(A).sum(), hits, 1e-30)
+    # the yardstick is the largest energy seen in the run: peak kinetic energy (a pendulum ending at the top of a
+    # swing has none left), stored energy, work in and out, and a floor of every body dropping 1 mm under gravity
+    # (a rigidly held body never moves, so its tiny absolute error must not read as 100 %)
+    gfloor = 0.0
+    if dim2 or dim3:
+        g = float(np.linalg.norm(a["grav"])); gfloor = float(np.sum(a["mass"])) * g * 1e-3
+    scale = max(KE0, KE1, KEpk, inputs, abs(Wg), np.abs(A).sum(), float(np.abs(S1).sum()), hits, gfloor, 1e-30)
     led = (abs(glob) + internal) / scale
     R = dict(_ledger_rel=float(led))
     if dim2 or dim3:
@@ -610,6 +619,15 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             rows = [M.el_names.index(x) for x in grp.segs] if grp is not None else [M.el_names.index(o["element"])]
             if grp is not None and qn == "measure" and grp.probe:
                 rows = [M.el_names.index(grp.probe)]
+            joint = grp is not None and grp.kind in ("weld", "hinge", "slider")
+            if joint and qn in ("force", "moment"):
+                # a joint is several engine rows: force is the push / pull rows (pin, or the slider's sideways
+                # guides, as one magnitude); moment is the turn lock. Never mixed (N and N m)
+                tags = ("__rot",) if qn == "moment" else ("__pin", "__g1", "__g2")
+                rows = [M.el_names.index(x) for x in grp.segs if x.endswith(tags)]
+                if qn == "moment" and not rows:
+                    raise SpecError(f"'{o['element']}' has no turn lock, so no moment (give k_rot or rigid)",
+                                    f"outputs.{name}")
 
             def span(e):
                 k = {"force": 0, "measure": 1}.get(qn)
@@ -626,9 +644,20 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             elif qn == "dissipated":
                 val = sum((D[e] if D[e] >= 0 else A[e] - (S1[e] - S0[e])) for e in rows)
             else:
-                sp = [span(e) for e in rows]
-                lo = min(x[0] for x in sp); hi = max(x[1] for x in sp); fin = sp[0][2]
-                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                sp = [(lambda e: (0.0, 0.0, 0.0) if TR[e, 0] > 1e299 else (TR[e, 0], TR[e, 1], Fe[e]))(e) for e in rows] \
+                    if (joint and qn == "moment") else [span(e) for e in rows]
+                if joint and qn in ("force", "moment") and len(sp) > 1:
+                    # magnitude of the reaction: final is exact; max is the root sum of each row's peak (an upper
+                    # bound when the rows peak at different times)
+                    fin = math.sqrt(sum(x[2] ** 2 for x in sp))
+                    hi = math.sqrt(sum(max(abs(x[0]), abs(x[1])) ** 2 for x in sp)); lo = 0.0
+                    val = {"final": fin, "max": hi, "min": lo, "max_abs": hi}[red]
+                elif joint and qn in ("force", "moment") and grp.kind == "slider":
+                    x = sp[0]; m_ = max(abs(x[0]), abs(x[1]))
+                    val = {"final": abs(x[2]), "max": m_, "min": 0.0, "max_abs": m_}[red]
+                else:
+                    lo = min(x[0] for x in sp); hi = max(x[1] for x in sp); fin = sp[0][2]
+                    val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
         val = float(val)
         if red.startswith("first_time"):
             reached = val >= 0

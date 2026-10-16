@@ -12,7 +12,8 @@ kind and dimensions (the shape's own axes; axis z is the shape's axis of symmetr
 2D shapes: rod, disc, ring, plate (a by b in the plane, t thick); the inertia is about the out-of-plane axis.
 Give one of mass, density or material. Options:
   at:   where the shape's centre is in the body's frame (default the origin): it becomes the body's com
-  axis: (3D) the world direction of the shape's z axis at the start (default z)
+  axis: (3D) the world direction of the shape's z axis at the start (with orient0 too); left out, the shape's z
+        is the body's own z
 The body gets mass, com and inertia from the shape (it cannot also give them), and a feature named 'outline':
 a circle (2D disc, ring) or sphere (3D sphere) at the shape's centre with its outer radius, ready for contacts."""
 import numpy as np
@@ -97,12 +98,36 @@ def expand_shapes(doc, ctx):
             raise SpecError(f"this body gives both shape and {', '.join(clash)}: the shape sets them", where,
                             line_of(d, clash[0]), f)
         m, I, kind, kw = shape_props(d["shape"], ctx, where, dim, f)
+        if dim == "3d" and "axis" in d["shape"]:
+            # axis is a world direction at the start: bring the inertia into the body's own frame (orient0, angle0)
+            from .model3d import rot, _unit, _vec
+            R0 = np.eye(3)
+            if "orient0" in d:
+                o = d["orient0"]; R0 = rot(_vec(o["axis"], ctx, where), num(resolve(o["angle"], ctx, where), where))
+            dl = d.get("dof", "free")
+            if ((isinstance(dl, list) and "spin" in dl) or dl in ("spin", "rotation")) and "angle0" in d:
+                ax = _unit(_vec(d.get("axis", "z"), ctx, where), where)
+                R0 = rot(ax, num(resolve(d["angle0"], ctx, where), where)) @ R0
+            I = R0.T @ I @ R0
         d = dict(d); d.pop("shape")
         d["mass"] = m
         dof = d.get("dof")
         if dim == "1d":
             if dof == "rotation":                  # a 1D rotation body takes the inertia about the shape's axis
-                d.pop("mass"); d["inertia"] = float(I[2][2]) if not np.isscalar(I) else float(I)
+                d.pop("mass")
+                Iz = float(I[2][2]) if not np.isscalar(I) else float(I)
+                if kind == "rod":                  # a bar spinner turns end over end: about a transverse axis
+                    Iz = float(I[0][0])
+                sh = doc["bodies"][bn]["shape"]
+                if "at" in sh:                     # offset from the spin axis: parallel-axis term m r^2
+                    from .model import resolve as _r, num as _n
+                    at = sh["at"]
+                    if isinstance(at, (list, tuple)):
+                        r2 = sum(_n(_r(c, ctx, where + ".at"), where + ".at") ** 2 for c in list(at)[:2])
+                    else:
+                        r2 = _n(_r(at, ctx, where + ".at"), where + ".at") ** 2
+                    Iz += m * r2
+                d["inertia"] = Iz
             nb[bn] = d; continue
         n = 3 if dim == "3d" else 2
         d_at = [0.0] * n

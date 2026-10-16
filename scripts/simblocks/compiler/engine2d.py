@@ -71,21 +71,24 @@ def _beam2(e, q, ba, bb, GA, GB, P, st, tab_x, tab_F, xg, dt, first):
     e1_ = th1 - st[0]; e2_ = th2 - st[1]
     M1 = kB * (4.0 * e1_ + 2.0 * e2_); M2 = kB * (2.0 * e1_ + 4.0 * e2_)
     if P[8] > 0.5:
-        for end in range(2):
-            Mi = M1 if end == 0 else M2
+        for end in range(2):                        # each end sees the other's latest plastic rotation
+            e1_ = th1 - st[0]; e2_ = th2 - st[1]
+            Mi = kB * (4.0 * e1_ + 2.0 * e2_) if end == 0 else kB * (2.0 * e1_ + 4.0 * e2_)
             Y = _yield_at(st[2 + end], tab_x, tab_F)
             if abs(Mi) > Y:
-                dth = (abs(Mi) - Y) / (4.0 * kB) * (1.0 if Mi > 0 else -1.0)
+                sg = 1.0 if Mi > 0 else -1.0
+                dth = (abs(Mi) - Y) / (4.0 * kB) * sg
                 st[end] += dth; st[2 + end] += abs(dth)
-                dpl += Y * abs(dth)
+                dpl += 0.5 * (abs(Mi) + Y) * abs(dth)   # energy released: mean moment times plastic rotation
         e1_ = th1 - st[0]; e2_ = th2 - st[1]
         M1 = kB * (4.0 * e1_ + 2.0 * e2_); M2 = kB * (2.0 * e1_ + 4.0 * e2_)
     N = kA * (L - L0)
     stored = 0.5 * kA * (L - L0) ** 2 + kB * (2.0 * e1_ * e1_ + 2.0 * e1_ * e2_ + 2.0 * e2_ * e2_)
     dd = 0.0
-    if P[2] > 0.0 and not first:                    # stiffness-proportional damping, backward-difference rate
+    if (P[2] > 0.0 or P[3] > 0.0) and not first:                    # stiffness-proportional damping, backward-difference rate
         rl = (L - xg[e, 0]) / dt; r1 = (th1 - xg[e, 1]) / dt; r2 = (th2 - xg[e, 2]) / dt
-        Nd = P[2] * kA * rl; M1d = P[2] * kB * (4.0 * r1 + 2.0 * r2); M2d = P[2] * kB * (2.0 * r1 + 4.0 * r2)
+        bb_ = P[3] if P[3] > 0.0 else P[2]          # bending at the first-mode rate, stretch at its own
+        Nd = P[2] * kA * rl; M1d = bb_ * kB * (4.0 * r1 + 2.0 * r2); M2d = bb_ * kB * (2.0 * r1 + 4.0 * r2)
         N += Nd; M1 += M1d; M2 += M2d
         dd = (Nd * rl + M1d * r1 + M2d * r2) * dt
     return N, M1, M2, L, th1, th2, ax, ay, bx, by, e1x, e1y, stored, dpl, dd
@@ -381,6 +384,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     Wg = 0.0
     first = True
     done = n
+    KEpk = KE0
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -557,7 +561,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     continue
                 cand[nc] = e; nc += 1
                 tauv[e] = min(1.0, -s / (sd * dt)) if s < 0.0 else 0.0
-                tgt[e] = -P[e, 0] * sd if sd > P[e, 2] else 0.0
+                # restitution only for a new hit: a contact pressed last step (resting, pushed) gets no bounce,
+                # or the speed gravity adds each step would bounce back as chatter and creep
+                tgt[e] = -P[e, 0] * sd if (sd > P[e, 2] and held[e] <= 0.0) else 0.0
                 jn[e] = 0.0; jt[e] = 0.0
                 if mk[e] == MK_LIN:
                     w_ = 0.0
@@ -622,6 +628,11 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]; aux[e, 2] = jt[e]
+                if held[e] > 0.0 and mk[e] != MK_LIN:
+                    # a held contact's friction dissipates only while it slides: impulse times the slip left after
+                    # the solve (sticking leaves none). The tangential speed the other contacts' pushes put there
+                    # and friction took back out was never motion, so it is not a loss.
+                    lossT[e] = abs(jt[e] * _rate(MK_EDGE, e, q, v, ba, bb, C, geo, 1))
             _book_hits(cand, nc, jn, held, lossN, lossT, D, A)
 
         for e in range(ne):
@@ -651,7 +662,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         for k in range(nq):
             q[k] += dt * v[k] + Dq[k]
         if nrig > 0:                                 # rigid joints: project positions back onto the constraints
-            for it in range(4):
+            for it in range(60):                     # one row at a time, repeated until every row closes
+                mx_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0:
                         continue
@@ -665,6 +677,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             continue
                         if it == 0:
                             aux[e, 3] = max(aux[e, 3], abs(cps[r]))       # largest drift before correction
+                        if abs(cps[r]) > mx_:
+                            mx_ = abs(cps[r])
                         dl = -cps[r] / kk
                         lam[e, r] += dl / dt                 # the correction is an impulse dl / dt
                         for k in range(nq):
@@ -673,7 +687,10 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                                 v[k] += minv[k] * Jold[e, r, k] * dl / dt   # velocities follow the corrected path
                         if r == 0 and nr == 2:                            # pin: refresh the y row after moving
                             nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
-            for it in range(8):                      # RATTLE: velocities tangent to the constraints at the new
+                if mx_ < 1e-13:
+                    break
+            for it in range(60):                     # RATTLE: velocities tangent to the constraints at the new
+                mu_ = 0.0
                 for e in range(ne):                  # positions (numerical; any energy change shows in the ledger)
                     if typ[e] != 15 or active[e] == 0:
                         continue
@@ -683,6 +700,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                         for k in range(nq):
                             if Jr[r, k] != 0.0:
                                 u += Jr[r, k] * v[k]; kk += Jr[r, k] * Jr[r, k] * minv[k]
+                        if abs(u) > mu_:
+                            mu_ = abs(u)
                         if kk > 0.0 and u != 0.0:
                             lam[e, r] -= u / kk
                             for k in range(nq):
@@ -696,6 +715,10 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     u = _rate(mke, e, q, v, ba, bb, C, geo, 0)
                     if u > 0.0:
                         _impulse2(e, u / invn[e], 0, mke, q, v, minv, ba, bb, C, geo, Dq, 0.0)
+                        if u > mu_:
+                            mu_ = u
+                if mu_ < 1e-13 and it > 0:
+                    break
             for e in range(ne):
                 if typ[e] == 15:
                     s_, sd_, ok_ = _measure(mk[e], e, q, v, ba, bb, C, s0, GA, GB, GX, geo)
@@ -742,6 +765,12 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
                     t_cross[c] = (i + 1) * dt
+        if i % 4 == 0:
+            ke_ = 0.0
+            for k in range(nq):
+                if minv[k] > 0.0:
+                    ke_ += 0.5 * v[k] * v[k] / minv[k]
+            if ke_ > KEpk: KEpk = ke_
         if log_every > 0 and i % log_every == 0 and j < nlog:
             LOGT[j] = i * dt
             for k in range(nq):
@@ -760,4 +789,4 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     for k in range(nq):
         if minv[k] > 0.0:
             KE1 += 0.5 * v[k] * v[k] / minv[k]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg
+    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, KEpk

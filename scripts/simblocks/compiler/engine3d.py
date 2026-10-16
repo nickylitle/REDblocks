@@ -545,6 +545,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         PC0[b, 0], PC0[b, 1], PC0[b, 2] = _pt(X, R, b, com[b, 0], com[b, 1], com[b, 2])
     first = True
     done = n
+    KEpk = KE0
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -597,22 +598,29 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     kA = P[e, 0]; kY = P[e, 1]; kZ = P[e, 2]; kT = P[e, 3]; L0 = P[e, 4]
                     o = tab_off[e]; Lt = tab_len[e]
                     dpl = 0.0
-                    for it in range(2):
-                        yA = tyA - bst[e, 0]; zA = tzA - bst[e, 1]; yB = tyB - bst[e, 2]; zB = tzB - bst[e, 3]
-                        MyA = kY * (4.0 * yA + 2.0 * yB); MyB = kY * (2.0 * yA + 4.0 * yB)
-                        MzA = kZ * (4.0 * zA + 2.0 * zB); MzB = kZ * (2.0 * zA + 4.0 * zB)
-                        if P[e, 6] < 0.5 or it == 1:
-                            break
-                        for end in range(2):                # return map on the resultant bending moment
-                            my = MyA if end == 0 else MyB; mz = MzA if end == 0 else MzB
-                            mres = math.sqrt(my * my + mz * mz)
-                            Y = _yield3(bst[e, 4 + end], tab_x[o:o + Lt], tab_F[o:o + Lt])
-                            if mres > Y:
-                                fr = (mres - Y) / mres
-                                dyp = fr * my / (4.0 * kY); dzp = fr * mz / (4.0 * kZ)
+                    if P[e, 6] > 0.5:
+                        # plastic hinge at each end: elliptic yield surface (My/Mpy)^2 + (Mz/Mpz)^2 <= 1, with Mpz from
+                        # the table and Mpy = P7 * Mpz (sy Zy / sy Z). Radial return in the scaled moments; each end
+                        # sees the other end's latest plastic rotation. Dissipation books the energy actually released:
+                        # the mean of the moments before and after times the plastic rotation (closes the ledger).
+                        for end in range(2):
+                            yA = tyA - bst[e, 0]; zA = tzA - bst[e, 1]; yB = tyB - bst[e, 2]; zB = tzB - bst[e, 3]
+                            if end == 0:
+                                my = kY * (4.0 * yA + 2.0 * yB); mz = kZ * (4.0 * zA + 2.0 * zB)
+                            else:
+                                my = kY * (2.0 * yA + 4.0 * yB); mz = kZ * (2.0 * zA + 4.0 * zB)
+                            Yz = _yield3(bst[e, 4 + end], tab_x[o:o + Lt], tab_F[o:o + Lt]); Yy = Yz * P[e, 7]
+                            fy_ = my / Yy; fz_ = mz / Yz
+                            fm = math.sqrt(fy_ * fy_ + fz_ * fz_)
+                            if fm > 1.0:
+                                my2 = my / fm; mz2 = mz / fm
+                                dyp = (my - my2) / (4.0 * kY); dzp = (mz - mz2) / (4.0 * kZ)
                                 bst[e, 2 * end] += dyp; bst[e, 2 * end + 1] += dzp
-                                dmag = math.sqrt(dyp * dyp + dzp * dzp)
-                                bst[e, 4 + end] += dmag; dpl += Y * dmag
+                                bst[e, 4 + end] += math.sqrt(dyp * dyp + dzp * dzp)
+                                dpl += 0.5 * ((my + my2) * dyp + (mz + mz2) * dzp)
+                    yA = tyA - bst[e, 0]; zA = tzA - bst[e, 1]; yB = tyB - bst[e, 2]; zB = tzB - bst[e, 3]
+                    MyA = kY * (4.0 * yA + 2.0 * yB); MyB = kY * (2.0 * yA + 4.0 * yB)
+                    MzA = kZ * (4.0 * zA + 2.0 * zB); MzB = kZ * (2.0 * zA + 4.0 * zB)
                     N = kA * (L - L0); Tq = kT * (txB - txA)
                     stored = (0.5 * kA * (L - L0) ** 2 + 0.5 * kT * (txB - txA) ** 2 +
                               kY * (2.0 * yA * yA + 2.0 * yA * yB + 2.0 * yB * yB) +
@@ -620,11 +628,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     x7 = (L, txA, txB, tyA, tyB, tzA, tzB)
                     g7 = [N, -Tq, Tq, MyA, MyB, MzA, MzB]
                     ddp = 0.0
-                    if P[e, 5] > 0.0 and not first:
+                    if (P[e, 5] > 0.0 or P[e, 8] > 0.0) and not first:
                         r = [(x7[k] - bx7[e, k]) / dt for k in range(7)]
+                        bb_ = P[e, 8] if P[e, 8] > 0.0 else P[e, 5]     # bending at the first-mode rate
                         gd = [P[e, 5] * kA * r[0], -P[e, 5] * kT * (r[2] - r[1]), P[e, 5] * kT * (r[2] - r[1]),
-                              P[e, 5] * kY * (4 * r[3] + 2 * r[4]), P[e, 5] * kY * (2 * r[3] + 4 * r[4]),
-                              P[e, 5] * kZ * (4 * r[5] + 2 * r[6]), P[e, 5] * kZ * (2 * r[5] + 4 * r[6])]
+                              bb_ * kY * (4 * r[3] + 2 * r[4]), bb_ * kY * (2 * r[3] + 4 * r[4]),
+                              bb_ * kZ * (4 * r[5] + 2 * r[6]), bb_ * kZ * (2 * r[5] + 4 * r[6])]
                         for k in range(7):
                             g7[k] += gd[k]; ddp += gd[k] * r[k] * dt
                     N = g7[0]; Tq = g7[2]; MyA = g7[3]; MyB = g7[4]; MzA = g7[5]; MzB = g7[6]
@@ -909,7 +918,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     continue
                 cand[nc] = e; nc += 1
                 tauv[e] = min(1.0, -s / (sd * dt)) if s < 0.0 else 0.0
-                tgt[e] = -P[e, 0] * sd if sd > P[e, 2] else 0.0
+                tgt[e] = -P[e, 0] * sd if (sd > P[e, 2] and held[e] <= 0.0) else 0.0     # no bounce when held
                 jn[e] = 0.0; jt3[e, 0] = 0.0; jt3[e, 1] = 0.0; jt3[e, 2] = 0.0; invn[e] = w_
                 aux[e, 3] += 0.5 * sd * sd / w_
                 ucd[e] = sd; lst[e] = D[e]
@@ -1010,6 +1019,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]
 
                 aux[e, 2] = math.sqrt(jt3[e, 0] ** 2 + jt3[e, 1] ** 2 + jt3[e, 2] ** 2)
+                if held[e] > 0.0 and mk[e] != MK_LIN and P[e, 1] > 0.0:
+                    # held contact: friction dissipates only the slip left after the solve (sticking: none)
+                    rx, ry, rz = _relv(e, X, V, W, ba, bb, geo)
+                    nx = geo[e, 6]; ny = geo[e, 7]; nz = geo[e, 8]
+                    un = nx * rx + ny * ry + nz * rz
+                    lossT[e] = abs(jt3[e, 0] * (rx - un * nx) + jt3[e, 1] * (ry - un * ny) + jt3[e, 2] * (rz - un * nz))
             if nc > 0:
                 _book_hits(cand, nc, jn, held, lossN, lossT, D, A)
 
@@ -1086,7 +1101,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     if rmode[b] == R_SPIN:
                         th[b] += DW[b, 0] * axis[b, 0] + DW[b, 1] * axis[b, 1] + DW[b, 2] * axis[b, 2]
         if nrig > 0:                                        # rigid joints: project positions onto the constraints
-            for it in range(4):
+            for it in range(60):                            # row by row, repeated until every row closes
+                mx_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0 or mk[e] == MK_TWIST:
                         continue
@@ -1099,6 +1115,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                             continue
                         if it == 0 and abs(cps[r]) > aux[e, 3]:
                             aux[e, 3] = abs(cps[r])                    # largest drift seen before correction
+                        if abs(cps[r]) > mx_:
+                            mx_ = abs(cps[r])
                         dl = -cps[r] / kk
                         lam[e, r] += dl / dt
                         for b in range(nb):
@@ -1116,9 +1134,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                                 _qmat(quat[b, 0], quat[b, 1], quat[b, 2], quat[b, 3], R[b])
                                 if rmode[b] == R_SPIN:
                                     th[b] += tx * axis[b, 0] + ty * axis[b, 1] + tz * axis[b, 2]
+                if mx_ < 1e-13:
+                    break
         _omega(R, rmode, Iinv, axis, Lw, wsp, W, nb)        # free bodies: omega follows the new orientation
         if nrig > 0:                                        # RATTLE: velocities tangent to the constraints (numerical)
-            for it in range(8):
+            for it in range(60):
+                mu_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0:
                         continue
@@ -1128,6 +1149,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                         for b in range(nb):
                             for k in range(3):
                                 u += J3[r, b, k] * V[b, k] + J3[r, b, 3 + k] * W[b, k]
+                        if abs(u) > mu_:
+                            mu_ = abs(u)
                         kk = _keff3(J3, r, R, minv, rmode, Iinv, axis, Iax, nb)
                         if kk <= 0.0 or u == 0.0:
                             continue
@@ -1143,6 +1166,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                                 elif rmode[b] == R_FREE:
                                     Lw[b, 0] += jx; Lw[b, 1] += jy; Lw[b, 2] += jz
                                 _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
+                if mu_ < 1e-13:
+                    break
             for it in range(8):
                 for c in range(nc):                         # contacts that pushed this step keep pushing (numerical)
                     e = cand[c]
@@ -1191,6 +1216,9 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
                     t_cross[c] = (i + 1) * dt
+        if i % 4 == 0:
+            ke_ = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
+            if ke_ > KEpk: KEpk = ke_
         if log_every > 0 and i % log_every == 0 and j < nlog:
             LOGT[j] = i * dt
             for b in range(nb):
@@ -1213,4 +1241,4 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         _body_q(X, V, W, th, wsp, rmode, b, BQ)
         for k in range(NBQ):
             FB[b * NBQ + k] = BQ[k]
-    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw)
+    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw, KEpk)

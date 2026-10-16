@@ -147,7 +147,9 @@ outputs:
 
 - element quantities: `force`, `measure`, `plastic_set`, `broken`, `absorbed_work`, `dissipated`; a drive adds
   `current`, `battery_current`, `bus_voltage`, `soc`; a beam `moment`, `torque`, `shear`, `hinge_set`; an impact
-  `impulse` (per step), `friction_impulse`; a rigid joint `drift` (largest gap it closed).
+  `impulse` (per step), `friction_impulse`; a rigid joint `drift` (largest gap it closed). A weld, hinge or slider:
+  `force` is the push / pull reaction (pin force, or the slider's sideways reaction as one magnitude) and `moment`
+  the turn lock's reaction (N m); they are never mixed.
 - body quantities: `position`, `velocity`, `kinetic_energy` (final only).
 - reduce: `final`, `max`, `min`, `max_abs`, `first_time_above`, `first_time_below` (needs `value`; if never
   crossed, the value is 10 x t_end and the report says "never reached").
@@ -355,7 +357,7 @@ elements:
 
 - `rigid: true` (pin, weld, hinge, slider): an exact joint by constraint projection (SHAKE/RATTLE). No stiffness to
   choose and no time-step cost; the force output is the reaction, `drift` the largest gap it closed. The two points
-  must meet at the start. Without `rigid`, joints are stiff spring-dampers: `k`, `c` (and `k_rot`, `c_rot` for the
+  must meet at the start (a gap is refused). Without `rigid`, joints are stiff spring-dampers: `k`, `c` (and `k_rot`, `c_rot` for the
   turn lock).
 - hinge: 2D turns about the plane's normal; 3D about `axis` (world, at the start; then fixed in A). `k_twist` /
   `c_twist` add a torsion spring and damper about it.
@@ -366,7 +368,10 @@ elements:
   `G`; or `EA`, `EI`/`EIz`, `EIy`, `GJ`). Mass from density x A x L, or `mass`. `segments: n` adds n - 1 node bodies so
   it bends along its length and vibrates; `end_mass: false` stops it adding half a segment's mass to each end body.
   `orient` (3D): the section's h direction (bending across it uses I / Ix). `hinge: auto` forms plastic hinges at
-  Mp = sy Z (needs a material and a section with Z), or give a moment table. `damping`: fraction of critical.
+  Mp = sy Z (needs a material and a section with Z), or give a moment table. In 3D each axis yields on its own
+  strength (Zy from the section) on the surface (My/Mpy)^2 + (Mz/Mpz)^2 = 1. `damping`: fraction of critical aimed
+  at the first bending mode; an explicit solver caps it for stability, so a long flexible beam gets much less than
+  asked. For real first-mode damping add a dashpot across the tip.
 - Contacts in 2D and 3D: penalty (kelvin_voigt, hertz, elastoplastic on a `{contact: ...}` measure), or `impact`
   (rigid) on the same measure. See the editor's Help > Contact and joint methods for when to use which.
 

@@ -28,19 +28,20 @@ def rectangle(b, h):
     r = bb / a
     K = a * bb ** 3 * (16 / 3 - 3.36 * r * (1 - r ** 4 / 12))
     tau = 3 / (8 * a * bb ** 2) * (1 + 0.6095 * r + 0.8865 * r ** 2 - 1.8023 * r ** 3 + 0.9100 * r ** 4)
-    return _sec(b * h, b * h ** 3 / 12, h * b ** 3 / 12, h / 2, b * h ** 2 / 4, K, tau, 5 / 6, b=b, h=h)
+    return _sec(b * h, b * h ** 3 / 12, h * b ** 3 / 12, h / 2, b * h ** 2 / 4, K, tau, 5 / 6, b=b, h=h, Zy=h * b ** 2 / 4)
 
 
 @block("structures", "sections", "given", "properties", kind="builder",
        source="user-supplied section properties (CAD, catalog or hand calc)", tags=("custom", "I", "second moment", "CAD"))
-def given_section(I, c=None, h=None, A=float("nan"), Z=None, J=float("nan"), Iy=float("nan"), kappa=5 / 6):
+def given_section(I, c=None, h=None, A=float("nan"), Z=None, J=float("nan"), Iy=float("nan"), kappa=5 / 6, Zy=float("nan")):
     """Any section from its numbers, when it is not a circle or rectangle. Only I is required.
     I  second moment of area about the bending axis (stiffness needs only this)
     c  distance from the neutral axis to the longest (extreme) fibre, for max bending stress M c / I.
        Give c or the depth h (c = h/2 for a symmetric section). Left out: stress and yield results are NaN,
        stiffness and deflection still work.
     Z  plastic section modulus (optional): left out, Z = S = I/c, so no plastic reserve (conservative)
-    A, J, Iy, kappa: only for blocks that use them (shear deflection, torsion, mass)."""
+    A, J, Iy, kappa: only for blocks that use them (shear deflection, torsion, mass).
+    Zy plastic modulus about the other (y) axis, for a 3D beam's plastic hinge (optional)."""
     I = float(I)
     if I <= 0:
         raise ValueError("I must be positive")
@@ -52,7 +53,7 @@ def given_section(I, c=None, h=None, A=float("nan"), Z=None, J=float("nan"), Iy=
     S = I / c if c == c else float("nan")
     Zv = S if Z is None else float(Z)
     tau = c / J if (J == J and c == c) else float("nan")
-    return dict(A=A, Ix=I, Iy=Iy, c=c, S=S, Z=Zv, J=J, tau_coef=tau, kappa=kappa, given=True)
+    return dict(A=A, Ix=I, Iy=Iy, c=c, S=S, Z=Zv, J=J, tau_coef=tau, kappa=kappa, given=True, Zy=float(Zy))
 
 
 @block("structures", "sections", "plate_strip", "properties", kind="builder",
@@ -69,7 +70,7 @@ def circle(d):
     r = d / 2
     I = math.pi * d ** 4 / 64
     return _sec(math.pi * r * r, I, I, r, d ** 3 / 6, math.pi * d ** 4 / 32, 16 / (math.pi * d ** 3),
-                6 / 7, d=d)
+                6 / 7, d=d, Zy=d ** 3 / 6)
 
 
 @block("structures", "sections", "tube", "properties", kind="builder",
@@ -81,7 +82,7 @@ def tube(do, di):
     m = di / do
     kappa = 6 * (1 + m * m) ** 2 / (7 + 34 * m * m + 7 * m ** 4)   # Cowper 1966 (nu=0)
     return _sec(math.pi * (do ** 2 - di ** 2) / 4, I, I, do / 2, (do ** 3 - di ** 3) / 6, J,
-                (do / 2) / J, kappa, do=do, di=di)
+                (do / 2) / J, kappa, do=do, di=di, Zy=(do ** 3 - di ** 3) / 6)
 
 
 @block("structures", "sections", "rect_tube", "properties", kind="builder",
@@ -93,7 +94,7 @@ def rect_tube(b, h, t):
     J = 4 * Am ** 2 * t / (2 * ((b - t) + (h - t)))
     Z = b * h ** 2 / 4 - bi * hi ** 2 / 4
     return _sec(b * h - bi * hi, (b * h ** 3 - bi * hi ** 3) / 12, (h * b ** 3 - hi * bi ** 3) / 12, h / 2, Z, J,
-                1 / (2 * Am * t), (2 * h * t) / (b * h - bi * hi), b=b, h=h, t=t)
+                1 / (2 * Am * t), (2 * h * t) / (b * h - bi * hi), b=b, h=h, t=t, Zy=h * b ** 2 / 4 - hi * bi ** 2 / 4)
 
 
 @block("structures", "sections", "i_beam", "properties", kind="builder",
@@ -106,7 +107,7 @@ def i_beam(bf, tf, hw, tw):
     Iy = 2 * tf * bf ** 3 / 12 + hw * tw ** 3 / 12
     Z = bf * tf * (h - tf) + tw * hw ** 2 / 4
     J = (2 * bf * tf ** 3 + hw * tw ** 3) / 3
-    return _sec(A, Ix, Iy, h / 2, Z, J, max(tf, tw) / J, hw * tw / A, h=h)
+    return _sec(A, Ix, Iy, h / 2, Z, J, max(tf, tw) / J, hw * tw / A, h=h, Zy=tf * bf ** 2 / 2 + hw * tw ** 2 / 4)
 
 
 @block("structures", "sections", "polygon", "properties", kind="builder",
@@ -136,7 +137,20 @@ def polygon_section(xy):
     ypna = np.interp(cum[-1] / 2, cum, ys)
     ym = 0.5 * (ys[1:] + ys[:-1])
     Z = float(np.sum(dA * np.abs(ym - ypna)))
-    return _sec(A, Ix, Iy, c, Z, float("nan"), float("nan"), 5 / 6, cx=cx, cy=cy, y_pna=ypna)
+    Zy = _plastic_z(P[:, ::-1].copy()) if len(P) >= 3 else float("nan")
+    return _sec(A, Ix, Iy, c, Z, float("nan"), float("nan"), 5 / 6, cx=cx, cy=cy, y_pna=ypna, Zy=Zy)
+
+
+def _plastic_z(P):
+    """Plastic modulus about a horizontal axis by equal-area strips (P is the vertex array)."""
+    y = P[:, 1]
+    ys = np.linspace(y.min(), y.max(), 2001)
+    w = np.array([_chord(P, yy) for yy in ys])
+    dA = 0.5 * (w[1:] + w[:-1]) * np.diff(ys)
+    cum = np.concatenate([[0], np.cumsum(dA)])
+    ypna = np.interp(cum[-1] / 2, cum, ys)
+    ym = 0.5 * (ys[1:] + ys[:-1])
+    return float(np.sum(dA * np.abs(ym - ypna)))
 
 
 def _chord(P, y0):

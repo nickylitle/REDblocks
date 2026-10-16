@@ -8,7 +8,14 @@ added to A and B at the attachment points (end_mass: false to leave them out).
 
 hinge: a moment / plastic-rotation table (k, acc_tab, F_tab, e.g. hinge_table or plate_root_hinge), or 'auto' for
 elastic-perfectly-plastic at Mp = sy Z of the section and material. Plastic hinges can form at every segment end.
-damping: fraction of critical at each segment's axial frequency (stiffness-proportional).
+       In 3D each axis has its own strength: the table (or sy Z) is about the section's x axis, and the other axis
+       yields at Zy / Z times that (sections give Zy; given_section takes it), on the yield surface
+       (My / Mpy)^2 + (Mz / Mpz)^2 = 1. Without Zy both axes use the table.
+damping: fraction of critical aimed at the beam's first bending mode (estimated as a cantilever carrying its own
+         mass and the lighter end body); stretch and twist are damped at their own segment frequencies. It is
+         stiffness-proportional, and an explicit solver caps that for stability, so a long, flexible beam gets less
+         than asked (often well under 1 %). Treat it as numerical calm, not a material property; for real
+         structural damping of the first mode add a dashpot across the tip.
 orient (3D): the direction of the section's h axis at the start (default world z, or x for a vertical beam).
 Bending across orient uses I (Ix of the section), bending across the other axis uses Iy; torsion uses G J."""
 import math
@@ -42,18 +49,30 @@ def beam_props(e, ctx, where, dim, L, f=""):
     if sec is not None and not isinstance(sec, dict):
         raise SpecError("section is a section block result, e.g. {block: rectangle, b: 20 mm, h: 4 mm}", where,
                         line_of(e, "section"), f)
+    def fin(v):                               # a NaN from given_section (not given) counts as missing
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return None
+        return v if math.isfinite(v) and v > 0 else None
+    if sec is not None:
+        sec = {k: (fin(v) if k in ("A", "Ix", "Iy", "J", "Z", "Zy") else v) for k, v in sec.items()}
     E = g("E") or (mat.E if mat else None)
     G = g("G") or (mat.G if mat and getattr(mat, "G", None) else (E / 2.6 if E else None))
     A_ = g("A") or (sec.get("A") if sec else None)
     Iz = g("I") or g("Iz") or (sec.get("Ix") if sec else None)
     Iy = g("Iy") or (sec.get("Iy") if sec else Iz)
+    if dim == "3d" and not Iy and Iz and not (g("EIy")):
+        raise SpecError("a 3D beam needs Iy (bending the other way): the section has none. Give Iy (or EIy), "
+                        "or use a section block that has it (rectangle, circle, tube, rect_tube, i_beam)", where,
+                        line_of(e, "section") or line_of(e, "type"), f)
     J = g("J") or (sec.get("J") if sec else None)
     EA = g("EA") or (E * A_ if E and A_ else None)
     EIz = g("EI") or g("EIz") or (E * Iz if E and Iz else None)
     EIy = g("EIy") or (E * Iy if E and Iy else EIz)
     GJ = g("GJ") or (G * J if G and J else None)
-    miss = [n for n, v in (("EA (E and A)", EA), ("EI (E and I)", EIz)) if not v]
-    if dim == "3d" and not GJ:
+    miss = [n for n, v in (("EA (E and A)", EA), ("EI (E and I)", EIz)) if not fin(v)]
+    if dim == "3d" and not fin(GJ):
         miss.append("GJ (G and J)")
     if miss:
         raise SpecError("a beam needs " + ", ".join(miss) + ": give a material and a section, or the numbers",
@@ -71,12 +90,25 @@ def beam_props(e, ctx, where, dim, L, f=""):
                                 line_of(e, "hinge"), f)
             Mp = mat.sy * float(sec["Z"])
             hinge = dict(acc_tab=np.array([0.0, 1.0]), F_tab=np.array([Mp, Mp]))
+            if sec.get("Zy"):
+                hinge["ry"] = float(sec["Zy"]) / float(sec["Z"])     # yield the other way: Mp_y = sy Zy
         else:
             tb = resolve(hv, ctx, where + ".hinge")
+            if isinstance(tb, dict) and {"theta", "M", "k0"} <= set(tb) and "acc_tab" not in tb:
+                # hinge_table gives moment against total rotation: the plastic part is theta - M / k0
+                th = np.asarray(tb["theta"], float); Mm = np.asarray(tb["M"], float); k0 = float(tb["k0"])
+                acc = th - Mm / k0; keep = acc >= -1e-12 * max(1.0, float(np.max(np.abs(th))))
+                acc = np.maximum(acc[keep], 0.0); Mm = Mm[keep]
+                if len(acc) == 0:
+                    raise SpecError("this hinge_table never yields (no plastic rotation)", where, line_of(e, "hinge"), f)
+                tb = {"acc_tab": np.concatenate([[0.0], acc]) if acc[0] > 0 else acc,
+                      "F_tab": np.concatenate([[Mm[0]], Mm]) if acc[0] > 0 else Mm}
             if not isinstance(tb, dict) or not {"acc_tab", "F_tab"} <= set(tb):
                 raise SpecError("hinge is 'auto' or a moment table {k, acc_tab, F_tab} (e.g. from hinge_table or "
                                 "plate_root_hinge)", where, line_of(e, "hinge"), f)
             hinge = dict(acc_tab=np.asarray(tb["acc_tab"], float), F_tab=np.asarray(tb["F_tab"], float))
+            if sec and sec.get("Zy") and sec.get("Z"):
+                hinge["ry"] = float(sec["Zy"]) / float(sec["Z"])
     zeta = g("damping") or 0.0
     return dict(EA=EA, EIz=EIz, EIy=EIy, GJ=GJ, mass=m, hinge=hinge, zeta=zeta, E=E, A=A_, Iz=Iz, Iy=Iy, rho=rho)
 
@@ -163,6 +195,8 @@ def expand_beam(en, e, doc, ctx, bodies, new, groups):
     base["__hinge__"] = props["hinge"]                     # resolved table (numbers), shared by every segment
     for k in ("EA", "EIz", "EIy", "GJ"):
         base["__" + k] = props[k]
+    # the whole beam, for damping set at its first bending mode
+    base["__Ltot"] = L; base["__mtot"] = m; base["__ends"] = [str(refs[0]).partition(".")[0], str(refs[1]).partition(".")[0]]
     nodes = []
     for j in range(1, n):
         pos = pA + (pB - pA) * j / n

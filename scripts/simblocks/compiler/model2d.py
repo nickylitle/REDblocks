@@ -32,6 +32,26 @@ COORDS = ("x", "y", "rz")
 FEATURE_KINDS = ("points", "circles", "lines")
 
 
+
+def _beam_beta(d, zeta, EI, names, minv, stride):
+    """Stiffness-proportional damping coefficient giving zeta in the beam's first bending mode, estimated as a
+    cantilever: w1 = sqrt(3 EI / (m_eff L^3)), m_eff = 0.24 m_beam + the lighter moving end body."""
+    L = d.get("__Ltot"); mb = d.get("__mtot") or 0.0
+    if not L:
+        return 0.0
+    tip = []
+    for bn in d.get("__ends") or []:
+        if bn in names:
+            i = names.index(bn)
+            mi = minv[stride * i] if stride else float(np.max(minv[i]))
+            if mi > 0:
+                tip.append(1.0 / mi)
+    meff = 0.24 * mb + (min(tip) if tip else 0.0)
+    if meff <= 0 or EI <= 0:
+        return 0.0
+    w1 = math.sqrt(3.0 * EI / (meff * L ** 3))
+    return 2.0 * zeta / w1          # the caller caps it for stability (3 / w of a segment's stretch)
+
 def _vec(v, ctx, where, n=2):
     from .model import resolve, num
     if isinstance(v, str) and not v.strip().startswith(("$", "=")):
@@ -263,6 +283,7 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             if zeta > 0:
                 mseg = d.get("__mseg__") or min([1.0 / B["minv"][3 * i] for i in (ia, ib) if i >= 0 and B["minv"][3 * i] > 0] or [1.0])
                 P[e, 2] = 2.0 * zeta / math.sqrt(P[e, 0] / (0.5 * mseg))
+                P[e, 3] = min(_beam_beta(d, zeta, EI, names, B["minv"], 3), 1.5 * P[e, 2] / zeta)
             hg = d.get("__hinge__")
             tx = np.zeros(0); tF = np.zeros(0)
             if hg is not None:
@@ -396,6 +417,13 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
                 raise SpecError("rigid applies to a pin, a joint (weld, hinge, slider) or a linear measure held "
                                 "constant", where, line_of(d, "rigid"), f)
             typ[e] = 15
+            if mk[e] == E2.MK_PIN:                       # an exact joint must start closed
+                pa = world_point(q0, ba[e], GA[e, 0], GA[e, 1]); pb = world_point(q0, bb[e], GB[e, 0], GB[e, 1])
+                gap = math.hypot(pb[0] - pa[0], pb[1] - pa[1])
+                if gap > 1e-6 + 1e-6 * math.hypot(pa[0], pa[1]):
+                    raise SpecError(f"the rigid joint's two points are {gap * 1e3:.4g} mm apart at the start: they must "
+                                    "meet (check the points, at and angle0 of both bodies)",
+                                    where.split("__")[0], line_of(d, "measure"), f)
             tabs_x.append(tx); tabs_F.append(tF)
             if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
                 act[e] = 0

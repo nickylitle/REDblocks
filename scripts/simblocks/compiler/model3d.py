@@ -97,17 +97,27 @@ def parse_dof3(d, where):
     return tr, rm
 
 
+def _physical(I, where):
+    ev = np.linalg.eigvalsh(I)
+    if ev[0] > 0 and ev[2] > ev[0] + ev[1] + 1e-9 * ev[2]:
+        raise SpecError("this inertia is not physical: no body has one principal moment larger than the other two "
+                        "together (" + ", ".join(f"{x:.3g}" for x in ev) + "). Check the numbers and that it is about "
+                        "the centre of mass", where)
+    return I
+
+
+
 def _inertia(v, ctx, where):
     from .model import resolve, num
     val = resolve(v, ctx, where)
     if isinstance(val, (list, tuple)):
         if len(val) == 3 and not isinstance(val[0], (list, tuple)):
-            return np.diag([num(x, where) for x in val])
+            return _physical(np.diag([num(x, where) for x in val]), where)
         if len(val) == 3 and all(isinstance(r, (list, tuple)) and len(r) == 3 for r in val):
             I = np.array([[num(x, where) for x in r] for r in val])
             if not np.allclose(I, I.T, rtol=1e-9, atol=1e-15):
                 raise SpecError("an inertia tensor must be symmetric", where)
-            return I
+            return _physical(I, where)
         raise SpecError("inertia is a number, [Ixx, Iyy, Izz], a 3x3 list or {Ixx, Iyy, Izz, Pxy, Pxz, Pyz}", where)
     if isinstance(val, dict):
         # CAD mass-properties form (SolidWorks, Onshape, Fusion): moments Ixx, Iyy, Izz and products of inertia
@@ -388,9 +398,12 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                 mseg = d.get("__mseg__") or min([1.0 / float(np.max(B["minv"][i])) for i in (ia, ib)
                                                  if i >= 0 and np.max(B["minv"][i]) > 0] or [1.0])
                 P[e, 5] = 2.0 * zeta / math.sqrt(P[e, 0] / (0.5 * mseg))
+                from .model2d import _beam_beta
+                P[e, 8] = min(_beam_beta(d, zeta, min(d["__EIy"], d["__EIz"]), names, B["minv"], None),
+                              1.5 * P[e, 5] / zeta)     # explicit stability: beta <= 3 / w (segment stretch)
             hg = d.get("__hinge__"); tx = np.zeros(0); tF = np.zeros(0)
             if hg is not None:
-                P[e, 6] = 1.0; tx = np.ascontiguousarray(hg["acc_tab"], float); tF = np.ascontiguousarray(hg["F_tab"], float)
+                P[e, 6] = 1.0; P[e, 7] = float(hg.get("ry", 1.0)); tx = np.ascontiguousarray(hg["acc_tab"], float); tF = np.ascontiguousarray(hg["F_tab"], float)
             reach[e] = max(rr(ia, fa[1]), rr(ib, fb[1]))
             tabs_x.append(tx); tabs_F.append(tF)
             if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
@@ -515,6 +528,13 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                 raise SpecError("rigid applies to a pin, a joint (weld, hinge, slider) or a linear measure held "
                                 "constant", where, line_of(d, "rigid"), f)
             typ[e] = 15
+            if mk[e] == E3.MK_PIN:                       # an exact joint must start closed
+                pa = _wp(B, ba[e], GA[e, :3]); pb = _wp(B, bb[e], GB[e, :3])
+                gap = float(np.linalg.norm(pb - pa))
+                if gap > 1e-6 + 1e-6 * float(np.linalg.norm(pa)):
+                    raise SpecError(f"the rigid joint's two points are {gap * 1e3:.4g} mm apart at the start: they must "
+                                    "meet (check the points, at and orient0 of both bodies)",
+                                    where.split("__")[0], line_of(d, "measure"), f)
             tabs_x.append(tx); tabs_F.append(tF)
             if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
                 act[e] = 0

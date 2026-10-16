@@ -160,6 +160,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         KE0 += 0.5 * m[b] * v[b] * v[b]
     first = True
     done = n
+    KEpk = KE0
     Dq = np.zeros(nb); nimp = 0
     for e in range(ne):
         if typ[e] == 14:
@@ -300,6 +301,11 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
                     t_cross[c] = (i + 1) * dt
+        if i % 4 == 0:
+            ke_ = 0.0
+            for b in range(nb):
+                ke_ += 0.5 * m[b] * v[b] * v[b]
+            if ke_ > KEpk: KEpk = ke_
         if log_every > 0 and i % log_every == 0 and j < nlog:
             LOGT[j] = i * dt
             for b in range(nb):
@@ -313,4 +319,4 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     KE1 = 0.0
     for b in range(nb):
         KE1 += 0.5 * m[b] * v[b] * v[b]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se
+    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, KEpk
