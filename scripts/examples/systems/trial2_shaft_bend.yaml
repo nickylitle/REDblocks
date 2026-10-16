@@ -1,0 +1,109 @@
+simblocks: 1
+name: Trial 2 blade shaft bend (system file)
+question: Does a 10 mm 4140 prehard dead shaft take a permanent bend over 0.1 mm on a square 600 J strike?
+dim: 1d
+
+params:
+  shaft_mat: "4140 prehard"
+  d: 10 mm
+  L: 30 mm                      # shaft span between frame plates
+  rpm: 12000 rpm
+  I_w: 7.6e-4 kg m^2
+  R_tip: 90 mm
+  m_blade: 0.28 kg
+  m_machine: 1.361 kg
+  m_target: 1.361 kg
+  R_tooth: 2 mm                 # tooth corner radius
+  tooth_mat: "S7"
+  target_mat: "AR500"
+  t_target: 4 mm                   # target armor thickness (punch-through)
+
+derived:
+  shaft: {block: beam_plastic_spring, material: $shaft_mat, section: {circle: $d}, L: $L, support: ss_center}
+  E_t:  {block: material_property, material: $tooth_mat, prop: E}
+  nu_t: {block: material_property, material: $tooth_mat, prop: nu}
+  Y_t:  {block: material_property, material: $tooth_mat, prop: sy}
+  E_o:  {block: material_property, material: $target_mat, prop: E}
+  nu_o: {block: material_property, material: $target_mat, prop: nu}
+  Y_o:  {block: material_property, material: $target_mat, prop: sy}
+  Estar: {block: effective_modulus, E1: $E_t, nu1: $nu_t, E2: $E_o, nu2: $nu_o}
+  tooth: {block: plastic_indentation_table, R: $R_tooth, Y: "=min($Y_t, $Y_o)", Estar: $Estar}
+
+bodies:
+  blade:  {dof: translation, mass: $m_blade, label: Blade on bearings}
+  spin: {dof: rotation, inertia: $I_w, v0: $rpm, label: Blade spin}
+  frame:    {dof: translation, mass: "=$m_machine - $m_blade", label: Frame}
+  target:    {dof: translation, mass: $m_target, label: Target}
+
+elements:
+  tooth_contact:
+    type: elastoplastic
+    measure: blade + $R_tip * spin - target     # tooth path minus target: penetration
+    one_sided: true
+    table: $tooth
+    break_at: $t_target                           # indented through the armor -> punched out
+    label: Tooth contact
+    source: plastic_indentation_table
+    knockout: {expect_elastic: {F_contact_peak_kN: "+"}}
+  shaft:
+    type: elastoplastic
+    measure: blade - frame
+    table: $shaft
+    label: Shaft bending
+    source: beam_plastic_spring
+    knockout: {expect_elastic: {shaft_set_mm: "-"}}
+
+outputs:
+  shaft_set_mm:      {element: shaft, quantity: plastic_set, reduce: final, abs: true, unit: mm, label: permanent shaft bend}
+  dent_mm:           {element: tooth_contact, quantity: plastic_set, reduce: final, unit: mm}
+  F_contact_peak_kN: {element: tooth_contact, quantity: force, reduce: max, unit: kN}
+  F_shaft_peak_kN:   {element: shaft, quantity: force, reduce: max_abs, unit: kN}
+  E_to_target_J:   {body: target, quantity: kinetic_energy}
+  rpm_after:         {body: spin, quantity: velocity, reduce: final, unit: rpm}
+  perforated:        {element: tooth_contact, quantity: broken, reduce: final}
+
+failure:
+  - {name: shaft bend, metric: shaft_set_mm, limit: 0.1, fails_when: above,
+     origin: "trial user: shaft fails if it takes a permanent bend over 0.1 mm at the blade"}
+
+uncertain:
+  rpm: [10800 rpm, 13200 rpm]
+  m_target: [1.1 kg, 1.5 kg]
+  R_tooth: [1 mm, 3 mm]
+  L: [25 mm, 35 mm]
+  t_target: [3 mm, 6 mm]
+
+limits:
+  - {name: "blade not spinning -> nothing happens", set: {rpm: 0.0001 rpm}, expect: {shaft_set_mm: 0}}
+
+run:
+  t_end: 0.4 ms
+  dt: 20 ns
+  mc_n: 150
+  bounds: {shaft_set_mm: [0, 15], E_to_target_J: [0, 600], dent_mm: [0, 30]}
+
+report:
+  plots:
+    - {title: Tooth contact force, series: [{ref: tooth_contact.force, unit: kN}], unit: kN}
+    - {title: Shaft force, series: [{ref: shaft.force, unit: kN}], unit: kN}
+    - {title: Shaft deflection and permanent set, unit: mm,
+       series: [{ref: shaft.measure, unit: mm, label: total}, {ref: shaft.plastic_set, unit: mm, label: permanent}]}
+  sweep:
+    param: d
+    values: [8 mm, 10 mm, 12 mm, 14 mm]
+    unit: mm
+    metric: shaft_set_mm
+    x_label: shaft diameter (mm)
+    y_label: permanent shaft bend (mm)
+    variants:
+      "4140 prehard": {shaft_mat: "4140 prehard"}
+      "4140 normalized": {shaft_mat: "4140_normalized"}
+      "7075-T6": {shaft_mat: "7075"}
+  input_labels: {rpm: blade rpm, m_target: target mass, R_tooth: tooth corner radius, L: shaft span, t_target: target armor thickness}
+
+assumptions:
+  - Square hit; contact force perpendicular to the shaft at the blade's mid-span.
+  - Shaft simply supported between frame plates; hinge length = shaft diameter.
+  - Tooth contact flat-punch elastic, then fully plastic indentation (3Y); punched out at armor thickness.
+sources:
+  - Roark 7e Table 8.1; Johnson, Contact Mechanics ch. 3 and 6; moment-curvature from the material curve

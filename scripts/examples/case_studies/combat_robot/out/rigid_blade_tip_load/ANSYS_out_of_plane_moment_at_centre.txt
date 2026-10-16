@@ -1,0 +1,22 @@
+% Worst out-of-plane (Z) hit on Flapjack's blade (sim sample 11). Blade bends at 6110 N tip load out-of-plane (AR600 full plastic + impact rate, worst case).
+% Frame: X side to side (+ right), Y forward/back (+ forward), Z up. Blade pointing forward, spinning counterclockwise seen from above (flip X for the other direction).
+% Impulse: Fx +0.316 N s, Fz +2.806 N s. Radial (Y) impulse -7.63 N s not included (peak unreliable).
+% Moment of the tip force about the blade centre (lever 95 mm), N m.
+% time_s	Mx_Nm	My_Nm	Mz_Nm
+0	0	0	0
+8.25e-05	0.794578	0	-2.35083
+0.00011	48.9632	0	-83.6388
+0.00013	112.224	0	-158.227
+0.000155	197.261	0	-280.605
+0.00017	251.316	0	-312.794
+0.0001875	317.177	0	-290.503
+0.0002175	419.097	0	-214.553
+0.0002375	463.474	0	-110.971
+0.0002525	487.928	0	11.2853
+0.00033625	560.096	0	0
+0.00047275	580.343	0	0
+0.00053875	547.862	0	0
+0.00060625	447.773	0	0
+0.00067825	281.893	0	0
+0.00077875	-3.68473	0	0
+0.005	0	0	0

@@ -1,0 +1,20 @@
+% Worst vertical (Z-only) hit on Flapjack's blade tip, from the flexible-blade sims. Blade bends at 6110 N.
+% Moment about the blade centre (lever 95 mm), N m: Mx = 0.095 Fz. Use with the force table applied at the centre.
+% time_s	Mx_Nm	My_Nm	Mz_Nm
+0	0	0	0
+8.25e-05	0.794577	0	0
+0.00011	48.9632	0	0
+0.00013	112.224	0	0
+0.000155	197.261	0	0
+0.00017	251.317	0	0
+0.0001875	317.177	0	0
+0.0002175	419.097	0	0
+0.0002375	463.474	0	0
+0.0002525	487.929	0	0
+0.00033625	560.096	0	0
+0.00047275	580.344	0	0
+0.00053875	547.862	0	0
+0.00060625	447.773	0	0
+0.00067825	281.893	0	0
+0.00077875	-3.68473	0	0
+0.005	0	0	0

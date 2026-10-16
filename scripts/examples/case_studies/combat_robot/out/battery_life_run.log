@@ -1,0 +1,5 @@
+512 samples in 659 s
+capacity only min mAh percentiles 5/50/95/max: [ 526.  802. 1173. 1527.] governs: {'capacity': 512, 'sag': 0} nan 0
+3.3 V/cell min mAh percentiles 5/50/95/max: [ 765. 1196. 1756. 2353.] governs: {'capacity': 30, 'sag': 482} nan 0
+3.0 V/cell min mAh percentiles 5/50/95/max: [ 632.  967. 1362. 1756.] governs: {'capacity': 166, 'sag': 346} nan 0
+worst ledger 0.013592003865683355

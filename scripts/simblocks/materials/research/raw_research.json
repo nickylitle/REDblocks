@@ -1,0 +1,2633 @@
+{
+ "composites.json": {
+  "laminae": [
+   {
+    "key": "T300_5208",
+    "verified": {
+     "E1_GPa": 181,
+     "E2_GPa": 10.3,
+     "G12_GPa": 7.17,
+     "nu12": 0.28,
+     "rho": 1600,
+     "Xt_MPa": 1500,
+     "Xc_MPa": 1500,
+     "Yt_MPa": 40,
+     "Yc_MPa": 246,
+     "S_MPa": 68,
+     "t_ply_mm": 0.125,
+     "alpha1": 2e-08,
+     "alpha2": 2.25e-05,
+     "Vf": 0.7
+    },
+    "corrections": "None. All catalog values match. Note: Herakovich (1998) gives a different T300/5208 set (E1 132, E2 10.8, G12 5.65, nu 0.24, rho 1540, Vf 0.62) - catalog correctly follows Tsai & Hahn.",
+    "citation": "Tsai & Hahn (1980) T300/5208 values as reproduced in (a) Univ. Mumbai exam QP 25700 'Given data' table, (b) UC3M OCW Tema 5 exercise 5.1, (c) lsdyna-online c2.pdf composite property table row 5",
+    "url": "https://old.mu.ac.in/wp-content/uploads/2018/03/00025700.pdf ; https://ocw.uc3m.es/pluginfile.php/2483/mod_page/content/11/t5_ejercicios.pdf ; https://lsdyna-online.com/wp-content/uploads/2019/08/c2.pdf",
+    "location": "MU QP 25700 p.2 'Properties of Unidirectional Graphite/Epoxy (T300/5208) Lamina' (Vf 0.7, SG 1.6, alphas); UC3M Ejercicio 5.1 DATOS (t=0.125 mm); lsdyna c2 row 5",
+    "confidence": "medium"
+   },
+   {
+    "key": "AS4_3501-6",
+    "verified": {
+     "E1_GPa": null,
+     "E2_GPa": null,
+     "G12_GPa": null,
+     "nu12": null,
+     "rho": null,
+     "Xt_MPa": null,
+     "Xc_MPa": null,
+     "Yt_MPa": null,
+     "Yc_MPa": null,
+     "S_MPa": null,
+     "t_ply_mm": null,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": null
+    },
+    "corrections": "Could NOT open a copy of Daniel & Ishai Table A.4, so the catalog row (142/10.3/7.2/0.27/1580/2280/1440/57/228/71/-0.9e-6/27e-6/0.63) remains UNVERIFIED (not shown wrong). Opened alternates for the same material system differ: WWFE (Soden/Hinton/Kaddour 1998) AS4/3501-6: E1 126, E2 11, G12 6.6 GPa, Xt 1950, Xc 1480, Yt 48, Yc 200, S 79 MPa (lsdyna-online c2.pdf row 1); Herakovich (1998) via LibreTexts Table 8.2: E1 148, E2 10.5, G12 5.61 GPa, nu 0.30, rho 1520, t_ply 0.127, Vf 0.62. Catalog values are within the spread of published AS4/3501-6 data; recommend either keeping as 'Daniel & Ishai (unverified)' or switching to the WWFE set which is openly citable.",
+    "citation": "Alternates only: Soden, Hinton & Kaddour, Compos. Sci. Technol. 58 (1998) 1011-1022 values as tabulated by lsdyna-online; Herakovich, Mechanics of Fibrous Composites (1998) p.245 as reproduced in Johnson, Aerospace Structures (LibreTexts) Table 8.2",
+    "url": "https://lsdyna-online.com/wp-content/uploads/2019/08/c2.pdf ; https://eng.libretexts.org/Under_Construction/Aerospace_Structures_(Johnson)/08%3A_Laminated_bars_of_fiber-reinforced_polymer_composites/8.01%3A_Nomenclature_of_composite_materials",
+    "location": "c2.pdf row 1 'Carbon AS4/Epoxy 3501-6 126 11 6.6 1950 1480 48 200 79'; LibreTexts Table 8.2",
+    "confidence": "low"
+   },
+   {
+    "key": "IM7_8552",
+    "verified": {
+     "E1_GPa": 162.1,
+     "E2_GPa": 8.96,
+     "G12_GPa": 4.69,
+     "nu12": 0.316,
+     "rho": 1610,
+     "Xt_MPa": 2212,
+     "Xc_MPa": 1731,
+     "Yt_MPa": 64.1,
+     "Yc_MPa": 285.7,
+     "S_MPa": 91.1,
+     "t_ply_mm": 0.183,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": null
+    },
+    "corrections": "Catalog is a mix of Hexcel-datasheet and Camanho-style values. Against NCAMP RTD means (Table 3-3): E2 11.4 -> 8.96 GPa (1.30 Msi; Hexcel datasheet gives 1.70 Msi = 11.7 GPa, so catalog 11.4 is datasheet-like); G12 5.17 -> 4.69 GPa (0.68 Msi); nu12 0.32 -> 0.316; Xt 2560 matches NCAMP LT mean 371.08 ksi = 2559 MPa but UNT0 mean is 320.79 ksi = 2212 MPa and Hexcel datasheet 2723 MPa - use 2212 for conservative unnotched-laminate-derived value or 2559 (LT); Xc 1590 -> 1731 MPa (NCAMP back-out, 251.13 ksi) / Hexcel 1689 MPa; Yt 73 -> 64.1 MPa (both NCAMP 9.29 ksi and Hexcel 9.3 ksi); Yc 185 -> 286 MPa (41.44 ksi) - catalog Yc is significantly low; S 90 ok (91.1 MPa at 5% strain; 53.5 MPa at 0.2% offset); t_ply 0.131 is for a lighter (approx 134 gsm) tape grade - NCAMP 190 gsm/35%RC material normalizes to 0.0072 in = 0.183 mm, so 0.131 only valid if using the 134 gsm product. rho: NASA TM-20230001560 Table 31 SG 1.61 -> 1610 kg/m3 (catalog 1570 slightly low). Vf: Hexcel IM7 fiber datasheet lists 'Fiber Volume 60%' for typical 8552 composite (catalog 0.59 ~ok). alpha1/alpha2 not found in opened sources; keep catalog values unverified.",
+    "citation": "NCAMP NCP-RP-2009-028 Rev B, Hexcel 8552 IM7 Unidirectional Prepreg Qualification Statistical Analysis Report (2019); cross-checked with Hexcel HexPly 8552 Product Data Sheet (2020), Hexcel IM7 HexTow datasheet, and NASA TM-20230001560",
+    "url": "https://wichita.edu/industry_and_defense/NIAR/Documents/NCP-RP-2009-028-Rev-B-HEXCEL-8552-IM7-Uni-SAR-4-16-2019.pdf ; https://hexcel.com/wp-content/uploads/2026/01/HexPly_8552_us_DataSheet.pdf ; https://hexcel.com/wp-content/uploads/2025/12/IM7_HexTow_DataSheet.pdf ; https://ntrs.nasa.gov/api/citations/20230001560/downloads/TM-20230001560.pdf",
+    "location": "NCAMP Table 3-3 p.37 (RTD column; Xc derived from UNC0 cross-ply back-out); Hexcel 8552 PDS p.3 Mechanical Properties (IM7 column, 77F dry: 0deg Xt 395 ksi, E1 23.8 Msi, Xc 245 ksi, 90deg 9.3 ksi / 1.70 Msi, nu 0.316); IM7 HexTow PDS 'Typical HexPly 8552 Composite Properties'; NASA TM Table 31 SG 1.61",
+    "confidence": "high"
+   },
+   {
+    "key": "Eglass_epoxy",
+    "verified": {
+     "E1_GPa": 38.6,
+     "E2_GPa": 8.27,
+     "G12_GPa": 4.14,
+     "nu12": 0.26,
+     "rho": null,
+     "Xt_MPa": 1062,
+     "Xc_MPa": 610,
+     "Yt_MPa": 31,
+     "Yc_MPa": 118,
+     "S_MPa": 72,
+     "t_ply_mm": null,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": null
+    },
+    "corrections": "Elastic constants and strengths match catalog. rho 1800, Vf 0.45, alpha1 8.6e-6, alpha2 22.1e-6 and t_ply 0.15 NOT verified in any opened source (left as catalog, unverified). Note: Tsai & Hahn tabulate all five systems at a common ply thickness of 0.125 mm, so catalog t_ply 0.15 is likely not from Tsai & Hahn - flag. Another copy of the same table (lsdyna c2 row 8, first block) lists E1 36.6 GPa with ksi-converted strengths 1103/621/27.6/138/82.7 (Jones-style values) - do not mix the two sets.",
+    "citation": "Tsai & Hahn (1980) Scotchply 1002 values as reproduced in lsdyna-online c2.pdf row 8 (strength columns) and in a Chegg problem statement (elastic constants)",
+    "url": "https://lsdyna-online.com/wp-content/uploads/2019/08/c2.pdf ; https://www.chegg.com/homework-help/questions-and-answers/plate-unidirectional-scotchply-1002-glass-epoxy-dimensions-shown-fibers-x-direction-shown--q11121345",
+    "location": "c2.pdf row 8 'E-Glass(Scotchply)/Epoxy ... 1062 610 31 118 72'; Chegg q11121345 problem text 'E_1 = 38.6 GPa E_2 = 8.27 GPa V_12 = 0.26 G_12 = 4.14 GPa'",
+    "confidence": "medium"
+   },
+   {
+    "key": "Kevlar49_epoxy",
+    "verified": {
+     "E1_GPa": 76,
+     "E2_GPa": 5.5,
+     "G12_GPa": 2.3,
+     "nu12": 0.34,
+     "rho": null,
+     "Xt_MPa": 1400,
+     "Xc_MPa": 235,
+     "Yt_MPa": 12,
+     "Yc_MPa": 53,
+     "S_MPa": 34,
+     "t_ply_mm": 0.125,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": null
+    },
+    "corrections": "Elastic constants, strengths and t_ply match the Tsai & Hahn set. rho 1380, Vf 0.60, alpha1 -4e-6, alpha2 79e-6 NOT verified in an opened source. Caution: the UC3M exercise version of the same lamina lists Y' (Yc) = 25 MPa and alpha1 = -2e-6, alpha2 = 60e-6 1/K, so there are circulating variants; lsdyna-online c2 table confirms Yc 53. Yt = 12 MPa is very low (typical Kevlar/epoxy 28-30 MPa, e.g. lsdyna row 20 gives 30/27.5) but is what the source states.",
+    "citation": "Tsai & Hahn (1980) Kevlar 49/epoxy values as reproduced in lsdyna-online c2.pdf row 9 and UC3M OCW Tema 5 Ejercicio 5.2",
+    "url": "https://lsdyna-online.com/wp-content/uploads/2019/08/c2.pdf ; https://ocw.uc3m.es/pluginfile.php/2483/mod_page/content/11/t5_ejercicios.pdf",
+    "location": "c2.pdf row 9 'Kevlar 49/Epoxy 76 5.5 2.3 1379 276 27.6 64.8 60 1400 235 12 53 34'; UC3M Ejercicio 5.2 DATOS (nu 0.34, h=0.125 mm)",
+    "confidence": "medium"
+   },
+   {
+    "key": "CF_3K_twill",
+    "verified": {
+     "E1_GPa": 64.1,
+     "E2_GPa": 64.1,
+     "G12_GPa": 4.14,
+     "nu12": 0.035,
+     "rho": 1450,
+     "Xt_MPa": 710,
+     "Xc_MPa": 614,
+     "Yt_MPa": 710,
+     "Yc_MPa": 614,
+     "S_MPa": 73.1,
+     "t_ply_mm": null,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": 0.48
+    },
+    "corrections": "No NCAMP-style lamina summary for a 3K 2x2 twill could be opened (NCAMP Hexcel 8552 AS4 PW spec doc gives only spec limits: E1 8.6-10.1 Msi = 59-70 GPa, F1tu avg >= 102 ksi = 703 MPa, cured ply 0.0073-0.0081 in = 0.185-0.206 mm for 193 gsm PW). Best vendor source = Rock West all-0/90 twill plate CLT card (Toray T700S/T700G + Rhino 1411 infusion epoxy): E 9.3 Msi = 64.1 GPa (catalog 70 is ~9% high), G12 0.6 Msi = 4.14 GPa (catalog 5.0 high), nu 0.035 (catalog 0.05 ok-ish), Xt 103 ksi = 710 MPa (catalog 600 conservative), Xc 89 ksi = 614 MPa (catalog 570 conservative), S 10.6 ksi = 73.1 MPa (catalog 90 is UNCONSERVATIVE - reduce). Density: Rock West quick facts 1.45 g/cm3 (also lists 0.055 lb/in3 = 1.52); DragonPlate twill Vf 48%, so catalog Vf 0.55 and rho 1550 are high for infused/hobby twill (0.55 is closer to prepreg). CTE: Rock West lists 2.00E-06 under Imperial units (likely per degF = 3.6e-6/K; units ambiguous) - catalog 2.1e-6/K unverified. t_ply 0.22 mm unverified for 200-210 gsm 3K twill (prepreg PW at 193 gsm is ~0.19-0.21 mm; infused twill at Vf 0.48 would be ~0.25 mm by areal-weight arithmetic, not a source value). Vendor values are CLT-derived reference values, not test allowables.",
+    "citation": "Rock West Composites, Carbon Fiber Plate - Twill Weave - Standard Modulus 1/16in (part 402-44) Engineering Properties (CLT-based); DragonPlate quasi-iso twill/uni sheet product page (twill Vf 48%); NCAMP NMS/Hexcel 8552 AS4 PW spec (AS4-PW-1.pdf)",
+    "url": "https://www.rockwestcomposites.com/402-44.html ; https://dragonplate.com/quasi-isotropic-carbon-fiber-twilluni-sheet-18-x-24-x-36 ; https://wichita.edu/industry_and_defense/NIAR/Research/hexcel-8552/AS4-PW-1.pdf",
+    "location": "Rock West 402-44 'Engineering Properties' table (Imperial: EX 9300000, GXY 600000, X tens 103000, X comp 89000, XY shear 10602, vXY 0.035) and Quick Facts (1.45 g/cm3); DragonPlate specs 'Fiber volume (twill) 48%'; NCAMP AS4-PW-1 Tables 3 and 5",
+    "confidence": "medium"
+   },
+   {
+    "key": "Eglass_7781",
+    "verified": {
+     "E1_GPa": 25.1,
+     "E2_GPa": 23.4,
+     "G12_GPa": null,
+     "nu12": 0.123,
+     "rho": null,
+     "Xt_MPa": 471,
+     "Xc_MPa": 571,
+     "Yt_MPa": 425,
+     "Yc_MPa": 475,
+     "S_MPa": 67.6,
+     "t_ply_mm": 0.254,
+     "alpha1": null,
+     "alpha2": null,
+     "Vf": null
+    },
+    "corrections": "Against NCAMP MTM45-1/7781 RTD means (Table 3-3): E1 24 -> 25.1 GPa (3.64 Msi); E2 23 -> 23.4 GPa (3.39 Msi); nu12 0.13 -> 0.123 (listed as compression nu); Xt 400 -> 471 MPa (68.32 ksi); Xc 380 -> 571 MPa (82.76 ksi); Yt 380 -> 425 MPa (61.58 ksi); Yc 360 -> 475 MPa (68.96 ksi) - catalog strengths are all conservative by 10-35%; S 70 vs 67.6 MPa at 5% strain (9.80 ksi) / 37.2 MPa at 0.2% offset (5.39 ksi) - catalog ok if 5%-strain definition is intended; t_ply 0.23 -> 0.254 mm (normalizing 0.0100 in; spec range 0.0093-0.0105 in = 0.236-0.267 mm, so 0.23 is at the thin edge). G12 4.5 GPa NOT verified (IPS modulus table could not be extracted; an unconfirmed 0.33 Msi = 2.3 GPa appears in garbled summary text - if real, catalog 4.5 is ~2x too stiff; resolve before use). rho 1850, Vf, alphas not in report. Note these are prepreg/autoclave-quality values; wet-layup 7781 will be lower.",
+    "citation": "NCAMP NCP-RP-2009-009 Rev A, Cytec (ACG) MTM45-1/7781 Glass Fabric Qualification Statistical Analysis Report (2018); NCAMP NMS 451/4 Rev C material specification",
+    "url": "https://www.wichita.edu/industry_and_defense/NIAR/Research/cytec-mtm45-1/QualificationNCP-RP-2009-009RevAMTM45-17781GlassFabric9-24-18.pdf ; https://www.wichita.edu/research/NIAR/Documents/NMS-451-slash-4-Rev-C-November-29-2018-MTM45-1-7781.pdf",
+    "location": "SAR Table 3-3 p.34 Lamina Properties Summary (RTD column, normalizing tply 0.0100 in; text extraction partially garbled - columns mapped via Tables 3-1/4-x); NMS 451/4 Table 3 p.4 (cured ply 0.0093-0.0105 in) and Table 5 p.5 (warp tension avg >= 63.41 ksi, modulus 3.30-3.92 Msi)",
+    "confidence": "medium"
+   }
+  ],
+  "suggested_additions": [
+   {
+    "key": "CF_plate_quasi_iso_RockWest_T700",
+    "values": {
+     "Ex_GPa": 45.9,
+     "Ey_GPa": 45.9,
+     "Gxy_GPa": 17.55,
+     "nu_xy": 0.309,
+     "rho": 1520,
+     "Xt_MPa": 429.7,
+     "Xc_MPa": 384.5,
+     "S_MPa": 209.9,
+     "CTE": "2.00E-06 (Imperial units, likely 1/degF)",
+     "layup": "[0/90 tw, +-45, 0/90, +-45, 0/90] 5 ply, 1/8 in",
+     "fiber": "Toray T700S",
+     "resin": "Rhino 1411/4111 epoxy",
+     "Tg_C": 90
+    },
+    "citation": "Rock West Composites Carbon Fiber Plate - Quasi-Iso - Standard Modulus 24x24x1/8 in (part 204-22) Engineering Properties (CLT-based, reference only)",
+    "url": "https://www.rockwestcomposites.com/204-22.html",
+    "location": "Engineering Properties table (EX 6664000, GXY 2546000, X tens 62320, X comp 55760, XY shear 30448, vXY 0.309); Quick Facts density 0.055 lb/in3 = 1.52 g/cm3; Tg 194F; Layup Orientation 204-22 Rev NC. Use as an equivalent-laminate (smeared) card, not a lamina."
+   },
+   {
+    "key": "CF_sheet_EasyComposites_HS_2mm",
+    "values": {
+     "E_0_90_GPa": 43.9,
+     "E_45_GPa": 34.5,
+     "Xt_0_90_MPa": 558,
+     "Xt_45_MPa": 622,
+     "elong_0_90_pct": 2.91,
+     "rho": 1410,
+     "thickness_mm": 1.9,
+     "layup": "210g 2x2 twill / 300g +-45 biax / 650g 2x2 twill / 300g +-45 biax / 210g 2x2 twill",
+     "Tg_C": 80
+    },
+    "citation": "Easy Composites High Strength Carbon Fibre Sheet TDS (measured from typical production sheet)",
+    "url": "https://media.easycomposites.co.uk/datasheets/EC-TDS-High-Strength-Carbon-Sheet.pdf",
+    "location": "p.2 property table, 2 mm column; p.1 ply construction. 1 mm sheet: E 37.2 GPa, Xt 503 MPa, rho 1330; 3 mm: E 47.4, Xt 644, rho 1470. Note low Tg 80 C."
+   },
+   {
+    "key": "CF_plate_quasi_iso_DragonPlate",
+    "values": {
+     "rho": 1605,
+     "Vf_uni": 0.55,
+     "Vf_twill": 0.48,
+     "fiber": "UTS 700 (34 Msi)",
+     "resin_uni": "NCT 304-1",
+     "resin_twill": "NB301",
+     "Tg_F": 250,
+     "layup": "woven 0/90 + UD 0/90 + +-45"
+    },
+    "citation": "DragonPlate quasi-isotropic carbon fiber twill/uni sheet 1/8 x 24 x 36 product page",
+    "url": "https://dragonplate.com/quasi-isotropic-carbon-fiber-twilluni-sheet-18-x-24-x-36",
+    "location": "Specifications: approx density 0.058 lb/in3 (=1605 kg/m3); no strength/modulus published on page"
+   }
+  ],
+  "fibers": [
+   {
+    "key": "T300",
+    "verified": {
+     "E1_GPa": 230,
+     "E2_GPa": 15,
+     "G12_GPa": 15,
+     "nu12": 0.2,
+     "rho": 1760,
+     "Xt_MPa": 3530,
+     "alpha1": -4.1e-07,
+     "alpha2": 1.2e-05
+    },
+    "corrections": "None; all catalog values match. Added alpha1 -0.41e-6/K (Toray) and WWFE alpha2 12e-6/K. WWFE also gives G23 = 7 GPa.",
+    "citation": "Toray T300 Technical Data Sheet (E1, Xt, rho, alpha1); Soden/Hinton/Kaddour WWFE fibre table as reproduced in NPTEL Composites Module 7 Lecture 25 Table 7.1 (E2, G12, nu12, G23, alpha2)",
+    "url": "https://www.toraycma.com/wp-content/uploads/T300-Technical-Data-Sheet-1.pdf ; https://archive.nptel.ac.in/content/storage2/courses/101104010/lecture25/25_8.htm",
+    "location": "Toray TDS fiber properties block (3,530 MPa, 230 GPa, 1.76 g/cm3, CTE -0.41e-6/C); NPTEL Table 7.1 T300 column (230/15/15/G23 7/0.2/-0.7/12) - note WWFE alpha1 -0.7e-6 vs Toray -0.41e-6",
+    "confidence": "high"
+   },
+   {
+    "key": "AS4",
+    "verified": {
+     "E1_GPa": 231,
+     "E2_GPa": 15,
+     "G12_GPa": 15,
+     "nu12": 0.2,
+     "rho": 1790,
+     "Xt_MPa": 4413,
+     "alpha1": -6.3e-07,
+     "alpha2": 1.5e-05
+    },
+    "corrections": "None material. Xt 4410 ~ Hexcel 12K/6K 4,413 MPa (3K tow is 4,619 MPa). WWFE uses E1 = 225 GPa for AS4 (Hexcel datasheet 231). Added alpha1 -0.63e-6/K (Hexcel), alpha2 15e-6 (WWFE).",
+    "citation": "Hexcel HexTow AS4 datasheet (E1, Xt, rho, CTE); WWFE fibre table via NPTEL Table 7.1 (E2, G12, nu12, alpha2)",
+    "url": "https://media.easycomposites.co.uk/datasheets/AS4_HexTow_DataSheet.pdf ; https://archive.nptel.ac.in/content/storage2/courses/101104010/lecture25/25_8.htm",
+    "location": "Hexcel AS4 PDS fiber properties (231 GPa, 4,413 MPa 6K/12K, 1.79 g/cm3, -0.63 ppm/C); NPTEL Table 7.1 AS4 column (225/15/15/7/0.2/-0.5/15)",
+    "confidence": "high"
+   },
+   {
+    "key": "IM7",
+    "verified": {
+     "E1_GPa": 276,
+     "E2_GPa": null,
+     "G12_GPa": null,
+     "nu12": null,
+     "rho": 1780,
+     "Xt_MPa": 5670,
+     "alpha1": -6.4e-07
+    },
+    "corrections": "E1, rho, Xt match Hexcel. E2 19, G12 27, nu12 0.2 (WWFE-II-style values) could not be confirmed in an opened source - left unverified. Note G12 27 > E2 19 is unusual for carbon fibres (T300/AS4 have G12 = E2 = 15); double-check before using in micromechanics. Added alpha1 -0.64e-6/K.",
+    "citation": "Hexcel HexTow IM7 datasheet",
+    "url": "https://hexcel.com/wp-content/uploads/2025/12/IM7_HexTow_DataSheet.pdf",
+    "location": "IM7 Fiber Properties: 5670 MPa, 276 GPa (chord 6000-1000), 1.78 g/cm3, CTE -0.64 ppm/C",
+    "confidence": "high"
+   },
+   {
+    "key": "E-glass",
+    "verified": {
+     "E1_GPa": 72.3,
+     "E2_GPa": 72.3,
+     "G12_GPa": null,
+     "nu12": null,
+     "rho": 2580,
+     "Xt_MPa": 3445,
+     "alpha1": 5.4e-06
+    },
+    "corrections": "AGY: E 72.3 GPa (catalog 72.4 ok), Xt 3445 MPa pristine at 23C (catalog 3450 ok), density 2.58 g/cc (catalog 2540 slightly low; Jang/ASM table gives 2.54 - both published). G12 29.7 = E/(2(1+0.22)) is consistent with isotropy but nu 0.22 not found in an opened source (WWFE/Helius use nu 0.2 with E 80/74 GPa for specific E-glasses). Pristine filament strength is far above in-composite strand strength - do not use 3450 for lamina strength micromechanics without a knockdown.",
+    "citation": "AGY S-Series datasheet 'Physical Properties' (E-Glass column); Jang, Advanced Polymer Composites (ASM 1994) via PSLC fiber table",
+    "url": "https://www.agy.com/wp-content/uploads/2021/12/S-Series_High_PerfMatlsforAutomotiveAppls-Automotive.pdf ; https://pslc.ws/macrog/mpm/composit/fiber/tables/fibrtabl.htm",
+    "location": "AGY Physical Properties table: density 2.58, 23C strength 3445 MPa, modulus 72.3 GPa, elongation 4.8%, CTE 54 (x1e-7/C); PSLC: E-glass 72.4 GPa / 3.5 GPa / 2.54",
+    "confidence": "high"
+   },
+   {
+    "key": "S-2 glass",
+    "verified": {
+     "E1_GPa": 86.9,
+     "E2_GPa": 86.9,
+     "G12_GPa": null,
+     "nu12": null,
+     "rho": 2460,
+     "Xt_MPa": 4890,
+     "alpha1": 1.6e-06
+    },
+    "corrections": "None for E, rho, Xt (exact match). nu 0.22 / G12 35.6 not found in an opened source (G12 is E/(2(1+0.22)) arithmetic). Added CTE 1.6e-6/K and elongation 5.7%.",
+    "citation": "AGY S-Series datasheet 'Physical Properties' (S-2 Glass column)",
+    "url": "https://www.agy.com/wp-content/uploads/2021/12/S-Series_High_PerfMatlsforAutomotiveAppls-Automotive.pdf",
+    "location": "Physical Properties table: density 2.46 g/cc, 23C tensile 4890 MPa, modulus 86.9 GPa, elongation 5.7%, CTE 16 (x1e-7/C)",
+    "confidence": "high"
+   },
+   {
+    "key": "Kevlar 49",
+    "verified": {
+     "E1_GPa": 124,
+     "E2_GPa": 6.9,
+     "G12_GPa": 2.8,
+     "nu12": 0.36,
+     "rho": 1440,
+     "Xt_MPa": 3600,
+     "alpha1": -4.9e-06,
+     "alpha2": 4.1e-05
+    },
+    "corrections": "Xt 3620 -> 3600 MPa (DuPont resin-impregnated strand, ASTM D2343). Note straight-yarn values are lower: 3000 MPa / 112.4 GPa; catalog 124 GPa is the impregnated-strand modulus (consistent). Added alpha1 -4.9e-6/K (DuPont, 25-150C) and alpha2 41e-6 (Helius default citing DuPont 1986).",
+    "citation": "DuPont Kevlar Aramid Fiber Technical Guide Table II-1 and II-4; Autodesk Helius PFA Appendix A default constituent (Kevlar row, cites DuPont Kevlar 49 Data Manual 1986)",
+    "url": "https://www.r-g.de/wiki/images/e/ec/Td_en_Kevlar_guide.pdf ; https://help.autodesk.com/cloudhelp/2024/ENU/HeliusPFA-Help/files/User-Guides/Material-Manager-User-s-Guide/HELIUS-PFA-UG-MG-APPENDIX-A.html",
+    "location": "DuPont Table II-1 pp.5-6 (1.44 g/cm3; strand 3,600 MPa, 124,000 MPa; nu 0.36); Table II-4 p.13 CTE -4.9e-6/C; Helius App. A Kevlar row (124/6.9/2.8/0.36/nu23 0.23/-5/41)",
+    "confidence": "high"
+   },
+   {
+    "key": "Dyneema SK75",
+    "verified": {
+     "E1_GPa": 113,
+     "E2_GPa": null,
+     "G12_GPa": null,
+     "nu12": null,
+     "rho": 975,
+     "Xt_MPa": 3400,
+     "alpha1": null
+    },
+    "corrections": "DSM brochure: modulus 113 GPa (catalog 109), tenacity 3.4 GPa (catalog 3600 slightly high). Density not printed; 975 kg/m3 is consistent with the brochure's own specific values (1160 cN/dtex -> 116 GPa/(g/cc); 113/116 = 0.974) - derived, not stated. E2 3.0, G12 1.0, nu 0.35 unverified. UHMWPE creeps and melts ~145C; matrix-dominated properties of Dyneema composites are very poor.",
+    "citation": "DSM Dyneema SK75 technical brochure (hosted by Pelican Rope)",
+    "url": "https://pelicanrope.com/content/PDFs/DyneemaSK75_Tech_Sheet.pdf",
+    "location": "SK75 1760 dtex property list: tenacity 35.1 cN/dtex = 3.4 GPa; modulus 1160 cN/dtex = 113 GPa; elongation 3.5%",
+    "confidence": "medium"
+   }
+  ],
+  "matrices": [
+   {
+    "key": "generic epoxy",
+    "verified": {
+     "E_GPa": 3.45,
+     "nu": 0.35,
+     "rho": 1200,
+     "Xt_MPa": null
+    },
+    "corrections": "No single source for a 'generic' epoxy; catalog E 3.45 and nu 0.35 lie inside opened data: WWFE LY556/MY750 E 3.35 GPa, G 1.24, nu 0.35, alpha 58e-6; WWFE 3501-6 E 4.2, nu 0.34; BSL914C E 4.0, nu 0.35; Helius default epoxy 3.5 GPa / 0.35 / 53e-6. Density 1200 is at the low end of 1.2-1.3 g/cc (Chawla via ATCP); Hexcel 8552 neat resin is 1.30 g/cc. Xt 70 MPa not verified for a generic epoxy - aerospace toughened epoxy is much higher (Hexcel 8552 neat 17.5 ksi = 121 MPa, 0.677 Msi = 4.67 GPa); 70 MPa is a reasonable conservative laminating-resin number but unsourced.",
+    "citation": "WWFE matrix table (Hinton/Kaddour/Soden) via NPTEL Module 7 Table 7.2; Autodesk Helius PFA Appendix A; Hexcel HexPly 8552 PDS Neat Resin Properties; ATCP ITC-06 Table 5 (Chawla)",
+    "url": "https://archive.nptel.ac.in/content/storage2/courses/101104010/lecture25/25_8.htm ; https://help.autodesk.com/cloudhelp/2024/ENU/HeliusPFA-Help/files/User-Guides/Material-Manager-User-s-Guide/HELIUS-PFA-UG-MG-APPENDIX-A.html ; https://hexcel.com/wp-content/uploads/2026/01/HexPly_8552_us_DataSheet.pdf ; https://www.sonelastic.com/images/ITC-06-IET-MOE-Composites-v1.4.pdf",
+    "location": "NPTEL Table 7.2 (3501-6: 4.2/1.567/0.34/45; BSL914C 4.0/1.481/0.35/55; LY556 & MY750 3.35/1.24/0.35/58); Helius epoxy rows; Hexcel 8552 PDS p.1 neat resin; ITC-06 Table 5 epoxy 2.5-4.0 GPa, 1.2-1.3 g/cc",
+    "confidence": "medium"
+   },
+   {
+    "key": "vinyl ester",
+    "verified": {
+     "E_GPa": 3.2,
+     "nu": null,
+     "rho": 1140,
+     "Xt_MPa": 86
+    },
+    "corrections": "Against Derakane 411-350 clear cast: E 3.4 -> 3.2 GPa (tensile; flexural is 3.4 GPa - catalog appears to have used flexural modulus); rho 1150 -> 1140; Xt 80 -> 86 MPa. nu 0.35 not in datasheet (unverified).",
+    "citation": "Ashland DERAKANE 411-350 Epoxy Vinyl Ester Resin Technical Datasheet, Doc 1228 V5 F2 (2015)",
+    "url": "https://www.aircraftspruce.ca/catalog/pdf/01-01076tds.pdf",
+    "location": "p.3 Clear cast resin properties: tensile strength 86 MPa, tensile modulus 3200 MPa, flexural modulus 3400 MPa, elongation 5-6%, density 1.14 g/cm3, HDT 105 C",
+    "confidence": "high"
+   },
+   {
+    "key": "PEEK",
+    "verified": {
+     "E_GPa": 4.0,
+     "nu": null,
+     "rho": 1300,
+     "Xt_MPa": 98
+    },
+    "corrections": "Against Victrex PEEK 450G: E 3.6 -> 4.0 GPa (ISO 527); Xt 97 -> 98 MPa (yield, 23C); rho 1300 matches (crystalline). nu 0.38 not on the datasheet (unverified). Note: CTE 45-55 ppm/K below Tg 143C. Older Victrex sheets quoted 3.6-3.7 GPa, so catalog 3.6 may be from a prior revision.",
+    "citation": "Victrex PEEK 450G datasheet",
+    "url": "https://www.victrex.com/en/downloads/datasheets/victrex-peek-450g",
+    "location": "Tensile Stress (Yield, 23C) 98.0 MPa ISO 527-2; Tensile Modulus (23C) 4000 MPa ISO 527-1; Density (Crystalline) 1.30 g/cm3; CLTE avg <143C 55 ppm/K",
+    "confidence": "high"
+   }
+  ],
+  "unresolved": "AS4_3501-6: Daniel & Ishai Table A.4 could not be opened, so the catalog row is unverified (alternates from WWFE and Herakovich recorded). T300_5208/Kevlar49_epoxy/Eglass_epoxy: Tsai & Hahn primary text not opened; values confirmed via secondary reproductions only. Scotchply rho 1800, Vf 0.45, alphas and t_ply 0.15 (Tsai & Hahn uses 0.125) unverified; Kevlar49_epoxy rho, Vf, alphas unverified, and a variant with Yc 25 MPa / alphas -2e-6, 60e-6 circulates. IM7_8552: CTEs not found; catalog mixes datasheet and NCAMP values - Yc 185 looks low vs NCAMP 286 MPa, E2 11.4 is datasheet-like vs NCAMP 8.96. Eglass_7781: G12 not extractable from NCAMP report (possible 0.33 Msi = 2.3 GPa, i.e. catalog 4.5 may be 2x too stiff); rho, Vf, alphas missing. CF_3K_twill: no true lamina-level qualification data for a 3K 2x2 twill found; vendor CLT cards used. Rock West CTE '2.00E-06' unit ambiguous (Imperial, likely 1/F). t_ply 0.22 unverified. Fibers: IM7 E2/G12/nu, Dyneema E2/G12/nu and stated density, glass fibre nu 0.22 not found in opened sources. Matrices: Poisson ratios for vinyl ester and PEEK and generic epoxy Xt 70 MPa unsourced. Downloads via curl to wichita.edu and apps.dtic.mil were blocked by the egress proxy; NCAMP values came through WebFetch text extraction (Table 3-3 for 7781 partially garbled)."
+ },
+ "fits_al_mg.json": [
+  {
+   "key": "6061-T6",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "6061-T6 (sheet) / 6061-T651 (plate) / 6061-T6511 (extruded bar) - all share the same AA typical properties",
+    "notes": "MatWeb's AA-typical datasheet is titled 'Aluminum 6061-T6; 6061-T651', i.e. T6 and T651 share one set of typical values. Hobby suppliers sell plate as T651 and bar/extrusions as T6/T6511; T651 only adds stress relief by stretching, so no change in catalog properties is needed."
+   },
+   "properties": {
+    "E_GPa": 68.9,
+    "nu": 0.33,
+    "rho": 2700,
+    "sy_MPa": 276,
+    "su_MPa": 310,
+    "elong": 0.12,
+    "uniform_elong": null,
+    "product_form": "AA typical; elongation 12% for 1.59 mm (1/16 in) sheet specimen, 17% for 12.7 mm (1/2 in) dia round specimen",
+    "source": "MatWeb 'Aluminum 6061-T6; 6061-T651' datasheet, values flagged 'AA; Typical' (Aluminum Association); nu listed as estimated from trends (not AA)",
+    "url": "https://www.matweb.com/search/DataSheet.aspx?MatGUID=b8d536e0b9b54bd7b69e4124d8f1d20a",
+    "location": "Mechanical/Physical properties table; modulus note says it is the tension/compression average and compression modulus is ~2% higher",
+    "notes": "Catalog values all match the AA typical values. elong=0.12 is the thin-sheet value; thick-section/bar value is 0.17. A cross-check (Liu 2005, ASM 'Mechanics and Mechanisms of Fracture' App. 7, Table A7.3 p.402, https://materialsdata.nist.gov/bitstream/handle/11115/177/Mecnanical%20Properties%20Data.pdf?sequence=3) lists 6061-T6 UTS 331 MPa, TYS 297 MPa, elong 14% (2 in gage); this is a different data set and was read from garbled table text, so it is lower confidence."
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps_p^n][1 + C ln(epsdot*)][1 - T*^m]",
+     "params": {
+      "A_MPa": 324,
+      "B_MPa": 114,
+      "n": 0.42,
+      "C": 0.002,
+      "m": 1.34,
+      "Tmelt_K": 856,
+      "Tref_K": 293,
+      "epsdot0_per_s": null
+     },
+     "units_note": "A and B in MPa. Tmelt 856 K is from the Al-Badour et al. 2014 table as reproduced in the JMSG paper. Tref 293 K is from the iSALE wiki/Pierazzo et al. 2008. The reference strain rate is not stated in the secondary sources opened; it is usually 1 s^-1 in JC tables, but that was NOT verified here.",
+     "strain_measure": "true plastic (equivalent plastic strain), standard JC convention",
+     "valid_range": "not stated in the secondary sources",
+     "test_conditions": "Original test data not seen; the primary source could not be opened",
+     "citation": "Widely re-tabulated set. Seen in: (1) Al-Badour et al. 2014 as reproduced in Table 4 of 'Effects of tool offset, pin offset, and alloys position on maximum temperature in dissimilar FSW of AA6061 and AA5086', J. Mater. Sci.: Mater. Eng. (Springer Open, 2020); (2) Table 3 of 'Milling Force Model for Aviation Aluminum Alloy: Academic Insight and Perspective Analysis', Chin. J. Mech. Eng. (2021) [their ref 106]; (3) Pierazzo et al. 2008, Meteoritics & Planetary Science 43:1917-1938 (iSALE benchmark). arXiv:2304.05231 attributes the set to Lesuer, Kay & LeBlanc, 'Modeling large-strain, high-rate deformation in metals', LLNL UCRL-JC-134118 (2001), but its text is corrupted and gives A = 334 MPa (probably an OCR or typo for 324).",
+     "url": "https://jmsg.springeropen.com/articles/10.1186/s40712-020-00118-y/tables/4",
+     "location": "JMSG Table 4 (AA6061 row); CJME Table 3 (https://cjme.springeropen.com/articles/10.1186/s10033-021-00536-9/tables/3); iSALE wiki (https://github-wiki-see.page/m/isale-code/isale-wiki/wiki/Cratering-in-Aluminum-6061)",
+     "confidence": "medium",
+     "notes": "This is the de facto standard 6061-T6 JC set, and three independent secondary sources agree on A/B/n/C/m. The primary report (Lesuer et al. UCRL-JC-134118, or Johnson & Holmquist 1989 LA-11463-MS) could not be opened, so the original table/page is unverified. B = 114 MPa with n = 0.42 gives very low hardening (flow stress about 382 MPa at eps_p = 0.2), which is reasonable for 6061-T6. The low C = 0.002 means near rate-insensitivity."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma_Y = [A + B*eps_p_bar^n][1 + epsdot*]^C [1 - (T*)^m]  (modified JC, power-law rate term, Kang et al. 1999 form; Eq. 2)",
+     "params": {
+      "A_MPa": 245,
+      "B_MPa": 233,
+      "n": 0.34,
+      "C": 0.03,
+      "epsdot0_per_s": 0.01,
+      "m": null,
+      "Tmelt_K": null
+     },
+     "units_note": "MPa. The rate term is the POWER-LAW form (1+epsdot*)^C, not the logarithmic form, so C is not interchangeable with log-form JC C values. Temperature term not used.",
+     "strain_measure": "equivalent plastic strain (true)",
+     "valid_range": "quasi-static tensile data at 0.01 s^-1 for A, B, n; C from ball-impact energy method",
+     "test_conditions": "Room temperature; MTS-810 tensile tests at 0.01 s^-1 per ISO 26203-2; 6061-T6 plate 3/6/8 mm thick. Paper Table 3 gives E = 68.3 GPa, nu = 0.33, rho = 2713 kg/m3",
+     "citation": "Byun S-W, Joo Y-J, Lee S-Y, Kim S-W (2023). Experimental and Numerical Study on the Perforation Behavior of an Aluminum 6061-T6 Cylindrical Shell. Materials 16(21):7055. doi:10.3390/ma16217055",
+     "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10650735",
+     "location": "Table 2 (MJC constants), Eq. 2, Table 3 (elastic/physical)",
+     "confidence": "medium",
+     "notes": "Primary peer-reviewed source, fitted to the authors' own tests. Its A = 245 MPa is below the AA typical yield of 276 MPa; that may reflect the plate lot or the fit choice. Cockcroft-Latham Wc = 58.5 MPa is also given."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.nist.gov/od/id/mds2-3090",
+     "description": "NIST 'Dynamic compressive stress-strain curves of aluminum alloy 6061-T6 with rapid heating'. Raw strain, stress and strain-rate curves from a pulse-heated Kolsky bar, 2400-2700 s^-1, initial temperature 23-527 C, 6 mm dia x 3 mm cylinders. Files: https://data.nist.gov/od/ds/mds2-3090/Datafiles_aluminum_6061T6.zip ; https://data.nist.gov/od/ds/mds2-3090/Datafile_master_list_6061T6.csv ; https://data.nist.gov/od/ds/mds2-3090/4655_analyzed_w_unc.csv ; README https://data.nist.gov/od/ds/mds2-3090/README_6061_Data_Pub.txt. Related papers: Mates et al. 2008 doi:10.1007/s11340-008-9137-1."
+    }
+   ],
+   "unresolved": "No MMPDS/MIL-HDBK-5 Ramberg-Osgood n for 6061-T6 could be opened: MIL-HDBK-5J/MMPDS PDFs on EverySpec were not reachable (proxy 403), and NACA TN-902 has no 61S-T data. The primary JC report (Lesuer et al. UCRL-JC-134118 / Johnson-Holmquist LA-11463-MS) could not be opened, so the reference strain rate for set 1 is unverified. Manes et al. 2011 (Procedia Eng., doi:10.1016/j.proeng.2011.04.573), a 6061-T6 JC fit, was blocked (ScienceDirect permission prompt timed out). No uniform elongation found. No quasi-static tensile raw CSV found for 6061-T6."
+  },
+  {
+   "key": "7075-T6",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "7075-T6 for sheet; 7075-T651 for plate (what hobby suppliers actually sell as 'plate' and most bar). Catalog values hold for both.",
+    "notes": "NASA-CR-123773 groups T6 and T651 under the same typical Ftu/Fty/elongation. AMS 4045 covers '7075-T6 sheet, -T651 plate'. Builders cutting wedges or armor from plate will nearly always get T651, which is stretch stress-relieved T6 with the same nominal properties. Brar et al. 2009 report separate JC sets for T651 and T6 that differ mainly in C (0.017 vs 0.059) and in fracture constants, so pick the set matching the stock actually bought."
+   },
+   "properties": {
+    "E_GPa": 71.7,
+    "nu": 0.33,
+    "rho": 2810,
+    "sy_MPa": 503,
+    "su_MPa": 572,
+    "elong": 0.11,
+    "uniform_elong": null,
+    "product_form": "T6/T651 sheet and plate, typical values; elongation on a 2 in (50.8 mm) gage",
+    "source": "Muraca R.F., Whittick J.S. (1972). Materials Data Handbook: Aluminum Alloy 7075, 2nd ed. NASA-CR-123773, Western Applied Research & Development for NASA MSFC",
+    "url": "https://ntrs.nasa.gov/api/citations/19720022809/downloads/19720022809.pdf",
+    "location": "Tabular Abstract, p. iv: E (tension) typical 10.4e3 ksi (= 71.7 GPa); Ftu 83.0 ksi (= 572 MPa); Fty 73.0 ksi (= 503 MPa); elongation 11% (2 in). Sec. 7.122 gives design E 10.3e3 ksi (71.0 GPa).",
+    "notes": "Catalog E/sy/su/elong match exactly. The OCR of the Ftu digits was flagged as slightly garbled, but 83 ksi is consistent with the catalog's 572 MPa. Density and nu were not verified in the pages opened; 2810 and 0.33 are standard AA values. Cross-check: Liu 2005 (ASM) Table A7.1 gives 7075-T651 plate UTS 552 MPa, TYS 476 MPa, elong 7%, E 71.07 GPa; these are thick-plate values, lower than typical sheet. Li et al. 2021 measured E = 67.6 GPa on 2 mm sheet."
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps_p^n][1 + C ln(epsdot*)][1 - T*^m]  (standard JC strength model)",
+     "params": {
+      "T6": {
+       "A_MPa": 546,
+       "B_MPa": 674,
+       "n": 0.72,
+       "C": 0.059,
+       "m": 1.56
+      },
+      "T651": {
+       "A_MPa": 527,
+       "B_MPa": 676,
+       "n": 0.71,
+       "C": 0.017,
+       "m": 1.61
+      },
+      "fracture_T6": {
+       "D1": 0.451,
+       "D2": -0.952,
+       "D3": -0.068,
+       "D4": 0.036,
+       "D5": 0.697
+      },
+      "fracture_T651": {
+       "D1": 0.11,
+       "D2": 0.573,
+       "D3": -3.4446,
+       "D4": 0.016,
+       "D5": 1.099
+      },
+      "Tmelt_K": null,
+      "Tref_K": null,
+      "epsdot0_per_s": null
+     },
+     "units_note": "A and B in MPa. Tmelt, Tref and the reference strain rate are not given in the abstract; they are in the full paper (AIP Conf. Proc. 1195, 945 (2009)), which was not opened.",
+     "strain_measure": "true plastic (equivalent plastic strain), JC convention",
+     "valid_range": "Tension tests at room temperature up to 250 C, quasi-static and high strain rates",
+     "test_conditions": "Tension tests, RT to 250 C. Fracture constants from smooth and notched tension specimens at quasi-static and high rate/high temperature. University of Dayton Research Institute / NSWC Indian Head.",
+     "citation": "Brar N.S., Joshi V.S., Harris B.W. (2009). Constitutive Model Constants for Al7075-T651 and Al7075-T6. APS Topical Conference on Shock Compression of Condensed Matter (SCCM 2009), abstract B5.2; full paper AIP Conf. Proc. 1195, 945-948",
+     "url": "https://meetings-archive.aps.org/shock/2009/b5/2",
+     "location": "APS meeting abstract (constants listed in the abstract)",
+     "confidence": "high",
+     "notes": "These are the most-cited 7075 JC sets. Values were read from the official APS abstract page. Before relying on rate effects, confirm the reference strain rate and Tmelt in the AIP paper. (Some secondary tables show a different 7075-T651 set, A = 448.5, B = 476, n = 0.3948, C = 0.0012, m = 1.29, from a machining paper; it is not recommended for impact.)"
+    },
+    {
+     "model": "swift",
+     "equation_as_published": "k(p) = alpha*k_S + (1-alpha)*k_V, with Swift k_S = A(eps0 + p)^n and Voce k_V = k0 + Q(1 - exp(-beta*p))  (Eqs. 3-5, mixed Swift-Voce)",
+     "params": {
+      "A_MPa": 855,
+      "eps0": 0.026,
+      "n": 0.15,
+      "k0_MPa": 502,
+      "Q_MPa": 194,
+      "beta": 10.08,
+      "alpha": 0.5,
+      "JC_rate_temp_multipliers": {
+       "C": 0.011,
+       "epsdot0_per_s": 0.001,
+       "m": 1.23,
+       "Tr_C": 20,
+       "Tm_C": 477
+      }
+     },
+     "units_note": "MPa. The Swift/Voce forms were reconstructed from the paper's description because symbols were lost in text extraction. The parameter values and their assignment are from Table 1. The rate and temperature multipliers (Table 2) are JC-type, with Tm = 477 C (the paper's fitting value, NOT the physical solidus).",
+     "strain_measure": "true stress vs equivalent plastic strain (curves truncated at force maximum)",
+     "valid_range": "Fitted to the RT quasi-static curve; the rate/temperature fit covers 20-360 C and 0.001 to ~110-150 s^-1",
+     "test_conditions": "AA7075-T6, 2 mm sheet, waterjet-cut; 10x40 mm gauge (low/intermediate rate), SHPB with load-inversion device (high rate); induction heating 30 K/s. Reported E = 67.6 GPa, nu = 0.33, rho = 2780 kg/m3",
+     "citation": "Li X., Pandya K., Karathanasopoulos N., Roth C.C., Mohr D. (2021). Plasticity and fracture of aluminium 7075 at high strain rates and elevated temperatures. EPJ Web of Conferences 250, 05007 (DYMAT 2021)",
+     "url": "https://www.epj-conferences.org/articles/epjconf/pdf/2021/04/epjconf_dymat2021_05007.pdf",
+     "location": "Table 1 (Swift-Voce), Table 2 (JC multipliers), Eqs. 2-7",
+     "confidence": "medium",
+     "notes": "Open-access ETH Zurich (Mohr group) fit. Swift-Voce mixing gives better large-strain extrapolation than pure power law. Use it for the strain-hardening shape and Brar for JC-format codes. The paper says JC rate/temperature scaling is outperformed by its neural-network model."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.nist.gov/od/id/mds2-3807",
+     "description": "NIST 'Dynamic Compressive Stress-Strain Curves of Aluminum 7075-T6 Between 20 C and 410 C with Rapid Heating': raw strain, stress and strain-rate curves from a pulse-heated Kolsky bar, 1100-5300 s^-1. Zip: https://data.nist.gov/od/ds/mds2-3807/Datafiles_7075T6.zip ; master list: https://data.nist.gov/od/ds/mds2-3807/Datafile_master_list_7075T6.csv ; README: https://data.nist.gov/od/ds/mds2-3807/README_7075T6_Data_Pub.txt"
+    },
+    {
+     "url": "https://data.mendeley.com/datasets/3fvcxffddk/1",
+     "description": "Mendeley Data 'Al7075_tensile_data.xlsx' (DOI 10.17632/3fvcxffddk.1): tensile stress-strain at 1e-3 and 1 s^-1, before and after hydrogen charging. Temper not stated on the landing page, so verify before use. Licence not stated."
+    }
+   ],
+   "unresolved": "No MMPDS/MIL-HDBK-5 Ramberg-Osgood n for 7075-T6 found: the handbook PDFs could not be fetched (EverySpec blocked by proxy), and NACA TN-902's 75S-T data were illegible in the OCR. No uniform elongation found: Honeycutt 1970 (RS-TR-70-6, DTIC AD0875636) tabulates uniform elongation for 7075-T6 sheet, but its tables are illegible in the OCR. The full Brar 2009 AIP paper (reference rate, Tmelt) was not opened."
+  },
+  {
+   "key": "2024-T3",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "2024-T3 for sheet up to about 6.3 mm (the common aircraft sheet temper). Thicker plate is sold as 2024-T351.",
+    "notes": "Lesuer (DOT/FAA/AR-00/25, Sec. 2.1, p. 3) notes that T3 applies to flat sheet under 6.3 mm and T351 to plate, with virtually identical yield/tensile strength for plate under 51 mm. 2024 is less common in hobby combat-robot stock than 6061/7075, and it is mostly sold as thin aircraft sheet (often Alclad). Alclad sheet has slightly lower strength than bare, so flag it if a builder buys Alclad."
+   },
+   "properties": {
+    "E_GPa": 73.1,
+    "nu": 0.33,
+    "rho": 2780,
+    "sy_MPa": 345,
+    "su_MPa": 483,
+    "elong": 0.18,
+    "uniform_elong": null,
+    "product_form": "Bare 2024-T3 sheet, typical values",
+    "source": "Gabrian International '2024 Aluminum Alloy Properties' datasheet (typical; no primary source cited) for E/rho/sy/su. Cross-checked against Lesuer 2000 DOT/FAA/AR-00/25 Table 2 (manufacturer certs for the tested 4 mm 2024-T3 plate: TYS 327-330 MPa, UTS 474-477 MPa, elongation 16.0-18.2%) and Table 7 (rho = 2770 kg/m3, cp = 875 J/kg-K, Tmelt = 502 C).",
+    "url": "https://www.gabrian.com/wp-content/uploads/2018/10/2024-Aluminum-Alloy-Properties.pdf",
+    "location": "Gabrian datasheet property table; Lesuer report Table 2 p.4 and Table 7 p.18 (https://corpora.tika.apache.org/base/docs/govdocs1/925/925499.pdf)",
+    "notes": "Catalog values (73.1/345/483/0.18) match AA-typical numbers as reproduced by Gabrian, and are consistent with the Princeton MAE324 glossary (TYS 345, UTS 485, elongation 18% on a 50 mm gage). A primary AA/ASM/MMPDS page could not be opened: MatWeb datasheet GUIDs for 2024-T3 failed and asm.matweb.com is blocked by robots. Real lots (Lesuer's Kaiser plate) run about 5% below typical yield. nu not verified directly; 0.33 is standard. Lesuer gives 2770 kg/m3 vs catalog 2780; the difference is negligible."
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln eps*][1 - T*^m], eps* = epsdot_p / 1.0 s^-1, T* = (T - 298)/(Tmelt - 298)  (Eqs. 1-2)",
+     "params": {
+      "A_MPa": 369,
+      "B_MPa": 684,
+      "n": 0.73,
+      "C": 0.0083,
+      "m": 1.7,
+      "Tmelt_C": 502,
+      "Tref_K": 298,
+      "epsdot0_per_s": 1.0,
+      "fracture": {
+       "D1": 0.13,
+       "D2": 0.13,
+       "D3": -1.5,
+       "D4": 0.011,
+       "D5": 0.0
+      }
+     },
+     "units_note": "A and B in MPa; Tmelt in C (Table 7); reference strain rate 1.0 s^-1 per the text of Eq. 1",
+     "strain_measure": "true (effective) plastic strain",
+     "valid_range": "A, B, n from the report's own split Hopkinson bar data; C and m from literature plus current data. High-rate impact (FAA engine-fragment containment).",
+     "test_conditions": "2024-T3, Kaiser Aluminum (Trentwood) 4 mm thick plate; SHPB tension/compression at various rates and temperatures",
+     "citation": "Lesuer D.R. (2000). Experimental Investigations of Material Models for Ti-6Al-4V Titanium and 2024-T3 Aluminum. DOT/FAA/AR-00/25, FAA / LLNL, Sept 2000. An earlier LLNL version, 'Experimental Investigations of Material Models for Ti-6Al-4V and 2024-T3' (UCRL-ID-1346xx, May 1999; number partly illegible), is at https://digital.library.unt.edu/ark:/67531/metadc623770/m2/1/high_res_d/11977.pdf with the same Tables 6 and 8 on pp. 16-17.",
+     "url": "https://corpora.tika.apache.org/base/docs/govdocs1/925/925499.pdf",
+     "location": "Table 8, p. 18 (new constants); Eq. 1 p. 2; Table 7 p. 18 (physical)",
+     "confidence": "high",
+     "notes": "Primary government report, read directly. n = 0.73 with B = 684 MPa gives a nearly linear hardening curve that rises steeply at large strain. Check that it does not over-predict flow stress beyond about 0.2 plastic strain (at eps_p = 0.2: 369 + 684*0.2^0.73 = about 580 MPa true)."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln eps*][1 - T*^m]  (same Eq. 1)",
+     "params": {
+      "A_MPa": 265,
+      "B_MPa": 426,
+      "n": 0.34,
+      "C": 0.015,
+      "m": 1.0,
+      "Tmelt_C": 502,
+      "epsdot0_per_s": 1.0,
+      "fracture": {
+       "D1": 0.13,
+       "D2": 0.13,
+       "D3": -1.5,
+       "D4": 0.011,
+       "D5": 0.0
+      }
+     },
+     "units_note": "MPa",
+     "strain_measure": "true (effective) plastic strain",
+     "valid_range": "From six torsion tests at shear strain rates of 0.088 to 123 s^-1",
+     "test_conditions": "2024-T351 plate, torsion (original Johnson-Cook calibration)",
+     "citation": "Original JC 2024-T351 set: Johnson, Hoegfeldt, Lindholm & Nagy (1983) and Lindholm & Johnson (1982), as tabulated in Lesuer (2000) DOT/FAA/AR-00/25",
+     "url": "https://corpora.tika.apache.org/base/docs/govdocs1/925/925499.pdf",
+     "location": "Lesuer Table 6, p. 17",
+     "confidence": "high",
+     "notes": "The classic 'Johnson-Cook 2024-T351' set; Lesuer shows that it under-predicts the 2024-T3 flow stress. A = 265 MPa is well below the actual T3 yield (about 330-345 MPa). Prefer the 369/684/0.73 set for T3 sheet. The CJME milling review lists a variant, A = 325, B = 414, n = 0.2, C = 0.015, m = 1, which is not verified at its primary source."
+    },
+    {
+     "model": "ramberg_osgood",
+     "equation_as_published": "Ramberg-Osgood law with E, sigma_0.7E (stress at the 0.7E secant) and exponent n (Eq. 1; standard NACA TN-902 form eps = sigma/E + (3/7)(sigma_0.7/E)(sigma/sigma_0.7)^n). The exact typeset form was garbled in the extraction.",
+     "params": {
+      "E_GPa": 71,
+      "nu": 0.33,
+      "sigma_0p7_MPa": 320,
+      "n": 12
+     },
+     "units_note": "GPa/MPa. To convert to the MMPDS form eps = sigma/E + 0.002(sigma/Fty)^n, use the same n with Fty ~ sigma_0.7 * (0.002*7E/(3*sigma_0.7))^(1/n); this was NOT done by the source.",
+     "strain_measure": "engineering total strain (small-strain RO)",
+     "valid_range": "Small-strain elastic-plastic fracture analysis; not for large strain",
+     "test_conditions": "Input values for a 2024-T3 plate model in a p-version FE elastic-plastic multi-site-damage analysis; the source does not say whether they came from MIL-HDBK-5 or tests",
+     "citation": "Actis R.L., Szabo B.A. (1994). Elastic-plastic models for multi-site damage. In: FAA/NASA International Symposium on Advanced Structural Integrity Methods for Airframe Durability and Damage Tolerance, NASA CP-3274, NTRS 19950008040",
+     "url": "https://ntrs.nasa.gov/api/citations/19950008040/downloads/19950008040.pdf",
+     "location": "p. 8 (material, Sy = 330 MPa, E = 71 GPa) and p. 9 (RO: E = 71 GPa, nu = 0.33, sigma_0.7E = 320 MPa, n = 12)",
+     "confidence": "low",
+     "notes": "These are analysis inputs, not a documented fit, and their provenance is unstated. Treat as a plausible sanity check for the knee shape only."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No MMPDS/MIL-HDBK-5 Ramberg-Osgood n for 2024-T3 sheet: the handbook PDFs were unreachable (EverySpec blocked; the vdoc.pub copy of MIL-HDBK-5H has only chapter 1 text). NACA TN-902 shows 24S-T n of about 7.6-9.9 in figures, but the OCR is too garbled to cite reliably. No uniform elongation found. No open raw tensile CSV for 2024-T3 found: the MSU ICME 2024-T3 page is fatigue only with no data files, and NIST has nothing for this temper. A primary AA-typical datasheet could not be opened (MatWeb GUID unknown, ASM MatWeb blocked)."
+  },
+  {
+   "key": "5052-H32",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "5052-H32 (strain-hardened and stabilized, quarter-hard): the standard commercial sheet temper and the one sold by OnlineMetals, McMaster, SendCutSend and others",
+    "notes": "5052 is not heat-treatable, so H32 is the right default for sheet. H34 (stronger) and O (annealed) exist but are less common. Thicker 5052 plate is sometimes H32 and sometimes H34. AMS 4016 covers 5052-H32 sheet and plate."
+   },
+   "properties": {
+    "E_GPa": 70.3,
+    "nu": 0.33,
+    "rho": 2680,
+    "sy_MPa": 193,
+    "su_MPa": 228,
+    "elong": 0.12,
+    "uniform_elong": null,
+    "product_form": "AA typical; elongation 12% at 1.59 mm (1/16 in) sheet thickness, 18% on a 12.7 mm (1/2 in) dia specimen",
+    "source": "Protolabs / Clinton Aluminum 5052-H32 datasheet reproducing Aluminum Association typical values (labelled 'AA; Typical', NOT FOR DESIGN); MatWeb-format datasheet",
+    "url": "https://Protolabs.com/media/iw0mfa0k/datasheet-sm-aluminum5052-h32.pdf",
+    "location": "Datasheet property table: density 2.68 g/cc, E 70.3 GPa (tension/compression average), nu 0.33 (unsourced), TYS 193 MPa, UTS 228 MPa, elongation 12% (1.59 mm) / 18% (12.7 mm dia)",
+    "notes": "Every catalog value matches the AA typical values exactly. Real H32 sheet often tests higher: the Badke et al. 2022 lot below measured TYS 155-171 MPa and UTS 265-274 MPa, showing the large lot-to-lot scatter in UTS for strain-hardened tempers. The catalog su = 228 MPa may be conservative versus actual stock."
+   },
+   "fits": [
+    {
+     "model": "hollomon",
+     "equation_as_published": "sigma = K * eps^n  (Table 5; fitted to the true stress-strain curves of Fig. 6, uniform-hardening region)",
+     "params": {
+      "RD_0deg": {
+       "K_MPa": 328.5,
+       "n": 0.1127
+      },
+      "RD_45deg": {
+       "K_MPa": 327.48,
+       "n": 0.1097
+      },
+      "RD_90deg": {
+       "K_MPa": 334.23,
+       "n": 0.132
+      },
+      "RD_30deg": {
+       "K_MPa": 328.91,
+       "n": 0.119
+      },
+      "RD_60deg": {
+       "K_MPa": 328.09,
+       "n": 0.1137
+      }
+     },
+     "units_note": "K in MPa; R^2 = 0.9955-0.9994; reported scatter on n is +/-0.002 to 0.019",
+     "strain_measure": "true stress vs true strain (the paper does not say whether this is total or plastic strain; Hollomon is normally applied to true total strain in the plastic range)",
+     "valid_range": "Uniform plastic range up to necking only",
+     "test_conditions": "AA5052-H32 cold-rolled plate, 2.5 mm thick, quasi-static tensile, 5 orientations to RD; measured TYS 155-171 MPa, UTS 265-274 MPa, E 73.6-76.4 GPa (Table 2)",
+     "citation": "Badke J.B., dos Santos T., Scheuer C.J., Goulart K.A.L., de Almeida D.T. (2022). Microstructural and Mechanical Characterization of 5052-H32 Aluminum Alloy. CONEM2022-0029, XI Congresso Nacional de Engenharia Mecanica (ABCM), Teresina, Brazil",
+     "url": "https://www.sistema.abcm.org.br/articleFiles/download/34350",
+     "location": "Tables 4 and 5 (Hollomon K, n); Table 2 (tensile properties)",
+     "confidence": "low",
+     "notes": "Conference paper, not journal-reviewed. Its Table 2 elongation appears as about 3.6-4.3%, which is implausible for 5052-H32 (AA typical is 12%); this may be a decimal or extraction artifact, or a uniform-strain value, and it makes the table suspect. The K and n values are plausible: at eps = 0.1, sigma = 328.5*0.1^0.1127 = about 254 MPa. Use only as a shape check."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps_p^N][1 + C ln(epsdot*)][1 - T*^m]",
+     "params": {
+      "A_MPa": 176.6,
+      "B_MPa": 289.4,
+      "n": 0.3712,
+      "C": 0.001,
+      "m": 1.0,
+      "epsdot0_per_s": 1.0,
+      "Tmelt_K": null
+     },
+     "units_note": "The table gives no units; MPa is assumed from magnitude. Tmelt not shown.",
+     "strain_measure": "true plastic (JC convention)",
+     "valid_range": "not stated",
+     "test_conditions": "Unknown: temper NOT specified ('AA5052'); used as a crash-simulation input",
+     "citation": "'Modeling and numerical simulation of car frontal crash test using finite element method', Journal of Materials Science: Materials in Engineering (SpringerOpen), 2025, article s40712-025-00326-4, Table 2. Authors and primary source not visible: the article page fetch was blocked.",
+     "url": "https://jmsg.springeropen.com/articles/10.1186/s40712-025-00326-4/tables/2",
+     "location": "Table 2",
+     "confidence": "low",
+     "notes": "A = 176.6 MPa is close to the 5052-H32 typical yield (193 MPa), suggesting an H32-like temper, but this is unverified. A + B = 466 MPa at eps_p = 1 is plausible. C = 0.001 is consistent with 5xxx alloys being nearly rate-insensitive or slightly negative (the ASCE study doi:10.1061/(ASCE)MT.1943-5533.0003154 reports NEGATIVE strain-rate sensitivity and PLC serrations for Al5052-H32)."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No peer-reviewed journal JC/Swift/Voce fit specific to 5052-H32 was opened. Candidate: 'Tensile, Compressive, and Flexural Behaviors of Al5052-H32 in a Wide Range of Strain Rates and Temperatures', J. Mater. Civ. Eng. 32(5), 2020 (doi:10.1061/(ASCE)MT.1943-5533.0003154). Its abstract shows no constants and the full text is paywalled. No MMPDS Ramberg-Osgood n, no uniform elongation, and no open raw stress-strain data found for 5052-H32. The primary-source page of the JMSG 2025 article was blocked (permission prompt timeout)."
+  },
+  {
+   "key": "AZ31B",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "AZ31B-H24 (cold rolled, partially annealed; AMS 4377): the standard sheet/plate temper sold by OnlineMetals and others. AZ31B-O is the annealed alternative.",
+    "notes": "The catalog strength values look like a MIX of spec minimums and typical values, not a consistent typical set. AMS 4377 minimums for 0.016-0.249 in sheet: UTS 39 ksi (269 MPa), TYS 29 ksi (200 MPa), elongation 6%. Strength minimums fall with thickness: 0.5-1.0 in gives 36/22 ksi = 248/152 MPa. The catalog's sy = 200 equals the thin-sheet minimum, but su = 260 is BELOW the thin-sheet minimum (269 MPa), and elong = 0.15 is a typical, not minimum, value. Suggested typical set: sy about 214 MPa (31 ksi), su about 290 MPa (42 ksi), elong about 0.16. Suggested conservative minimum set: sy 200, su 269, elong 0.06. For thick plate, use the thickness-dependent minimums. CRITICAL for simulation: wrought AZ31B is strongly tension/compression asymmetric because of twinning, with compressive yield well below tensile yield in the rolling plane, plus anisotropy. A single isotropic von Mises curve will mispredict compression-dominated contact."
+   },
+   "properties": {
+    "E_GPa": 45.0,
+    "nu": null,
+    "rho": 1771,
+    "sy_MPa": 214,
+    "su_MPa": 290,
+    "elong": 0.16,
+    "uniform_elong": null,
+    "product_form": "AZ31B-H24 sheet; room-temperature values at 70 F",
+    "source": "Metal Suppliers Online 'Magnesium Alloys AZ31B' property page (cites ASTM B90/B91/B107): UTS 42, TYS 31 (ksi), elongation 16%, density 0.064 lb/in3. Minimums from aircraftmaterials.com AZ31B page citing AMS 4377: 39/29 ksi, 6% (0.016-0.249 in). Smiths High Performance AZ31B-H24 datasheet minimums: Rp0.2 200 MPa, Rm 270 MPa, A5.65 5% (0.5-6.3 mm). E = 45.0 GPa measured by Yang et al. 2018 (MATEC 153, 01004) and listed by MakeItFrom.",
+    "url": "https://suppliersonline.com/propertypages/AZ31B.asp",
+    "location": "SuppliersOnline typical table (70 F row); https://aircraftmaterials.com/data/magnesium/az31b.html (AMS 4377 table by thickness); https://www.smithshp.com/assets/pdf/magnesium/az31b-magnesium-english.pdf (minimums)",
+    "notes": "The density 0.064 lb/in3 = 1771 kg/m3 confirms the catalog's 1770. E = 45 GPa is confirmed. nu is NOT verified: catalog 0.35 (the common ASM value) vs MakeItFrom 0.29 (unsourced). Keep 0.35 pending an ASM source. The aircraftmaterials table is headed 'Typical' but its values equal AMS 4377 minimums, so treat it as minimum. None of these sources is a primary ASM/MMPDS page, so overall confidence is medium."
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = (A + B*eps_p^N)(1 + C ln(epsdot/epsdot0))  (Eq. 2; temperature term dropped)",
+     "params": {
+      "A_MPa": 91.487,
+      "B_MPa": 4353.112,
+      "n": 1.353,
+      "C": 0.033,
+      "epsdot0_per_s": 0.0021,
+      "m": null,
+      "Tmelt_K": null
+     },
+     "units_note": "A in MPa. B units not stated (presumably MPa). The reference strain rate is the quasi-static COMPRESSION rate.",
+     "strain_measure": "plastic strain (stated as eps_p); true vs engineering not stated",
+     "valid_range": "Compression, 2.1e-3 s^-1 quasi-static and SHPB 1389-7296 s^-1, room temperature",
+     "test_conditions": "AZ31B-H24 from a Chinese commercial supplier; product form and orientation not stated. Quasi-static compression on 13x25 mm cylinders (ASTM E9); SHPB on 5x5 mm. Tension measured E 45.0 GPa, Rp0.2 147.5 MPa, UTS 194.6 MPa, elongation 1.25% (sic).",
+     "citation": "Yang Y., Chen J., Lan F., Zeng W., Ma Z. (2018). Constitutive Parameters Identification of AZ31B-H24 Magnesium Alloy and Energy-Absorption Analysis in Structural Panel Use. MATEC Web of Conferences 153, 01004 (ICMME 2017). doi:10.1051/matecconf/201815301004",
+     "url": "https://www.matec-conferences.org/articles/matecconf/pdf/2018/12/matecconf_icmme2018_01004.pdf",
+     "location": "Section 4 text and Conclusions (no table); Eq. 2; Section 3.1 for quasi-static properties",
+     "confidence": "low",
+     "notes": "USE WITH CAUTION. This is a COMPRESSION fit with n > 1, which captures the sigmoidal twinning-then-slip hardening of Mg in compression: very low A, then steep upturn. It is NOT a tensile curve and it diverges at large strain. The reported tensile properties (TYS 148, UTS 195, elongation 1.25%) are far below AZ31B-H24 spec minimums, which suggests an off-spec lot or a specimen problem. Useful only as a qualitative indication of compression asymmetry and rate sensitivity (C = 0.033)."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No reliable tensile JC/Swift/Voce fit for AZ31B-H24 sheet was opened. The best candidate is Hasenpouth D. (2010), MASc thesis 'Tensile High Strain Rate Behavior of AZ31B Magnesium Alloy Sheet', University of Waterloo (UWSpace https://uwspace.uwaterloo.ca/handle/10012/5449). It reportedly contains JC and Zerilli-Armstrong fits for AZ31B-O and -H24 sheet, but UWSpace's bot-check (Anubis) blocked fetching, so its values are unverified and NOT included. No MMPDS Ramberg-Osgood n, no uniform elongation, and no open raw data found. The MSU ICME AZ31 sheet pages (https://www.cavs.msstate.edu/icme/Magnesium/MSF/AZ31Sheet.php) are fatigue calibrations with figure images only. A primary ASM/MMPDS typical-property page (including nu and compressive yield) could not be opened, and the WebSearch budget for this session ran out before more AZ31B sources could be searched."
+  }
+ ],
+ "fits_armor_tool.json": [
+  {
+   "key": "AR500",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Keep AR500 (generic through-hardened ~500 BHN quench-and-temper wear plate). Catalog yield 1250 / UTS 1640 / 8% sits within the published range: Armox 500T supplier minimums (Rp0.2 >= 1250, Rm 1450-1750, A5 >= 8%) and Chapel AR500F typicals (yield 187 ksi = 1289 MPa, UTS 247 ksi = 1703 MPa). Use E = 207 GPa (Nilsson Table 2) rather than 205 if you want to match the JC source.",
+    "notes": "AR500 is not a standardized grade; it is a distributor/mill hardness designation (BHN 477-534 nominal by some vendors; Chapel lists 470-530 typical, 450 min / 500 nominal). Hardox 500 hardness is 470-530 HBW (sheet 2-7 mm and plate 4-32 mm), 450-540 HBW for 32.1-103 mm, typical yield 1400 MPa (not guaranteed); SSAB's web page lists no UTS or elongation. Armox 500T is an armor grade (480-540 HBW) with tighter toughness specs. No published constitutive fit exists for generic 'AR500'; the nearest fits are for Armox 500T (same hardness class). Hardox 500 JC fits were not found in an openly readable source."
+   },
+   "properties": {
+    "E_GPa": 207,
+    "nu": null,
+    "rho": 7850,
+    "sy_MPa": 1250,
+    "su_MPa": "1450-1750",
+    "elong": 0.08,
+    "uniform_elong": null,
+    "hardness": "480-540 HBW (Armox 500T); Hardox 500 470-530 HBW; AR500F 470-530 typical",
+    "product_form": "plate (Nilsson tested specimens from the middle of a 10 mm Armox 500T plate)",
+    "source": "Nilsson M., 'Constitutive Model for Armox 500T and Armox 600T at Low and Medium Strain Rates', FOI-R--1068--SE, Swedish Defence Research Agency, Dec 2003: Table 1 (supplier data: Rp0.2 1250 min, Rm 1450-1750, A5 8% min, 480-540 HBW) and Table 2 (E 207 GPa, rho 7850, cp 450 J/kgK, Tm 1800 K; nominal and not validated by testing). Cross-checks: SSAB Hardox 500 product page (470-530 HBW, typical yield 1400 MPa, CVN 37 J at -40 C); Chapel Steel AR500F page (typical yield 187 ksi, tensile 247 ksi, elongation 11.1% in 8 in., 470-530 BHN typical).",
+    "url": "https://www.foi.se/rest-api/report/FOI-R--1068--SE ; https://www.ssab.com/en/products/brands/hardox/products/hardox-500 ; https://chapelsteel.com/ar500-ar500f.html",
+    "location": "FOI-R--1068--SE Table 1 and Table 2 (p. 11); SSAB web page mechanical properties section; Chapel AR500F typical properties table"
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln(epsdot/epsdot0)][1 - T*^m], T* = (T - T0)/(Tmelt - T0)  (Eq. 22, Sec. 4.2.1)",
+     "params": {
+      "A_MPa": 1470,
+      "B_MPa": 702,
+      "n": 0.199,
+      "C": 0.00549,
+      "m": 0.811,
+      "epsdot0_per_s": 1.0,
+      "Tmelt_K": 1800,
+      "Tref_K": 293
+     },
+     "units_note": "Published as A = 1.47 GPa, B = 0.702 GPa. Rates below 1/s are clamped to 1/s, per the report's note on original JC / Autodyn.",
+     "strain_measure": "True stress vs true plastic strain (report figures and Eqs. 2-3). The report does not explicitly state von Mises equivalent plastic strain.",
+     "valid_range": "Quasi-static (0.001/s) true strain up to about 0.8 using Bridgman-corrected post-necking data; 1/s at 20 C and about 312-512 C; Hopkinson 400 and 800/s at 20 C (data below 1.5% plastic strain discarded)",
+     "test_conditions": "Tension on specimens from a 10 mm Armox 500T plate. Procedure 1: A, B and n fixed from the quasi-static fit (Sec. 5.4.4); C and m fitted to dynamic tests (rate >= 1/s, various temperatures).",
+     "citation": "Nilsson M., FOI-R--1068--SE, FOI (Swedish Defence Research Agency), December 2003",
+     "url": "https://www.foi.se/rest-api/report/FOI-R--1068--SE",
+     "location": "Table 13, p. 37 (Procedure 1 column); repeated in Table 21, p. 60; epsdot0, Tm and T0 in Sec. 4.2.1, p. 25",
+     "confidence": "high",
+     "notes": "Armox 500T, not generic AR500; nearest published condition at the same hardness class. This is the widely re-cited set (e.g., Wisniewski & Zochowski 2013, Problems of Mechatronics 4(2), Table 3 p. 27, which lists m = 0.81)."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "Same as Eq. 22 (standard JC)",
+     "params": {
+      "A_MPa": 849,
+      "B_MPa": 1340,
+      "n": 0.0923,
+      "C": 0.00541,
+      "m": 0.87,
+      "epsdot0_per_s": 1.0,
+      "Tmelt_K": 1800,
+      "Tref_K": 293
+     },
+     "units_note": "Published as A = 0.849 GPa, B = 1.34 GPa",
+     "strain_measure": "True stress vs true plastic strain",
+     "valid_range": "Same test set as Procedure 1",
+     "test_conditions": "Procedure 2: all five parameters fitted at once to all tensile tests, including quasi-static and Bridgman-corrected data",
+     "citation": "Nilsson M., FOI-R--1068--SE, 2003",
+     "url": "https://www.foi.se/rest-api/report/FOI-R--1068--SE",
+     "location": "Table 13, p. 37 (Procedure 2 column)",
+     "confidence": "high",
+     "notes": "Lower residual (RSS 5.12e8 vs 6.88e8; R 0.920 vs 0.893), but A = 849 MPa is far below the measured yield, so the initial yield is poor. The report recommends neither procedure. For impact sims where first-yield matters, prefer Procedure 1."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "Standard JC: sigma = [A + B eps_p^n][1 + C ln(epsdot*)][1 - T*^m]",
+     "params": {
+      "A_MPa": 1372.488,
+      "B_MPa": 835.022,
+      "n": 0.2467,
+      "C": 0.0617,
+      "m": 0.84,
+      "epsdot0_per_s": 1.0,
+      "Tmelt_K": 1800,
+      "Tref_K": 293
+     },
+     "units_note": "MPa",
+     "strain_measure": "Equivalent plastic strain (true)",
+     "valid_range": "Quasi-static 1.6e-4/s; C from 1.6e-4 to 3.3e-2/s plus SHPB tension at 500-1000/s; m from 100-900 C",
+     "test_conditions": "Smooth round tension bars (6.25 mm dia, 32 mm gauge, ASTM A370-12) at 0, 45 and 90 deg orientations; A at 0 deg",
+     "citation": "Iqbal M.A., Senthil K., Sharma P., Gupta N.K., 'An investigation of the constitutive behavior of Armox 500T steel and armor piercing incendiary projectile material', Int. J. Impact Eng. 96 (2016) 146-164, doi:10.1016/j.ijimpeng.2016.05.017",
+     "url": "https://www.academia.edu/26924907/An_investigation_of_the_constitutive_behavior_of_Armox_500T_steel_and_armor_piercing_incendiary_projectile_material",
+     "location": "Table 4 (final parameters); Table 2 (per-orientation A, B, n)",
+     "confidence": "medium",
+     "notes": "Internal inconsistency: Table 2 gives B = 535.022 MPa (0 deg) but Table 4 gives B = 835.022 MPa, and the paper does not say which is correct. C = 0.0617 is about 11x Nilsson's value. Treat as an alternate set; check against the journal version before use."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No open raw stress-strain dataset was found for AR500, Hardox 500 or Armox 500T. Not read: (1) the SSAB Hardox 500 PDF datasheet (robots-disallowed), so its UTS and elongation could not be checked; (2) Kravchuk & Kravchuk 2022 (thin-sheet ARMOX 500T JC parameters, elartu.tntu.edu.ua/handle/lib/39111), because the PDF was unreachable; (3) the Springer JMEP paper 'Material Characterization of Armor Steel and Investigation of Its Ballistic Performance' (doi 10.1007/s11665-022-07590-x), because the fetch was rate-limited (HTTP 429). Sci. Rep. 2024 (s41598-024-62482-5) gives JC A = 1630, B = 1050, n = 0.32, C = 0.024 for an unnamed 4.6 mm armor steel (from its Conclusions; Table 2 not readable) and was not used because the grade and hardness are unspecified. Poisson's ratio is not given in Nilsson; use 0.29-0.30 only as an unsourced assumption. No uniform elongation is reported; Nilsson assumed necking at max load."
+  },
+  {
+   "key": "S7_56HRC",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "S7, air/fan-cooled from 940 C, tempered about 260-290 C (500-550 F) to get 55-57 HRC. Suggested values bracket the ASM-type rows: sy about 1450-1585 MPa, su about 1965-2170 MPa, elongation 0.07-0.09 in 50 mm, E 207 GPa, rho 7830. The catalog's 1450 / 1940 / 0.07 combines the 205 C row (yield 1450, 7%) with a UTS slightly below the 315 C row (1965). For a conservative but consistent set, use the 315 C / 55 HRC row: 1585 / 1965 / 0.09.",
+    "notes": "Hardness vs temper from vendor datasheets: Crucible DS314 (400 F: 55-58 HRC; 500 F: 54-56; 600 F: 53-55); SB Specialty Metals (400 F: 57; 500 F: 55; 600 F: 54); Abrams (572 F: 56 HRC; 392 F: 58). So 56 HRC is roughly a 205-300 C temper, depending on the source. No manufacturer datasheet found (Crucible, Industeel, SBSM, Abrams) lists tensile data vs temper. The only tensile table found is an ASM-style table reproduced on a distributor blog; it was not opened in a primary ASM source. Yield rising from the 205 C temper (1450) to the 315 C temper (1585) is real and typical of tool-steel stress relief, not a typo."
+   },
+   "properties": {
+    "E_GPa": 207,
+    "nu": 0.295,
+    "rho": 7830,
+    "sy_MPa": 1450,
+    "su_MPa": 2170,
+    "elong": 0.07,
+    "uniform_elong": null,
+    "hardness": "58 HRC (205 C temper row); 55 HRC at 315 C temper (sy 1585, su 1965, 9% elongation, RA 25%)",
+    "product_form": "bar, fan-cooled from 940 C (1725 F), single temper",
+    "source": "Tensile table: 'Fan cooled from 940C (1725F) and simple tempered' rows for S7 (205 C: 2170/1450 MPa, 7.0% in 50 mm, RA 20%, 58 HRC; 315 C: 1965/1585, 9.0%, 25%, 55 HRC; 425 C: 1895/1410, 10%, 29%, 53 HRC; 540 C: 1820/1380, 10%, 33%, 51 HRC; 650 C: 1240/1035, 14%, 45%, 39 HRC; annealed 640/380, 25%, 55%), reproduced by Compraco (blog, 2024). This appears to be the ASM Handbook tool-steel property table, but the primary source was not opened. E 207 GPa and rho 0.283 lb/in3 (7.83 g/cc) from Crucible S7 datasheet DS314 (08/03). nu about 0.29-0.30 from compression tests at various tempers (Benck, Franz, DiBerardo, BRL ARBRL-MR-03067, Oct 1980, Table V: nu 0.292-0.301, E 211-218 GPa).",
+    "url": "https://compraco.com.br/en/blogs/especificacoes-do-aco/propriedades-do-aco-ferramenta-aisi-s7-dureza-do-tratamento-termico-do-material-s7 ; https://www.alphaknifesupply.com/Pictures/Info/Steel/S7-DS-Crucible.pdf ; https://apps.dtic.mil/sti/tr/pdf/ADA093773.pdf",
+    "location": "Compraco 'Mechanical Properties of S7 Steel' table; Crucible DS314 'Physical Properties' and 'Heat Treat Response' table; ARBRL-MR-03067 Table V (approx. p. 10)"
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B eps^n][1 + C ln eps*][1 - T*^m], where sigma is the von Mises flow stress, eps the equivalent plastic strain, eps* = epsdot/epsdot0 with epsdot0 = 1.0 /s, and T* the homologous temperature",
+     "params": {
+      "A_MPa": 1539,
+      "B_MPa": 477,
+      "n": 0.18,
+      "C": 0.012,
+      "m": 1.0,
+      "epsdot0_per_s": 1.0,
+      "Tmelt_K": 1763,
+      "Tref_K": 298,
+      "rho_kg_m3": 7750,
+      "cp_J_kgK": 477
+     },
+     "units_note": "MPa; Tref is room temperature (the paper uses room temperature, about 294-298 K; the exact value was not legible in the OCR copy)",
+     "strain_measure": "Equivalent (von Mises) plastic strain, true",
+     "valid_range": "Torsion tests over a range of strain rates, Hopkinson-bar tension at elevated temperature, and quasi-static tension (Johnson & Cook 1983 methodology); strain to roughly the torsion test range",
+     "test_conditions": "S-7 tool steel at Rockwell C-50 (not 56 HRC)",
+     "citation": "Johnson G.R., Cook W.H., 'A constitutive model and data for metals subjected to large strains, high strain rates and high temperatures', Proc. 7th Int. Symp. on Ballistics, The Hague, 1983, pp. 541-547",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1 (constitutive constants), page near p. 543-544 (the OCR copy shows page marker 541 before the table)",
+     "confidence": "medium",
+     "notes": "Nearest published condition is HRC 50, softer than 56 HRC. A = 1539 MPa is consistent with the about 1.4-1.6 GPa yields measured across tempers. At 56 HRC the true yield and hardening may be higher. Read from an OCR copy; the S-7 row was legible, and these are the widely re-cited values."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://apps.dtic.mil/sti/tr/pdf/ADA093773.pdf",
+     "description": "Benck, Franz, DiBerardo, 'Quasi-Static Stress-Strain Curves, S-7 Tool Steel', BRL ARBRL-MR-03067, Oct 1980 (public release). Tension (series 3, 55 HRC) and compression (HRC 47-58, plus tempers 315-620 C) engineering stress-strain curves, as plots only (Figs 1-6). Table V gives E, nu, compressive 0.2% yield and bulk modulus per temper. Table VI (tensile averages) was illegible in the copy read. Not digital raw data."
+    }
+   ],
+   "unresolved": "No primary-source (ASM Handbook) copy of the S7 tensile-vs-temper table was opened; values come from a distributor reproduction. No Ramberg-Osgood, Swift or Voce fit for S7 was found. No JC fit at 55-58 HRC was found. Uniform elongation is not reported. DTIC ARBRL-MR-03067 Table VI (tensile averages for series 1-8, including 55 HRC tensile) was unreadable in text extraction; the PDF figures could be digitized for a 55 HRC tensile curve. Desktop Metal binder-jet S7 (not wrought) after HIP + heat treat: UTS 2080, YS 1575, elongation 7.7%, 53.7 HRC; this is a sanity check only."
+  },
+  {
+   "key": "17-4PH_H900",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Keep H900 (solution treated, aged 1 h at 482 C / 900 F). The catalog's 1170 / 1310 / 0.10 / HRC 40 are the specification minimums (AMS 5604/5643 / ASTM A564), not typical values. For a 'typical' sim card use ATI typicals: sy 1240 MPa, su 1340 MPa, elongation 10% in 2 in., HRC 43, E 196 GPa, rho 7810. Set hardness to 'HRC 40-47 (spec), 43-45 typical'.",
+    "notes": "The user's point is confirmed: H900 is typically HRC 43-45 (ATI typical 43; Wu & Lin 44.5; Boeing data HRc 45 / BHN 421). HRC 40 is only the specification floor (AMS 5604 lists 40-47 Rc). Other measured H900 values: BMI (Dunleavy & Spretnak, AFML-TR-68-353, as reproduced in BDX-613-577) UTS 200.4 ksi (1382 MPa), YS 178.6 ksi (1231 MPa); Boeing 1968 bar Su 1343, Sy 1103 MPa, 17% elongation (longitudinal), RA 53.5%; Wu & Lin Sy 1387, Su 1414 MPa, 12.5% elongation. E: ATI gives 196 GPa (28.5 Msi), within 1% of the catalog's 197. UPMET's sheet prints 'HRC 40 max' for H900, which is evidently a typo for min."
+   },
+   "properties": {
+    "E_GPa": 196,
+    "nu": null,
+    "rho": 7810,
+    "sy_MPa": 1240,
+    "su_MPa": 1340,
+    "elong": 0.1,
+    "uniform_elong": null,
+    "hardness": "HRC 43 typical (ATI); spec 40-47 HRC (AMS 5604)",
+    "product_form": "bar/plate, wrought, condition H900",
+    "source": "ATI 17-4 Technical Data Sheet, Version 1 (8/18/2016): typical RT tensile, H900 = 180 ksi (1240 MPa) YS, 195 ksi (1340 MPa) UTS, 10% in 2 in., 43 HRC; Physical Properties: density 0.282 lb/in3 (7.81 g/cc) in H900, E 28.5e6 psi (196 GPa), G 11.2e6 psi (77.2 GPa); minimums per AMS 5604: H900 YS 170 ksi (1170), UTS 190 ksi (1310), 40-47 Rc",
+    "url": "https://www.atimaterials.com/Products/Documents/datasheets/stainless-specialty-steel/precipitationhardening/ati_17-4_tds_en_v2.pdf",
+    "location": "p. 4 of 7 (Physical Properties); p. 5 of 7 (Mechanical Properties); p. 6 of 7 ('Summary of heat treating', AMS 5604 minimums)"
+   },
+   "fits": [
+    {
+     "model": "hollomon",
+     "equation_as_published": "True stress = sigma0 * eps^M (true stress vs true strain; sigma0 = true stress at true strain 1.0)",
+     "params": {
+      "M_n_recommended_range": "0.20-0.24",
+      "M_specimen_C1": 0.224,
+      "sigma0_C1_psi": 300000,
+      "sigma0_C1_MPa": 2068,
+      "M_BMI_recalc_range": "0.218-0.263",
+      "sigma0_BMI_recalc_psi": "275000-330000"
+     },
+     "units_note": "psi as published; 300 ksi = 2068 MPa",
+     "strain_measure": "True total strain (log); the report does not separate plastic strain",
+     "valid_range": "BMI log-log data roughly 0.01-1.0 true strain, including post-necking (reduction-in-area based); Bendix thick specimens to about 0.65 true strain at failure",
+     "test_conditions": "Aged 1 h at 900 F. Bendix: sheet 0.062/0.120/0.240 in., 0.04 in/min. BMI: 1/4 in. round bars, 0.01 in/min, room temperature.",
+     "citation": "Mulkey J.R., 'Strain Hardening Exponent for 17-4 PH Stainless Steel', BDX-613-577, Bendix Kansas City Division (AEC topical report), 1971; BMI data from Dunleavy & Spretnak, AFML-TR-68-353 (1968)",
+     "url": "https://www.osti.gov/servlets/purl/4703707",
+     "location": "Summary/conclusions (recommended M 0.2-0.24); Figures A-1 to A-5 (Bendix specimens); Figures A-6 and A-7 (BMI data; BMI-published M = 0.068); Table 1 (Datsko values)",
+     "confidence": "low",
+     "notes": "Fit through large-strain (post-necking, RA-based) data, so M is NOT the Considere uniform strain. Uniform elongation for H900 is only a few percent, so an n of 0.2 badly overpredicts pre-necking hardening if used as sigma = K eps_p^n from yield. The report shows a large spread (0.068 to 0.457) depending on specimen and extrapolation. Use only for large-strain extrapolation, or don't use it. Values were read through OCR."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.nist.gov/od/id/mds2-3756",
+     "description": "NIST dataset 'Compressive Stress-Strain Curves for Wrought and AM Precipitation-Hardenable Stainless Steel at Dynamic Strain Rates at Room Temperature and with Rapid Heating and at Low Strain Rates at Room Temperature' (Mates et al.). Wrought 17-4 in solutionized, H900 and H1150 conditions plus other aging treatments. Kolsky-bar compression (about 1300-4500/s, RT to about 1000 C with rapid heating) and servohydraulic compression (0.0003 and 0.03/s). CSV files of strain, stress, strain rate and initial temperature. Files: https://data.nist.gov/od/ds/mds2-3756/Datafiles_17_4.zip , master list https://data.nist.gov/od/ds/mds2-3756/Datafile_master_list.csv , README https://data.nist.gov/od/ds/mds2-3756/README_17-4_Data_Pub.txt (listed in the catalog.data.gov record; the files themselves were not opened)."
+    },
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/SSteel/17-4_16-4_15-5PH/boeing17-4PH-H900.html",
+     "description": "Waterloo FDE fatigue database: Boeing 1968 17-4PH H900 rotating-bending strain-life points plus monotonic summary (Sy 1103, Su 1343 MPa, 17% elongation, RA 53.5%, BHN 421). Fatigue data, not a stress-strain curve."
+    },
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/SSteel/17-4_16-4_15-5PH/Wu+Lin17-4PH/wu+lin17-4PH-H900.html",
+     "description": "Waterloo FDE: Wu & Lin (Metall. Mater. Trans. A 33A, pp. 1715-1724; the page says 2022 but the volume implies 2002) H900 strain-life points; monotonic Sy 1387, Su 1414 MPa, 12.5% elongation (25 mm gauge), HRc 44.5, E 223 GPa."
+    }
+   ],
+   "unresolved": "MMPDS / MIL-HDBK-5 17-4PH H900 design values and the Ramberg-Osgood n on Fig. 2.6.9.2.6 (stress-strain and tangent-modulus curves for H900) were NOT obtained: the open MIL-HDBK-5H copy (aluminium-guide.com) extracted only the table of contents (section 2.6.9 starts p. 2-189). No Johnson-Cook fit for H900 was found in openly readable text. Mates et al. 2024 (J. Dyn. Behav. Mater. 10:316-337) build a modified-JC plus precipitate-strengthening model for solution-treated / H900 / H1150 wrought 17-4, but the parameter tables were not visible. The NIST README (data.nist.gov) fetch was blocked by a permission timeout, so file-level H900 IDs are unverified. Poisson's ratio is not given by ATI (0.27-0.30 is commonly quoted but unsourced here). Uniform elongation is not reported."
+  },
+  {
+   "key": "304_annealed",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Keep '304 annealed'. The catalog values (E 193, sy 215, su 505, elongation 0.70) match the ASM Aerospace Specification Metals / MatWeb 'AISI Type 304' datasheet exactly (also HRB 70, nu 0.29, rho 8000, G 86 GPa). Consider rho 7900-8000 and E 193-200.",
+    "notes": "The ASM/MatWeb values are typical annealed-bar values. Real annealed 304 sheet/plate often runs higher (yield about 250-310, UTS about 580-650 MPa), and 505 MPa is slightly below the commonly cited ASTM A240 minimum of 515 MPa (not verified from an opened source in this pass). For impact sims, 304's large strain-rate sensitivity and strain-induced martensite hardening matter more than these quasi-static numbers. Wikipedia cites MIL-HDBK-5J p. 2-222 for E 183-200 GPa and rho 7900. MIL-HDBK-5 S-basis minimums for annealed 301/304 (AMS 5513): Ftu 73-75 ksi (503-517 MPa), Fty 26-30 ksi (179-207 MPa), e >= 40%, E 200 GPa, nu 0.27. So the catalog's 215/505 is close to the design-minimum level, which is conservative for strength."
+   },
+   "properties": {
+    "E_GPa": 193,
+    "nu": 0.29,
+    "rho": 8000,
+    "sy_MPa": 215,
+    "su_MPa": 505,
+    "elong": 0.7,
+    "uniform_elong": null,
+    "hardness": "HRB 70 (Brinell 123 converted)",
+    "product_form": "annealed (generic; product form not stated)",
+    "source": "ASM Aerospace Specification Metals / MatWeb, 'AISI Type 304 Stainless Steel' datasheet: density 8 g/cc; HRB 70; UTS 505 MPa; yield 215 MPa (0.2% offset); elongation 70% in 50 mm; E 193-200 GPa; nu 0.29; Charpy 325 J; G 86 GPa | Cross-check: MIL-HDBK-5 Table 2.7.1.0(b), AISI 301 annealed (AMS 5901, S-basis), footnote b says it also applies to 304 annealed per AMS 5513: Ftu 73 (L) / 75 (LT) ksi = 503/517 MPa; Fty 26 (L) / 30 (LT) ksi = 179/207 MPa; Fcy 23/29 ksi; e 40% (S-basis min); E 29.0e3 ksi (200 GPa); Ec 28.0e3 ksi; G 11.2e3 ksi; mu 0.27; w 0.286 lb/in3 (7916 kg/m3). No Ramberg-Osgood n given for annealed (only elevated-temperature Fty/Ftu figures).",
+    "url": "https://asm.matweb.com/search/SpecificMaterial.asp?bassnum=mq304a ; https://kaspercalc.com/Chapter2.7(steel).html",
+    "location": "Mechanical and physical properties table on the web page; MIL-HDBK-5 Table 2.7.1.0(b) via KasperCalc"
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = (A + B eps^n)[1 + C ln(epsdot/epsdot0)][1 - ((T - Tr)/(Tm - Tr))^m]  (Eq. 16)",
+     "params": {
+      "A_MPa": 452.0,
+      "B_MPa": 694.0,
+      "n": 0.311,
+      "C": 0.0054,
+      "m": 0.996,
+      "epsdot0_per_s": null,
+      "Tmelt_K": null,
+      "Tref_K": null
+     },
+     "units_note": "MPa. epsdot0, Tr and Tm are in the paper's Table 7, whose contents were not readable.",
+     "strain_measure": "Equivalent plastic strain (standard JC)",
+     "valid_range": "Machining (orthogonal turning) regime: high strain rates (up to about 1e5/s cited) and elevated temperatures",
+     "test_conditions": "Inverse identification by genetic algorithm from turning-force experiments on a CA6140 lathe (400/560/710 rpm, 0.08 mm/rev, 0.1 mm depth of cut). 40 mm diameter 304 rod; heat-treatment condition not stated. C fixed by simulation, not by the GA.",
+     "citation": "'Parameter identification of Johnson-Cook constitutive model based on genetic algorithm and simulation analysis for 304 stainless steel', Scientific Reports (2024), doi:10.1038/s41598-024-71671-1",
+     "url": "https://www.nature.com/articles/s41598-024-71671-1",
+     "location": "Table 6 (JCM model parameters); Eq. (16)",
+     "confidence": "low",
+     "notes": "Machining-calibrated inverse fit, not from tension/SHPB tests. A = 452 MPa is about 2x the annealed 0.2% yield, consistent with cold-drawn rod or machining-regime calibration. Use only as a placeholder or cross-check. Prefer a tension/SHPB-based JC set for annealed 304 (none was verified in this pass)."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "Coverage for 304 is incomplete because the shared web-search budget ran out mid-task (limit reached), so further targeted searches could not be run. Not obtained: (a) Ramberg-Osgood n for annealed 304 / 1.4301 (EN 1993-1-4 Annex C, the SCI/Euro Inox Design Manual, Rasmussen 2003, and Arrayago-Real-Gardner 2015 Mater. Des. 87:540-552, doi 10.1016/j.matdes.2015.08.001; ScienceDirect and steel-stainless.org were robots-blocked); (b) a tension/SHPB-based Johnson-Cook set for annealed 304 (e.g., the commonly re-cited A = 310, B = 1000, n = 0.65, C = 0.07, m = 1.0 set was NOT verified against an opened source and is deliberately excluded); (c) Swift/Voce fits; (d) a manufacturer datasheet (the AK Steel / Cleveland-Cliffs 304/304L PDB was robots-blocked; the ATI 304 TDS URL failed); (e) uniform elongation (typically about 0.5-0.6 engineering for annealed 304, but unverified); (f) open raw stress-strain data. Suggested follow-up queries: 'Arrayago Real Gardner 2015 stress-strain stainless open access', 'AISI 304 Johnson-Cook SHPB tension annealed', 'zenodo 304 stainless tensile data', 'data.nist.gov 304L Kolsky'."
+  },
+  {
+   "key": "maraging_300",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "18Ni(300) / VascoMax C-300 aged 3-6 h at 480-496 C (900-925 F). MMPDS/MIL-HDBK-5 names it the '280 (300)' grade. The catalog's 2000/2050 MPa are reasonable typical values. MIL-HDBK-5 S-basis design minimums are lower: bar Ftu 280 ksi (1931 MPa), Fty 270 ksi (1862 MPa), e 5% L / 4% T. Use E = 183 GPa (26.5 Msi) in tension and Ec = 197 GPa (28.6 Msi) in compression rather than 190, nu = 0.31, rho = 7920 (0.286 lb/in3). The catalog's 8000 kg/m3 is about 1% high (SSA lists 0.289 lb/in3 = 8000 kg/m3, so either is defensible).",
+    "notes": "HRC 54 is confirmed for aged grade 300 (Wikipedia citing Service Steel Aerospace; SSA gives a 50-55 HRC range after a 900/925 F, 6 h age; spec AMS 6514). IMOA lists generic maraging 18Ni1900 at 1900 MPa 0.2% proof, the closest IMOA type to grade 300. Typical (not minimum) C-300 tensile values of about 2000/2050 MPa could not be verified from an opened manufacturer datasheet: the ATI VascoMax and Nickel Institute 4419 PDFs failed to load."
+   },
+   "properties": {
+    "E_GPa": 182.7,
+    "nu": 0.31,
+    "rho": 7920,
+    "sy_MPa": 1862,
+    "su_MPa": 1931,
+    "elong": 0.05,
+    "uniform_elong": null,
+    "hardness": "HRC 50-55 after 900/925 F 6 h age (SSA); 54 HRC nominal",
+    "product_form": "bar < 4.000 in., aged at 900 F (MIL-HDBK-5 S-basis minimums)",
+    "source": "MIL-HDBK-5 Section 2.5.1.1, Table 2.5.1.0(c), 18Ni maraging '280 (300)' grade aged at 900 F, as reproduced by KasperCalc: Bar < 4.000 in. Ftu 280/280 ksi (L/T), Fty 270/270 ksi, Fcy 281 ksi (L), e 5/4 %; sheet <= 0.187 in. Ftu 271/280, Fty 262/270, Fcy 244/248; E 26.5e3 ksi, Ec 28.6e3 (L) / 29.6e3 (T) ksi, mu 0.31, w 0.286 lb/in3. Sheet/plate elongation depends on thickness, 2.5-6.0% (note b). Cross-checks: SSA Maraging 300 page (AMS 6514; age 900/925 F 6 h; 50-55 HRC; 0.289 lb/in3); IMOA 18Ni1900 yield 1900 MPa.",
+    "url": "https://kaspercalc.com/Chapter2.5(steel).html ; https://www.ssa-corp.com/en/maraging-300-AMS-6514.php ; https://www.imoa.info/molybdenum-uses/molybdenum-grade-alloy-steels-irons/maraging-steels.php",
+    "location": "MIL-HDBK-5 Table 2.5.1.0(c) (KasperCalc reproduction of Section 2.5.1.1)"
+   },
+   "fits": [
+    {
+     "model": "ramberg_osgood",
+     "equation_as_published": "MIL-HDBK-5 / MMPDS convention: eps = sigma/E + 0.002 (sigma/Fty)^n  (engineering stress and strain; typical stress-strain curve figure annotated with n)",
+     "params": {
+      "n_tension_RT": 22,
+      "n_tension_minus100F": 19,
+      "n_tension_300F": 17,
+      "n_tension_600F": 17,
+      "n_tension_800F": 12,
+      "n_tension_1000F": 11,
+      "E_ksi": 26500,
+      "Fty_ksi_for_curve": "typical value from figure (not given in reproduction); use 270 ksi min or about 290 ksi typical"
+     },
+     "units_note": "Dimensionless n. E 26.5e3 ksi = 182.7 GPa.",
+     "strain_measure": "Engineering total strain (elastic + 0.2%-offset-scaled plastic)",
+     "valid_range": "Up to about 1% strain / near Ftu (MIL-HDBK-5 typical curves stop well before necking). Elevated-temperature curves after 1/2 h exposure.",
+     "test_conditions": "Longitudinal bar, tension, 280 (300) grade aged at 900 F",
+     "citation": "MIL-HDBK-5 (J), Section 2.5.1.1, Figure 2.5.1.1.6(b), via KasperCalc reproduction",
+     "url": "https://kaspercalc.com/Chapter2.5(steel).html",
+     "location": "Figure 2.5.1.1.6(b)",
+     "confidence": "medium",
+     "notes": "Secondary web reproduction of MIL-HDBK-5; verify against MMPDS before design use. A high n means near elastic-perfectly-plastic behavior up to Ftu, which fits maraging steel's very flat post-yield curve (Ftu/Fty about 1.04)."
+    },
+    {
+     "model": "ramberg_osgood",
+     "equation_as_published": "eps = sigma/Ec + 0.002 (sigma/Fcy)^n",
+     "params": {
+      "n_compression_RT": 21,
+      "Ec_ksi_L": 28600,
+      "Fcy_ksi_bar_L": 281
+     },
+     "units_note": "Dimensionless n; Ec 28.6e3 ksi = 197 GPa",
+     "strain_measure": "Engineering total strain",
+     "valid_range": "Compressive stress-strain and tangent-modulus range at RT",
+     "test_conditions": "Longitudinal bar, compression, RT, 280 (300) grade aged",
+     "citation": "MIL-HDBK-5 (J), Figure 2.5.1.1.6(d), via KasperCalc",
+     "url": "https://kaspercalc.com/Chapter2.5(steel).html",
+     "location": "Figure 2.5.1.1.6(d)",
+     "confidence": "medium",
+     "notes": "Useful for wedge or weapon contact faces loaded in compression."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No Johnson-Cook, Swift or Voce fit for wrought aged 18Ni(300) was found or verified. The web-search budget ran out before targeted JC searches; most published JC sets for 18Ni300 are for additively manufactured material, which would need its own label. Manufacturer typical tensile data (ATI VascoMax C-300 TDS, Nickel Institute pub. 4419) could not be opened. Uniform elongation is not reported (maraging necks almost immediately after yield; Ftu/Fty about 1.03-1.04). No open raw stress-strain data found. MIL-HDBK-5 Figure 2.5.1.1.6(e) (full-range RT tensile curve) exists but gives no n; it could be digitized for post-yield behavior."
+  }
+ ],
+ "fits_polymers.json": [
+  {
+   "key": "UHMW",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Mitsubishi Chemical Advanced Materials TIVAR 1000 (virgin natural/colors) extruded/compression-molded sheet",
+    "notes": "Catalog values are a mix of ISO and ASTM numbers. MCAM TIVAR 1000 colors TDS (04/12/2024) gives ISO 527: E 750 MPa, tensile (yield) strength 19 MPa at 15% yield strain, break strain >50%; ASTM D638: E 80 ksi (0.552 GPa), tensile strength 5800 psi (40.0 MPa), elongation at break 300%. The catalog's 0.69 GPa matches TIVAR 1000 EC (0.696 GPa), not plain TIVAR 1000. Catalog yield 21 MPa is close to ISO 19 MPa; ultimate 40 MPa is the ASTM tensile strength; elongation 3.5 should be 3.0 (ASTM 300%). Density 930 OK (EC grade 940). The ASTM tensile strength row does not say yield or break."
+   },
+   "properties": {
+    "E_GPa": 0.75,
+    "nu": null,
+    "rho": 930,
+    "sy_MPa": 19,
+    "su_MPa": 40.0,
+    "elong": 3.0,
+    "product_form": "TIVAR 1000 UHMW-PE sheet; E and yield from ISO 527 column, su and elongation from ASTM D638 column (ASTM E = 0.552 GPa)",
+    "source": "Mitsubishi Chemical Advanced Materials, TIVAR 1000 colors UHMW-PE Product Datasheet, issue/revision 04/12/2024",
+    "url": "https://mcam.com/mam/51243/Bronymec-PE-TIVAR%C2%AE%201000%20UHMW-PE%20colors_en_US.pdf",
+    "location": "Page 1 mechanical properties table (ISO 527-1/-2 and ASTM D638 columns). Cross-checks: Polymershapes/MCAM TIVAR 1000 ASTM sheet (https://www.polymershapes.com/wp-content/uploads/2020/09/Material_Data_TIVAR_1000_UHMW-PE.pdf): SG 0.930, tensile 40.0 MPa, E 0.552 GPa, elongation 300%, compressive 20.7 MPa at 10% def.; TIVAR 1000 EC ASTM sheet: SG 0.940, E 0.696 GPa, tensile 40.0 MPa. Poisson's ratio is not on any MCAM sheet; the 0.45 'matrix' value in Khanna & Jensen CSME 2022 is an IMPETUS-library assumption, not a measurement."
+   },
+   "fits": [
+    {
+     "model": "Modified Sherwood-Frost (rate and temperature dependent, high-rate compression)",
+     "equation_as_published": "sigma = H(T) * M(eps, epsdot) * f(eps); f(eps) = sum_{n=1..10} A_n eps^n; M = (epsdot/epsdot0)^{n(eps)}; n(eps) = b1 + b2*eps + b3*eps^2; epsdot0 = 1300 1/s",
+     "params": {
+      "A_n_MPa": "Table 5 - values not extractable from the online HTML (table rendered as image)",
+      "b1_b2_b3": "Table 6 - not extractable",
+      "epsdot0_per_s": 1300
+     },
+     "units_note": "A_n in MPa; b dimensionless",
+     "strain_measure": "engineering compression strain from SHPB",
+     "valid_range": "SHPB compression 1300-4300 1/s, 20-100 C",
+     "test_conditions": "commercially produced moulded UHMWPE sheet 20 mm thick, grade not named",
+     "citation": "Zhang K., Li W., Zheng Y., Yao W., Zhao C., 'Dynamic Constitutive Model of Ultra-High Molecular Weight Polyethylene (UHMWPE): Considering the Temperature and Strain Rate Effects', Polymers 12(7):1561, 2020, doi:10.3390/polym12071561",
+     "url": "https://www.mdpi.com/2073-4360/12/7/1561",
+     "location": "Eqs. 8-10, 16; Tables 5-6",
+     "confidence": "low",
+     "notes": "Model form verified; numeric coefficients NOT retrieved (PDF not readable via tools). Do not use until Tables 5-6 are transcribed by hand. Only valid at SHPB rates."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No published Johnson-Cook or Voce/Swift fit for bulk UHMW-PE sheet was found (search hits for 'UHMWPE Johnson-Cook' were all Dyneema-type fibre composites). Ravi et al. ITSC 2018 (powder-sintered UHMWPE, 1e-2 to 1e3 1/s) report a logarithmic rate fit but the abstract gives no coefficients. No open raw stress-strain dataset for bulk UHMW found (NIST mds2-2488 is UHMWPE fibre UD laminate, not bulk). Poisson's ratio unverified. MDPI PDFs and europepmc were blocked/rate-limited."
+  },
+  {
+   "key": "HDPE",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Mitsubishi Chemical Advanced Materials Proteus HDPE or Roechling Polystone G (PE-HD 300) sheet",
+    "notes": "Catalog E 1.0 GPa is low for HDPE sheet: Proteus HDPE TDS gives 210 ksi (1.45 GPa) and Polystone G gives 217,000 psi (1.50 GPa) ASTM D638. Yield 26 MPa is slightly low (Proteus 4600 psi = 31.7 MPa; Polystone G 4000 psi = 27.6 MPa). Catalog elongation 6.0 is high vs Proteus 400% (4.0); Polystone G gives >700%. Density 950 ok (0.955-0.96). 1.0 GPa is however what the HDPE Johnson-Cook paper below uses for pipe-grade HDPE, and ASTM D638 crosshead-based moduli of PE are known to be uncertain."
+   },
+   "properties": {
+    "E_GPa": 1.45,
+    "nu": null,
+    "rho": 960,
+    "sy_MPa": 31.7,
+    "su_MPa": null,
+    "elong": 4.0,
+    "product_form": "Proteus HDPE black sheet, ASTM D638/D792 (yield strain 12%)",
+    "source": "Mitsubishi Chemical Advanced Materials, Proteus HDPE Black Product Datasheet, issue/revision 04/12/2024",
+    "url": "https://www.mcam.com/mam/35367/PE-Proteus%C2%AE%20HDPE%20Black_en_US.pdf",
+    "location": "Page 1 property table, ASTM column (E 210 ksi, tensile 4600 psi, yield strain 12%, break 400%, flexural modulus 174 ksi, SG 0.96). Cross-check: Roechling Polystone G virgin natural ASTM 717944 web TDS (https://www.roechling.com/us/industrial/materials/thermoplastics/industrial-plastics/pe/pe-hd-pe-300/polystone-g-virgin-natural-astm-717944): density 0.955, yield 4000 psi, E 217,000 psi, elongation >700%."
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook plasticity (no thermal term) + Johnson-Cook damage",
+     "equation_as_published": "sigma_eq = (A + B*eps_p^n)(1 + C ln(epsdot_eq/epsdot0)); eps_f = [D1 + D2 exp(D3 sigma_m/sigma_eq)](1 + D4 ln(epsdot_eq/epsdot0)); D = sum(d eps_p/eps_f)",
+     "params": {
+      "E_MPa": 1000,
+      "nu": 0.45,
+      "A_MPa": 8.859,
+      "B_MPa": 30.56,
+      "n": 0.3838,
+      "C": 0.0455,
+      "epsdot0_per_s": 0.0033,
+      "D1": 0.3,
+      "D2": 0.075,
+      "D3": 0.333,
+      "D4": 0.0005,
+      "damage_evolution_linear_softening": 0.0013
+     },
+     "units_note": "A,B in MPa; others dimensionless; damage-evolution unit not stated in paper",
+     "strain_measure": "equivalent plastic strain (true)",
+     "valid_range": "tension, 0.0033-2.187 1/s at 23 C",
+     "test_conditions": "HDPE pipe material, compression-moulded plaques, ISO 527 type 1BA specimens",
+     "citation": "Alhourani A., Barsoum I., Sheikh-Ahmad J., Deveci S., 'Development of Johnson Cook Plasticity and Damage Model Parameters for the Time-dependent Behavior of High-Density Polyethylene', Proc. MCM'24, Barcelona, 2024, paper ICMIE 117",
+     "url": "https://avestia.com/MCM2024_Proceedings/files/paper/ICMIE/ICMIE_117.pdf",
+     "location": "Eq. 1-3; Table 1",
+     "confidence": "medium",
+     "notes": "Low A (8.9 MPa) means yield is defined at very low offset; calibrated only up to ~2/s, extrapolation to impact rates via C=0.0455 is untested. Pipe grade, not sheet."
+    },
+    {
+     "model": "Kwon-Jar piecewise polymer law (LS-DYNA MAT_089 input)",
+     "equation_as_published": "piecewise function from Kwon & Jar (2007); exact expression not recoverable from extracted text",
+     "params": {
+      "eps_y": 0.015,
+      "d": -22.29,
+      "a": 33.41,
+      "b": 0.0149,
+      "c": 0.001,
+      "e": 15.5,
+      "alpha_k": 35.517,
+      "N": 0.077,
+      "eps_t": 0.32,
+      "K": 30.66,
+      "M": 0.4953,
+      "beta": 1.8,
+      "rho_g_cm3": 0.942,
+      "E_MPa": 1034.2,
+      "nu": 0.45
+     },
+     "units_note": "no units stated in paper",
+     "strain_measure": "not stated",
+     "valid_range": "SHPB, ~1e1-1e2 1/s per paper",
+     "test_conditions": "HDPE, grade not specified; simulation paper",
+     "citation": "Chen S., 'Numerical Simulation of Split-Hopkinson Pressure Bar Test on High-Density Polyethylene', Chemical Engineering Transactions 66:271-276, 2018, doi:10.3303/CET1866046",
+     "url": "https://www.aidic.it/cet/18/66/046.pdf",
+     "location": "Sec. 2.3; Table 2",
+     "confidence": "low",
+     "notes": "Equation form unverified (garbled in extraction); parameters taken from Kwon & Jar, not refit. Not recommended without the original Kwon & Jar paper."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No open raw stress-strain dataset for HDPE sheet located. Poisson's ratio from datasheets not found (0.45 used in both papers is assumed). No HDPE fit calibrated above ~2/s with verified equation."
+  },
+  {
+   "key": "PC",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "SABIC Lexan 9034 general-purpose extruded sheet (Covestro Makrolon GP is numerically identical on distributor TDS)",
+    "notes": "Catalog E 2.38 GPa, nu 0.37, rho 1200, yield 62 MPa, elongation 1.1 all match the Lexan 9034 TDS. Ultimate should be 65.5 MPa (9,500 psi), not 69 MPa. PC yield is strongly rate dependent (ARL-TR-5899 Fig. 4); quasi-static TDS values understate flow stress at impact rates."
+   },
+   "properties": {
+    "E_GPa": 2.38,
+    "nu": 0.37,
+    "rho": 1200,
+    "sy_MPa": 62.1,
+    "su_MPa": 65.5,
+    "elong": 1.1,
+    "product_form": "extruded sheet, ASTM D638 (values given in psi: E 345,000; yield 9,000; ultimate 9,500; elongation 110%; SG 1.20)",
+    "source": "SABIC Innovative Plastics, Lexan 9034 Sheet Product Datasheet, update 01/2008 (distributed by US Plastic)",
+    "url": "https://www.usplastic.com/catalog/files/specsheets/LExan%209034%20-%20Sabic.pdf",
+    "location": "Mechanical properties table. Cross-check: A&C Plastics Makrolon GP Product Details (https://www.acplasticsinc.com/media/documents/PD_Makrolon_GP.pdf) gives the same 9000/9500 psi, 345,000 psi, 110%, SG 1.2, but Poisson 0.38."
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook",
+     "equation_as_published": "sigma = (A + B*eps_p^n)(1 + C ln(epsdot/epsdot0))(1 - T*^m), T* = (T - Tr)/(Tmelt - Tr)",
+     "params": {
+      "A_MPa": 80,
+      "B_MPa": 75,
+      "n": 2,
+      "C": 0.052001,
+      "m": 0.548,
+      "Tmelt_K": 562,
+      "Tr_K": 295,
+      "epsdot0_per_s": 1,
+      "beta_taylor_quinney": 0.5,
+      "rho_kg_m3": 1220,
+      "Cv_kJ_per_kgK": 1.3
+     },
+     "units_note": "A,B in MPa; n,C,m dimensionless; reference strain rate 1/s; reference temperature room (295 K)",
+     "strain_measure": "true plastic strain / true stress (compression)",
+     "valid_range": "compression, 0.005-0.4/s quasi-static and 1750-15,000/s SHPB; report states JC represents the low-rate isothermal data poorly and fits better at adiabatic high rates",
+     "test_conditions": "Bayer Makrolon general purpose cast PC plate 12.7 mm thick; uniaxial compression; room temperature",
+     "citation": "Dwivedi A., Bradley J., Casem D., 'Mechanical Response of Polycarbonate with Strength Model Fits', ARL-TR-5899, U.S. Army Research Laboratory, Feb 2012",
+     "url": "https://apps.dtic.mil/sti/pdfs/ADA566369.pdf",
+     "location": "Eq. (1)-(2) p. 9; Table 2 p. 10",
+     "confidence": "high",
+     "notes": "n = 2 (convex hardening) reflects post-yield softening/re-hardening shape poorly; compression-calibrated, so tension failure must be handled separately. Table density 1220 differs from measured 1197.75 kg/m3. Same report Table 3 gives a simplified Zerilli-Armstrong polymer fit (B0=0.006715948 1/K, B1=0.00009503 1/K, Bpa=550 MPa, B0pa=48 MPa, omega_a=-8, omega_b=-0.01, alpha0=0.00655 1/K, alpha1=0.00004 1/K). Wave-speed E = 2.59 GPa (Table 1)."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.mendeley.com/datasets/k2m7mjb8mc/1",
+     "description": "Mendeley Data 10.17632/k2m7mjb8mc.1 (Q. Mu, Ningxia Univ.): PC and PC/ABS tensile, tensile creep (41-52 MPa for PC) and DMA raw data; grade not named; file listing not visible, so raw monotonic stress-strain content not confirmed"
+    }
+   ],
+   "unresolved": "No open raw monotonic stress-strain curve for Lexan/Makrolon sheet confirmed. Song, Trivedi & Siviour 'Mechanical response of four polycarbonates at a wide range of strain rates and temperatures' (0.001-3000/s compression) found but data availability not stated. PMC6432511 (high-rate tension PC modeling) could not be opened (captcha)."
+  },
+  {
+   "key": "PA66_dry",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Celanese (ex-DuPont) Zytel 101L NC010, dry as moulded",
+    "notes": "Zytel 101L dry: E 3100 MPa (catalog 2.8 GPa is low), yield 82 MPa at 4.5% strain (matches), nominal strain at break 25% (strain at break 45%); catalog elongation 0.5 is plausible as the 45% value but 0.25 is the ISO nominal value. Poisson 0.37 dry / 0.43 conditioned. Conditioned (50% RH): E 1400 MPa, yield 55 MPa - a bot that lives in ambient air drifts toward conditioned values over weeks, so dry-as-moulded is the optimistic bound. Catalog ultimate 85 MPa is not on the TDS (no stress-at-break row)."
+   },
+   "properties": {
+    "E_GPa": 3.1,
+    "nu": 0.37,
+    "rho": 1140,
+    "sy_MPa": 82,
+    "su_MPa": null,
+    "elong": 0.25,
+    "product_form": "injection-moulded ISO 527 bars, dry as moulded; 50 mm/min",
+    "source": "Celanese Materials Database, Zytel 101L NC010 Nylon Resin datasheet, revised 2023-04-04",
+    "url": "https://quickparts.com/wp-content/uploads/2023/04/zytel%C2%AE-101l-nc010-gb.pdf",
+    "location": "Typical mechanical properties table (dry/cond. columns); density under Other properties (1140 kg/m3, ISO 1183). Strain at break 50 mm/min = 45% dry."
+   },
+   "fits": [
+    {
+     "model": "Eyring-type log-linear yield stress vs strain rate",
+     "equation_as_published": "sigma_y [MPa] = 112.67 + 14.67 log10(epsdot [1/s])",
+     "params": {
+      "a_MPa": 112.67,
+      "b_MPa_per_decade": 14.67
+     },
+     "units_note": "sigma_y in MPa, strain rate in 1/s, base-10 log",
+     "strain_measure": "compressive yield stress (engineering)",
+     "valid_range": "compression, 5e-3 to 2e3 1/s, room temperature",
+     "test_conditions": "PA66 rod from Ensinger, grade and moisture state not reported; quasi-static electromechanical + SHPB",
+     "citation": "Gomez-del Rio T., Ruiz A., 'High Strain Rate Mechanical Behavior of Polyamide 66 and Polyamide 66-Glass Fiber Reinforced', Mechanics of Composite Materials 59:1217-1222, 2024, doi:10.1007/s11029-023-10167-x",
+     "url": "https://burjcdigital.urjc.es/bitstreams/c06c090a-725e-42e3-83d9-4a6c8ab5eca6/download",
+     "location": "Fig. 3 fit equations",
+     "confidence": "medium",
+     "notes": "Gives ~79 MPa at 0.005/s and ~161 MPa at 2000/s (compression). Yield only, no hardening law; usable as a rate multiplier on yield. Compression yield exceeds tensile yield for nylon. Moisture state unknown."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "Xu et al. Polymers 12(7):1615 (2020) give a PA66 viscoelastic-viscoplastic Drucker-Prager model to 4000/s with Taylor-impact validation, but their Table 2 is an image and was not readable. No Johnson-Cook fit for dry PA66 found. No open raw stress-strain data found."
+  },
+  {
+   "key": "POM",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "DuPont (now Celanese) Delrin 150 NC010 homopolymer; for stock shapes Delrin 150 is the extrusion grade",
+    "notes": "Delrin 150 NC010 TDS: E 3100 MPa (matches), yield 73.0 MPa at 22% strain (catalog 69 is slightly low), nominal strain at break 40% (catalog 0.3 is low; use 0.4), density 1.42 g/cm3 (catalog 1410 -> 1420). No stress-at-break or Poisson row on TDS; catalog ultimate 76 MPa unverified."
+   },
+   "properties": {
+    "E_GPa": 3.1,
+    "nu": null,
+    "rho": 1420,
+    "sy_MPa": 73.0,
+    "su_MPa": null,
+    "elong": 0.4,
+    "product_form": "injection-moulded ISO 527-2 specimens",
+    "source": "DuPont Performance Polymers, Delrin 150 NC010 Acetal Resin, TDS-71946-en (UL Prospector), updated 2019",
+    "url": "https://plastics.tridentplastics.com/Asset/TDS_Delrin_150_NC010_(E_71946).pdf",
+    "location": "Mechanical table: Tensile Modulus 3100 MPa; Tensile Stress (Yield) 73.0 MPa; Tensile Strain (Yield) 22%; Nominal Tensile Strain at Break 40%; Density 1.42 g/cm3 (ISO 1183)"
+   },
+   "fits": [
+    {
+     "model": "Two-phase (soft/hard) Prandtl-Eyring sinh viscoplasticity with Arrhenius temperature function and pressure-sensitive equivalent stress",
+     "equation_as_published": "sigma = (1-va)*sigma_b + va*sigma_a (iso-strain); epsdot_in ~ sinh-type function of equivalent stress (von Mises blended with hydrostatic via xi), prefactor R(T) modified Arrhenius, hardening variable saturating",
+     "params": "identified parameter table not retrieved (only model description was readable)",
+     "units_note": "n/a",
+     "strain_measure": "small strain (to 5%)",
+     "valid_range": "1e-6 to 1e-3 1/s, -20 to 80 C, strains up to 5%",
+     "test_conditions": "Delrin 500 NC010 (POM 01-010), DIN EN ISO 527 specimens with unloading at 1%",
+     "citation": "Filanova Y., Hauptmann J., Langler F., Naumenko K., 'Inelastic Behavior of Polyoxymethylene for Wide Strain Rate and Temperature Ranges: Constitutive Modeling and Identification', Materials 14(13):3667, 2021, doi:10.3390/ma14133667",
+     "url": "https://www.mdpi.com/1996-1944/14/13/3667/htm",
+     "location": "Section 3 (model), parameter table in later section (not retrieved)",
+     "confidence": "low",
+     "notes": "Creep/slow-rate small-strain model for Delrin 500, not useful for impact. Listed only so the search is auditable."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No Johnson-Cook, G'Sell-Jonas or Voce fit for POM homopolymer at impact rates was found and opened. No open raw stress-strain dataset found. Poisson ratio and stress at break not on Delrin 150 TDS."
+  },
+  {
+   "key": "PEEK",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Victrex PEEK 450G (unfilled, general purpose)",
+    "notes": "Victrex 450G current datasheet (ISO): E 4000 MPa (catalog 3.6 GPa is the older/ASTM-style value also used by Garcia-Gonzalez 2015), yield 98.0 MPa (catalog 97 ok), strain at break 25% (catalog 0.3 -> 0.25), density 1.30 g/cm3 crystalline (catalog 1300 ok). Tensile stress at break not listed; catalog 100 MPa unverified. Extruded sheet (e.g. Ketron 1000 PEEK) lists E 4.34 GPa and UTS 110 MPa per Drozdov & Christiansen 2021."
+   },
+   "properties": {
+    "E_GPa": 4.0,
+    "nu": null,
+    "rho": 1300,
+    "sy_MPa": 98.0,
+    "su_MPa": null,
+    "elong": 0.25,
+    "product_form": "injection-moulded ISO 527 specimens, 23 C",
+    "source": "Victrex, VICTREX PEEK 450G datasheet (web)",
+    "url": "https://www.victrex.com/en/downloads/datasheets/victrex-peek-450g",
+    "location": "Mechanical: Tensile Stress (Yield, 23C) 98.0 MPa ISO 527-2; Tensile Modulus (23C) 4000 MPa ISO 527-1; Tensile Strain (Break, 23C) 25%; Density (crystalline) 1.30 g/cm3 ISO 1183; Tg onset 143 C; Tm 343 C"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook with rate-dependent modulus",
+     "equation_as_published": "sigma = [A + B (eps_p)^n][1 + C ln(epsdot_p/epsdot0)][1 - H^m], H = (T - T0)/(Tm - T0); E = E0 + eta*epsdot^k",
+     "params": {
+      "E0_MPa": 3600,
+      "eta": 1.25,
+      "k": 0.9,
+      "nu": 0.4,
+      "A_MPa": 132,
+      "B_MPa": 10,
+      "n": "UNVERIFIED (extracted as '12'; decimal likely lost)",
+      "C": 0.034,
+      "m": 0.7,
+      "epsdot0_per_s": 0.001,
+      "T0_K": 296,
+      "Tm_K": 614,
+      "rho_kg_m3": 1304,
+      "beta_taylor_quinney": 0.9,
+      "Cp_J_per_kgK": 2180
+     },
+     "units_note": "A,B,E0 in MPa; eta unit printed as MPa (with epsdot^k, k=0.9); others dimensionless",
+     "strain_measure": "true plastic strain (compression)",
+     "valid_range": "1e-4 to 1e4 1/s (paper reports <10% error 1e-4..10/s, <7% 10..1e4/s); 188-473 K temperature data from Rae et al.",
+     "test_conditions": "PEEK 450G (LATI-supplied), compression; perforation validation 180-450 m/s",
+     "citation": "Garcia-Gonzalez D., Rusinek A., Jankowiak T., Arias A., 'Mechanical impact behavior of polyether-ether-ketone (PEEK)', Composite Structures 124:88-99, 2015, doi:10.1016/j.compstruct.2014.12.061 (author accepted manuscript at UC3M e-Archivo)",
+     "url": "https://e-archivo.uc3m.es/bitstream/10016/26833/1/mechanical_CS_2015_ps.pdf",
+     "location": "Table 3 (modulus law), Table 4 (JC constants)",
+     "confidence": "low",
+     "notes": "Text extraction of Table 4 was garbled: A=132 MPa, C=0.034, m=0.7, Tm=614 K, E0=3.6 GPa read reliably; B=10 MPa read from a column headed '8 (MPa)'; n could not be read. Transcribe Table 4 by hand from the PDF before use."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "n (and confirmation of B) for the Garcia-Gonzalez JC fit. Rae, Brown & Orler (Polymer 2007, LANL) PEEK 450G compression data over strain rate/temperature not opened. PMC12654521 (quasi-static/dynamic tensile PEEK constitutive model) could not be opened (PMC captcha). Poisson's ratio not on Victrex TDS (0.4 used in Garcia-Gonzalez)."
+  },
+  {
+   "key": "PLA_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Bambu Lab PLA Basic, 100% infill, XY",
+    "notes": "Vendor TDS values are for 100% infill specimens annealed/dried at 55 C for 8 h. XY tensile strength 39 MPa is a break value; PLA is brittle (12% elongation XY per TDS but typically lower in Z). Z values are 2160 MPa / 35 MPa / 7.5%."
+   },
+   "properties": {
+    "E_GPa": 2.68,
+    "nu": null,
+    "rho": 1240,
+    "sy_MPa": null,
+    "su_MPa": 39,
+    "elong": 0.122,
+    "product_form": "FDM printed, X-Y, 100% infill, nozzle 220 C, bed 35 C, 200 mm/s, annealed+dried 55 C/8 h; ISO 527 / GB/T 1040",
+    "source": "Bambu Lab, Bambu Filament Technical Data Sheet V2.0, PLA Basic (hosted by distributor Additive-X)",
+    "url": "https://www.additive-x.com/shop/mpattachments/file/viewonline/id/494/product_id/2236",
+    "location": "Mechanical properties table: Young's modulus X-Y 2680+/-130 MPa, Z 2160+/-90; tensile strength X-Y 39+/-2, Z 35+/-3 MPa; elongation X-Y 12.2+/-0.4 %, Z 7.5+/-0.3 %; bending modulus X-Y 2750, strength 76 MPa; Charpy X-Y 26.6 kJ/m2 (7.9 notched); density 1.24 g/cm3"
+   },
+   "fits": [],
+   "open_raw_data": [
+    {
+     "url": "https://data.mendeley.com/datasets/nvzrft8c7d/2",
+     "description": "Mendeley Data: tensile and compressive load datasets for AM PLA lattice infill patterns (raw force, displacement, extensometer, computed stress/strain; .xlsx). Lattice infill, not solid; brand not stated."
+    },
+    {
+     "url": "https://doi.org/10.1038/s41597-024-03369-y",
+     "description": "AbouelNour et al., Scientific Data 11 (2024): tensile data of FFF PLA ASTM D638 specimens with and without embedded internal features (UTS and strain at UTS). Repository URL not shown on the DOAJ page."
+    }
+   ],
+   "unresolved": "No published constitutive fit (JC, Ramberg-Osgood, Voce) for this vendor's printed material was found and opened. A copper-filled printed PLA constitutive paper (PMC8540074) exists but is not plain PLA and PMC was inaccessible. No yield value on TDS."
+  },
+  {
+   "key": "PETG_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Bambu Lab PETG HF, 100% infill, XY",
+    "notes": "PETG HF (high-flow) TDS V1.0 is low: XY 1810 MPa / 34 MPa / 8.6 %. Specimens annealed and dried 75 C/8 h. Other PETG grades may be stronger; vendor-specific."
+   },
+   "properties": {
+    "E_GPa": 1.81,
+    "nu": null,
+    "rho": 1280,
+    "sy_MPa": null,
+    "su_MPa": 34,
+    "elong": 0.086,
+    "product_form": "FDM printed, X-Y, 100% infill, nozzle 255 C, bed 70 C, 200 mm/s, annealed+dried 75 C/8 h; ISO 527 / GB/T 1040",
+    "source": "Bambu Lab, Bambu PETG HF Technical Data Sheet V1.0 (copy hosted by Botland)",
+    "url": "https://botland.com.pl/img/art/inne/25540_karta_produktu.pdf",
+    "location": "Mechanical table: Young's modulus X-Y 1810+/-190, Z 1540+/-130 MPa; tensile X-Y 34+/-4, Z 23+/-4 MPa; elongation X-Y 8.6+/-1.2, Z 5.1+/-0.8 %; bending modulus X-Y 2050 MPa, strength 64 MPa; Charpy X-Y 31.5 (6.2 notched) kJ/m2; density 1.28 g/cm3"
+   },
+   "fits": [],
+   "open_raw_data": [
+    {
+     "url": "https://data.mendeley.com/datasets/zvt28hz3kf",
+     "description": "Mendeley Data 10.17632/zvt28hz3kf.1 (Desouky, AlHamidi, Abdulla 2024): PETG factorial study (orientation, raster, infill pattern, infill density); Results sheet gives stress at 8 strain points plus modulus, UTS, yield. Brand not stated; full raw curves not confirmed."
+    }
+   ],
+   "unresolved": "No published constitutive fit (JC, Ramberg-Osgood, Voce) for this vendor's printed material was found and opened. Univ. Leoben paper 'Strain rate-dependent failure modes of material extrusion-based additively manufactured PETG' found but not opened."
+  },
+  {
+   "key": "PCCF_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "3DXTech CarbonX CF ezPC (PC-CF), XY flat",
+    "notes": "Bambu Lab does not sell a PC-CF; Prusament PC Blend Carbon Fiber exists but its TDS numbers could not be opened. 3DXTech values are XY flat only, no Z data, no impact, no annealing info. Filament2print listing for CarbonX PC+CF (possibly a different/older formulation) gives 6200 MPa / 70 MPa / 2% / 1.36 g/cm3 with no orientation stated."
+   },
+   "properties": {
+    "E_GPa": 6.98,
+    "nu": null,
+    "rho": 1360,
+    "sy_MPa": null,
+    "su_MPa": 73,
+    "elong": 0.021,
+    "product_form": "FDM printed, XY flat, 100% infill +/-45, 0.4 mm nozzle, 0.25 mm layer, 275 C nozzle, 95 C bed; ISO 527",
+    "source": "3DXTECH, CarbonX Carbon Fiber ezPC Polycarbonate TDS Rev 1.0",
+    "url": "https://nl.3ddruckboss.de/cdn/shop/files/CarbonX_CF_ezPC_TDSv1.pdf",
+    "location": "Mechanical properties table: tensile strength at break 73 MPa, modulus 6980 MPa, elongation 2.1 %; flexural strength 85 MPa, flexural modulus 6540 MPa; density 1.36 g/cc"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published constitutive fit (JC, Ramberg-Osgood, Voce) for this vendor's printed material was found and opened. Z-direction properties for PC-CF not found. Prusament PC Blend CF TDS not retrievable from product page."
+  },
+  {
+   "key": "PPSCF_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Bambu Lab PPS-CF, XY, not annealed",
+    "notes": "Very stiff, very brittle: XY 8230 MPa, 87 MPa, 1.2 % elongation; Z only 24 MPa and 0.7 %. Specimens NOT annealed (TDS states). Printed on X1E with 60 C chamber."
+   },
+   "properties": {
+    "E_GPa": 8.23,
+    "nu": null,
+    "rho": 1260,
+    "sy_MPa": null,
+    "su_MPa": 87,
+    "elong": 0.012,
+    "product_form": "FDM printed X-Y, 100% infill, X1E, chamber 60 C, nozzle 320 C, bed 110 C, 60 mm/s, not annealed; ISO 527 / GB/T 1040",
+    "source": "Bambu Lab, Bambu PPS-CF Technical Data Sheet V1.0 (hosted by Additive-X)",
+    "url": "https://www.additive-x.com/shop/mpattachments/file/viewonline/id/918/product_id/2730",
+    "location": "Mechanical table: Young's modulus X-Y 8230+/-270, Z 2850+/-160 MPa; tensile X-Y 87+/-5, Z 24+/-3 MPa; elongation X-Y 1.2+/-0.4, Z 0.7+/-0.3 %; bending modulus X-Y 7160, strength 142 MPa; Charpy X-Y 27.8 (6.2 notched), Z 2.8 kJ/m2; density 1.26 g/cm3"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published constitutive fit (JC, Ramberg-Osgood, Voce) for this vendor's printed material was found and opened."
+  },
+  {
+   "key": "PACF_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Bambu Lab PA6-CF (dried, annealed) for XY; derate toward Polymaker Fiberon PA6-CF20 'wet' values for parts left in ambient air",
+    "notes": "Moisture dominates: Polymaker Fiberon PA6-CF20 XY drops from E 8637 MPa / 109 MPa / 2.1 % (dry) to 2508 MPa / 54.7 MPa / 7.0 % after 48 h in 60 C water (5.3 % moisture). Bambu PA6-CF V3.0 specimens were annealed and dried at 80 C/12 h; saturated water absorption 2.35 % at 25 C/55 % RH."
+   },
+   "properties": {
+    "E_GPa": 4.43,
+    "nu": null,
+    "rho": 1090,
+    "sy_MPa": null,
+    "su_MPa": 102,
+    "elong": 0.058,
+    "product_form": "FDM printed X-Y, 100% infill, nozzle 280 C, bed 100 C, 100 mm/s, annealed+dried 80 C/12 h; ISO 527 / GB/T 1040",
+    "source": "Bambu Lab, Bambu PA6-CF Technical Data Sheet V3.0 (hosted by Polyalkemi)",
+    "url": "https://polyalkemi.no/wp-content/uploads/2024/01/Bambu_PA6-CF_Technical_Data_Sheet-v2.pdf",
+    "location": "Mechanical table: Young's modulus X-Y 4430+/-310, Z 2170+/-230 MPa; tensile X-Y 102+/-7, Z 48+/-6 MPa; elongation X-Y 5.8+/-1.6, Z 3.7+/-0.8 %; bending modulus X-Y 5460, strength 151 MPa; Charpy X-Y 40.3 (13.4 notched), Z 15.5 kJ/m2; density 1.09 g/cm3. Alternative vendor: Polymaker Fiberon PA6-CF20 TDS V1.1 (https://fiberon.polymaker.com/wp-content/uploads/TDS_FIBERON-PA6-CF20_V1.1_EN.pdf): density 1.17; dry X-Y E 8636.5 MPa, UTS 109.3 MPa, 2.1 %; dry Z 3759.5 MPa, 54.0 MPa, 1.9 %; wet X-Y 2508.1 MPa, 54.7 MPa, 7.0 %; wet Z 1056.1 MPa, 25.5 MPa, 6.7 %; annealed 100 C/16 h."
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published constitutive fit (JC, Ramberg-Osgood, Voce) for this vendor's printed material was found and opened. Bambu file name says v2 but document header reads V3.0."
+  },
+  {
+   "key": "TPU95A_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Polymaker TPU90 (listed 95A by Smith & MacCurdy) for the hyperelastic fit; NinjaTek Cheetah 95A or Bambu TPU 95A for datasheet values",
+    "notes": "95A TPUs vary a lot by brand. Bambu TPU 95A TDS V2.0 lists XY E 9.2 MPa / UTS 29.6 MPa / >700%; NinjaTek Cheetah lists E 26 MPa, yield 9 MPa at 55%, UTS 39 MPa, 580%. Datasheet 'Young's modulus' for TPU depends heavily on strain window; use the hyperelastic fit for large-strain response. Initial shear modulus implied by the Polymaker TPU90 Ogden fit: mu0 = 0.5*sum(mu_p*alpha_p) = 9.7 MPa (E0 ~ 29 MPa)."
+   },
+   "properties": {
+    "E_GPa": 0.026,
+    "nu": null,
+    "rho": 1220,
+    "sy_MPa": 9,
+    "su_MPa": 39,
+    "elong": 5.8,
+    "product_form": "NinjaTek Cheetah 95A filament, ASTM D638 (specimen form/orientation not stated); Shore 95A (D2240)",
+    "source": "NinjaTek Technical Specs page (Cheetah column)",
+    "url": "https://ninjatek.com/support/technical-specs/",
+    "location": "Specs table: tensile modulus 3800 psi (26 MPa); stress at yield 1250 psi (9 MPa); elongation at yield 55%; ultimate 5650 psi (39 MPa); elongation at break 580%; SG 1.22. Cross-check Bambu TPU 95A TDS V2.0 (https://polyalkemi.no/wp-content/uploads/2023/06/Bambu_TPU_95A_Technical_Data_Sheet.pdf): density 1.20; XY E 9.2+/-0.4 MPa, Z 7.8+/-0.5; XY UTS 29.6+/-0.6, Z 23.2+/-0.5 MPa; XY elongation >700%, Z >500%; printed 230 C, 100% infill, annealed+dried 70 C/12 h."
+   },
+   "fits": [
+    {
+     "model": "Ogden N=2",
+     "equation_as_published": "W = sum_p (mu_p/alpha_p)(lambda1^alpha_p + lambda2^alpha_p + lambda3^alpha_p - 3), incompressible",
+     "params": {
+      "mu1_MPa": 11.5138,
+      "alpha1": 1.457,
+      "mu2_MPa": -0.33239,
+      "alpha2": -7.8825,
+      "S_std_err_MPa": 0.05
+     },
+     "units_note": "mu in MPa, alpha dimensionless; this W normalisation gives initial shear modulus 0.5*sum(mu_p*alpha_p)",
+     "strain_measure": "principal stretches; fitted to uniaxial Cauchy stress",
+     "valid_range": "uniaxial tension to failure or up to 550-600% engineering strain",
+     "test_conditions": "Polymaker TPU90 (listed as 95A), printed ASTM D412 Die C, 8 samples, 45 and 90 deg infill offset groups, 810E5 dynamic test machine (quasi-static)",
+     "confidence": "medium",
+     "notes": "Uniaxial-only fit: biaxial/shear response not constrained. Same table gives NinjaTek Eel 95A (mu1 11.5787, a1 1.5379, mu2 -2.9221, a2 -5.6863), SainSmart 95A (7.536, 1.6663, -0.45936, -7.1361), Hatchbox 95A (15.9737, 1.1182, -1.747, -6.5933). Cheetah, Overture, MatterHackers 95A best fits are 3-term with +/-1e5 coefficients (ill-conditioned, do not use).",
+     "citation": "Smith L., MacCurdy R., 'Mechanical Characterization and Constitutive Modeling of 3D Printable Soft Materials', 3D Printing and Additive Manufacturing 11(3), 2024, doi:10.1089/3dp.2023.0010 (author preprint)",
+     "url": "https://matterassembly.org/assets/pdf/preprints/2024_smith_modeling_softmaterials.pdf",
+     "location": "Eq. 1; Table 1 (best-fit Ogden coefficients by AIC)"
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://www.SoRoForge.com",
+     "description": "Smith & MacCurdy state raw uniaxial data, coefficients and fitting code for 14 printable elastomers (incl. NinjaFlex, Cheetah, Polymaker TPU90) are free at SoRoForge; site could not be opened from this session (permission timeout), so availability unverified."
+    }
+   ],
+   "unresolved": "No rate-dependent (visco-hyperelastic) fit for printed 95A TPU found; impact-rate stiffening not covered. No biaxial/planar-calibrated 95A fit opened (Etiwa & Czekanski CSME 2025 tested Filaflex uniaxial+planar but reported no hyperelastic parameters). Gallup et al. Polymers 17(1):26 (2025) third-order Mooney-Rivlin for NinjaFlex vs print temperature: Table 6 not readable."
+  },
+  {
+   "key": "TPU85A_print",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "NinjaTek NinjaFlex 85A",
+    "notes": "NinjaFlex is the 85A TPU with multiple published hyperelastic fits. Vendor: E 12 MPa, yield 4 MPa at 65%, UTS 26 MPa, 660%, SG 1.19. Bambu TPU 85A (distributor page) lists tensile modulus 6.8 MPa, 12 MPa, >700%, 1.18 g/cm3. Fits disagree on small-strain shear modulus: Reppel & Weinberg mu = 2.9-4.1 MPa; Smith & MacCurdy implied mu0 = 6.35 MPa."
+   },
+   "properties": {
+    "E_GPa": 0.012,
+    "nu": null,
+    "rho": 1190,
+    "sy_MPa": 4,
+    "su_MPa": 26,
+    "elong": 6.6,
+    "product_form": "NinjaFlex 85A filament, ASTM D638 (specimen form not stated); Shore 85A",
+    "source": "NinjaTek Technical Specs page (NinjaFlex column)",
+    "url": "https://ninjatek.com/support/technical-specs/",
+    "location": "Specs table: tensile modulus 1800 psi (12 MPa); yield 580 psi (4 MPa) at 65%; ultimate 3700 psi (26 MPa); elongation at break 660%; SG 1.19. Reppel & Weinberg 2018 measured printed NinjaFlex E 10.7-12.2 MPa, UTS 19.2-27.8 MPa, 1139-1200% (Table 1). Bambu TPU 85A via filament2print (https://filament2print.com/en/flexible-tpe-tpu/3685-tpu-85a-bambu-lab.html): 6.8 MPa, 12 MPa, >700%, 1.18 g/cm3."
+   },
+   "fits": [
+    {
+     "model": "Ogden N=2",
+     "equation_as_published": "W = sum_p (mu_p/alpha_p)(lambda1^alpha_p + lambda2^alpha_p + lambda3^alpha_p - 3), incompressible",
+     "params": {
+      "mu1_MPa": 5.5438,
+      "alpha1": 2.1314,
+      "mu2_MPa": -0.0976,
+      "alpha2": -9.0282,
+      "S_std_err_MPa": 0.09
+     },
+     "units_note": "mu in MPa, alpha dimensionless",
+     "strain_measure": "principal stretches; uniaxial Cauchy stress",
+     "valid_range": "uniaxial tension to failure or up to 550-600% engineering strain",
+     "test_conditions": "NinjaTek NinjaFlex 85A, printed ASTM D412 Die C, 8 samples, 45/90 deg infill groups, quasi-static",
+     "confidence": "medium",
+     "notes": "Uniaxial-only fit.",
+     "citation": "Smith L., MacCurdy R., 'Mechanical Characterization and Constitutive Modeling of 3D Printable Soft Materials', 3D Printing and Additive Manufacturing 11(3), 2024, doi:10.1089/3dp.2023.0010 (author preprint)",
+     "url": "https://matterassembly.org/assets/pdf/preprints/2024_smith_modeling_softmaterials.pdf",
+     "location": "Eq. 1; Table 1 (best-fit Ogden coefficients by AIC)"
+    },
+    {
+     "model": "Neo-Hookean, Mooney-Rivlin (2-term), Ogden N=2",
+     "equation_as_published": "Psi = (mu1/2)(I1-3) + (mu2/2)(I2-3) [MR; neo-Hookean mu2=0]; uniaxial P = mu1(lambda - lambda^-2) + mu2(1 - lambda^-3); Ogden Psi = sum (mu_p/alpha_p)(lambda1^a_p+lambda2^a_p+lambda3^a_p-3), sum mu_p alpha_p = 2 mu",
+     "params": {
+      "neo_hookean_mu_MPa": 2.93,
+      "MR_mu1_MPa": 0.77,
+      "MR_mu2_MPa": 2.94,
+      "MR_mu_MPa": 3.72,
+      "Ogden_type005": {
+       "mu1_MPa": 0.13,
+       "alpha1": 3.05,
+       "mu2_MPa": -1214,
+       "alpha2": -0.0054,
+       "mu_MPa": 3.58
+      },
+      "Ogden_type002": {
+       "mu1_MPa": 1.13,
+       "alpha1": 3.11,
+       "mu2_MPa": -13.17,
+       "alpha2": -0.6,
+       "mu_MPa": 4.14
+      }
+     },
+     "units_note": "MPa; note mu1/mu2 here are the coefficients of (I-3)/2, i.e. C10 = mu1/2, C01 = mu2/2",
+     "strain_measure": "stretch; nominal (1st Piola) stress",
+     "valid_range": "neo-Hookean to ~70% strain (R2 0.99); Mooney-Rivlin to ~450% (R2 0.97); Ogden fitted to full curve",
+     "test_conditions": "printed NinjaFlex, Leapfrog Xeed, 0.35 mm nozzle, 2 mm thick, +/-45 infill, shell types 005 (1 line) and 002 (4 lines); uniaxial tension only",
+     "citation": "Reppel T., Weinberg K., 'Experimental Determination of Elastic and Rupture Properties of Printed Ninjaflex', Technische Mechanik 38(1):104-112, 2018, doi:10.24352/UB.OVGU-2018-010",
+     "url": "https://journals.ub.ovgu.de/index.php/techmech/article/download/564/540/1187",
+     "location": "Eqs. 4-7; Table 2 (Ogden), Table 3 (NH/MR)",
+     "confidence": "medium",
+     "notes": "Ogden mu2 = -1214 MPa with alpha2 = -0.0054 is near-degenerate (uniaxial only, authors say biaxial needed for uniqueness); prefer NH/MR. Text conclusions give mu1 = 0.133 for type 005."
+    },
+    {
+     "model": "Mooney-Rivlin 5-parameter (incompressible)",
+     "equation_as_published": "W = C10(I1-3) + C01(I2-3) + C11(I1-3)(I2-3) + C20(I1-3)^2 + C02(I2-3)^2 (paper's Eq. 1 has typos)",
+     "params": {
+      "C10_MPa": -3.1992,
+      "C01_MPa": 6.977,
+      "C20_MPa": 0.0281,
+      "C11_MPa": -0.074972,
+      "C02_MPa": 0.92155,
+      "D1": 0
+     },
+     "units_note": "MPa",
+     "strain_measure": "invariants",
+     "valid_range": "uniaxial tension 0 to ~660%",
+     "test_conditions": "NinjaTek TPU 85A (NinjaFlex), printed ASTM D638, 235 C, 15 mm/s, 0.1 mm layer, 100 mm/min, ANSYS fit",
+     "citation": "Abboodi M., 'Analytical and Experimental Force Analysis of a Soft Linear Pneumatic Actuator', arXiv:2605.21836",
+     "url": "https://arxiv.org/pdf/2605.21836",
+     "location": "Eq. 1; Table 1",
+     "confidence": "low",
+     "notes": "Negative C10 makes the model unstable outside uniaxial tension; not recommended for compression/impact."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://www.SoRoForge.com",
+     "description": "Smith & MacCurdy raw uniaxial data for NinjaFlex and other printable elastomers (stated in paper; site not opened - permission timeout)."
+    }
+   ],
+   "unresolved": "No rate-dependent fit for 85A printed TPU; Shore-to-modulus differs by brand. Bambu TPU 85A official TDS not opened (distributor values only)."
+  },
+  {
+   "key": "urethane_20A",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Smooth-On VytaFlex 20 cast urethane rubber",
+    "notes": "Smooth-On VytaFlex 20 page gives SG 1.0, tensile 200 psi (1.38 MPa), 100% modulus 50 psi (0.345 MPa), elongation 1000%; test methods not stated on page (Technical Bulletin not opened). Gent relation gives E = 0.732 MPa at 20A. DERIVED CHECK (not a published fit): incompressible neo-Hookean uniaxial nominal stress at 100% strain is 1.75*mu, so the 100% modulus implies secant mu = 0.197 MPa, E = 3mu = 0.591 MPa. Below 40A Gent is flagged as unreliable by its secondary source; the 100%-modulus estimate is the better anchor."
+   },
+   "properties": {
+    "E_GPa": 0.00073,
+    "nu": null,
+    "rho": 1000,
+    "sy_MPa": null,
+    "su_MPa": 1.38,
+    "elong": 10.0,
+    "product_form": "cast urethane rubber (Smooth-On product page 'Data At-A-Glance'; test standard not stated). E_GPa here is the Gent-correlation value, not a measured modulus",
+    "source": "Smooth-On VytaFlex 20 product page; E from Gent (1958) relation via Wikipedia",
+    "url": "https://www.smooth-on.com/products/vytaflex-20/",
+    "location": "Data At-A-Glance table: Shore 20A, SG 1.0 g/cc, tensile 200 psi, 100% modulus 50 psi, elongation 1000%, Die C tear 60 pli; cure 16 h"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published hyperelastic (neo-Hookean/Mooney-Rivlin/Ogden/Yeoh) fit for this Smooth-On urethane was found. The shared web-search budget ran out before urethane-specific fit searches could run, so this was not searched, not ruled out. Poisson's ratio (treat as near-incompressible) and rate dependence not sourced. Gent original paper not opened. Gent relation verified as quoted on Wikipedia 'Shore durometer': E = 0.0981(56 + 7.62336 S)/(0.137505(254 - 2.54 S)), E in MPa, S = ASTM D2240 Type A; cited to Gent A.N., 'On the Relation between Indentation Hardness and Young's Modulus', Rubber Chemistry and Technology 31(4):896-906, Sept 1958, doi:10.5254/1.3542351. Wikipedia states it departs from experimental data for S < 40 and gives E = infinity at S = 100. The original Gent paper was not opened, so the coefficient 7.62336 (vs other forms) is verified only against the secondary source. (https://en.wikipedia.org/wiki/Shore_durometer)"
+  },
+  {
+   "key": "urethane_40A",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Smooth-On VytaFlex 40 cast urethane rubber",
+    "notes": "Smooth-On VytaFlex 40 page gives SG 1.03, tensile 522 psi (3.60 MPa), 100% modulus 100 psi (0.689 MPa), elongation 660%; test methods not stated on page (Technical Bulletin not opened). Gent relation gives E = 1.690 MPa at 40A. DERIVED CHECK (not a published fit): incompressible neo-Hookean uniaxial nominal stress at 100% strain is 1.75*mu, so the 100% modulus implies secant mu = 0.394 MPa, E = 3mu = 1.182 MPa. Gent and 100%-secant estimates agree within 30%."
+   },
+   "properties": {
+    "E_GPa": 0.00169,
+    "nu": null,
+    "rho": 1030,
+    "sy_MPa": null,
+    "su_MPa": 3.6,
+    "elong": 6.6,
+    "product_form": "cast urethane rubber (Smooth-On product page 'Data At-A-Glance'; test standard not stated). E_GPa here is the Gent-correlation value, not a measured modulus",
+    "source": "Smooth-On VytaFlex 40 product page; E from Gent (1958) relation via Wikipedia",
+    "url": "https://www.smooth-on.com/products/vytaflex-40/",
+    "location": "Data At-A-Glance table: Shore 40A, SG 1.03 g/cc, tensile 522 psi, 100% modulus 100 psi, elongation 660%, Die C tear 82 pli"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published hyperelastic (neo-Hookean/Mooney-Rivlin/Ogden/Yeoh) fit for this Smooth-On urethane was found. The shared web-search budget ran out before urethane-specific fit searches could run, so this was not searched, not ruled out. Poisson's ratio (treat as near-incompressible) and rate dependence not sourced. Gent original paper not opened. Gent relation verified as quoted on Wikipedia 'Shore durometer': E = 0.0981(56 + 7.62336 S)/(0.137505(254 - 2.54 S)), E in MPa, S = ASTM D2240 Type A; cited to Gent A.N., 'On the Relation between Indentation Hardness and Young's Modulus', Rubber Chemistry and Technology 31(4):896-906, Sept 1958, doi:10.5254/1.3542351. Wikipedia states it departs from experimental data for S < 40 and gives E = infinity at S = 100. The original Gent paper was not opened, so the coefficient 7.62336 (vs other forms) is verified only against the secondary source. (https://en.wikipedia.org/wiki/Shore_durometer)"
+  },
+  {
+   "key": "urethane_60A",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Smooth-On VytaFlex 60 cast urethane rubber",
+    "notes": "Smooth-On VytaFlex 60 page gives SG 1.04, tensile 880 psi (6.07 MPa), 100% modulus 300 psi (2.068 MPa), elongation 480%; test methods not stated on page (Technical Bulletin not opened). Gent relation gives E = 3.605 MPa at 60A. DERIVED CHECK (not a published fit): incompressible neo-Hookean uniaxial nominal stress at 100% strain is 1.75*mu, so the 100% modulus implies secant mu = 1.182 MPa, E = 3mu = 3.546 MPa. Gent and 100%-secant estimates agree within 2%."
+   },
+   "properties": {
+    "E_GPa": 0.00361,
+    "nu": null,
+    "rho": 1040,
+    "sy_MPa": null,
+    "su_MPa": 6.07,
+    "elong": 4.8,
+    "product_form": "cast urethane rubber (Smooth-On product page 'Data At-A-Glance'; test standard not stated). E_GPa here is the Gent-correlation value, not a measured modulus",
+    "source": "Smooth-On VytaFlex 60 product page; E from Gent (1958) relation via Wikipedia",
+    "url": "https://www.smooth-on.com/products/vytaflex-60/",
+    "location": "Data At-A-Glance table: Shore 60A, SG 1.04 g/cc, tensile 880 psi, 100% modulus 300 psi, elongation 480%, Die C tear 136 pli"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published hyperelastic (neo-Hookean/Mooney-Rivlin/Ogden/Yeoh) fit for this Smooth-On urethane was found. The shared web-search budget ran out before urethane-specific fit searches could run, so this was not searched, not ruled out. Poisson's ratio (treat as near-incompressible) and rate dependence not sourced. Gent original paper not opened. Gent relation verified as quoted on Wikipedia 'Shore durometer': E = 0.0981(56 + 7.62336 S)/(0.137505(254 - 2.54 S)), E in MPa, S = ASTM D2240 Type A; cited to Gent A.N., 'On the Relation between Indentation Hardness and Young's Modulus', Rubber Chemistry and Technology 31(4):896-906, Sept 1958, doi:10.5254/1.3542351. Wikipedia states it departs from experimental data for S < 40 and gives E = infinity at S = 100. The original Gent paper was not opened, so the coefficient 7.62336 (vs other forms) is verified only against the secondary source. (https://en.wikipedia.org/wiki/Shore_durometer)"
+  },
+  {
+   "key": "urethane_90A",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Smooth-On PMC-790 cast urethane rubber",
+    "notes": "Smooth-On PMC-790 page gives SG 1.07, tensile 2000 psi (13.79 MPa), 100% modulus 640 psi (4.413 MPa), elongation 550%; test methods not stated on page (Technical Bulletin not opened). Gent relation gives E = 20.844 MPa at 90A. DERIVED CHECK (not a published fit): incompressible neo-Hookean uniaxial nominal stress at 100% strain is 1.75*mu, so the 100% modulus implies secant mu = 2.522 MPa, E = 3mu = 7.565 MPa. At 90A the Gent value (20.8 MPa) is ~2.8x the 100%-secant value; hard urethanes strain-soften, so Gent initial modulus and large-strain secant diverge. Use a 2-parameter model calibrated to both if possible."
+   },
+   "properties": {
+    "E_GPa": 0.02084,
+    "nu": null,
+    "rho": 1070,
+    "sy_MPa": null,
+    "su_MPa": 13.79,
+    "elong": 5.5,
+    "product_form": "cast urethane rubber (Smooth-On product page 'Data At-A-Glance'; test standard not stated). E_GPa here is the Gent-correlation value, not a measured modulus",
+    "source": "Smooth-On PMC-790 product page; E from Gent (1958) relation via Wikipedia",
+    "url": "https://www.smooth-on.com/products/pmc-790/",
+    "location": "Data At-A-Glance table: Shore 90A, SG 1.07 g/cc, tensile 2000 psi, 100% modulus 640 psi, elongation 550%, Die C tear 300 pli"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No published hyperelastic (neo-Hookean/Mooney-Rivlin/Ogden/Yeoh) fit for this Smooth-On urethane was found. The shared web-search budget ran out before urethane-specific fit searches could run, so this was not searched, not ruled out. Poisson's ratio (treat as near-incompressible) and rate dependence not sourced. Gent original paper not opened. Gent relation verified as quoted on Wikipedia 'Shore durometer': E = 0.0981(56 + 7.62336 S)/(0.137505(254 - 2.54 S)), E in MPa, S = ASTM D2240 Type A; cited to Gent A.N., 'On the Relation between Indentation Hardness and Young's Modulus', Rubber Chemistry and Technology 31(4):896-906, Sept 1958, doi:10.5254/1.3542351. Wikipedia states it departs from experimental data for S < 40 and gives E = infinity at S = 100. The original Gent paper was not opened, so the coefficient 7.62336 (vs other forms) is verified only against the secondary source. (https://en.wikipedia.org/wiki/Shore_durometer) 90A analogue Simpact 85A / PMC-780 not checked."
+  },
+  {
+   "key": "G10_FR4",
+   "temper_check": {
+    "designation_ok": null,
+    "recommended_default": "NEMA LI-1 grade G-10 / FR-4 glass-epoxy laminate sheet (lengthwise)",
+    "notes": "NOT VERIFIED. The shared web-search budget ran out before any G10/FR4 datasheet search could run, and guessed distributor URLs (Boedeker) returned no property table. Catalog values (18.6 GPa, 1850 kg/m3, 280/310 MPa, 2% elongation) remain unverified."
+   },
+   "properties": {
+    "E_GPa": null,
+    "nu": null,
+    "rho": null,
+    "sy_MPa": null,
+    "su_MPa": null,
+    "elong": null,
+    "product_form": "n/a",
+    "source": "none opened",
+    "url": "",
+    "location": ""
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "Everything for G10/FR4: datasheet verification (NEMA LI-1 minimums vs supplier typicals, lengthwise vs crosswise), in-plane modulus, Poisson's ratio, and any orthotropic or elastic-brittle fit. Needs a follow-up session with search budget."
+  }
+ ],
+ "fits_steels.json": [
+  {
+   "key": "1018_CD",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "1018 cold drawn bar (most common hobby form for bar/flat). For 1018 hot-rolled plate use 400/220 MPa class values (Alro HR row: 58/32 ksi, 25%, HB116).",
+    "notes": "Catalog 370/440 MPa / 15% / HB126 matches the Alro mill-average table for 1018 Cold Drawn (64 ksi UTS / 54 ksi yield / 15% in 2 in. / 40% RA / HB126 / HRB85 = 441/372 MPa) on 1-in round bars. E 205 GPa, nu 0.29, rho 7850 are standard carbon-steel values (not separately verified from an opened source for 1018)."
+   },
+   "properties": {
+    "E_GPa": 205,
+    "nu": 0.29,
+    "rho": 7850,
+    "sy_MPa": 372,
+    "su_MPa": 441,
+    "elong": 0.15,
+    "uniform_elong": null,
+    "hardness": "HB 126 / HRB 85",
+    "product_form": "cold drawn 1-in round bar",
+    "source": "Alro Metals Guide Catalog, Reference section 'Average Mechanical Properties - Various Steels Commonly Ordered to Chemical Specifications' (mill-lab averages, 1-in dia bars)",
+    "url": "https://www.alro.com/Resources/WebResources/AlroCom/MetalsGuideCatalog/PDFs/011-Reference.pdf",
+    "location": "pp. 11-2/11-3, row 1018 Cold Drawn (64 / 54 ksi, 15%, 40% RA, HB126, B85)"
+   },
+   "fits": [
+    {
+     "model": "hollomon",
+     "equation_as_published": "sigma = K*eps^n",
+     "params": {
+      "K_MPa": 700,
+      "n": 0.08
+     },
+     "units_note": "MPa",
+     "strain_measure": "true strain (implied)",
+     "valid_range": "not stated",
+     "test_conditions": "'Low-carbon steel (cold worked)' - generic, NEAREST CONDITION ONLY, grade/% cold work unspecified",
+     "citation": "Wikipedia 'Strain hardening exponent' table (no row-level reference; page cites Callister, Kalpakjian, Hollomon 1945)",
+     "url": "https://en.wikipedia.org/wiki/Strain_hardening_exponent",
+     "location": "n/K table, row 'Low-carbon steel (cold worked) | 0.08 | 700'",
+     "confidence": "low",
+     "notes": "Tertiary source; K=700 MPa with n=0.08 gives sigma(0.002)=425 MPa and sigma(0.05)=553 MPa, i.e. higher than 1018 CD UTS of 441 MPa -> inconsistent with 1018 CD; listed only so it is not adopted blindly. Prefer a flat/near-perfectly-plastic curve for CD 1018 (YS/UTS = 0.84) unless a real fit is found."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.mendeley.com/datasets/gm36r236sw/1",
+     "description": "Mendeley Data 'Tensile test data for two specimens of AISI 1018 steel' (Almaguer Zaldivar, Univ. de Holguin, 2025, DOI 10.17632/gm36r236sw.1). CAUTION: description says AISI 1015, no condition, no geometry/rate, Files and Licence sections appeared empty when fetched - likely unusable."
+    }
+   ],
+   "unresolved": "No published Johnson-Cook, Ramberg-Osgood, Swift or Voce fit for 1018 CD was found in an opened source (WebSearch budget for this turn was exhausted before dedicated 1018 JC/Swift searches could be run). Uniform elongation not found."
+  },
+  {
+   "key": "1045_CD",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "1045 cold drawn bar for shafts/standoffs; 1045 hot-rolled plate is the more common plate form (Alro HR row 82/45 ksi = 565/310 MPa, 16%, HB163).",
+    "notes": "Catalog 530/625 MPa / 12% / HB179 matches Alro 1045 Cold Drawn mill average: 91 ksi UTS / 77 ksi yield / 12% / 35% RA / HB179 (= 627/531 MPa). For comparison SAE FD&E dataset of normalized 1045 (HB187, 30% ferrite/70% pearlite): Su 654 MPa, Sy 368 MPa, E 207 GPa, RA 50%."
+   },
+   "properties": {
+    "E_GPa": 207,
+    "nu": 0.29,
+    "rho": 7850,
+    "sy_MPa": 531,
+    "su_MPa": 627,
+    "elong": 0.12,
+    "uniform_elong": null,
+    "hardness": "HB 179",
+    "product_form": "cold drawn 1-in round bar",
+    "source": "Alro Metals Guide Catalog Reference section, 'Average Mechanical Properties' table; E from SAE FD&E normalized 1045 dataset (207 GPa)",
+    "url": "https://www.alro.com/Resources/WebResources/AlroCom/MetalsGuideCatalog/PDFs/011-Reference.pdf",
+    "location": "pp. 11-2/11-3, row 1045 Cold Drawn (91/77 ksi, 12%, 35% RA, HB179); E: https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae1045/sae1045_187BHN_fitted.html"
+   },
+   "fits": [],
+   "open_raw_data": [
+    {
+     "url": "https://doi.org/10.18434/mds2-2393",
+     "description": "NIST dataset 'A Dynamic Plasticity Model for Rapidly-Heated 1045 Steel up to 1000 C' (S.P. Mates, S.-Y. Li). Raw compression strain/stress/strain-rate curves on ANNEALED 1045 (NIST Kolsky bar + servohydraulic), plus model fit coefficients. Files: MIDAS_steel_data_and_fits_below_400C.csv (data + fit coefficients below 400 C), ..._to_A1.csv, ..._above_A1.csv, NIST_Model_1045_Steel_Gen.zip, Steel_1045_NIST_Model_Gen_documentation.pptx at https://data.nist.gov/od/ds/mds2-2393/ . Paper: J. Res. NIST 126:026 (doi 10.6028/jres.126.026, PMC10046751). Condition is annealed, NOT cold drawn."
+    },
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae1045/sae1045.html",
+     "description": "SAE Fatigue Design & Evaluation committee 1045 datasets (HB 187 normalized through HB 705 Q&T; also 10V45 hot rolled and 18%/29% cold drawn, Dowling). Strain-life data with cyclic K', n' (e.g. normalized HB187: K'=1491 MPa, n'=0.2383) and monotonic Su/Sy/RA; monotonic K and n fields are zero placeholders. GPL licensed."
+    }
+   ],
+   "unresolved": "Could not open any source carrying the widely used Jaspers & Dautzenberg (2002, J. Mater. Process. Technol. 122:322-330) AISI 1045 JC set - the frequently quoted values (A 553.1, B 600.8, n 0.234, C 0.0134, m 1.0) are from memory only and are NOT verified here, so not included as a fit. Storchak et al. 2019 Metals 9(4):473 (doi 10.3390/met9040473; stress-relieved AISI 1045) has JC Table 2 but it is an image not readable via fetch. NIST JRES 126:026 paper and the dataset README/CSVs were blocked (robots/permission) so the NIST annealed-1045 coefficients were not read. WebSearch budget exhausted."
+  },
+  {
+   "key": "1006_mild",
+   "temper_check": {
+    "designation_ok": false,
+    "recommended_default": "If the intent is cold-drawn 1006 bar, use SAE J1397-style CD values (~330 MPa UTS / ~280 MPa yield / ~20% elong / ~HB 95). If the intent is to match the Johnson-Cook '1006 steel' (HRF 94) dataset, keep A=350 MPa as the JC yield but do not treat 350/420 as a handbook CD spec.",
+    "notes": "Catalog 350/420 MPa / 0.30 elong does not match any handbook 1006 CD row I could open: ICAST datasheet (citing ASTM bar specs) gives 300-330 MPa UTS, 170 MPa min yield, 20% min elong, HB 86-95 (spans HR..CD); MakeItFrom gives CD 1006 as 370 UTS / 300 yield / 22% / HB100 / E 190 GPa. The catalog yield of 350 appears to be copied from JC A=350. Also: the JC strength constants come from Johnson & Cook 1983 (7th Int. Symp. Ballistics, The Hague), not the 1985 Eng. Fract. Mech. paper (1985 gives fracture constants D1-D5); the 1983 Table 1 lists 1006 as hardness Rockwell F-94, density 7890 kg/m3, cp 452 J/kgK. 0.30 elongation is too high for cold drawn (20-22%) though plausible for annealed/HR sheet."
+   },
+   "properties": {
+    "E_GPa": 190,
+    "nu": 0.29,
+    "rho": 7890,
+    "sy_MPa": 300,
+    "su_MPa": 370,
+    "elong": 0.22,
+    "uniform_elong": null,
+    "hardness": "HB 100 (MakeItFrom CD); JC 1983 specimen HRF 94",
+    "product_form": "cold drawn bar",
+    "source": "MakeItFrom 'Cold Drawn 1006 Carbon Steel' (aggregator citing ASM Specialty Handbook Carbon & Alloy Steels, ASTM A29); cross-check ICAST AISI 1006 datasheet (300-330 UTS, 170 min yield, 20% min, HB 86-95); density/cp from Johnson & Cook 1983 Table 1",
+    "url": "https://www.makeitfrom.com/material-properties/Cold-Drawn-1006-Carbon-Steel",
+    "location": "Mechanical properties list; ICAST: https://icastllp.com/material_db_pdf/AISI 1006.pdf"
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln eps*][1 - T*^m], eps = equivalent (von Mises) plastic strain, eps* = epsdot/epsdot0, T* = (T-Troom)/(Tmelt-Troom)",
+     "params": {
+      "A_MPa": 350,
+      "B_MPa": 275,
+      "n": 0.36,
+      "C": 0.022,
+      "m": 1.0,
+      "Tmelt_K": 1811,
+      "Tref_K": "room temperature (~294-298)",
+      "epsdot0_per_s": 1.0,
+      "rho": 7890,
+      "cp_J_per_kgK": 452
+     },
+     "units_note": "A, B in MPa; Tm in K",
+     "strain_measure": "equivalent plastic strain (true); torsion data converted via von Mises",
+     "valid_range": "torsion quasi-static to ~400 1/s plus Hopkinson bar; paper notes unexpected elevated-temperature Hopkinson results for 1006, so m=1.00 was assumed (linear) rather than fitted",
+     "test_conditions": "1006 steel, Rockwell F-94; strength constants from torsion tests; thermal softening assumed",
+     "citation": "G.R. Johnson, W.H. Cook, 'A constitutive model and data for metals subjected to large strains, high strain rates and high temperatures', Proc. 7th Int. Symp. on Ballistics, The Hague, 1983, pp. 541-547",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1 'Constitutive Constants for the Various Materials' (page marker 541 visible in scan); epsdot0 = 1.0 s^-1 stated in text",
+     "confidence": "high",
+     "notes": "Catalog values A350 B275 n0.36 C0.022 m1.0 Tm1811 VERIFIED against the scanned 1983 paper (OCR read: '1006 STEEL F-94 7890 452 1811 350 275 .36 .022 1.00'). Citation year correction: 1983 (strength), not 1985. JC 1006 hardness HRF94 is roughly HB ~ 100-ish range, i.e. a mildly cold-worked/as-received low-carbon steel, consistent with A=350."
+    },
+    {
+     "model": "hollomon",
+     "equation_as_published": "sigma = K*eps^n (true stress, true strain)",
+     "params": {
+      "K_psi": 77000,
+      "K_MPa_converted": 531,
+      "n": 0.26
+     },
+     "units_note": "K tabulated in psi; MPa is my conversion",
+     "strain_measure": "true strain",
+     "valid_range": "room temperature, uniform deformation range (not stated)",
+     "test_conditions": "'0.05% C steel, annealed' - NEAREST CONDITION ONLY (annealed, not cold drawn)",
+     "citation": "Total Materia, 'True Stress - True Strain Curve: Part Four' (Aug 2010), Table 1 'Values for n and K for metals at room temperature'",
+     "url": "https://www.totalmateria.com/it/articles/true-stress-true-strain-curve-4",
+     "location": "Table 1, row '0,05% C steel | Annealed | 0,26 | 77000'",
+     "confidence": "low",
+     "notes": "Composition close to 1006 but condition is annealed; cold-drawn 1006 will have much lower n (Wikipedia 'Strain hardening exponent' lists generic 'low-carbon steel (cold worked)' n 0.08, K 700 MPa without a row-level source). Do not use for CD without re-fit."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No Ramberg-Osgood/Swift/Voce fit for 1006 in the cold-drawn condition found in an opened source; only JC 1983 (HRF 94) and a generic annealed 0.05%C Hollomon row. No open raw stress-strain data found. 1006 is rarely what hobbyists buy (1008/1010/A36/1018 are) - consider aliasing to generic low-carbon sheet. WebSearch budget ran out before more low-carbon searches."
+  },
+  {
+   "key": "4130_normalized",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Normalized (condition N) for sheet/plate/tube - that is what aircraft-spec 4130 sheet and tube are normally sold as. Thin normalized sheet tests stronger than the bar handbook values: NACA TN-2324 0.090-in normalized sheet gave Su 807 / Sy 679 MPa / 14.3%. Annealed bar is softer (Alro HR annealed 84/53 ksi = 579/365 MPa, 29%, HB183).",
+    "notes": "Catalog 435/670/0.255 matches MakeItFrom 'Normalized 4130' (670 UTS / 440 yield / 26% / HB200, E 190 GPa, citing ASM Specialty Handbook and ASTM A322) - these are bar values. Wikipedia 41xx lists 4130 'cold drawn, normalized' 590-760 MPa UTS / 480-590 yield / 20-30% / HRB 90-96. Catalog HRB 92 is consistent with HB ~200. I could not open AMS 6345/6350/MIL-S-18729 minimums (WebSearch budget exhausted). For thin sheet consider raising to ~Sy 520-680 / Su 670-810."
+   },
+   "properties": {
+    "E_GPa": 205,
+    "nu": 0.29,
+    "rho": 7850,
+    "sy_MPa": 440,
+    "su_MPa": 670,
+    "elong": 0.26,
+    "uniform_elong": null,
+    "hardness": "HB 200 (~HRB 92-94)",
+    "product_form": "normalized bar",
+    "source": "MakeItFrom 'Normalized 4130 Cr-Mo Steel' (citing ASM Specialty Handbook Carbon & Alloy Steels 1996; ASTM A322); E: MakeItFrom lists 190 GPa, NACA TN-2324 sheet lists 209.6 GPa - 205 retained",
+    "url": "https://www.makeitfrom.com/material-properties/Normalized-4130-Cr-Mo-Steel",
+    "location": "Mechanical properties list; thin-sheet comparison: https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae4130/groverSAE4130-BHN241.html (Grover, Bishop, Jackson, NACA TN-2324, 1951: Su 807 MPa, Sy 679 MPa, E 209608 MPa, elong 14.3%, 0.090 in sheet, Bhn 241 converted from Su)"
+   },
+   "fits": [],
+   "open_raw_data": [
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae4130/sae4130.html",
+     "description": "SAE FD&E 4130 datasets: normalized 0.090-in sheet (NACA TN-2324, Grover et al. 1951, S-N data); Q&T bar BHN 259 (water quench, 1200F temper: Su 895.6 / Sy 778.4 MPa, RA 67.3%) and BHN 366 (water quench, 750F temper: Su 1426.5 / Sy 1357.6 MPa, RA 54.7%) from NASA TN D-1574 (Smith, Hirschberg, Manson 1963). Strain-life data, not monotonic curves."
+    }
+   ],
+   "unresolved": "No Ramberg-Osgood (MMPDS), Johnson-Cook, or Swift/Voce fit for normalized 4130 was found in an opened source. MMPDS/MIL-HDBK-5 4130 full-range curves not accessed. WebSearch budget was exhausted mid-task; dedicated searches for '4130 Johnson-Cook' and 'AISI 4130 strain hardening exponent' were not run."
+  },
+  {
+   "key": "4130_45HRC",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Feasible only for thin sections with a water/brine quench and low temper (roughly 200-260 C class). For hobby parts, 4130 at 40-42 HRC is a more robust target; for 45+ HRC in thicker sections use 4340 or 4140.",
+    "notes": "Realism check using opened data: NASA TN D-1574 4130 water-quenched + 750F (399 C) temper, BHN 366 (~HRC 39-40): Su 1426.5 MPa, Sy 1357.6 MPa, RA 54.7%. 4340 water-quenched + 800F temper at HRC 44 (BHN 409): Su 1468 MPa, Sy 1371 MPa, RA 38.1%. So 4130 at 45 HRC with Su ~1500 MPa is plausible; Sy 1400 (Sy/Su 0.93) is at the high end - low-temper martensite often has Sy/Su ~0.85-0.9, so 1300-1400 is a safer band. Elongation 10% is plausible but unverified. Hardenability: every heat-treated 4130 row in the Alro table is water quenched (1575F), versus oil for 4140/4340, i.e. 4130 is shallow-hardening; thin sheet (a few mm) can through-harden but distortion and quench cracking are the practical risks. I did not open a Jominy/ideal-diameter source to quantify this."
+   },
+   "properties": {
+    "E_GPa": 205,
+    "nu": 0.29,
+    "rho": 7850,
+    "sy_MPa": 1400,
+    "su_MPa": 1500,
+    "elong": 0.1,
+    "uniform_elong": null,
+    "hardness": "HRC 45 (target)",
+    "product_form": "thin sheet/plate, water quenched + low temper",
+    "source": "No source opened for 4130 at exactly 45 HRC; nearest: NASA TN D-1574 (Smith, Hirschberg, Manson 1963) via SAE FD&E database, 4130 BHN 366",
+    "url": "https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae4130/sae4130_NASA_366BHN.html",
+    "location": "header: Su=206.90 ksi, Sy=196.90 ksi, E=28979 ksi, %RA=54.7, BHN 362/371"
+   },
+   "fits": [],
+   "open_raw_data": [
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae4130/sae4130_NASA_366BHN.html",
+     "description": "4130 Q&T BHN 366 strain-life raw data (NASA TN D-1574), hourglass specimens longitudinal to bar; monotonic Su/Sy/RA only."
+    }
+   ],
+   "unresolved": "No published plasticity fit for 4130 at ~45 HRC found. Catalog values retained as plausible but unverified (flag as estimated). Uniform elongation unknown."
+  },
+  {
+   "key": "4140_QT_30HRC",
+   "temper_check": {
+    "designation_ok": false,
+    "recommended_default": "4140 prehard (Q&T to ~HRC 28-32): Sy ~850-930 MPa, Su ~920-965 MPa, elong ~0.20, HB ~269-285 (Alro mill averages, oil quench 1550F, temper 1100-1200F).",
+    "notes": "CORRECTION: catalog 655/1020/0.18 equals the 4140 NORMALIZED (870 C) row (655 yield / 1020 tensile / 17.7%) shown on the AmesWeb steel chart (unreferenced; matches the Callister/ASM appendix table), not a Q&T 28-32 HRC condition. Alro table: 4140 oil quench 1550F + temper 1100F: 140 ksi UTS / 135 ksi yield / 20% / 62% RA / HB285 / HRC30 (965/931 MPa); temper 1200F: 133/123 ksi / 21% / 65% RA / HB269 / HRC28 (917/848 MPa). Wikipedia 41xx (EN 10083-type section-dependent Q&T table) gives 900-1100 MPa UTS / 650 MPa min yield / 12% min for the mid section class."
+   },
+   "properties": {
+    "E_GPa": 205,
+    "nu": 0.29,
+    "rho": 7850,
+    "sy_MPa": 890,
+    "su_MPa": 940,
+    "elong": 0.2,
+    "uniform_elong": null,
+    "hardness": "HRC 28-30 (HB 269-285)",
+    "product_form": "Q&T (prehard) 1-in round bar",
+    "source": "Alro Metals Guide Catalog, 'Average Mechanical Properties' heat-treated rows (mean of 1100F and 1200F temper rows)",
+    "url": "https://www.alro.com/Resources/WebResources/AlroCom/MetalsGuideCatalog/PDFs/011-Reference.pdf",
+    "location": "pp. 11-4/11-5, 4140 heat-treated rows (1550F oil, temper 1100F: 140/135 ksi, 20%, HB285, C30; temper 1200F: 133/123 ksi, 21%, HB269, C28). Normalized row cross-check: https://amesweb.info/Materials/Steel-Tensile-Yield-Strength-Chart.aspx"
+   },
+   "fits": [],
+   "open_raw_data": [],
+   "unresolved": "No JC/Ramberg-Osgood/Swift fit for 4140 at 28-32 HRC found in an opened source (WebSearch budget exhausted before 4140-specific fit searches). Note the Alro 1100F row has Sy/Su = 0.96, unusually high - treat yield as +-5%."
+  },
+  {
+   "key": "4340_QT_315C",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "4340 oil quenched + 315 C (600 F) temper: ~HRC 47-48, Sy ~1590-1620 MPa, Su ~1720-1760 MPa, elong 0.10-0.12.",
+    "notes": "Catalog 1590/1720/0.10/HRC~48 is consistent with the AmesWeb chart row 'Steel Alloy 4340 - Oil-quenched and tempered (@315 C)' 1620 yield / 1760 tensile / 12% (unreferenced; matches Callister/ASM appendix values). Service Steel Aerospace 4340 VAR data sheet tempering curve (austenitize 1550F, oil quench, double temper): 600F (316 C) -> 47 HRC. So HRC ~47-48 is fine. The original Johnson-Cook 1983 4340 set is for HRC 30 material (Su ~1000 MPa class), not HRC 48: do NOT use A=792 for the 315 C temper."
+   },
+   "properties": {
+    "E_GPa": 205,
+    "nu": 0.29,
+    "rho": 7830,
+    "sy_MPa": 1620,
+    "su_MPa": 1760,
+    "elong": 0.12,
+    "uniform_elong": null,
+    "hardness": "HRC 47 (SSA tempering curve, 600F)",
+    "product_form": "oil quenched bar",
+    "source": "AmesWeb 'Tensile - Yield Strength of Steel Chart' (row matches Callister/ASM); hardness from Service Steel Aerospace 4340 (AMS 6414) data sheet; density 7830 from Johnson & Cook 1983 Table 1",
+    "url": "https://amesweb.info/Materials/Steel-Tensile-Yield-Strength-Chart.aspx",
+    "location": "row 'Steel Alloy 4340 - Oil-quenched and tempered (@315 C) 1620 (235) 1760 (255) 12'; hardness: https://www.ssa-corp.com/documents/Data Sheet 4340-AMS-6414-UNSG43406.pdf 'Tempering Data' 600F 47 HRC"
+   },
+   "fits": [
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln eps*][1 - T*^m], eps* = epsdot/epsdot0 (epsdot0 = 1.0 s^-1), T* homologous temperature",
+     "params": {
+      "A_MPa": 792,
+      "B_MPa": 510,
+      "n": 0.26,
+      "C": 0.014,
+      "m": 1.03,
+      "Tmelt_K": 1793,
+      "Tref_K": "room (~298)",
+      "epsdot0_per_s": 1.0,
+      "rho": 7830,
+      "cp_J_per_kgK": 477
+     },
+     "units_note": "MPa, K",
+     "strain_measure": "equivalent (von Mises) true plastic strain",
+     "valid_range": "torsion quasi-static to ~400 1/s, Hopkinson bar, elevated temperature; validated vs Taylor cylinder impacts",
+     "test_conditions": "4340 steel, Rockwell C-30 (NOT the 315 C temper; nearest published condition)",
+     "citation": "G.R. Johnson, W.H. Cook, Proc. 7th Int. Symp. Ballistics, The Hague, 1983, pp. 541-547, Table 1",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1; OCR of scan reads '4340 STEEL C-30 7830 477 1793 / 792 [B illegible] .26 / .014 1.03'. B = 510 taken from secondary table: arXiv 1608.03056 ('Beam-Induced Damage Mechanisms and their Calculation') Table 2 row '4340 steel | 1793 | 792 | 510 | 0.26 | 0.014 | 1.03' (no row citation)",
+     "confidence": "high",
+     "notes": "Catalog values verified except B, which is illegible in the scanned original and confirmed only from a secondary compilation. Citation-year correction: strength constants are the 1983 paper; the 1985 Eng. Fract. Mech. 21:31-48 paper gives fracture constants. Applies to HRC 30 only."
+    },
+    {
+     "model": "johnson_cook",
+     "equation_as_published": "sigma_y = sigma_0[1 + (B/sigma_0)(eps_p)^n][1 + C ln(epsdot*)][1 - (T*)^m] (Eq. 26-27); sigma_0 = exp(A1*Rc + A2) MPa (Eq. 28)",
+     "params": {
+      "A1": 0.0355,
+      "A2": 5.5312,
+      "B_over_sigma0": 0.6339,
+      "n": 0.26,
+      "C": 0.014,
+      "epsdot0_per_s": 1.0,
+      "m": "1 (T<298 K); 1.03 (298-1040 K); 0.5 (>1040 K)",
+      "Tmelt_K": 1793,
+      "Tr_K": 298,
+      "derived_at_Rc47": {
+       "A_MPa": 1339,
+       "B_MPa": 849
+      },
+      "derived_at_Rc48": {
+       "A_MPa": 1387,
+       "B_MPa": 880
+      }
+     },
+     "units_note": "sigma_0 in MPa; derived A/B at Rc 47/48 are my arithmetic from Eq. 28, not printed in the paper",
+     "strain_measure": "equivalent plastic strain",
+     "valid_range": "hardness-scaled extension of the HRC30 JC set; B/sigma0, n, C, m held constant across tempers (assumption, not fitted per temper)",
+     "test_conditions": "sigma_0 fit to ASM handbook yield-vs-Rc curve for 4340; other constants assumed from JC 1983; m from Lee & Yeh (1997)",
+     "citation": "B. Banerjee, 'The Mechanical Threshold Stress model for various tempers of AISI 4340 steel', Int. J. Solids Struct. 44(3-4):834-859 (2007); arXiv cond-mat/0510330",
+     "url": "https://arxiv.org/pdf/cond-mat/0510330",
+     "location": "Appendix C, Eqs. 26-28",
+     "confidence": "medium",
+     "notes": "Only published JC-type parameterization I could open that covers high-hardness 4340. Caveat: Eq. 28 gives A ~1340-1390 MPa at Rc 47-48, about 15% BELOW the handbook 0.2% yield (1590-1620 MPa) for the 315 C temper - if used, consider setting A to the measured yield and keeping B/A or re-fitting. Paper also gives MTS parameters per temper (Rc 30/38/45/49; Table 5: sigma_i 867.6/1474.1/1636.6/1752 MPa, g0i 3.31/0.44/1.05/1.26; Table 6 sigma_0es 1316.1/1058.4/173.5/274.9 MPa, g0es 0.088/0.232/0.336/1.245) and recommends the Rc 49 set for harder tempers; Rc 45/49 data are 4340 VAR, 845 C oil quench, tempered 425 C / 350 C (Chi et al. 1989)."
+    },
+    {
+     "model": "ramberg_osgood",
+     "equation_as_published": "Ramberg-Osgood with parameters E, S1, m (report Eq. 2); K derivable via Eq. 3",
+     "params": {
+      "S1_ksi": 185,
+      "m": 57,
+      "E_Msi": 29.6,
+      "yield_0.2pct_ksi": 188,
+      "proportional_limit_ksi": 161
+     },
+     "units_note": "ksi; digits partly OCR-garbled in scan ('S1= 185.\u00ab\u00bb1 KSI M= 57.C8')",
+     "strain_measure": "engineering (compression test printout)",
+     "valid_range": "single specimen, compression, room temperature",
+     "test_conditions": "ESR 4340 steel, compression, 20 C; hardness not given (0.2% yield ~188 ksi = 1296 MPa suggests roughly HRC 40-42, NOT the 315 C temper)",
+     "citation": "R.P. Papirno, 'Computer Analysis of Stress-Strain Data: Program Description and User Instructions', AMMRC TR 76-12, Army Materials and Mechanics Research Center, April 1976",
+     "url": "https://apps.dtic.mil/sti/pdfs/ADA026098.pdf",
+     "location": "Appendix I, p. 19 (sample printout)",
+     "confidence": "low",
+     "notes": "Example output of a data-reduction program, single specimen, garbled digits; nearest-condition illustration only."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/Steel/Sae4340/sae4340.html",
+     "description": "SAE FD&E 4340 datasets: BHN 193 (Dowling), BHN 243 and BHN 409/HRC 44 (NASA TN D-1574; 1520F water quench + 800F temper: Su 1468 MPa, Sy 1371 MPa, E 200 GPa, RA 38.1%, cyclic K' 1996 MPa, n' 0.1352), Su 1240 MPa (Endo & Morrow 1969), Su 1172 MPa (Dowling). Strain-life data; monotonic K/n fields are zero placeholders."
+    }
+   ],
+   "unresolved": "No Johnson-Cook set fitted directly to 4340 at ~HRC 47-48 (315 C temper) was opened; Banerjee's hardness-scaled set is the nearest. Hollomon values: Wikipedia lists '4340 steel alloy (tempered @ 315 C) n 0.15, K 640 MPa', but Total Materia Table 1 gives 'SAE 4340 steel, annealed, n 0.15, K 93,000 psi (641 MPa)' - the Wikipedia row is evidently the ANNEALED value mislabeled (K below the 1600 MPa yield is impossible); do not use. The often-quoted Callister value for the 315 C temper (n ~0.12, K ~2650 MPa) could not be opened/verified. A third JC set in Zhou, Wang, Wen 2019 (Chinese J. High Pressure Phys. 33(4):042101, doi 10.11858/gywlxb.20190721) Table 1: 4340 A 792, B 846, n 0.582, C 0.009, m 1.030, epsdot0 2.0e-3 s^-1, Tm 1793 - row citation points to an unrelated reference and provenance is unclear, so not adopted. Uniform elongation not found."
+  }
+ ],
+ "fits_ti_cu_w.json": [
+  {
+   "key": "Ti6Al4V",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "Ti-6Al-4V Grade 5, mill-annealed (AMS 4911 plate/sheet or ASTM B348 Gr5 bar)",
+    "notes": "Catalog E/nu/rho/yield/ultimate/elongation (113.8 GPa / 0.342 / 4430 / 880 / 950 MPa / 14%) exactly match the ASM Aerospace Specification Metals 'Titanium Ti-6Al-4V (Grade 5), Annealed' datasheet (the same record MatWeb serves; MatWeb itself blocked to fetch). These are TYPICAL values; spec MINIMUMS (TIMET datasheet, ASTM B265/B348, MIL-T-9047) are UTS 895 MPa, 0.2% YS 828 MPa, elong 10%. TIMET gives E range 107-122 GPa (texture dependent) and nu 0.31; FAA DOT/FAA/TC-15/23 MAT_224 model uses E = 110 GPa. Rc 36 per ASM datasheet. Tmelt in catalog JC (1878 K) = 1605 C from Lesuer Table 7 (solidus; ASM gives melting range 1604-1660 C)."
+   },
+   "properties": {
+    "E_GPa": 113.8,
+    "nu": 0.342,
+    "rho": 4430,
+    "sy_MPa": 880,
+    "su_MPa": 950,
+    "elong": 0.14,
+    "uniform_elong": null,
+    "product_form": "annealed, product form not stated (typical values); compressive yield 970 MPa, G 44 GPa, RA 36%, Rc 36",
+    "source": "ASM Aerospace Specification Metals Inc., 'Titanium Ti-6Al-4V (Grade 5), Annealed' datasheet (data credited to Allvac)",
+    "url": "https://www.aerospacemetals.com/wp-content/uploads/2023/07/Titanium-Ti-6Al-4V-Grade-5-Annealed.pdf",
+    "location": "Mechanical properties table, p.1; spec minimums cross-check: TIMET TIMETAL 6-4 datasheet Table 3 (https://www.timet.com/documents/datasheets/alpha-and-beta-alloys/timetal-6-4.pdf)"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook (Lesuer 'new' constants)",
+     "equation_as_published": "sigma = [A + B*eps^n][1 + C ln(eps_dot*)][1 - T*^m], eps_dot* = eps_dot/1.0 s^-1, T* = (T - 298)/(Tmelt - 298)",
+     "params": {
+      "A_MPa": 1098,
+      "B_MPa": 1092,
+      "n": 0.93,
+      "C": 0.014,
+      "m": 1.1,
+      "Tmelt_K": 1878,
+      "Tref_K": 298,
+      "ref_rate_s-1": 1.0,
+      "rho": 4428,
+      "cp_J_kgK": 580
+     },
+     "units_note": "A,B in MPa; Tmelt given as 1605 C in Table 7",
+     "strain_measure": "equivalent plastic strain, true (von Mises) flow stress",
+     "valid_range": "A,B,n fit to Hopkinson bar tension+compression curves at ~5000 s^-1 to strains ~0.2-0.3; C fit to rates <= ~1e3-1e4 s^-1; m fit to Lee & Lin 2500 s^-1 data, 25-1100 C",
+     "test_conditions": "Hot-rolled + annealed plate to AMS 4911 (790 C/1h FC + 730 C/1h AC), approx equiaxed alpha + transformed beta, ~Rc 36",
+     "citation": "Lesuer, D.R., 'Experimental Investigations of Material Models for Ti-6Al-4V Titanium and 2024-T3 Aluminum', DOT/FAA/AR-00/25, LLNL / FAA, Sept 2000",
+     "url": "https://corpora.tika.apache.org/base/docs/govdocs1/925/925499.pdf",
+     "location": "Eq. 1 (Sec 1.2, p.2); Table 8 p.18 (new constants); Table 7 p.18 (Tmelt 1605 C, rho, cp)",
+     "confidence": "high",
+     "notes": "VERIFIED: catalog JC values match Table 8 exactly. Caveat: A = 1098 MPa exceeds quasi-static yield (~880-950) because A,B,n were fit to ~5000 s^-1 data; at 1e-4 s^-1 the C term (C ln(1e-4) = -0.13) lowers it to ~955 MPa. n = 0.93 makes hardening nearly linear; the report itself notes Appendix A text repeats old A/B (862/331) and an inconsistent power-law fit (BC*=1220 MPa, n=0.93) - treat Table 8 as authoritative."
+    },
+    {
+     "model": "Johnson-Cook (original Johnson/NSWC constants, reproduced by Lesuer)",
+     "equation_as_published": "same as above",
+     "params": {
+      "A_MPa": 862,
+      "B_MPa": 331,
+      "n": 0.34,
+      "C": 0.012,
+      "m": 0.8,
+      "Tmelt_K": 1878,
+      "Tref_K": 298,
+      "ref_rate_s-1": 1.0
+     },
+     "units_note": "MPa",
+     "strain_measure": "equivalent plastic strain",
+     "valid_range": "torsion + Hopkinson bar + quasi-static data on Rc 29 material",
+     "test_conditions": "Softer (Rc 29) material than typical AMS 4911 (Rc 36)",
+     "citation": "Lesuer DOT/FAA/AR-00/25 (2000), quoting original G.R. Johnson (NSWC) constants",
+     "url": "https://corpora.tika.apache.org/base/docs/govdocs1/925/925499.pdf",
+     "location": "Table 6, p.17",
+     "confidence": "medium",
+     "notes": "Lesuer states it under-predicts typical annealed plate strength; use only for softer Ti-6-4 lots."
+    },
+    {
+     "model": "Johnson-Cook (quasi-static reference)",
+     "equation_as_published": "sigma = (A + B eps^n)(1 + C ln(eps_dot/eps_dot0))(1 - T*^m)",
+     "params": {
+      "A_MPa": 900,
+      "B_MPa": 2295,
+      "n": 1.0,
+      "C": 0.015,
+      "m": 1,
+      "Tref_K": 296,
+      "Tmelt_K": 1870,
+      "ref_rate_s-1": 0.0002
+     },
+     "units_note": "MPa; Polish decimal commas in source",
+     "strain_measure": "plastic strain (compression)",
+     "valid_range": "compression of 5x5 mm cylinders, quasi-static to Hopkinson rates; strain range not stated in extracted text",
+     "test_conditions": "Grade 5, EDM-cut cylinders; heat treatment not stated",
+     "citation": "Mocko, W., 'Wplyw szybkosci oraz temperatury odksztalcania na lepko-plastyczne wlasciwosci tytanu oraz stopu TiAl6V4', Instytut Transportu Samochodowego (Polish)",
+     "url": "https://yadda.icm.edu.pl/baztech/element/bwmeta1.element.baztech-756890ec-c766-4cc4-8720-1542c84b9504/c/mocko_wplyw_3_2014.pdf",
+     "location": "Table 1, p.72",
+     "confidence": "low",
+     "notes": "n = 1 (linear hardening) with very high B; journal/year not confirmed from extracted text; condition unknown. Included as quasi-static-referenced alternative only."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://data.mendeley.com/datasets/jzw6jn7g39",
+     "description": "Bond, T. (2021) 'tensile_stress_strain_6061 al_Ti64', Mendeley Data, doi:10.17632/jzw6jn7g39.1: miniature dogbone tension tests (E8-scaled) machined from 12.7 mm plate, 4e-4 s^-1, true stress from instantaneous area; Ti-6-4 heat-treat condition not stated"
+    },
+    {
+     "url": "https://data.mendeley.com/datasets/wy7z8bvnky",
+     "description": "'Data for: Analytical modeling of hot behavior of Ti-6Al-4V alloy at large strain' - hot compression flow curves (elevated temperature, not room-temperature design)"
+    }
+   ],
+   "unresolved": "Ramberg-Osgood n from MMPDS (printed on MMPDS Ti-6Al-4V typical stress-strain / tangent-modulus figures, Section 5.4.1) could NOT be verified: MMPDS copies online were blocked (robots) and no open secondary source quoting the Ti-6-4 n values was found; do not fill this from memory. Uniform elongation for wrought annealed plate not found in an opened source (nearest: Galan Lopez et al. EPJ Web Conf 26, 01024 (2012), Table 2: annealed 0.6 mm sheet, quasi-static 6.7e-4 s^-1, UTS 1107 MPa, uniform elongation 6.75%, https://www.epj-conferences.org/articles/epjconf/pdf/2012/08/epjconf_dymat2012_01024.pdf). FAA DOT/FAA/TC-15/23 (2016) MAT_224 Ti-6Al-4V model (AMS 4911 1/2-in plate) has tabulated curves but no R-O/JC fit: https://rosap.ntl.bts.gov/view/dot/57630/dot_57630_DS1.pdf."
+  },
+  {
+   "key": "Ti_Gr2",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "CP Ti Grade 2 (UNS R50400), annealed sheet/plate per ASTM B265 or bar per ASTM B348",
+    "notes": "Catalog E/nu/rho (105 GPa / 0.37 / 4510) match the ASM Aerospace Specification Metals Grade 2 datasheet. Catalog yield 275 / ultimate 345 / elong 0.20 are ASTM B265 SPECIFIED MINIMUMS (B265 min: UTS 345, YS 275-450, elong 20%; ASM sheet lists UTS 344, YS 275-410), NOT typical values. Typical annealed Grade 2 is substantially stronger and more ductile: TIMET TIMETAL 50A Table 4 typical anneal UTS 485 MPa, 0.2% YS 345 MPa, elong 28%, RA 57%; Upmet CP Gr2 typical UTS 510-605, YS 335-545, elong 21-29%. Recommend changing catalog to typical (sy 345, su 485, elong 0.28) for best-estimate sims and keeping minimums as a conservative variant. TIMET gives E 105-120 GPa (texture-dependent)."
+   },
+   "properties": {
+    "E_GPa": 105,
+    "nu": 0.37,
+    "rho": 4510,
+    "sy_MPa": 345,
+    "su_MPa": 485,
+    "elong": 0.28,
+    "uniform_elong": 0.124,
+    "product_form": "annealed mill product (TIMET typical); E/nu/rho from ASM datasheet; uniform elongation from 0.5 mm hot-rolled+annealed Gr2 (T40) sheet at 8e-3 s^-1 (Siegel 2021)",
+    "source": "TIMET 'TIMETAL 50A' datasheet (strength/elong typical); ASM Aerospace Specification Metals 'Titanium Grade 2' datasheet (E 105 GPa, Ec 110 GPa, nu 0.37, G 45 GPa, rho 4.51, liquidus max 1665 C); Siegel et al. Materials 2021 (uniform elong)",
+    "url": "https://www.timet.com/documents/datasheets/cp-grades/timetal-50a.pdf",
+    "location": "TIMET Table 4 'Typical Mechanical Properties' (anneal row 70 ksi/50 ksi/28%/57%) and Table 2 (rho 4.51, E 105-120 GPa); ASM sheet https://www.aerospacemetals.com/wp-content/uploads/2023/07/Titanium-Grade-2-Data-Sheet.pdf p.1; Upmet https://www.upmet.com/sites/default/files/products/datasheet/cp-grade-2-datasheet.pdf; Siegel 2021 Discussion (eps_u 12.4% G1, 9.9% G3)"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook",
+     "equation_as_published": "sigma = (A + B eps^n)(1 + C ln(eps_dot/eps_dot0))(1 - T*^m), T* = (T - T0)/(Tm - T0)",
+     "params": {
+      "A_MPa": 400,
+      "B_MPa": 775,
+      "n": 0.609,
+      "C": 0.03,
+      "m": 1,
+      "ref_rate_s-1": 0.0002,
+      "Tref_K": 296,
+      "Tmelt_K": 1870
+     },
+     "units_note": "MPa; source uses decimal commas",
+     "strain_measure": "plastic strain (compression tests)",
+     "valid_range": "quasi-static (2e-4 s^-1) to Hopkinson-bar rates, room/elevated temperature; strain range not given in extracted text",
+     "test_conditions": "CP Ti Grade 2, EDM-cut 5x5 mm cylinders; heat treatment not stated; QS yield ~400 MPa",
+     "citation": "Mocko, W., 'Wplyw szybkosci oraz temperatury odksztalcania na lepko-plastyczne wlasciwosci tytanu oraz stopu TiAl6V4' (Effect of strain rate and temperature on visco-plastic properties of CP titanium and TiAl6V4), Instytut Transportu Samochodowego",
+     "url": "https://yadda.icm.edu.pl/baztech/element/bwmeta1.element.baztech-756890ec-c766-4cc4-8720-1542c84b9504/c/mocko_wplyw_3_2014.pdf",
+     "location": "Table 1, p.72",
+     "confidence": "medium",
+     "notes": "Only located JC set for Gr2 with all five constants. m = 1 appears fixed rather than fit. Journal name/year not confirmed from extracted text (file name suggests 2014). Reference rate is quasi-static (2e-4), not 1 s^-1: do not mix with 1 s^-1-referenced sets."
+    },
+    {
+     "model": "Johnson-Cook, room-temperature reduction (Ludwik form)",
+     "equation_as_published": "sigma = (sigma_y + B eps_p^n)[1 + C ln(eps_dot/eps_dot0)][1 - ((T - T_room)/(T_melt - T_room))^m]  (Eq. 9); at RT: sigma = sigma_y + B eps_p^n (Eq. 10)",
+     "params": {
+      "B_MPa_G1": 753,
+      "n_G1": 0.42,
+      "B_MPa_G2": 707,
+      "B_MPa_G3_sandblasted": 649,
+      "n_G3_sandblasted": 0.31,
+      "C": "~1e-13 (not identifiable)",
+      "ref_rate_s-1": 0.008,
+      "sigma_y_MPa": "in Table 4, not extracted"
+     },
+     "units_note": "MPa; true stress vs true plastic strain",
+     "strain_measure": "true stress, true plastic strain, up to necking",
+     "valid_range": "8e-3 to 8e-2 s^-1, RT, up to uniform strain (~0.10-0.12)",
+     "test_conditions": "Grade 2 (T40) 0.5 mm hot-rolled and annealed sheet, alpha only; groups G1 8e-3 s^-1, G2 8e-2 s^-1, G3 8e-3 s^-1 sandblasted",
+     "citation": "Siegel, A., Laporte, S., Sauter-Starace, F., 'Johnson-Cook Parameter Identification for Commercially Pure Titanium at Room Temperature under Quasi-Static Strain Rates', Materials 14(14):3887 (2021), doi:10.3390/ma14143887",
+     "url": "https://www.mdpi.com/1996-1944/14/14/3887",
+     "location": "Eq. 9-10; B and n values from Results text (Sec. 3.2); full set in Table 4 (image, not extractable)",
+     "confidence": "low",
+     "notes": "sigma_y not retrieved (Table 4 rendered as image). Paper's Discussion states '292 < B < 330 MPa', contradicting Results text B 649-753 MPa; verify against Table 4 before use. Strain-rate sensitivity C effectively zero over 8e-3..8e-2."
+    },
+    {
+     "model": "Modified Johnson-Cook (DSA + phase transformation)",
+     "equation_as_published": "JC strain/rate terms with f(T*) = 1 - 1.55 T* (T<882 C), 0.21 - 0.21 T* (T>882 C), times DSA(T*) = 1 + 1.65 T* - 5.1 T*^2",
+     "params": {
+      "Tref_C": 23,
+      "Tmelt_C": 1668,
+      "ref_rate_s-1": 1,
+      "A_B_n_C": "Table 3 (not extracted)",
+      "E_GPa(T_C)": "129.3 - 0.0633 T"
+     },
+     "units_note": "temperatures in C",
+     "strain_measure": "plastic strain 0.05-0.6",
+     "valid_range": "23-1200 C, 8e-5 to 3500 s^-1, plastic strain 0.05-0.6; R^2 0.991",
+     "test_conditions": "Grade 2 CP-Ti 2 mm plate, 4 mm EDM cylinders, compression; RT dynamic ~2000 s^-1 flow 750 MPa at 0.025 to 950 MPa at 0.25",
+     "citation": "Gangireddy, S., 'A Modified Johnson-Cook Model for Cp-Ti to Incorporate the Effects of Dynamic Strain Aging and Phase Transformation', Int. J. Metallurgy and Metal Physics 3(2):016 (2018), doi:10.35840/2631-5076/9216",
+     "url": "https://vibgyorpublishers.org/content/ijmmp/fulltext.php?aid=ijmmp-3-016",
+     "location": "Eq. 4-5 and text; A,B,n,C in Table 3 (values not extracted)",
+     "confidence": "low",
+     "notes": "Useful for temperature dependence; base A/B/n/C must be read from Table 3 before use. RT high-rate flow points (750 MPa @0.025, 950 MPa @0.25, ~2000 s^-1) usable as a sanity check."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://zenodo.org/records/11091756",
+     "description": "Marano, Ribart, Proudhon: 'Multimodal data set for the investigation of the early stage of plasticity in a polycrystalline titanium sample' (CP grade 2, in-situ tensile + 3D microstructure, 38 GB HDF5, CC BY 4.0) - grain-scale, early plasticity only, not a design curve"
+    },
+    {
+     "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9151733/",
+     "description": "'Dataset for deformation behavior of pure titanium grade 2 materials during continuous extrusion' (Data in Brief) - not opened/verified; listed from search only"
+    }
+   ],
+   "unresolved": "No Ramberg-Osgood n for CP Ti Gr2 found in an opened source. No widely-cited JC set with m fitted and 1 s^-1 reference found for Gr2. Siegel 2021 Table 4 (sigma_y, E) and Gangireddy 2018 Table 3 values could not be extracted (image tables); PMC copies blocked by captcha."
+  },
+  {
+   "key": "Cu_C110",
+   "temper_check": {
+    "designation_ok": false,
+    "recommended_default": "C11000 ETP copper, H02 (half hard) flat bar/sheet as commonly stocked; keep the annealed (OS050) set as a separate 'Cu_C110_O' entry",
+    "notes": "Catalog yield 69 / ultimate 220 MPa / elong 0.45 is the ANNEALED condition: CDA C11000 flat products OS050 (0.050 mm grain) typical TS 32 ksi (221 MPa), YS 10 ksi (69 MPa), elong 45-50%. The catalog key should therefore say 'annealed (OS050)'. Hobbyist stock is usually cold-worked: CDA flat H02 typical TS 42 ksi (290 MPa), elong ~14%; flat H04 TS 50 ksi (345 MPa), YS 45 ksi (310 MPa), elong 6-12%; rod H04 (1 in) TS 45 ksi (310), YS 40 ksi (276), elong 20%. H02 yield was not cleanly extractable from the CDA page (LIGO internal note quoting CDA gives 255 or 283 MPa, ambiguous). CDA E = 17,000 ksi (117 GPa) vs catalog 115; CDA density 0.322 lb/in^3 (0.321-0.323) = 8,910 kg/m^3 vs catalog 8,960 (8,960 is the pure-Cu handbook value also used by Johnson & Cook 1983 for OFHC). Solidus 1949 F (1065 C), liquidus 1981 F (1083 C). Catalog lacks nu; no value verified from an opened source in this pass."
+   },
+   "properties": {
+    "E_GPa": 117,
+    "nu": null,
+    "rho": 8910,
+    "sy_MPa": 69,
+    "su_MPa": 221,
+    "elong": 0.45,
+    "uniform_elong": null,
+    "product_form": "flat products, OS050 annealed, 0.04 in thick (CDA typical)",
+    "source": "Copper Development Association, alloy C11000 data page (typical mechanical properties, flat products & rod)",
+    "url": "https://alloys.copper.org/alloy/C11000",
+    "location": "Physical properties (density 0.322 lb/in^3, E 17000 ksi); Mechanical properties table, flat products OS050 rows (32 / 10 ksi / 45-50%) and H02/H04 rows; page text is flattened so column alignment inferred"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook (OFHC copper)",
+     "equation_as_published": "sigma = [A + B eps^n][1 + C ln eps_dot*][1 - T*^m], eps = equivalent plastic strain, eps_dot* = eps_dot / 1.0 s^-1, T* = homologous temperature (T - Troom)/(Tmelt - Troom)",
+     "params": {
+      "A_MPa": 90,
+      "B_MPa": 292,
+      "n": 0.31,
+      "C": 0.025,
+      "m": 1.09,
+      "Tmelt_K": 1356,
+      "ref_rate_s-1": 1.0,
+      "rho": 8960,
+      "cp_J_kgK": 383,
+      "hardness": "Rockwell F-30"
+     },
+     "units_note": "A, B in MPa (Table 1 header)",
+     "strain_measure": "equivalent plastic strain (tension strain from ln(A0/A) at neck)",
+     "valid_range": "torsion to large strains, quasi-static and high-rate tension, Hopkinson bar at elevated temperature",
+     "test_conditions": "OFHC copper, Rockwell F-30 (soft, essentially annealed)",
+     "citation": "Johnson, G.R. (Honeywell) & Cook, W.H. (AFATL Eglin), 'A constitutive model and data for metals subjected to large strains, high strain rates and high temperatures', 1983 (7th Int. Symp. on Ballistics per common citation; venue/page range not legible in the OCR copy opened, page marker '541' seen)",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1 'Constitutive constants for various materials' (OCR copy; page markers unreliable)",
+     "confidence": "high",
+     "notes": "VERIFIED: catalog OFHC JC values (90/292/0.31/0.025/1.09/1356) match Table 1 (OCR) and are independently reproduced in Table 2 of 'Beam-Induced Damage Mechanisms and their Calculation', arXiv:1608.03056 (https://arxiv.org/pdf/1608.03056). Applies to annealed/soft Cu (A = 90 vs OS050 yield 69): do NOT use for H02/H04 stock without raising A."
+    },
+    {
+     "model": "Hollomon power law (textbook)",
+     "equation_as_published": "sigma = K eps^n (true stress, true strain)",
+     "params": {
+      "K_psi": 46400,
+      "K_MPa_approx": 320,
+      "n": 0.54
+     },
+     "units_note": "K in psi in source (Wikipedia gives K = 325 MPa, n = 0.54 for annealed copper)",
+     "strain_measure": "true strain (total, plastic-dominated)",
+     "valid_range": "room temperature, uniform deformation region",
+     "test_conditions": "copper, annealed (grade unspecified)",
+     "citation": "Total Materia, 'True Stress - True Strain Curve: Part Four', Table 1 'Values for n and K for metals at room temperature' (uncited; values trace to Dieter, Mechanical Metallurgy table)",
+     "url": "https://www.totalmateria.com/articles/true-stress-true-strain-curve-4",
+     "location": "Table 1",
+     "confidence": "low",
+     "notes": "Secondary, uncited textbook value; useful only as sanity check for annealed Cu."
+    }
+   ],
+   "open_raw_data": [
+    {
+     "url": "https://fde.uwaterloo.ca/Fde/Materials/Other/nachtigall-CopperAnnealed.html",
+     "description": "U. Waterloo Fatigue Design & Evaluation database, annealed copper (Nachtigall, NASA) - monotonic properties header plus strain-life raw data (not opened in this pass)"
+    },
+    {
+     "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11268113/",
+     "description": "'Mechanical testing dataset of cast copper alloys for the purpose of digitalization' (Data in Brief 2024) - cast alloys, not wrought C110; not opened"
+    }
+   ],
+   "unresolved": "No Ramberg-Osgood n found for C11000. Johnson-Cook constants specific to cold-worked (H02/H04) C110 not found; Tanner 1998 Georgia Tech thesis (DTIC ADA345850) Table V.2 p.225 compares JC sets for annealed OFHC Cu but table content was beyond the readable portion. CDA H02 yield not cleanly extracted. Poisson's ratio not verified."
+  },
+  {
+   "key": "brass_C360",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "C36000 free-cutting brass rod, H02 (half hard) per ASTM B16, ~1 in section",
+    "notes": "Catalog yield 310 MPa / elong 0.25 match the CDA typical for H02 rod 1 in (25 mm): TS 400 MPa, YS 310 MPa (0.5% EUL), elong 25%, HRB 78, shear 235 MPa (as quoted on Eng-Tips from CDA tables; copper.org C36000 page could not be fetched). Catalog ultimate 385 MPa is low vs 400 for 1 in rod (385/310/20% matches H01 shapes 0.5 in per National Bronze 56 ksi/45 ksi/20%). Typicals are section-size dependent: 6 mm rod 470/360/18%, 50 mm rod 380/305/32%. ASTM B16 H02 minimums are much lower (Aviva: <=12.7 mm 365/225/14%; 12.7-25.4 mm 345/215/16%; 25.4-50.2 mm 305/200/18%). E 97 GPa (14,100 ksi) and density 8,490 kg/m^3 (0.307 lb/in^3) confirmed (E-Z LOK, MatWeb-derived). Recommend su 400 MPa for 1 in rod."
+   },
+   "properties": {
+    "E_GPa": 97,
+    "nu": null,
+    "rho": 8490,
+    "sy_MPa": 310,
+    "su_MPa": 400,
+    "elong": 0.25,
+    "uniform_elong": null,
+    "product_form": "rod, H02, 25 mm (1 in) - typical",
+    "source": "CDA typical H02 values as quoted by 'TVP' on Eng-Tips thread 'C360 half hard brass'; E and density from E-Z LOK 'Brass Material Properties' C36000 table [confidence medium: forum quote of CDA; primary CDA page could not be fetched]",
+    "url": "https://eng-tips.com/threads/c360-half-hard-brass.33988",
+    "location": "Eng-Tips post #2 (6/25/50 mm rows); E-Z LOK https://www.ezlok.com/brass-properties C36000 table; ASTM B16 H02 minimums: https://avivametals.com/products/c36000-free-machining-brass-free-cutting-brass"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook (cartridge brass C26000, nearest)",
+     "equation_as_published": "sigma = [A + B eps^n][1 + C ln eps_dot*][1 - T*^m], eps_dot* = eps_dot / 1.0 s^-1",
+     "params": {
+      "A_MPa": 112,
+      "B_MPa": 505,
+      "n": 0.42,
+      "C": 0.009,
+      "m": 1.68,
+      "Tmelt_K": 1189,
+      "ref_rate_s-1": 1.0,
+      "rho": 8520,
+      "hardness": "Rockwell F-67"
+     },
+     "units_note": "A, B in MPa; density and cp cells partially garbled in OCR (density read as ~8520-8620; verify against original)",
+     "strain_measure": "equivalent plastic strain",
+     "valid_range": "tension data + Hopkinson bar (thermal softening); paper notes tension flow stress significantly greater than torsion-derived",
+     "test_conditions": "Cartridge brass (70Cu-30Zn), Rockwell F-67 (soft/annealed condition)",
+     "citation": "Johnson, G.R. (Honeywell) & Cook, W.H. (AFATL Eglin), 'A constitutive model and data for metals subjected to large strains, high strain rates and high temperatures', 1983 (7th Int. Symp. on Ballistics per common citation; venue/page range not legible in the OCR copy opened, page marker '541' seen)",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1",
+     "confidence": "medium",
+     "notes": "DIFFERENT ALLOY AND TEMPER: C260 (no Pb, more ductile) in annealed condition (A = 112 MPa) vs C360 H02 (yield 310 MPa). If used for C360 H02, A must be raised to ~310 MPa and hardening reduced; treat as shape-only reference. Cartridge brass is not very rate-sensitive (C = 0.009)."
+    },
+    {
+     "model": "Hollomon power law (textbook, 70/30 brass annealed)",
+     "equation_as_published": "sigma = K eps^n (true stress, true strain)",
+     "params": {
+      "K_psi": 130000,
+      "K_MPa_approx": 895,
+      "n": 0.49
+     },
+     "units_note": "psi in Total Materia; Wikipedia lists 70-30 annealed K 900 MPa n 0.49, naval brass annealed K 895 MPa n 0.49, 85-15 cold-rolled K 580 MPa n 0.34",
+     "strain_measure": "true strain",
+     "valid_range": "RT, uniform region",
+     "test_conditions": "70/30 brass annealed",
+     "citation": "Total Materia 'True Stress - True Strain Curve: Part Four' Table 1 (uncited, Dieter-derived); Wikipedia 'Strain hardening exponent'",
+     "url": "https://www.totalmateria.com/articles/true-stress-true-strain-curve-4",
+     "location": "Table 1",
+     "confidence": "low",
+     "notes": "Not C360 and not H02; sanity check only."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No published JC/R-O/Hollomon fit for C36000 (leaded free-cutting brass) found in an opened source. CDA C36000 page (alloys.copper.org/alloy/C36000) returned fetch errors, so CDA typicals are via a forum quote. ASM Alloy Digest Cu-548 (C36000) is paywalled. Poisson's ratio not verified (makeitfrom lists 0.31 but its H02 yield 140 MPa conflicts with CDA typicals, so it was not used). No open raw stress-strain data found."
+  },
+  {
+   "key": "WHA_90W",
+   "temper_check": {
+    "designation_ok": true,
+    "recommended_default": "90W-7Ni-3Fe, liquid-phase sintered (+ vacuum/H2 heat treated), ASTM B777 Class 1, as-sintered (not swaged)",
+    "notes": "Catalog E 310 GPa matches 45x10^6 psi (Torrey Hills / Rembar typical); density 17,000 matches nominal 17.0 g/cc (B777 Class 1 range 16.85-17.25). Catalog yield 620 / ultimate 900 / elong 0.10 are close but not matching published typicals: Torrey Hills and Rembar (W H M A 17D, B777 Class 1) typical UTS 125 ksi (862 MPa), 0.2% YS 88 ksi (607 MPa), elong 14% (1 in gauge), proportional limit 52 ksi (359 MPa), HRC 25. ASTM B777-07 Class 1 minimums: UTS 758 MPa (648 for nonmagnetic), YS 517 MPa, elong 5% (2% nonmagnetic), HRC 32 max (to Rc 46 if worked/aged). Elmet ET90 matches B777 minimums. Recommend 607 / 862 / 0.14 (typical) with 517 / 758 / 0.05 as conservative. Note low proportional limit (~359 MPa): WHA departs from linearity well below 0.2% yield."
+   },
+   "properties": {
+    "E_GPa": 310,
+    "nu": null,
+    "rho": 17000,
+    "sy_MPa": 607,
+    "su_MPa": 862,
+    "elong": 0.14,
+    "uniform_elong": null,
+    "product_form": "90W-7Ni-3Fe sintered, ASTM B777 Class 1, typical (HRC 25)",
+    "source": "Torrey Hills Technologies, 'Properties of High Density Tungsten' (90W-7Ni-3Fe column); corroborated by Rembar 'Tungsten Heavy Metal Alloy' W H M A 17D",
+    "url": "https://torreyhillstech.com/hddata.html",
+    "location": "Property table, 90% W 7% Ni 3% Fe column; Rembar: https://www.rembar.com/?p=1478; B777-07 Tables 1-2: https://gsalloy.com/wp-content/uploads/2024/04/ASTM-B777.pdf; Elmet datasheet Rev 4: https://wiki.jlab.org/klproject/images/7/7f/Tungsten_options_fromTim.pdf"
+   },
+   "fits": [
+    {
+     "model": "Johnson-Cook (tungsten alloy .07Ni .03Fe)",
+     "equation_as_published": "sigma = [A + B eps^n][1 + C ln eps_dot*][1 - T*^m], eps_dot* = eps_dot / 1.0 s^-1",
+     "params": {
+      "A_MPa": 1506,
+      "B_MPa": 177,
+      "n": 0.12,
+      "C": 0.016,
+      "m": 1.0,
+      "Tmelt_K": 1723,
+      "ref_rate_s-1": 1.0,
+      "rho": 17000,
+      "cp_J_kgK": 134,
+      "hardness": "Rockwell C-47"
+     },
+     "units_note": "A, B in MPa",
+     "strain_measure": "equivalent plastic strain",
+     "valid_range": "torsion data only; m set to 1.00 (not fit)",
+     "test_conditions": "Tungsten alloy (.07Ni, .03Fe) = 90W-7Ni-3Fe, hardness Rc 47 (heavily swaged/worked, penetrator grade)",
+     "citation": "Johnson, G.R. (Honeywell) & Cook, W.H. (AFATL Eglin), 'A constitutive model and data for metals subjected to large strains, high strain rates and high temperatures', 1983 (7th Int. Symp. on Ballistics per common citation; venue/page range not legible in the OCR copy opened, page marker '541' seen)",
+     "url": "https://ia800406.us.archive.org/4/items/AConstitutiveModelAndDataForMetals/A%20constitutive%20model%20and%20data%20for%20metals_text.pdf",
+     "location": "Table 1; also reproduced in arXiv:1608.03056 Table 2 (https://arxiv.org/pdf/1608.03056)",
+     "confidence": "high",
+     "notes": "Composition matches the catalog alloy but CONDITION DOES NOT: Rc 47 swaged material with A = 1506 MPa vs as-sintered Rc 25, YS ~607 MPa. Using it for as-sintered WHA would overpredict strength ~2.5x. Torsion-only fit; m not measured."
+    },
+    {
+     "model": "Johnson-Cook (92.5W Ni-Fe-Co, Kennametal Y925)",
+     "equation_as_published": "sigma = (sigma0 + A eps^n)(1 + B ln eps_dot*)(1 - T*^m)  [FOI notation: sigma0 = JC A, A = JC B, B = JC C]",
+     "params": {
+      "A_MPa": 631,
+      "A_std": 114,
+      "B_MPa": 1258,
+      "B_std": 97,
+      "n": 0.092,
+      "C": 0.014,
+      "m": 0.94,
+      "Tmelt_K": 1723,
+      "rho": 17700,
+      "ref_rate_s-1": "not stated in table ('usually 1 s^-1')",
+      "Tref": "not stated ('usually room temperature')"
+     },
+     "units_note": "MPa; notation remapped from source - check column labels in original",
+     "strain_measure": "equivalent plastic strain",
+     "valid_range": "fit R^2 = 0.94; QS and Hopkinson + temperature tests in report",
+     "test_conditions": "Kennametal Hertel WHA grade Y925, 92.5 wt% W, supplier YS 1300 MPa, UTS 1350, A5 10% (high-strength, likely worked); measured UTS 1343 +/- 31 MPa",
+     "citation": "Skoglund, P., 'Constitutive modelling and mechanical properties of a tungsten heavy metal alloy', FOI-R--0723--SE, Swedish Defence Research Agency, Nov 2002",
+     "url": "https://www.foi.se/rest-api/report/FOI-R--0723--SE",
+     "location": "Table II p.12 (also lists J&C 1983 and Weerasooriya 93W: A 729, B 139, n 0.413, C 0.0366, m 4); Table III p.16 Zerilli-Armstrong BCC (C1 1381, C2 0.0025, C3 0.00011, C4 100 fixed, C5 1047, n 0.093)",
+     "confidence": "medium",
+     "notes": "Different W content and much stronger than as-sintered 90W; included because it documents a fitted m and cross-tabulates Weerasooriya's 93W set (which is closer in strength to sintered WHA, A = 729 MPa, but original paper not opened)."
+    }
+   ],
+   "open_raw_data": [],
+   "unresolved": "No JC/R-O fit for AS-SINTERED 90W-7Ni-3Fe (YS ~600 MPa) verified from an opened source. Candidate: 'Effect of Strain Rate on the Plastic Deformation and Fracture of 90W-7Ni-3Fe Alloy Prepared by Liquid-Phase Sintering', J. Mater. Eng. Perform. (2018), doi:10.1007/s11665-018-3772-1 (https://link.springer.com/article/10.1007/s11665-018-3772-1) - could not be read: WebFetch proxy rate-limited (HTTP 429). Weerasooriya 93W set only seen second-hand in FOI Table II. Poisson's ratio and uniform elongation not verified from an opened source. Plansee Densimet / Mi-Tech / ATI datasheets not reached (MatWeb/Prospector require login or block)."
+  }
+ ]
+}

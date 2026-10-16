@@ -1,0 +1,1254 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="936pt" height="518.4pt" viewBox="0 0 936 518.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-15T21:00:33.627069</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 518.4 
+L 936 518.4 
+L 936 0 
+L 0 0 
+z
+" style="fill: #0b1018"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 56.16 238.509882 
+L 312.445714 238.509882 
+L 312.445714 110.367025 
+L 56.16 110.367025 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="text_1">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="71.995656" y="251.159882" transform="rotate(-0 71.995656 251.159882)">80</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="text_2">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="100.471847" y="251.159882" transform="rotate(-0 100.471847 251.159882)">100</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="text_3">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="128.948037" y="251.159882" transform="rotate(-0 128.948037 251.159882)">120</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="text_4">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="157.424228" y="251.159882" transform="rotate(-0 157.424228 251.159882)">140</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="text_5">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="185.900418" y="251.159882" transform="rotate(-0 185.900418 251.159882)">160</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="text_6">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="214.376609" y="251.159882" transform="rotate(-0 214.376609 251.159882)">180</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="text_7">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="242.852799" y="251.159882" transform="rotate(-0 242.852799 251.159882)">200</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="text_8">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="271.32899" y="251.159882" transform="rotate(-0 271.32899 251.159882)">220</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="text_9">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="299.80518" y="251.159882" transform="rotate(-0 299.80518 251.159882)">240</text>
+     </g>
+    </g>
+    <g id="text_10">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="184.302857" y="265.644257" transform="rotate(-0 184.302857 265.644257)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="text_11">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="51.16" y="235.215835" transform="rotate(-0 51.16 235.215835)">0</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="text_12">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="51.16" y="206.739644" transform="rotate(-0 51.16 206.739644)">20</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="text_13">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="51.16" y="178.263454" transform="rotate(-0 51.16 178.263454)">40</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="text_14">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="51.16" y="149.787263" transform="rotate(-0 51.16 149.787263)">60</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="text_15">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="51.16" y="121.311073" transform="rotate(-0 51.16 121.311073)">80</text>
+     </g>
+    </g>
+    <g id="text_16">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="36.109707" y="174.438454" transform="rotate(-90 36.109707 174.438454)">z (mm)</text>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M -190.818583 224.201077 
+L -69.794799 224.280777 
+L -69.793283 224.277935 
+L -69.751089 160.206521 
+L -190.774872 160.12682 
+L -190.776388 160.129662 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 108.209757 183.105243 
+L -69.766394 182.988036 
+L -69.767304 182.989742 
+L -69.778556 200.075452 
+L 108.197596 200.192659 
+L 108.198506 200.190953 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 319.972049 124.610641 
+L 319.966646 220.005879 
+L 338.097504 220.031085 
+L 487.123269 220.038257 
+L 487.128671 124.64302 
+L 468.997813 124.617814 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 56.16 231.390835 
+L 312.445714 231.390835 
+" clip-path="url(#p8bc2a38112)" style="fill: none; stroke: #64758b; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 56.16 238.509882 
+L 56.16 110.367025 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 56.16 238.509882 
+L 312.445714 238.509882 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 43.402345 205.595376 
+L 43.396391 214.636565 
+L 78.111316 214.659505 
+L 87.552076 214.665306 
+L 87.55803 205.624117 
+L 52.843105 205.601177 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 201.661118 205.49497 
+L 192.220358 205.489168 
+L 78.117271 205.618316 
+L 78.111316 214.659505 
+L 87.552076 214.665306 
+L 201.655164 214.536158 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 52.837151 214.642366 
+L 52.843105 205.601177 
+L -61.724737 205.527065 
+L -71.165496 205.521264 
+L -71.17145 214.562453 
+L 43.396391 214.636565 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 233.149194 166.3136 
+L 265.207066 138.201898 
+L 241.855196 111.402199 
+L 240.416059 111.400198 
+L 208.358187 139.5119 
+L 231.710057 166.3116 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 185.272516 208.558031 
+L 233.149194 166.3136 
+L 209.797323 139.513901 
+L 208.358187 139.5119 
+L 160.481509 181.756331 
+L 183.833379 208.55603 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 265.207066 138.201898 
+L 313.349431 96.102167 
+L 289.997561 69.302468 
+L 288.558424 69.300467 
+L 240.416059 111.400198 
+L 263.767929 138.199898 
+z
+" clip-path="url(#p8bc2a38112)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 600; font-size: 9px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="56.16" y="101.367025" transform="rotate(-0 56.16 101.367025)">HIT 1 (peak force)  t = +0.02 ms</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_14">
+    <path d="M 71.901176 456.192 
+L 296.704538 456.192 
+L 296.704538 306.323092 
+L 71.901176 306.323092 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_10">
+     <g id="text_18">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="85.791567" y="468.842" transform="rotate(-0 85.791567 468.842)">80</text>
+     </g>
+    </g>
+    <g id="xtick_11">
+     <g id="text_19">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="110.769719" y="468.842" transform="rotate(-0 110.769719 468.842)">100</text>
+     </g>
+    </g>
+    <g id="xtick_12">
+     <g id="text_20">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="135.74787" y="468.842" transform="rotate(-0 135.74787 468.842)">120</text>
+     </g>
+    </g>
+    <g id="xtick_13">
+     <g id="text_21">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="160.726021" y="468.842" transform="rotate(-0 160.726021 468.842)">140</text>
+     </g>
+    </g>
+    <g id="xtick_14">
+     <g id="text_22">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="185.704172" y="468.842" transform="rotate(-0 185.704172 468.842)">160</text>
+     </g>
+    </g>
+    <g id="xtick_15">
+     <g id="text_23">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="210.682324" y="468.842" transform="rotate(-0 210.682324 468.842)">180</text>
+     </g>
+    </g>
+    <g id="xtick_16">
+     <g id="text_24">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="235.660475" y="468.842" transform="rotate(-0 235.660475 468.842)">200</text>
+     </g>
+    </g>
+    <g id="xtick_17">
+     <g id="text_25">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="260.638626" y="468.842" transform="rotate(-0 260.638626 468.842)">220</text>
+     </g>
+    </g>
+    <g id="xtick_18">
+     <g id="text_26">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="285.616777" y="468.842" transform="rotate(-0 285.616777 468.842)">240</text>
+     </g>
+    </g>
+    <g id="text_27">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="184.302857" y="483.326375" transform="rotate(-0 184.302857 483.326375)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_6">
+     <g id="text_28">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="460.017" transform="rotate(-0 66.901176 460.017)">−60</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="text_29">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="435.038849" transform="rotate(-0 66.901176 435.038849)">−40</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="text_30">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="410.060697" transform="rotate(-0 66.901176 410.060697)">−20</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="text_31">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="385.082546" transform="rotate(-0 66.901176 385.082546)">0</text>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="text_32">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="360.104395" transform="rotate(-0 66.901176 360.104395)">20</text>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="text_33">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="335.126244" transform="rotate(-0 66.901176 335.126244)">40</text>
+     </g>
+    </g>
+    <g id="ytick_12">
+     <g id="text_34">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="66.901176" y="310.148092" transform="rotate(-0 66.901176 310.148092)">60</text>
+     </g>
+    </g>
+    <g id="text_35">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="47.350884" y="381.257546" transform="rotate(-90 47.350884 381.257546)">y (mm)</text>
+    </g>
+   </g>
+   <g id="patch_15">
+    <path d="M -144.737019 256.36871 
+L -144.738349 506.150223 
+L -144.701338 506.150784 
+L -38.544218 506.151348 
+L -38.542888 256.369836 
+L -38.579899 256.369275 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_16">
+    <path d="M -38.566183 306.325789 
+L -38.566981 456.194697 
+L -38.557112 456.194846 
+L 117.5563 456.195677 
+L 117.557098 306.326769 
+L 117.547228 306.326619 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 434.020907 259.512722 
+L 303.301592 269.949492 
+L 319.20524 469.140827 
+L 319.209979 469.149737 
+L 449.929293 458.712967 
+L 434.025645 259.521631 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 71.901176 456.192 
+L 71.901176 306.323092 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 71.901176 456.192 
+L 296.704538 456.192 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 68.986509 359.539997 
+L 60.70546 396.080622 
+L 91.155975 402.981497 
+L 91.161197 402.981576 
+L 99.442246 366.440951 
+L 68.991732 359.540076 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 99.437023 366.440872 
+L 91.155975 402.981497 
+L 191.242543 426.575638 
+L 191.247766 426.575717 
+L 199.528814 390.035092 
+L 99.442246 366.440951 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 60.710683 396.080701 
+L 68.991732 359.540076 
+L -31.5025 336.741616 
+L -31.507723 336.741537 
+L -39.788771 373.282162 
+L 60.70546 396.080622 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 205.40321 370.048391 
+L 206.665562 385.859203 
+L 234.785418 383.616821 
+L 255.268725 381.978802 
+L 254.006373 366.16799 
+L 225.886517 368.410372 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 227.148869 384.221185 
+L 225.886517 368.410372 
+L 183.89105 371.372097 
+L 163.407743 373.010115 
+L 164.670095 388.820928 
+L 206.665562 385.859203 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 297.497241 378.616021 
+L 296.234889 362.805209 
+L 254.006373 366.16799 
+L 233.523066 367.806009 
+L 234.785418 383.616821 
+L 277.013934 380.254039 
+z
+" clip-path="url(#p697cd4b14f)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_26">
+    <path d="M 358.577143 238.509882 
+L 614.862857 238.509882 
+L 614.862857 110.367025 
+L 358.577143 110.367025 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_19">
+     <g id="text_36">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="374.412799" y="251.159882" transform="rotate(-0 374.412799 251.159882)">80</text>
+     </g>
+    </g>
+    <g id="xtick_20">
+     <g id="text_37">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="402.88899" y="251.159882" transform="rotate(-0 402.88899 251.159882)">100</text>
+     </g>
+    </g>
+    <g id="xtick_21">
+     <g id="text_38">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="431.36518" y="251.159882" transform="rotate(-0 431.36518 251.159882)">120</text>
+     </g>
+    </g>
+    <g id="xtick_22">
+     <g id="text_39">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="459.84137" y="251.159882" transform="rotate(-0 459.84137 251.159882)">140</text>
+     </g>
+    </g>
+    <g id="xtick_23">
+     <g id="text_40">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="488.317561" y="251.159882" transform="rotate(-0 488.317561 251.159882)">160</text>
+     </g>
+    </g>
+    <g id="xtick_24">
+     <g id="text_41">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="516.793751" y="251.159882" transform="rotate(-0 516.793751 251.159882)">180</text>
+     </g>
+    </g>
+    <g id="xtick_25">
+     <g id="text_42">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="545.269942" y="251.159882" transform="rotate(-0 545.269942 251.159882)">200</text>
+     </g>
+    </g>
+    <g id="xtick_26">
+     <g id="text_43">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="573.746132" y="251.159882" transform="rotate(-0 573.746132 251.159882)">220</text>
+     </g>
+    </g>
+    <g id="xtick_27">
+     <g id="text_44">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="602.222323" y="251.159882" transform="rotate(-0 602.222323 251.159882)">240</text>
+     </g>
+    </g>
+    <g id="text_45">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="486.72" y="265.644257" transform="rotate(-0 486.72 265.644257)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6">
+    <g id="ytick_13">
+     <g id="text_46">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="353.577143" y="235.215835" transform="rotate(-0 353.577143 235.215835)">0</text>
+     </g>
+    </g>
+    <g id="ytick_14">
+     <g id="text_47">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="353.577143" y="206.739644" transform="rotate(-0 353.577143 206.739644)">20</text>
+     </g>
+    </g>
+    <g id="ytick_15">
+     <g id="text_48">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="353.577143" y="178.263454" transform="rotate(-0 353.577143 178.263454)">40</text>
+     </g>
+    </g>
+    <g id="ytick_16">
+     <g id="text_49">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="353.577143" y="149.787263" transform="rotate(-0 353.577143 149.787263)">60</text>
+     </g>
+    </g>
+    <g id="ytick_17">
+     <g id="text_50">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="353.577143" y="121.311073" transform="rotate(-0 353.577143 121.311073)">80</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_27">
+    <path d="M 110.873452 224.159996 
+L 231.896642 224.245915 
+L 232.785308 224.231494 
+L 232.830785 160.160082 
+L 111.807595 160.074163 
+L 110.918928 160.088583 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_28">
+    <path d="M 232.091555 200.038275 
+L 410.066834 200.164627 
+L 410.600034 200.155974 
+L 410.612161 183.070264 
+L 232.636882 182.943913 
+L 232.103682 182.952565 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_29">
+    <path d="M 788.340354 221.347437 
+L 788.655297 125.954856 
+L 773.655482 124.383877 
+L 624.480721 123.957277 
+L 624.165778 219.349858 
+L 639.165593 220.920837 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 358.577143 231.390835 
+L 614.862857 231.390835 
+" clip-path="url(#pf7faee7c7d)" style="fill: none; stroke: #64758b; stroke-linecap: round"/>
+   </g>
+   <g id="patch_30">
+    <path d="M 358.577143 238.509882 
+L 358.577143 110.367025 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_31">
+    <path d="M 358.577143 238.509882 
+L 614.862857 238.509882 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_32">
+    <path d="M 348.140283 205.563272 
+L 348.133866 214.60446 
+L 383.611237 214.629794 
+L 387.084302 214.630009 
+L 387.09072 205.588821 
+L 351.613349 205.563487 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_33">
+    <path d="M 383.611237 214.629794 
+L 387.084302 214.630009 
+L 502.226834 209.068215 
+L 502.233251 200.027027 
+L 498.760185 200.026812 
+L 383.617654 205.588606 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_34">
+    <path d="M 230.772405 205.515148 
+L 230.765988 214.556337 
+L 348.133866 214.60446 
+L 351.606932 214.604675 
+L 351.613349 205.563487 
+L 234.245471 205.515363 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_35">
+    <path d="M 533.541807 165.773518 
+L 567.872469 140.444755 
+L 546.823486 111.783937 
+L 545.632875 111.65924 
+L 511.302214 136.988003 
+L 532.351197 165.648821 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_36">
+    <path d="M 511.302214 136.988003 
+L 459.79853 174.954593 
+L 480.847513 203.615411 
+L 482.038124 203.740107 
+L 533.541807 165.773518 
+L 512.492824 137.1127 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_37">
+    <path d="M 567.872469 140.444755 
+L 619.331909 102.436667 
+L 598.282926 73.775849 
+L 597.092316 73.651152 
+L 545.632875 111.65924 
+L 566.681858 140.320058 
+z
+" clip-path="url(#pf7faee7c7d)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_51">
+    <text style="font-weight: 600; font-size: 9px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="358.577143" y="101.367025" transform="rotate(-0 358.577143 101.367025)">H TOOTH MOST BENT  t = +0.17 ms</text>
+   </g>
+  </g>
+  <g id="axes_4">
+   <g id="patch_38">
+    <path d="M 374.318319 456.192 
+L 599.121681 456.192 
+L 599.121681 306.323092 
+L 374.318319 306.323092 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_7">
+    <g id="xtick_28">
+     <g id="text_52">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="388.20871" y="468.842" transform="rotate(-0 388.20871 468.842)">80</text>
+     </g>
+    </g>
+    <g id="xtick_29">
+     <g id="text_53">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="413.186861" y="468.842" transform="rotate(-0 413.186861 468.842)">100</text>
+     </g>
+    </g>
+    <g id="xtick_30">
+     <g id="text_54">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="438.165013" y="468.842" transform="rotate(-0 438.165013 468.842)">120</text>
+     </g>
+    </g>
+    <g id="xtick_31">
+     <g id="text_55">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="463.143164" y="468.842" transform="rotate(-0 463.143164 468.842)">140</text>
+     </g>
+    </g>
+    <g id="xtick_32">
+     <g id="text_56">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="488.121315" y="468.842" transform="rotate(-0 488.121315 468.842)">160</text>
+     </g>
+    </g>
+    <g id="xtick_33">
+     <g id="text_57">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="513.099466" y="468.842" transform="rotate(-0 513.099466 468.842)">180</text>
+     </g>
+    </g>
+    <g id="xtick_34">
+     <g id="text_58">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="538.077618" y="468.842" transform="rotate(-0 538.077618 468.842)">200</text>
+     </g>
+    </g>
+    <g id="xtick_35">
+     <g id="text_59">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="563.055769" y="468.842" transform="rotate(-0 563.055769 468.842)">220</text>
+     </g>
+    </g>
+    <g id="xtick_36">
+     <g id="text_60">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="588.03392" y="468.842" transform="rotate(-0 588.03392 468.842)">240</text>
+     </g>
+    </g>
+    <g id="text_61">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="486.72" y="483.326375" transform="rotate(-0 486.72 483.326375)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_8">
+    <g id="ytick_18">
+     <g id="text_62">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="460.017" transform="rotate(-0 369.318319 460.017)">−60</text>
+     </g>
+    </g>
+    <g id="ytick_19">
+     <g id="text_63">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="435.038849" transform="rotate(-0 369.318319 435.038849)">−40</text>
+     </g>
+    </g>
+    <g id="ytick_20">
+     <g id="text_64">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="410.060697" transform="rotate(-0 369.318319 410.060697)">−20</text>
+     </g>
+    </g>
+    <g id="ytick_21">
+     <g id="text_65">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="385.082546" transform="rotate(-0 369.318319 385.082546)">0</text>
+     </g>
+    </g>
+    <g id="ytick_22">
+     <g id="text_66">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="360.104395" transform="rotate(-0 369.318319 360.104395)">20</text>
+     </g>
+    </g>
+    <g id="ytick_23">
+     <g id="text_67">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="335.126244" transform="rotate(-0 369.318319 335.126244)">40</text>
+     </g>
+    </g>
+    <g id="ytick_24">
+     <g id="text_68">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="369.318319" y="310.148092" transform="rotate(-0 369.318319 310.148092)">60</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_39">
+    <path d="M 263.239247 506.437046 
+L 264.01875 256.65675 
+L 263.97886 256.653779 
+L 157.822261 256.322495 
+L 157.042758 506.102791 
+L 157.082648 506.105761 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_40">
+    <path d="M 419.493611 456.967114 
+L 419.961312 307.098936 
+L 419.950675 307.098144 
+L 263.838029 306.610961 
+L 263.370328 456.479138 
+L 263.380965 456.47993 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_41">
+    <path d="M 620.715303 468.679091 
+L 751.565311 460.041917 
+L 738.408086 260.6551 
+L 738.131831 260.09504 
+L 607.281823 268.732214 
+L 620.439048 468.119032 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_42">
+    <path d="M 374.318319 456.192 
+L 374.318319 306.323092 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_43">
+    <path d="M 374.318319 456.192 
+L 599.121681 456.192 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_44">
+    <path d="M 368.204335 361.973706 
+L 365.157904 399.316876 
+L 396.277204 401.855568 
+L 396.282833 401.855987 
+L 399.329264 364.512817 
+L 368.209964 361.974125 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_45">
+    <path d="M 399.323635 364.512398 
+L 396.277204 401.855568 
+L 497.27553 428.969334 
+L 497.281159 428.969753 
+L 500.32759 391.626583 
+L 399.329264 364.512817 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_46">
+    <path d="M 265.254026 355.754392 
+L 262.207594 393.097562 
+L 262.213223 393.097981 
+L 365.163532 399.317295 
+L 368.209964 361.974125 
+L 368.204335 361.973706 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_47">
+    <path d="M 508.282514 367.948601 
+L 509.326869 383.77493 
+L 539.440323 381.941338 
+L 557.903631 380.549226 
+L 556.859276 364.722897 
+L 526.745822 366.556489 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_48">
+    <path d="M 527.790177 382.382817 
+L 526.745822 366.556489 
+L 481.568895 369.360182 
+L 463.105586 370.752294 
+L 464.149941 386.578623 
+L 509.326869 383.77493 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_49">
+    <path d="M 538.395968 366.11501 
+L 539.440323 381.941338 
+L 584.578442 379.171315 
+L 603.041751 377.779202 
+L 601.997396 361.952873 
+L 556.859276 364.722897 
+z
+" clip-path="url(#p35249ff0ac)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+  </g>
+  <g id="axes_5">
+   <g id="patch_50">
+    <path d="M 660.994286 238.509882 
+L 917.28 238.509882 
+L 917.28 110.367025 
+L 660.994286 110.367025 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_9">
+    <g id="xtick_37">
+     <g id="text_69">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="676.829942" y="251.159882" transform="rotate(-0 676.829942 251.159882)">80</text>
+     </g>
+    </g>
+    <g id="xtick_38">
+     <g id="text_70">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="705.306132" y="251.159882" transform="rotate(-0 705.306132 251.159882)">100</text>
+     </g>
+    </g>
+    <g id="xtick_39">
+     <g id="text_71">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="733.782323" y="251.159882" transform="rotate(-0 733.782323 251.159882)">120</text>
+     </g>
+    </g>
+    <g id="xtick_40">
+     <g id="text_72">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="762.258513" y="251.159882" transform="rotate(-0 762.258513 251.159882)">140</text>
+     </g>
+    </g>
+    <g id="xtick_41">
+     <g id="text_73">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="790.734704" y="251.159882" transform="rotate(-0 790.734704 251.159882)">160</text>
+     </g>
+    </g>
+    <g id="xtick_42">
+     <g id="text_74">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="819.210894" y="251.159882" transform="rotate(-0 819.210894 251.159882)">180</text>
+     </g>
+    </g>
+    <g id="xtick_43">
+     <g id="text_75">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="847.687085" y="251.159882" transform="rotate(-0 847.687085 251.159882)">200</text>
+     </g>
+    </g>
+    <g id="xtick_44">
+     <g id="text_76">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="876.163275" y="251.159882" transform="rotate(-0 876.163275 251.159882)">220</text>
+     </g>
+    </g>
+    <g id="xtick_45">
+     <g id="text_77">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="904.639466" y="251.159882" transform="rotate(-0 904.639466 251.159882)">240</text>
+     </g>
+    </g>
+    <g id="text_78">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="789.137143" y="265.644257" transform="rotate(-0 789.137143 265.644257)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_10">
+    <g id="ytick_25">
+     <g id="text_79">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="655.994286" y="235.215835" transform="rotate(-0 655.994286 235.215835)">0</text>
+     </g>
+    </g>
+    <g id="ytick_26">
+     <g id="text_80">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="655.994286" y="206.739644" transform="rotate(-0 655.994286 206.739644)">20</text>
+     </g>
+    </g>
+    <g id="ytick_27">
+     <g id="text_81">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="655.994286" y="178.263454" transform="rotate(-0 655.994286 178.263454)">40</text>
+     </g>
+    </g>
+    <g id="ytick_28">
+     <g id="text_82">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="655.994286" y="149.787263" transform="rotate(-0 655.994286 149.787263)">60</text>
+     </g>
+    </g>
+    <g id="ytick_29">
+     <g id="text_83">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="655.994286" y="121.311073" transform="rotate(-0 655.994286 121.311073)">80</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_51">
+    <path d="M 412.920938 160.051071 
+L 412.88691 224.122488 
+L 414.357368 224.204326 
+L 535.379547 224.268422 
+L 535.413575 160.197005 
+L 533.943117 160.115167 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_52">
+    <path d="M 534.22511 182.912483 
+L 534.216035 199.998194 
+L 535.09831 200.047297 
+L 713.072103 200.141556 
+L 713.081177 183.055845 
+L 712.198902 183.006742 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_53">
+    <path d="M 1090.427829 221.689817 
+L 1090.829364 126.298776 
+L 1076.698219 124.333241 
+L 927.487445 123.782945 
+L 927.085911 219.173986 
+L 941.217056 221.139522 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 660.994286 231.390835 
+L 917.28 231.390835 
+" clip-path="url(#p7676aa53c9)" style="fill: none; stroke: #64758b; stroke-linecap: round"/>
+   </g>
+   <g id="patch_54">
+    <path d="M 660.994286 238.509882 
+L 660.994286 110.367025 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_55">
+    <path d="M 660.994286 238.509882 
+L 917.28 238.509882 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_56">
+    <path d="M 688.894206 214.597506 
+L 688.899008 205.556317 
+L 686.467218 205.542886 
+L 650.929717 205.524589 
+L 650.924916 214.565778 
+L 653.356706 214.579209 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_57">
+    <path d="M 805.056007 199.057406 
+L 802.624217 199.043975 
+L 686.467218 205.542886 
+L 686.462416 214.584075 
+L 688.894206 214.597506 
+L 805.051206 208.098595 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_58">
+    <path d="M 533.447604 205.503376 
+L 533.442802 214.544565 
+L 535.874592 214.557996 
+L 653.356706 214.579209 
+L 653.361508 205.53802 
+L 650.929717 205.524589 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_59">
+    <path d="M 835.489394 165.592994 
+L 870.341559 140.975494 
+L 849.881291 111.888065 
+L 848.759631 111.732051 
+L 813.907467 136.349551 
+L 834.367734 165.43698 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_60">
+    <path d="M 783.24112 202.511162 
+L 835.489394 165.592994 
+L 815.029126 136.505565 
+L 813.907467 136.349551 
+L 761.659193 173.267719 
+L 782.11946 202.355148 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_61">
+    <path d="M 901.074899 74.822266 
+L 848.759631 111.732051 
+L 869.219899 140.81948 
+L 870.341559 140.975494 
+L 922.656826 104.06571 
+L 902.196558 74.97828 
+z
+" clip-path="url(#p7676aa53c9)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_84">
+    <text style="font-weight: 600; font-size: 9px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="660.994286" y="101.367025" transform="rotate(-0 660.994286 101.367025)">HIT 2 (peak force)  t = +0.21 ms</text>
+   </g>
+  </g>
+  <g id="axes_6">
+   <g id="patch_62">
+    <path d="M 676.735462 456.192 
+L 901.538824 456.192 
+L 901.538824 306.323092 
+L 676.735462 306.323092 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_11">
+    <g id="xtick_46">
+     <g id="text_85">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="690.625853" y="468.842" transform="rotate(-0 690.625853 468.842)">80</text>
+     </g>
+    </g>
+    <g id="xtick_47">
+     <g id="text_86">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="715.604004" y="468.842" transform="rotate(-0 715.604004 468.842)">100</text>
+     </g>
+    </g>
+    <g id="xtick_48">
+     <g id="text_87">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="740.582156" y="468.842" transform="rotate(-0 740.582156 468.842)">120</text>
+     </g>
+    </g>
+    <g id="xtick_49">
+     <g id="text_88">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="765.560307" y="468.842" transform="rotate(-0 765.560307 468.842)">140</text>
+     </g>
+    </g>
+    <g id="xtick_50">
+     <g id="text_89">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="790.538458" y="468.842" transform="rotate(-0 790.538458 468.842)">160</text>
+     </g>
+    </g>
+    <g id="xtick_51">
+     <g id="text_90">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="815.516609" y="468.842" transform="rotate(-0 815.516609 468.842)">180</text>
+     </g>
+    </g>
+    <g id="xtick_52">
+     <g id="text_91">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="840.494761" y="468.842" transform="rotate(-0 840.494761 468.842)">200</text>
+     </g>
+    </g>
+    <g id="xtick_53">
+     <g id="text_92">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="865.472912" y="468.842" transform="rotate(-0 865.472912 468.842)">220</text>
+     </g>
+    </g>
+    <g id="xtick_54">
+     <g id="text_93">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="890.451063" y="468.842" transform="rotate(-0 890.451063 468.842)">240</text>
+     </g>
+    </g>
+    <g id="text_94">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="789.137143" y="483.326375" transform="rotate(-0 789.137143 483.326375)">x (mm)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_12">
+    <g id="ytick_30">
+     <g id="text_95">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="460.017" transform="rotate(-0 671.735462 460.017)">−60</text>
+     </g>
+    </g>
+    <g id="ytick_31">
+     <g id="text_96">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="435.038849" transform="rotate(-0 671.735462 435.038849)">−40</text>
+     </g>
+    </g>
+    <g id="ytick_32">
+     <g id="text_97">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="410.060697" transform="rotate(-0 671.735462 410.060697)">−20</text>
+     </g>
+    </g>
+    <g id="ytick_33">
+     <g id="text_98">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="385.082546" transform="rotate(-0 671.735462 385.082546)">0</text>
+     </g>
+    </g>
+    <g id="ytick_34">
+     <g id="text_99">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="360.104395" transform="rotate(-0 671.735462 360.104395)">20</text>
+     </g>
+    </g>
+    <g id="ytick_35">
+     <g id="text_100">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="335.126244" transform="rotate(-0 671.735462 335.126244)">40</text>
+     </g>
+    </g>
+    <g id="ytick_36">
+     <g id="text_101">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="671.735462" y="310.148092" transform="rotate(-0 671.735462 310.148092)">60</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_63">
+    <path d="M 459.105805 506.081311 
+L 565.261518 506.629503 
+L 565.291366 506.613505 
+L 566.581191 256.835333 
+L 460.425479 256.287141 
+L 460.395631 256.303139 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_64">
+    <path d="M 565.530759 456.667825 
+L 721.642101 457.47399 
+L 721.65006 457.469724 
+L 722.423956 307.60282 
+L 566.312614 306.796656 
+L 566.304654 306.800922 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_65">
+    <path d="M 922.887641 468.533224 
+L 1053.769237 460.394428 
+L 1041.373974 260.961483 
+L 1041.021764 260.260023 
+L 910.140168 268.398819 
+L 922.535431 467.831765 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #2a3850; opacity: 0.55"/>
+   </g>
+   <g id="patch_66">
+    <path d="M 676.735462 456.192 
+L 676.735462 306.323092 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_67">
+    <path d="M 676.735462 456.192 
+L 901.538824 456.192 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_68">
+    <path d="M 667.903022 400.165124 
+L 699.075066 401.942684 
+L 699.079278 401.940427 
+L 701.212345 364.533971 
+L 670.040301 362.75641 
+L 670.036089 362.758667 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #1b95d8; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_69">
+    <path d="M 699.075066 401.942684 
+L 800.963241 425.662275 
+L 800.967453 425.660018 
+L 803.100521 388.253561 
+L 701.212345 364.533971 
+L 701.208133 364.536228 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_70">
+    <path d="M 564.85251 395.724287 
+L 667.903022 400.165124 
+L 667.907234 400.162866 
+L 670.040301 362.75641 
+L 566.989789 358.315573 
+L 566.985577 358.317831 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #1b95d8; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_71">
+    <path d="M 810.864659 367.360063 
+L 811.848533 383.190053 
+L 842.419429 381.476669 
+L 860.36634 380.140653 
+L 859.382466 364.310663 
+L 828.81157 366.024047 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #c27c00; opacity: 0.6; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_72">
+    <path d="M 829.795444 381.854037 
+L 828.81157 366.024047 
+L 782.981518 368.410554 
+L 765.034607 369.746569 
+L 766.018481 385.576559 
+L 811.848533 383.190053 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_73">
+    <path d="M 906.255156 377.59983 
+L 905.271282 361.76984 
+L 859.382466 364.310663 
+L 841.435555 365.646679 
+L 842.419429 381.476669 
+L 888.308244 378.935846 
+z
+" clip-path="url(#pd998cf4edf)" style="fill: #c27c00; opacity: 0.85; stroke: #0b1018; stroke-width: 0.6; stroke-linejoin: miter"/>
+   </g>
+  </g>
+  <g id="line2d_4">
+   <path d="M 16.848 60.48 
+L 919.152 60.48 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linecap: round"/>
+  </g>
+  <g id="text_102">
+   <text style="font-weight: 700; font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #38bdf8" x="16.848" y="17.22" transform="rotate(-0 16.848 17.22)">SIMBLOCKS // SNAPSHOTS</text>
+  </g>
+  <g id="text_103">
+   <text style="font-weight: 600; font-size: 13px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="16.848" y="37.07375" transform="rotate(-0 16.848 37.07375)">NOMINAL DOUBLE HIT: BLADE POSITIONS</text>
+  </g>
+  <g id="text_104">
+   <text style="font-size: 8px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="16.848" y="51.67" transform="rotate(-0 16.848 51.67)">Side view (x-z) and top view (x-y), mm. H robot blue, V robot amber, chassis grey. Arms drawn with their computed bend.</text>
+  </g>
+  <g id="text_105">
+   <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="919.152" y="17.22" transform="rotate(-0 919.152 17.22)">2026-10-16 02:00Z</text>
+  </g>
+  <g id="text_106">
+   <text style="font-size: 6.5px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #64758b" x="16.848" y="510.2292" transform="rotate(-0 16.848 510.2292)">Rigid hub + two flexible arms per blade; arm shape is linear in radius (lumped first bending mode). Geometry is the sim's own contact geometry.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p8bc2a38112">
+   <rect x="56.16" y="110.367025" width="256.285714" height="128.142857"/>
+  </clipPath>
+  <clipPath id="p697cd4b14f">
+   <rect x="71.901176" y="306.323092" width="224.803361" height="149.868908"/>
+  </clipPath>
+  <clipPath id="pf7faee7c7d">
+   <rect x="358.577143" y="110.367025" width="256.285714" height="128.142857"/>
+  </clipPath>
+  <clipPath id="p35249ff0ac">
+   <rect x="374.318319" y="306.323092" width="224.803361" height="149.868908"/>
+  </clipPath>
+  <clipPath id="p7676aa53c9">
+   <rect x="660.994286" y="110.367025" width="256.285714" height="128.142857"/>
+  </clipPath>
+  <clipPath id="pd998cf4edf">
+   <rect x="676.735462" y="306.323092" width="224.803361" height="149.868908"/>
+  </clipPath>
+ </defs>
+</svg>

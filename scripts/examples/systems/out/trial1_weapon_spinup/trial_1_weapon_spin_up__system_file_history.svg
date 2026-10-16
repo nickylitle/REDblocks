@@ -1,0 +1,807 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="936pt" height="352.8pt" viewBox="0 0 936 352.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-15T18:25:19.233298</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 352.8 
+L 936 352.8 
+L 936 0 
+L 0 0 
+z
+" style="fill: #0b1018"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 51.48 308.16 
+L 286.794607 308.16 
+L 286.794607 98.64 
+L 51.48 98.64 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <path d="M 62.176118 308.16 
+L 62.176118 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="62.176118" y="320.81" transform="rotate(-0 62.176118 320.81)">0.0</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <path d="M 97.865536 308.16 
+L 97.865536 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="97.865536" y="320.81" transform="rotate(-0 97.865536 320.81)">0.5</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <path d="M 133.554954 308.16 
+L 133.554954 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="133.554954" y="320.81" transform="rotate(-0 133.554954 320.81)">1.0</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <path d="M 169.244372 308.16 
+L 169.244372 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="169.244372" y="320.81" transform="rotate(-0 169.244372 320.81)">1.5</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <path d="M 204.933789 308.16 
+L 204.933789 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="204.933789" y="320.81" transform="rotate(-0 204.933789 320.81)">2.0</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6">
+      <path d="M 240.623207 308.16 
+L 240.623207 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="240.623207" y="320.81" transform="rotate(-0 240.623207 320.81)">2.5</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7">
+      <path d="M 276.312625 308.16 
+L 276.312625 98.64 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="276.312625" y="320.81" transform="rotate(-0 276.312625 320.81)">3.0</text>
+     </g>
+    </g>
+    <g id="text_8">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="169.137303" y="335.294375" transform="rotate(-0 169.137303 335.294375)">time (s)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_8">
+      <path d="M 51.48 298.651765 
+L 286.794607 298.651765 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="302.476765" transform="rotate(-0 46.48 302.476765)">0</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_9">
+      <path d="M 51.48 267.089406 
+L 286.794607 267.089406 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_10">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="270.914406" transform="rotate(-0 46.48 270.914406)">2000</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_10">
+      <path d="M 51.48 235.527048 
+L 286.794607 235.527048 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_11">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="239.352048" transform="rotate(-0 46.48 239.352048)">4000</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_11">
+      <path d="M 51.48 203.96469 
+L 286.794607 203.96469 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_12">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="207.78969" transform="rotate(-0 46.48 207.78969)">6000</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_12">
+      <path d="M 51.48 172.402331 
+L 286.794607 172.402331 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_13">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="176.227331" transform="rotate(-0 46.48 176.227331)">8000</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_13">
+      <path d="M 51.48 140.839973 
+L 286.794607 140.839973 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_14">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="144.664973" transform="rotate(-0 46.48 144.664973)">10000</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_14">
+      <path d="M 51.48 109.277615 
+L 286.794607 109.277615 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_15">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="46.48" y="113.102615" transform="rotate(-0 46.48 113.102615)">12000</text>
+     </g>
+    </g>
+    <g id="text_16">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="17.929707" y="203.4" transform="rotate(-90 17.929707 203.4)">rpm</text>
+    </g>
+   </g>
+   <g id="line2d_15">
+    <path d="M 62.176118 298.636364 
+L 81.983745 256.248324 
+L 93.076016 233.032024 
+L 102.319576 214.180845 
+L 110.77083 197.446016 
+L 117.901575 183.779265 
+L 121.334897 177.655529 
+L 124.768219 171.983052 
+L 128.201541 166.732976 
+L 131.634863 161.877666 
+L 135.068185 157.390759 
+L 138.501507 153.247193 
+L 142.198931 149.141651 
+L 145.896355 145.37881 
+L 149.593778 141.932429 
+L 153.291202 138.777956 
+L 157.252727 135.69609 
+L 161.214253 132.896852 
+L 165.43988 130.19527 
+L 169.665507 127.760686 
+L 174.155236 125.438819 
+L 178.644964 123.363331 
+L 183.398795 121.407013 
+L 188.416727 119.582692 
+L 193.698761 117.899436 
+L 199.244896 116.362726 
+L 205.319235 114.916559 
+L 211.657676 113.63608 
+L 218.52432 112.474342 
+L 226.183269 111.412151 
+L 234.370421 110.503168 
+L 243.61398 109.706093 
+L 253.913946 109.04552 
+L 266.326726 108.47872 
+L 276.098488 108.163636 
+L 276.098488 108.163636 
+" clip-path="url(#p549baf2417)" style="fill: none; stroke: #1b95d8; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 51.48 308.16 
+L 51.48 98.64 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 51.48 308.16 
+L 286.794607 308.16 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #9fb0c4" x="276.098488" y="110.683636" transform="rotate(-0 276.098488 110.683636)"> 12,071</text>
+   </g>
+   <g id="text_18">
+    <text style="font-weight: 600; font-size: 10.5px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="51.48" y="89.64" transform="rotate(-0 51.48 89.64)">Weapon speed</text>
+   </g>
+   <g id="line2d_16">
+    <defs>
+     <path id="md6f3a8b7ad" d="M 0 2 
+C 0.530406 2 1.03916 1.789267 1.414214 1.414214 
+C 1.789267 1.03916 2 0.530406 2 0 
+C 2 -0.530406 1.789267 -1.03916 1.414214 -1.414214 
+C 1.03916 -1.789267 0.530406 -2 0 -2 
+C -0.530406 -2 -1.03916 -1.789267 -1.414214 -1.414214 
+C -1.789267 -1.03916 -2 -0.530406 -2 0 
+C -2 0.530406 -1.789267 1.03916 -1.414214 1.414214 
+C -1.03916 1.789267 -0.530406 2 0 2 
+z
+" style="stroke: #111823; stroke-width: 1.5"/>
+    </defs>
+    <g clip-path="url(#p549baf2417)">
+     <use xlink:href="#md6f3a8b7ad" x="276.098488" y="108.163636" style="fill: #1b95d8; stroke: #111823; stroke-width: 1.5"/>
+    </g>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_5">
+    <path d="M 352.682697 308.16 
+L 587.997303 308.16 
+L 587.997303 98.64 
+L 352.682697 98.64 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_8">
+     <g id="line2d_17">
+      <path d="M 363.378815 308.16 
+L 363.378815 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_19">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="363.378815" y="320.81" transform="rotate(-0 363.378815 320.81)">0.0</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_18">
+      <path d="M 399.068233 308.16 
+L 399.068233 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_20">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="399.068233" y="320.81" transform="rotate(-0 399.068233 320.81)">0.5</text>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_19">
+      <path d="M 434.757651 308.16 
+L 434.757651 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_21">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="434.757651" y="320.81" transform="rotate(-0 434.757651 320.81)">1.0</text>
+     </g>
+    </g>
+    <g id="xtick_11">
+     <g id="line2d_20">
+      <path d="M 470.447068 308.16 
+L 470.447068 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_22">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="470.447068" y="320.81" transform="rotate(-0 470.447068 320.81)">1.5</text>
+     </g>
+    </g>
+    <g id="xtick_12">
+     <g id="line2d_21">
+      <path d="M 506.136486 308.16 
+L 506.136486 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_23">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="506.136486" y="320.81" transform="rotate(-0 506.136486 320.81)">2.0</text>
+     </g>
+    </g>
+    <g id="xtick_13">
+     <g id="line2d_22">
+      <path d="M 541.825904 308.16 
+L 541.825904 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_24">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="541.825904" y="320.81" transform="rotate(-0 541.825904 320.81)">2.5</text>
+     </g>
+    </g>
+    <g id="xtick_14">
+     <g id="line2d_23">
+      <path d="M 577.515321 308.16 
+L 577.515321 98.64 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_25">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="577.515321" y="320.81" transform="rotate(-0 577.515321 320.81)">3.0</text>
+     </g>
+    </g>
+    <g id="text_26">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="470.34" y="335.294375" transform="rotate(-0 470.34 335.294375)">time (s)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_8">
+     <g id="line2d_24">
+      <path d="M 352.682697 295.176113 
+L 587.997303 295.176113 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_27">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="347.682697" y="299.001113" transform="rotate(-0 347.682697 299.001113)">12</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_25">
+      <path d="M 352.682697 248.757898 
+L 587.997303 248.757898 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_28">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="347.682697" y="252.582898" transform="rotate(-0 347.682697 252.582898)">14</text>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_26">
+      <path d="M 352.682697 202.339683 
+L 587.997303 202.339683 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_29">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="347.682697" y="206.164683" transform="rotate(-0 347.682697 206.164683)">16</text>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_27">
+      <path d="M 352.682697 155.921467 
+L 587.997303 155.921467 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_30">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="347.682697" y="159.746467" transform="rotate(-0 347.682697 159.746467)">18</text>
+     </g>
+    </g>
+    <g id="ytick_12">
+     <g id="line2d_28">
+      <path d="M 352.682697 109.503252 
+L 587.997303 109.503252 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_31">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="347.682697" y="113.328252" transform="rotate(-0 347.682697 113.328252)">20</text>
+     </g>
+    </g>
+    <g id="text_32">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="332.632404" y="203.4" transform="rotate(-90 332.632404 203.4)">V</text>
+    </g>
+   </g>
+   <g id="line2d_29">
+    <path d="M 363.378815 108.163636 
+L 368.396747 118.708748 
+L 373.150578 129.221873 
+L 377.640306 139.67463 
+L 382.130035 150.705697 
+L 386.355662 161.698178 
+L 390.317188 172.635655 
+L 394.014611 183.503293 
+L 397.447933 194.287212 
+L 400.617154 204.973644 
+L 403.522272 215.547777 
+L 406.163289 225.992082 
+L 408.540204 236.283794 
+L 410.653018 246.390896 
+L 412.50173 256.265402 
+L 414.08634 265.831624 
+L 415.406848 274.964884 
+L 416.727357 285.810955 
+L 418.047865 298.636364 
+L 421.217085 289.287846 
+L 424.386306 280.576239 
+L 427.555526 272.464278 
+L 430.724746 264.916089 
+L 433.893967 257.897254 
+L 437.063187 251.37486 
+L 440.496509 244.832789 
+L 443.929831 238.798666 
+L 447.363153 233.23672 
+L 450.796475 228.113249 
+L 454.229797 223.396572 
+L 457.663119 219.056968 
+L 461.096441 215.066612 
+L 464.529763 211.399492 
+L 468.227186 207.783967 
+L 471.92461 204.487011 
+L 475.622034 201.48254 
+L 479.583559 198.56068 
+L 483.545085 195.919633 
+L 487.50661 193.534375 
+L 491.732237 191.246251 
+L 496.221966 189.077128 
+L 500.711694 187.150976 
+L 505.465525 185.348763 
+L 510.483457 183.682486 
+L 515.765491 182.160462 
+L 521.311626 180.787537 
+L 527.385965 179.514598 
+L 533.988508 178.366843 
+L 541.119253 177.362017 
+L 548.778202 176.510654 
+L 558.285863 175.693942 
+L 568.321727 175.052914 
+L 577.301185 174.640991 
+L 577.301185 174.640991 
+" clip-path="url(#p3f6fd798c3)" style="fill: none; stroke: #c27c00; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 352.682697 308.16 
+L 352.682697 98.64 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 352.682697 308.16 
+L 587.997303 308.16 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #9fb0c4" x="577.301185" y="177.160991" transform="rotate(-0 577.301185 177.160991)"> 17.2</text>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 600; font-size: 10.5px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="352.682697" y="89.64" transform="rotate(-0 352.682697 89.64)">Pack voltage</text>
+   </g>
+   <g id="line2d_30">
+    <defs>
+     <path id="mf9fd3ad4f6" d="M 0 2 
+C 0.530406 2 1.03916 1.789267 1.414214 1.414214 
+C 1.789267 1.03916 2 0.530406 2 0 
+C 2 -0.530406 1.789267 -1.03916 1.414214 -1.414214 
+C 1.03916 -1.789267 0.530406 -2 0 -2 
+C -0.530406 -2 -1.03916 -1.789267 -1.414214 -1.414214 
+C -1.789267 -1.03916 -2 -0.530406 -2 0 
+C -2 0.530406 -1.789267 1.03916 -1.414214 1.414214 
+C -1.03916 1.789267 -0.530406 2 0 2 
+z
+" style="stroke: #111823; stroke-width: 1.5"/>
+    </defs>
+    <g clip-path="url(#p3f6fd798c3)">
+     <use xlink:href="#mf9fd3ad4f6" x="577.301185" y="174.640991" style="fill: #c27c00; stroke: #111823; stroke-width: 1.5"/>
+    </g>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_8">
+    <path d="M 653.885393 308.16 
+L 889.2 308.16 
+L 889.2 98.64 
+L 653.885393 98.64 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_15">
+     <g id="line2d_31">
+      <path d="M 664.581512 308.16 
+L 664.581512 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_35">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="664.581512" y="320.81" transform="rotate(-0 664.581512 320.81)">0.0</text>
+     </g>
+    </g>
+    <g id="xtick_16">
+     <g id="line2d_32">
+      <path d="M 700.270929 308.16 
+L 700.270929 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_36">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="700.270929" y="320.81" transform="rotate(-0 700.270929 320.81)">0.5</text>
+     </g>
+    </g>
+    <g id="xtick_17">
+     <g id="line2d_33">
+      <path d="M 735.960347 308.16 
+L 735.960347 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_37">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="735.960347" y="320.81" transform="rotate(-0 735.960347 320.81)">1.0</text>
+     </g>
+    </g>
+    <g id="xtick_18">
+     <g id="line2d_34">
+      <path d="M 771.649765 308.16 
+L 771.649765 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_38">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="771.649765" y="320.81" transform="rotate(-0 771.649765 320.81)">1.5</text>
+     </g>
+    </g>
+    <g id="xtick_19">
+     <g id="line2d_35">
+      <path d="M 807.339183 308.16 
+L 807.339183 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_39">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="807.339183" y="320.81" transform="rotate(-0 807.339183 320.81)">2.0</text>
+     </g>
+    </g>
+    <g id="xtick_20">
+     <g id="line2d_36">
+      <path d="M 843.0286 308.16 
+L 843.0286 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_40">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="843.0286" y="320.81" transform="rotate(-0 843.0286 320.81)">2.5</text>
+     </g>
+    </g>
+    <g id="xtick_21">
+     <g id="line2d_37">
+      <path d="M 878.718018 308.16 
+L 878.718018 98.64 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_41">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="878.718018" y="320.81" transform="rotate(-0 878.718018 320.81)">3.0</text>
+     </g>
+    </g>
+    <g id="text_42">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="771.542697" y="335.294375" transform="rotate(-0 771.542697 335.294375)">time (s)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6">
+    <g id="ytick_13">
+     <g id="line2d_38">
+      <path d="M 653.885393 285.452691 
+L 889.2 285.452691 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_43">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="289.277691" transform="rotate(-0 648.885393 289.277691)">10</text>
+     </g>
+    </g>
+    <g id="ytick_14">
+     <g id="line2d_39">
+      <path d="M 653.885393 249.99488 
+L 889.2 249.99488 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_44">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="253.81988" transform="rotate(-0 648.885393 253.81988)">20</text>
+     </g>
+    </g>
+    <g id="ytick_15">
+     <g id="line2d_40">
+      <path d="M 653.885393 214.537069 
+L 889.2 214.537069 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_45">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="218.362069" transform="rotate(-0 648.885393 218.362069)">30</text>
+     </g>
+    </g>
+    <g id="ytick_16">
+     <g id="line2d_41">
+      <path d="M 653.885393 179.079258 
+L 889.2 179.079258 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_46">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="182.904258" transform="rotate(-0 648.885393 182.904258)">40</text>
+     </g>
+    </g>
+    <g id="ytick_17">
+     <g id="line2d_42">
+      <path d="M 653.885393 143.621447 
+L 889.2 143.621447 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_47">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="147.446447" transform="rotate(-0 648.885393 147.446447)">50</text>
+     </g>
+    </g>
+    <g id="ytick_18">
+     <g id="line2d_43">
+      <path d="M 653.885393 108.163636 
+L 889.2 108.163636 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+     </g>
+     <g id="text_48">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="648.885393" y="111.988636" transform="rotate(-0 648.885393 111.988636)">60</text>
+     </g>
+    </g>
+    <g id="text_49">
+     <text style="font-size: 8.5px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="633.8351" y="203.4" transform="rotate(-90 633.8351 203.4)">A</text>
+    </g>
+   </g>
+   <g id="line2d_44">
+    <path d="M 664.581512 108.163636 
+L 718.98646 108.163636 
+L 719.250562 108.455849 
+L 722.683884 119.259965 
+L 726.117206 129.280179 
+L 729.286426 137.877068 
+L 732.719748 146.528363 
+L 736.15307 154.535808 
+L 739.586392 161.94302 
+L 743.019714 168.791359 
+L 746.453036 175.119932 
+L 749.886358 180.965625 
+L 753.31968 186.363139 
+L 756.753002 191.345055 
+L 760.186324 195.941904 
+L 763.619646 200.182242 
+L 767.052968 204.092738 
+L 770.750392 207.963651 
+L 774.447815 211.509687 
+L 778.145239 214.757526 
+L 782.106764 217.934406 
+L 786.06829 220.825117 
+L 790.293917 223.621868 
+L 794.519544 226.150363 
+L 799.009273 228.571688 
+L 803.499001 230.74711 
+L 808.252832 232.810412 
+L 813.270764 234.749467 
+L 818.552798 236.555858 
+L 824.363035 238.298822 
+L 830.437374 239.883182 
+L 837.039916 241.368083 
+L 844.170662 242.735614 
+L 851.829611 243.975087 
+L 857.111645 244.651449 
+L 866.619305 245.631551 
+L 877.447475 246.518987 
+L 878.503882 246.594647 
+L 878.503882 246.594647 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #14a06e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_45">
+    <path d="M 664.581512 298.636364 
+L 669.599444 287.997314 
+L 674.617376 276.819561 
+L 679.371206 265.667548 
+L 683.860935 254.556926 
+L 688.086562 243.500583 
+L 692.048088 232.50895 
+L 695.745511 221.590386 
+L 699.178833 210.751665 
+L 702.348054 199.998606 
+L 705.253172 189.336905 
+L 707.894189 178.773308 
+L 710.271104 168.317385 
+L 712.383918 157.984385 
+L 714.23263 147.800203 
+L 715.81724 137.810604 
+L 717.137748 128.099689 
+L 718.194155 118.829403 
+L 719.250562 108.455849 
+L 722.683884 119.259965 
+L 726.117206 129.280179 
+L 729.286426 137.877068 
+L 732.719748 146.528363 
+L 736.15307 154.535808 
+L 739.586392 161.94302 
+L 743.019714 168.791359 
+L 746.453036 175.119932 
+L 749.886358 180.965625 
+L 753.31968 186.363139 
+L 756.753002 191.345055 
+L 760.186324 195.941904 
+L 763.619646 200.182242 
+L 767.052968 204.092738 
+L 770.750392 207.963651 
+L 774.447815 211.509687 
+L 778.145239 214.757526 
+L 782.106764 217.934406 
+L 786.06829 220.825117 
+L 790.293917 223.621868 
+L 794.519544 226.150363 
+L 799.009273 228.571688 
+L 803.499001 230.74711 
+L 808.252832 232.810412 
+L 813.270764 234.749467 
+L 818.552798 236.555858 
+L 824.363035 238.298822 
+L 830.437374 239.883182 
+L 837.039916 241.368083 
+L 844.170662 242.735614 
+L 851.829611 243.975087 
+L 857.111645 244.651449 
+L 866.619305 245.631551 
+L 877.447475 246.518987 
+L 878.503882 246.594647 
+L 878.503882 246.594647 
+" clip-path="url(#p339e53c51a)" style="fill: none; stroke: #8c72f2; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 653.885393 308.16 
+L 653.885393 98.64 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 653.885393 308.16 
+L 889.2 308.16 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_50">
+    <text style="font-weight: 600; font-size: 10.5px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="653.885393" y="89.64" transform="rotate(-0 653.885393 89.64)">Currents</text>
+   </g>
+   <g id="legend_1">
+    <g id="line2d_46">
+     <path d="M 840.891797 110.030625 
+L 846.141797 110.030625 
+L 851.391797 110.030625 
+" style="fill: none; stroke: #14a06e; stroke-width: 1.6; stroke-linecap: round"/>
+    </g>
+    <g id="text_51">
+     <text style="font-size: 7.5px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="857.391797" y="112.655625" transform="rotate(-0 857.391797 112.655625)">motor</text>
+    </g>
+    <g id="line2d_47">
+     <path d="M 840.891797 122.855332 
+L 846.141797 122.855332 
+L 851.391797 122.855332 
+" style="fill: none; stroke: #8c72f2; stroke-width: 1.6; stroke-linecap: round"/>
+    </g>
+    <g id="text_52">
+     <text style="font-size: 7.5px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="857.391797" y="125.480332" transform="rotate(-0 857.391797 125.480332)">battery</text>
+    </g>
+   </g>
+  </g>
+  <g id="line2d_48">
+   <path d="M 16.848 60.48 
+L 919.152 60.48 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linecap: round"/>
+  </g>
+  <g id="text_53">
+   <text style="font-weight: 700; font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #38bdf8" x="16.848" y="17.22" transform="rotate(-0 16.848 17.22)">SIMBLOCKS // TIME HISTORY</text>
+  </g>
+  <g id="text_54">
+   <text style="font-weight: 600; font-size: 13px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="16.848" y="37.07375" transform="rotate(-0 16.848 37.07375)">TRIAL 1 WEAPON SPIN-UP (SYSTEM FILE)</text>
+  </g>
+  <g id="text_55">
+   <text style="font-size: 8px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="16.848" y="51.67" transform="rotate(-0 16.848 51.67)">Time histories of the governing states (nominal case)</text>
+  </g>
+  <g id="text_56">
+   <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="919.152" y="17.22" transform="rotate(-0 919.152 17.22)">2026-10-15 23:25Z</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p549baf2417">
+   <rect x="51.48" y="98.64" width="235.314607" height="209.52"/>
+  </clipPath>
+  <clipPath id="p3f6fd798c3">
+   <rect x="352.682697" y="98.64" width="235.314607" height="209.52"/>
+  </clipPath>
+  <clipPath id="p339e53c51a">
+   <rect x="653.885393" y="98.64" width="235.314607" height="209.52"/>
+  </clipPath>
+ </defs>
+</svg>

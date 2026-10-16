@@ -1,0 +1,86 @@
+{
+ "current load (2 half-sines, Z) | static blade, free body": {
+  "Jz": 2.2985938924109024,
+  "pz_2ms": 2.0877914854542787,
+  "pz_20ms": 2.175002464116441,
+  "pitch_20ms": 63.83821840831155,
+  "hop_mm": NaN
+ },
+ "current load (2 half-sines, Z) | static blade, wheels k 3e5": {
+  "Jz": 2.2985938924109024,
+  "pz_2ms": 4.386694176013578,
+  "pz_20ms": 4.2036632462773955,
+  "pitch_20ms": 20.25395431003009,
+  "hop_mm": 545.7233142294855
+ },
+ "current load (2 half-sines, Z) | static blade, wheels k 3e6": {
+  "Jz": 2.2985938924109024,
+  "pz_2ms": 4.549663727184323,
+  "pz_20ms": 4.309395930073014,
+  "pitch_20ms": 22.27845503015771,
+  "hop_mm": 571.9806289976979
+ },
+ "current load (2 half-sines, Z) | spinning blade, wheels k 3e5": {
+  "Jz": 2.2985938924109024,
+  "pz_2ms": 3.934973035194834,
+  "pz_20ms": 3.759259865774233,
+  "pitch_20ms": -0.7986753581028025,
+  "hop_mm": 442.49117204340143
+ },
+ "worst out-of-plane (sim) | static blade, free body": {
+  "Jz": 2.6885321276250003,
+  "pz_2ms": 2.441909009160814,
+  "pz_20ms": 2.5911817150595704,
+  "pitch_20ms": 76.2997210341221,
+  "hop_mm": NaN
+ },
+ "worst out-of-plane (sim) | static blade, wheels k 3e5": {
+  "Jz": 2.6885321276250003,
+  "pz_2ms": 5.1649357549021175,
+  "pz_20ms": 4.922862388949176,
+  "pitch_20ms": 23.510851107923187,
+  "hop_mm": 738.0333574412726
+ },
+ "worst out-of-plane (sim) | static blade, wheels k 3e6": {
+  "Jz": 2.6885321276250003,
+  "pz_2ms": 5.399312486854848,
+  "pz_20ms": 5.162080040225161,
+  "pitch_20ms": 27.61942702207392,
+  "hop_mm": 807.7758217094973
+ },
+ "worst out-of-plane (sim) | spinning blade, wheels k 3e5": {
+  "Jz": 2.6885321276250003,
+  "pz_2ms": 4.725336029564298,
+  "pz_20ms": 4.853884980026031,
+  "pitch_20ms": 5.560290500242467,
+  "hop_mm": 716.6407758565663
+ },
+ "worst overall (sim) | static blade, free body": {
+  "Jz": 0.30029744787275,
+  "pz_2ms": 0.293144198899826,
+  "pz_20ms": 0.2684828494286145,
+  "pitch_20ms": -1.8445003626749292,
+  "hop_mm": NaN
+ },
+ "worst overall (sim) | static blade, wheels k 3e5": {
+  "Jz": 0.30029744787275,
+  "pz_2ms": 0.9033822713812735,
+  "pz_20ms": 0.731250123325217,
+  "pitch_20ms": 1.279961185943004,
+  "hop_mm": 26.7897322942884
+ },
+ "worst overall (sim) | static blade, wheels k 3e6": {
+  "Jz": 0.30029744787275,
+  "pz_2ms": 0.9758872389090754,
+  "pz_20ms": 0.7435712152300854,
+  "pitch_20ms": 0.914341866869866,
+  "hop_mm": 27.724984607525823
+ },
+ "worst overall (sim) | spinning blade, wheels k 3e5": {
+  "Jz": 0.30029744787275,
+  "pz_2ms": 0.8768107260418359,
+  "pz_20ms": 0.870860538572246,
+  "pitch_20ms": 5.827397236529407,
+  "hop_mm": 33.684820131491186
+ }
+}

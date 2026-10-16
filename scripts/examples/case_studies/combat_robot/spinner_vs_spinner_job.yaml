@@ -1,0 +1,36 @@
+simblocks_batch: 1
+name: spinner_vs_spinner
+# Vertical vs horizontal spinner double-hit study.   Run:  simblocks batch spinner_vs_spinner_job.yaml
+#
+# YOU SET THE STUDY SIZE AND THE DIMENSIONS BELOW. Every engagement takes about 0.25 s per core.
+# total runs = samples.n x number of configs (+ dt_check reruns + one verification).
+sim: spinner_vs_spinner.py
+entry: batch_record
+dt: 2.5e-7
+base: {}                         # fixed overrides for every run, e.g. {H_zblade: 0.014}
+configs:                         # every sample runs under every config (same inputs: a fair comparison)
+  elastic-plastic (both): {}
+  elastic only: {plastic: 0.0}
+  H blade flexes only: {flexV: 0.0}
+  V blade flexes only: {flexH: 0.0}
+  rigid blades: {flexH: 0.0, flexV: 0.0}
+samples:
+  n: 64                          # per config. 64 Sobol points cover a wide space evenly; raise for tight CIs
+  sampler: sobol                 # sobol (space-filling) | lhs | random
+  seed: 11
+  uniform:                       # PROPOSED dimensions and ranges: edit, add or delete lines
+    phase_H_deg: [0, 180]        # blade angles at t = 0 (two teeth: 180 deg period)
+    phase_V_deg: [0, 180]
+    v_close: [1.0, 5.0]          # closing speed, m/s
+    y_off: [-0.040, 0.040]       # lateral offset, m
+    yaw_off_deg: [-20, 20]       # heading error, deg
+    H_rpm: [9088, 13632]         # +-20% around 11,360
+    V_rpm: [9600, 14400]         # +-20% around 12,000
+    e_bb: [0.1, 0.7]             # blade-blade restitution
+    mu_bb: [0.1, 0.6]            # blade-blade friction
+    H_zblade: [0.010, 0.020]     # Flapjack blade mid-plane height, m (not measured yet)
+    V_R: [0.050, 0.075]          # vertical's blade radius, m
+    V_t: [0.008, 0.016]          # vertical's blade thickness, m
+    V_clear: [0.003, 0.010]      # vertical's tip clearance to the floor, m
+dt_check: {n: 16, config: elastic-plastic (both), factors: [2, 4]}   # rerun 16 samples at dt/2 and dt/4
+verify: {entry: make_spec, pick: pick_nominal, mc_n: 20}

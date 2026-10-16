@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="576pt" height="446.4pt" viewBox="0 0 576 446.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-16T13:27:23.080450</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 446.4 
+L 576 446.4 
+L 576 0 
+L 0 0 
+z
+" style="fill: #0b1018"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 54.72 370.512 
+L 558.72 370.512 
+L 558.72 66.96 
+L 54.72 66.96 
+z
+" style="fill: #111823"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <path d="M 102.72 370.512 
+L 102.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="102.72" y="383.162" transform="rotate(-0 102.72 383.162)">−0.15</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <path d="M 170.72 370.512 
+L 170.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="170.72" y="383.162" transform="rotate(-0 170.72 383.162)">−0.10</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <path d="M 238.72 370.512 
+L 238.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="238.72" y="383.162" transform="rotate(-0 238.72 383.162)">−0.05</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <path d="M 306.72 370.512 
+L 306.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="306.72" y="383.162" transform="rotate(-0 306.72 383.162)">0.00</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <path d="M 374.72 370.512 
+L 374.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="374.72" y="383.162" transform="rotate(-0 374.72 383.162)">0.05</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6">
+      <path d="M 442.72 370.512 
+L 442.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="442.72" y="383.162" transform="rotate(-0 442.72 383.162)">0.10</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7">
+      <path d="M 510.72 370.512 
+L 510.72 66.96 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: middle; fill: #64758b" x="510.72" y="383.162" transform="rotate(-0 510.72 383.162)">0.15</text>
+     </g>
+    </g>
+    <g id="text_8">
+     <text style="font-size: 7px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="306.72" y="396.19325" transform="rotate(-0 306.72 396.19325)">x (m)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_8">
+      <path d="M 54.72 354.736 
+L 558.72 354.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="358.561" transform="rotate(-0 49.72 358.561)">−0.100</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_9">
+      <path d="M 54.72 320.736 
+L 558.72 320.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_10">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="324.561" transform="rotate(-0 49.72 324.561)">−0.075</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_10">
+      <path d="M 54.72 286.736 
+L 558.72 286.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_11">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="290.561" transform="rotate(-0 49.72 290.561)">−0.050</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_11">
+      <path d="M 54.72 252.736 
+L 558.72 252.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_12">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="256.561" transform="rotate(-0 49.72 256.561)">−0.025</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_12">
+      <path d="M 54.72 218.736 
+L 558.72 218.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_13">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="222.561" transform="rotate(-0 49.72 222.561)">0.000</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_13">
+      <path d="M 54.72 184.736 
+L 558.72 184.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_14">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="188.561" transform="rotate(-0 49.72 188.561)">0.025</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_14">
+      <path d="M 54.72 150.736 
+L 558.72 150.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_15">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="154.561" transform="rotate(-0 49.72 154.561)">0.050</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_15">
+      <path d="M 54.72 116.736 
+L 558.72 116.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_16">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="120.561" transform="rotate(-0 49.72 120.561)">0.075</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_16">
+      <path d="M 54.72 82.736 
+L 558.72 82.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.5; stroke-linecap: round"/>
+     </g>
+     <g id="text_17">
+      <text style="font-size: 7.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="49.72" y="86.561" transform="rotate(-0 49.72 86.561)">0.100</text>
+     </g>
+    </g>
+    <g id="text_18">
+     <text style="font-size: 7px; font-family: 'Inter'; text-anchor: middle; fill: #9fb0c4" x="17.031523" y="218.736" transform="rotate(-90 17.031523 218.736)">y (m)</text>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 306.72 341.136 
+C 339.180859 341.136 370.316576 328.239164 393.26987 305.28587 
+C 416.223164 282.332576 429.12 251.196859 429.12 218.736 
+C 429.12 186.275141 416.223164 155.139424 393.26987 132.18613 
+C 370.316576 109.232836 339.180859 96.336 306.72 96.336 
+C 274.259141 96.336 243.123424 109.232836 220.17013 132.18613 
+C 197.216836 155.139424 184.32 186.275141 184.32 218.736 
+C 184.32 251.196859 197.216836 282.332576 220.17013 305.28587 
+C 243.123424 328.239164 274.259141 341.136 306.72 341.136 
+L 306.72 341.136 
+z
+" clip-path="url(#pa6cd533260)" style="fill: none; opacity: 0.6; stroke-dasharray: 1.4,2.1; stroke-dashoffset: 0; stroke: #1b95d8; stroke-width: 0.7; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_17">
+    <defs>
+     <path id="m63495be59d" d="M 0 1.75 
+C 0.464105 1.75 0.909265 1.565609 1.237437 1.237437 
+C 1.565609 0.909265 1.75 0.464105 1.75 0 
+C 1.75 -0.464105 1.565609 -0.909265 1.237437 -1.237437 
+C 0.909265 -1.565609 0.464105 -1.75 0 -1.75 
+C -0.464105 -1.75 -0.909265 -1.565609 -1.237437 -1.237437 
+C -1.565609 -0.909265 -1.75 -0.464105 -1.75 0 
+C -1.75 0.464105 -1.565609 0.909265 -1.237437 1.237437 
+C -0.909265 1.565609 -0.464105 1.75 0 1.75 
+z
+" style="stroke: #1b95d8"/>
+    </defs>
+    <g clip-path="url(#pa6cd533260)">
+     <use xlink:href="#m63495be59d" x="367.92" y="324.737509" style="fill: #1b95d8; stroke: #1b95d8"/>
+    </g>
+   </g>
+   <g id="line2d_18">
+    <path d="M 365.93889 328.304893 
+L 386.33889 292.971057 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #c27c00; stroke-width: 1.92; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_19">
+    <path d="M 306.72 218.736 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #1b95d8; stroke-width: 1.8; stroke-linecap: round"/>
+    <defs>
+     <path id="m45a1ece049" d="M -4 0 
+L 4 0 
+M 0 4 
+L 0 -4 
+" style="stroke: #1b95d8; stroke-width: 1.2"/>
+    </defs>
+    <g clip-path="url(#pa6cd533260)">
+     <use xlink:href="#m45a1ece049" x="306.72" y="218.736" style="fill: #1b95d8; stroke: #1b95d8; stroke-width: 1.2"/>
+    </g>
+   </g>
+   <g id="line2d_20">
+    <path d="M 386.33889 292.971057 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #c27c00; stroke-width: 1.8; stroke-linecap: round"/>
+    <defs>
+     <path id="m97158f8f5c" d="M -4 0 
+L 4 0 
+M 0 4 
+L 0 -4 
+" style="stroke: #c27c00; stroke-width: 1.2"/>
+    </defs>
+    <g clip-path="url(#pa6cd533260)">
+     <use xlink:href="#m97158f8f5c" x="386.33889" y="292.971057" style="fill: #c27c00; stroke: #c27c00; stroke-width: 1.2"/>
+    </g>
+   </g>
+   <g id="line2d_21">
+    <path d="M 367.92 324.737509 
+" clip-path="url(#pa6cd533260)" style="fill: none; stroke: #fbbf24; stroke-width: 1.8; stroke-linecap: round"/>
+    <defs>
+     <path id="mbda5c43ca4" d="M -3 3 
+L 3 -3 
+M -3 -3 
+L 3 3 
+" style="stroke: #fbbf24"/>
+    </defs>
+    <g clip-path="url(#pa6cd533260)">
+     <use xlink:href="#mbda5c43ca4" x="367.92" y="324.737509" style="fill: #fbbf24; stroke: #fbbf24"/>
+    </g>
+   </g>
+   <g id="patch_4">
+    <path d="M 54.72 370.512 
+L 54.72 66.96 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 54.72 370.512 
+L 558.72 370.512 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 6.5px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #1b95d8" x="367.92" y="322.787509" transform="rotate(-0 367.92 322.787509)"> weapon.tooth</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 6.5px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #c27c00" x="376.13889" y="310.637975" transform="rotate(-0 376.13889 310.637975)"> face.front</text>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 7.5px; font-family: 'Inter'; text-anchor: start; fill: #1b95d8" x="306.72" y="226.001625" transform="rotate(-0 306.72 226.001625)">  weapon</text>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 7.5px; font-family: 'Inter'; text-anchor: start; fill: #c27c00" x="386.33889" y="300.236682" transform="rotate(-0 386.33889 300.236682)">  face</text>
+   </g>
+  </g>
+  <g id="line2d_22">
+   <path d="M 10.368 60.48 
+L 565.632 60.48 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linecap: round"/>
+  </g>
+  <g id="text_23">
+   <text style="font-weight: 700; font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #38bdf8" x="10.368" y="17.22" transform="rotate(-0 10.368 17.22)">SIMBLOCKS</text>
+  </g>
+  <g id="text_24">
+   <text style="font-weight: 600; font-size: 13px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="10.368" y="37.07375" transform="rotate(-0 10.368 37.07375)">VERTICAL_SPINNER_WEDGE: 2D MODEL</text>
+  </g>
+  <g id="text_25">
+   <text style="font-size: 8px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="10.368" y="51.67" transform="rotate(-0 10.368 51.67)">Solid: start. Faint: end of the run. + marks each body's tracked point (centre of mass, or the pivot of a spin-only body)</text>
+  </g>
+  <g id="text_26">
+   <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="565.632" y="17.22" transform="rotate(-0 565.632 17.22)">2026-10-16 18:27Z</text>
+  </g>
+  <g id="text_27">
+   <text style="font-size: 6.5px; font-family: 'JetBrains Mono'; fill: #64758b" transform="translate(10.368 430.5132)">gouge: elastoplastic on contact weapon.tooth / face.front   bend: elastoplastic on face.rz   backstop: kelvin_voigt on face.rz - $fold</text>
+   <text style="font-size: 6.5px; font-family: 'JetBrains Mono'; fill: #64758b" transform="translate(10.368 439.0932)">slide: contact_friction on slip on gouge</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pa6cd533260">
+   <rect x="54.72" y="66.96" width="504" height="303.552"/>
+  </clipPath>
+ </defs>
+</svg>

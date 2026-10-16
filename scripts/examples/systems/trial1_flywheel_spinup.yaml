@@ -1,0 +1,80 @@
+simblocks: 1
+name: Trial 1 flywheel spin-up (system file)
+question: How fast does the flywheel spin up, and does the pack sag below 3.3 V/cell?
+dim: 1d
+
+params:
+  I_w: 7.6e-4 kg m^2           # flywheel inertia (600 J at 12,000 rpm)
+  R_bar: 90 mm
+  h_bar: 6.35 mm               # bar thickness facing the flow
+  Cd: 1.28
+  rho_air: 1.225 kg/m^3
+  kv: 1100 rpm/V               # ASSUMED motor
+  R_m: 35 mohm
+  I_max: 60 A                  # ESC current limit
+  J_rot: 2.0e-6 kg m^2
+  G: 1.5                       # belt: motor turns per flywheel turn
+  cells: 5
+  R0: 0.15 ohm                 # ASSUMED pack (30 mOhm/cell)
+  R1: 0.05 ohm
+  C1: 600 farad
+  Q: 450 mAh
+  mu_b: 0.0015
+  d_bore: 8 mm
+  M0: 0.002 N m
+  F_rad: 13.3 N
+  target: 12000 rpm
+
+derived:
+  K_wind: {block: bar_windage_torque, omega: 1.0, R: $R_bar, h: $h_bar, rho: $rho_air, Cd: $Cd}
+  T_brg: "= $M0 + 0.5 * $mu_b * $F_rad * $d_bore"
+
+bodies:
+  flywheel: {dof: rotation, inertia: $I_w, label: Flywheel bar}
+
+elements:
+  motor:   {type: drive, measure: flywheel, kv: $kv, R: $R_m, I_max: $I_max, gear: $G, J_rotor: $J_rot,
+            cells: $cells, R0: $R0, R1: $R1, C1: $C1, capacity: $Q, label: Motor + ESC + pack,
+            source: esc_supply + lipo_ocv_k (Plett 1-RC)}
+  windage: {type: drag, measure: flywheel, K: $K_wind, source: bar_windage_torque,
+            knockout: {expect: {rpm_final: "+"}}}
+  bearing: {type: friction, measure: flywheel, F_c: $T_brg, v_eps: 1 rad/s, source: SKF simplified bearing torque,
+            knockout: {expect: {rpm_final: "+"}}}
+
+outputs:
+  t95_s:       {body: flywheel, quantity: velocity, reduce: first_time_above, value: "= 0.95 * $target", unit: s}
+  rpm_final:   {body: flywheel, quantity: velocity, reduce: final, unit: rpm}
+  v_bus_min:   {element: motor, quantity: bus_voltage, reduce: min, unit: V}
+  I_peak_A:    {element: motor, quantity: current, reduce: max, unit: A}
+  soc_final:   {element: motor, quantity: soc, reduce: final}
+  v_min_per_cell: {expr: "= $v_bus_min / $cells"}
+  mAh_used:    {expr: "= (1 - $soc_final) * 450"}
+
+failure:
+  - {name: slow spin-up, metric: t95_s, limit: 2.0, fails_when: above,
+     origin: "trial user: flywheel must reach 95% of 12,000 rpm within 2.0 s"}
+  - {name: pack sag, metric: v_min_per_cell, limit: 3.3, fails_when: below,
+     origin: "trial user: pack must not sag below 3.3 V/cell under load"}
+
+uncertain:
+  R0: [0.08 ohm, 0.25 ohm]
+  kv: [1045 rpm/V, 1155 rpm/V]
+  R_m: [30 mohm, 45 mohm]
+  I_w: [6.8e-4 kg m^2, 8.4e-4 kg m^2]
+  Cd: [1.0, 1.5]
+  I_max: [55 A, 65 A]
+
+limits:
+  - {name: "ESC limit 0 A -> flywheel never moves", set: {I_max: 0}, expect: {rpm_final: 0}}
+
+run: {t_end: 3 s, dt: 0.1 ms, mc_n: 200, bounds: {t95_s: [0, 1000], v_min_per_cell: [0, 4.25], rpm_final: [0, 40000]}}
+
+report:
+  plots:
+    - {title: Flywheel speed, series: [{ref: flywheel.velocity, unit: rpm}], unit: rpm}
+    - {title: Pack voltage, series: [{ref: motor.bus_voltage, unit: V}], unit: V}
+    - {title: Currents, unit: A, series: [{ref: motor.current, unit: A, label: motor}, {ref: motor.battery_current, unit: A, label: battery}]}
+  sweep: {param: G, values: [1.0, 1.25, 1.5, 1.75, 2.0], metric: t95_s, x_label: belt ratio,
+          y_label: time to 95% speed (s),
+          variants: {"R0 0.15 ohm": {R0: 0.15 ohm}, "R0 0.25 ohm (tired pack)": {R0: 0.25 ohm}}}
+  input_labels: {R0: pack resistance, kv: motor KV, R_m: winding resistance, I_w: flywheel inertia, Cd: windage Cd, I_max: ESC current limit}

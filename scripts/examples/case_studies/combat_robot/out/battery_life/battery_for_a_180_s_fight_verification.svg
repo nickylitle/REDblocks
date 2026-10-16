@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="936pt" height="489.6pt" viewBox="0 0 936 489.6" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-16T03:03:09.534142</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 489.6 
+L 936 489.6 
+L 936 0 
+L 0 0 
+z
+" style="fill: #0b1018"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 28.08 99.323145 
+L 907.92 99.323145 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 28.08 120.812445 
+L 907.92 120.812445 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 28.08 142.301745 
+L 907.92 142.301745 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 28.08 163.791045 
+L 907.92 163.791045 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 28.08 185.280345 
+L 907.92 185.280345 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 28.08 206.769645 
+L 907.92 206.769645 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_7">
+    <path d="M 28.08 228.258945 
+L 907.92 228.258945 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_8">
+    <path d="M 28.08 249.748245 
+L 907.92 249.748245 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_9">
+    <path d="M 28.08 271.237545 
+L 907.92 271.237545 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_10">
+    <path d="M 28.08 292.726845 
+L 907.92 292.726845 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_11">
+    <path d="M 28.08 314.216145 
+L 907.92 314.216145 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_12">
+    <path d="M 28.08 335.705445 
+L 907.92 335.705445 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_13">
+    <path d="M 28.08 357.194745 
+L 907.92 357.194745 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_14">
+    <path d="M 28.08 378.684045 
+L 907.92 378.684045 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_15">
+    <path d="M 28.08 400.173345 
+L 907.92 400.173345 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_16">
+    <path d="M 28.08 421.662645 
+L 907.92 421.662645 
+" clip-path="url(#pd3cbc2a935)" style="fill: none; stroke: #1f2a3a; stroke-width: 0.6; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #64758b" x="28.08" y="89.65296" transform="rotate(-0 28.08 89.65296)">CHECK</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #64758b" x="265.6368" y="89.65296" transform="rotate(-0 265.6368 89.65296)">STATUS</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #64758b" x="344.8224" y="89.65296" transform="rotate(-0 344.8224 89.65296)">DETAIL</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="113.87826" transform="rotate(-0 28.08 113.87826)">determinism</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="113.87826" transform="rotate(-0 265.6368 113.87826)">● PASS</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="113.65227" transform="rotate(-0 344.8224 113.65227)">bit-identical repeat</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="135.36756" transform="rotate(-0 28.08 135.36756)">finite_outputs</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="135.36756" transform="rotate(-0 265.6368 135.36756)">● PASS</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="135.14157" transform="rotate(-0 344.8224 135.14157)">all outputs finite</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="156.85686" transform="rotate(-0 28.08 156.85686)">physical_bounds</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="156.85686" transform="rotate(-0 265.6368 156.85686)">● PASS</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="156.63087" transform="rotate(-0 344.8224 156.63087)">3 bounds respected</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="178.34616" transform="rotate(-0 28.08 178.34616)">stability_margin</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="178.34616" transform="rotate(-0 265.6368 178.34616)">● PASS</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="178.12017" transform="rotate(-0 344.8224 178.12017)">critical dt 0.000867 s / dt 0.0001 s = 8.7x</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="199.83546" transform="rotate(-0 28.08 199.83546)">dt_convergence</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #fbbf24" x="265.6368" y="199.83546" transform="rotate(-0 265.6368 199.83546)">● WARN</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="199.60947" transform="rotate(-0 344.8224 199.60947)">Wh: err 9.1e-05% (order -0.53); mAh_used: err 9.8e-05% (order -0.55); v_min_cell: err 0.00091% (order 0.7); I_peak: err 0.0059% (order 0.96); t_fir...</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="221.32476" transform="rotate(-0 28.08 221.32476)">energy_ledger</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="221.32476" transform="rotate(-0 265.6368 221.32476)">● PASS</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="221.09877" transform="rotate(-0 344.8224 221.09877)">worst closure residual 0.41% across 3 dt levels (tol 5%)</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="242.81406" transform="rotate(-0 28.08 242.81406)">limit:idle only: 3 W x 180 s = 0.15 Wh</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="242.81406" transform="rotate(-0 265.6368 242.81406)">● PASS</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="242.58807" transform="rotate(-0 344.8224 242.58807)">matches expected limit</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="264.30336" transform="rotate(-0 28.08 264.30336)">knockout:no blade windage</text>
+   </g>
+   <g id="text_26">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="264.30336" transform="rotate(-0 265.6368 264.30336)">● PASS</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="264.07737" transform="rotate(-0 344.8224 264.07737)">Wh -26.8%, mAh_used -27.7%, v_min_cell +2.04%, I_peak -0.978%, t_first_full -3.48%</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="285.79266" transform="rotate(-0 28.08 285.79266)">knockout:no weapon hold (governor off)</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="285.79266" transform="rotate(-0 265.6368 285.79266)">● PASS</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="285.56667" transform="rotate(-0 344.8224 285.56667)">Wh -41.5%, mAh_used -42.6%, v_min_cell +4.03%, I_peak -1.46%, t_first_full +0%</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="307.28196" transform="rotate(-0 28.08 307.28196)">knockout:no pushing</text>
+   </g>
+   <g id="text_32">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="307.28196" transform="rotate(-0 265.6368 307.28196)">● PASS</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="307.05597" transform="rotate(-0 344.8224 307.05597)">Wh -26.5%, mAh_used -27.4%, v_min_cell +3.41%, I_peak -4.02%, t_first_full +0%</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="328.77126" transform="rotate(-0 28.08 328.77126)">knockout:no normal driving</text>
+   </g>
+   <g id="text_35">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="328.77126" transform="rotate(-0 265.6368 328.77126)">● PASS</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="328.54527" transform="rotate(-0 344.8224 328.54527)">Wh -8.82%, mAh_used -9.17%, v_min_cell +3.8%, I_peak -14.3%, t_first_full +0%</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="350.26056" transform="rotate(-0 28.08 350.26056)">knockout:no hits (one spin-up only)</text>
+   </g>
+   <g id="text_38">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="350.26056" transform="rotate(-0 265.6368 350.26056)">● PASS</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="350.03457" transform="rotate(-0 344.8224 350.03457)">Wh -13.3%, mAh_used -13.8%, v_min_cell +4.69%, I_peak -27.6%, t_first_full +0%</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="371.74986" transform="rotate(-0 28.08 371.74986)">knockout:no pack recovery circuit (R1 = 0)</text>
+   </g>
+   <g id="text_41">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="371.74986" transform="rotate(-0 265.6368 371.74986)">● PASS</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="371.52387" transform="rotate(-0 344.8224 371.52387)">Wh -0.52%, mAh_used -0.542%, v_min_cell +1.25%, I_peak -1.24%, t_first_full +0%</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="393.23916" transform="rotate(-0 28.08 393.23916)">sensitivity</text>
+   </g>
+   <g id="text_44">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="393.23916" transform="rotate(-0 265.6368 393.23916)">● PASS</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="393.01317" transform="rotate(-0 344.8224 393.01317)">10 inputs swept low/high (trends reported, not judged)</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="414.72846" transform="rotate(-0 28.08 414.72846)">monte_carlo</text>
+   </g>
+   <g id="text_47">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #2dd4bf" x="265.6368" y="414.72846" transform="rotate(-0 265.6368 414.72846)">● PASS</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="414.50247" transform="rotate(-0 344.8224 414.50247)">20 samples, 0 failed finite/bounds/ledger (0.0%)</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #e6edf5" x="28.08" y="436.21776" transform="rotate(-0 28.08 436.21776)">failure_modes</text>
+   </g>
+   <g id="text_50">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #fbbf24" x="265.6368" y="436.21776" transform="rotate(-0 265.6368 436.21776)">● WARN</text>
+   </g>
+   <g id="text_51">
+    <text style="font-size: 6.9px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="344.8224" y="435.99177" transform="rotate(-0 344.8224 435.99177)">charge used: nominal SF 1.87, P(fail) 0%; voltage sag: nominal SF 1.04, P(fail) 20%</text>
+   </g>
+  </g>
+  <g id="line2d_17">
+   <path d="M 16.848 60.48 
+L 919.152 60.48 
+" style="fill: none; stroke: #2a3850; stroke-width: 0.8; stroke-linecap: round"/>
+  </g>
+  <g id="text_52">
+   <text style="font-weight: 700; font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: start; fill: #38bdf8" x="16.848" y="17.22" transform="rotate(-0 16.848 17.22)">SIMBLOCKS // VERIFICATION</text>
+  </g>
+  <g id="text_53">
+   <text style="font-weight: 600; font-size: 13px; font-family: 'Inter'; text-anchor: start; fill: #e6edf5" x="16.848" y="37.07375" transform="rotate(-0 16.848 37.07375)">BATTERY FOR A 180 S FIGHT</text>
+  </g>
+  <g id="text_54">
+   <text style="font-size: 8px; font-family: 'Inter'; text-anchor: start; fill: #9fb0c4" x="16.848" y="51.67" transform="rotate(-0 16.848 51.67)">Automated verification battery</text>
+  </g>
+  <g id="text_55">
+   <text style="font-size: 7px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #64758b" x="919.152" y="17.22" transform="rotate(-0 919.152 17.22)">2026-10-16 08:03Z</text>
+  </g>
+  <g id="text_56">
+   <text style="font-weight: 700; font-size: 8.5px; font-family: 'JetBrains Mono'; text-anchor: end; fill: #2dd4bf" x="919.152" y="34.59" transform="rotate(-0 919.152 34.59)">● PASS VERIFIED</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pd3cbc2a935">
+   <rect x="28.08" y="78.192" width="879.84" height="382.032"/>
+  </clipPath>
+ </defs>
+</svg>

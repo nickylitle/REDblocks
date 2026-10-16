@@ -1,0 +1,76 @@
+simblocks: 1
+name: horizontal_spinner_wedge
+question: How far does a 600 J horizontal spinner bend a 60 degree wedge face, where the tooth meets it?
+dim: 3d
+units: SI
+params:
+  phi0: {value: -30 deg, note: tooth angle at first touch (0 = pointing straight at the wedge; negative = before)}
+  z_tooth: {value: 12 mm, note: tooth height above the floor; sets where on the face it lands}
+  alpha: {value: 60 deg, note: wedge face angle from horizontal}
+  L: {value: 30 mm, note: face length root to lip}
+  width: {value: 60 mm, note: face width (the 45 degree dispersion width 2 L, as the 1d model)}
+  t: {value: 2 mm, note: sheet thickness}
+  z_lip: {value: 2 mm, note: lip height above the floor}
+  R: {value: 90 mm, note: tooth radius}
+  I_w: {value: 7.56e-4 kg m^2, note: weapon inertia (597 J at 1257 rad/s)}
+  w0: {value: 1257 rad/s, note: weapon speed (113 m/s tip)}
+  I_face: {value: 1.35e-5 kg m^2, note: face inertia about its root hinge}
+  bend: {block: plate_root_hinge, material: 4130_45HRC, width: $width, t: $t, L: $L, rate_factor: 1.2}
+  gouge: {block: plastic_indentation_table, R: 1.5 mm, Y: 1710 MPa, Estar: 115 GPa}
+  fold: {value: 30 deg, note: extra face rotation at which it lands on the chassis}
+  mu: {value: 0.2, note: tooth-on-face friction}
+  bite: {value: 4 mm, note: deepest the tooth can bite before it tears through}
+derived:
+  s_hit: = ($z_tooth - $z_lip) / sin($alpha)
+  xc: = $R*cos($phi0) + 0.00005
+  yc: = $R*sin($phi0)
+  x_lip: = $xc - $s_hit*cos($alpha)
+  x_root: = $x_lip + $L*cos($alpha)
+  z_root: = $z_lip + $L*sin($alpha)
+  mid_x: = -0.5*$L*cos($alpha)
+  mid_z: = -0.5*$L*sin($alpha)
+  nx: = -sin($alpha)
+  nz: = cos($alpha)
+  ux: = cos($alpha)
+  uz: = sin($alpha)
+bodies:
+  weapon:
+    dof: [spin]
+    axis: z
+    inertia: $I_w
+    omega0: $w0
+    angle0: $phi0
+    points: {tooth: [$R, 0, $z_tooth]}
+    label: Weapon (horizontal spinner)
+  face:
+    dof: [spin]
+    axis: y
+    inertia: $I_face
+    at: [$x_root, $yc, $z_root]
+    planes: {front: {at: [$mid_x, 0, $mid_z], normal: [$nx, 0, $nz], u: [$ux, 0, $uz], size: [$L, $width], depth: $bite}}
+    label: Wedge face (turns about its root)
+elements:
+  gouge: {type: elastoplastic, table: $gouge, measure: {contact: [weapon.tooth, face.front]}, label: Tooth gouge}
+  bend: {type: elastoplastic, table: $bend, measure: face.spin, label: Root bend hinge}
+  backstop: {type: kelvin_voigt, one_sided: true, k: 2e5 N m/rad, c: 5 N m s/rad, measure: -face.spin - $fold,
+             label: Chassis backstop}
+  slide: {type: contact_friction, contact: gouge, mu: $mu, v_eps: 0.05 m/s, label: Tooth sliding on the face}
+outputs:
+  bend_set: {element: bend, quantity: plastic_set, reduce: max_abs, unit: deg, label: Permanent bend}
+  bend_rad: {element: bend, quantity: plastic_set, reduce: max_abs}
+  gouge_set: {element: gouge, quantity: plastic_set, reduce: max, unit: mm, label: Gouge depth}
+  F_peak: {element: gouge, quantity: force, reduce: max, unit: N, label: Peak contact force}
+  w_end: {body: weapon, quantity: omega}
+  face_rot: {body: face, quantity: angle, reduce: max_abs, unit: deg, label: Peak face rotation}
+  W_bend: {element: bend, quantity: absorbed_work, label: Work into the bend (J)}
+  W_gouge: {element: gouge, quantity: absorbed_work, label: Work into the gouge (J)}
+  E_lost: {expr: "0.5*$I_w*($w0**2 - $w_end**2)", label: Weapon energy lost (J)}
+  tip_drop_mm: {expr: "1000*$L*(sin($alpha + $bend_rad) - sin($alpha))", label: Permanent lip drop (mm)}
+uncertain:
+  phi0: [-35 deg, -5 deg]
+  z_tooth: [6 mm, 20 mm]
+failure:
+  - {name: tip drop, metric: tip_drop_mm, limit: 5, fails_when: above, origin: "Nicky: the wedge fails at a permanent 5 mm tip drop"}
+run:
+  t_end: 0.4 ms
+  dt: 20 ns

@@ -1,0 +1,20 @@
+% Worst vertical (Z-only) hit on Flapjack's blade tip, from the flexible-blade sims. Blade bends at 6110 N.
+% Frame: Z up. X, Y set to 0. Z impulse +2.806 N s, peak 6109 N. Apply at the blade tip, 95 mm ahead of centre.
+% time_s	Fx_N	Fy_N	Fz_N
+0	0	0	0
+8.25e-05	0	0	8.36397
+0.00011	0	0	515.402
+0.00013	0	0	1181.3
+0.000155	0	0	2076.43
+0.00017	0	0	2645.44
+0.0001875	0	0	3338.71
+0.0002175	0	0	4411.55
+0.0002375	0	0	4878.67
+0.0002525	0	0	5136.09
+0.00033625	0	0	5895.75
+0.00047275	0	0	6108.88
+0.00053875	0	0	5766.97
+0.00060625	0	0	4713.4
+0.00067825	0	0	2967.29
+0.00077875	0	0	-38.7866
+0.005	0	0	0

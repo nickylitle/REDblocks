@@ -1,0 +1,67 @@
+simblocks: 1
+name: Trial 3 CF top plate drop (system file)
+question: Does the 8-ply 3K twill top plate crack or flex into the rotor when the unit lands flat from 1 m?
+dim: 1d
+
+params:
+  layup: "CF_3K_twill [0/45/0/45]s"
+  a: 160 mm
+  b: 120 mm
+  patch: 28 mm                 # motor flange, square
+  m_total: 1.361 kg
+  m_mot: 0.12 kg
+  h: 1.0 m                     # drop height
+  g: 9.81 m/s^2
+  k_floor: 200 kN/m            # wheels + floor, ASSUMED
+  e_floor: 0.3
+
+derived:
+  plate: {block: laminate_plate_point_load, layup: $layup, a: $a, b: $b, patch: $patch}
+  c_floor: {block: damping_for_restitution, e: $e_floor, k: $k_floor, m: $m_total}
+  v_drop: "= sqrt(2 * $g * $h)"
+
+bodies:                         # coordinates point DOWN; the floor is at chassis = 0
+  chassis: {dof: translation, mass: "=$m_total - $m_mot", v0: $v_drop, label: Chassis}
+  motor:   {dof: translation, mass: $m_mot, v0: $v_drop, x0: "=$m_mot * $g / $plate.k", label: Motor}
+  floor:   {ground: true}
+
+elements:
+  floor_contact: {type: kelvin_voigt, measure: chassis, one_sided: true, k: $k_floor, c: $c_floor,
+                  label: Wheels on floor, knockout: {expect: {}}}
+  plate:         {type: spring, measure: motor - chassis, k: $plate.k, label: Top plate under motor,
+                  source: laminate_plate_point_load}
+  gravity_chassis: {type: force, measure: chassis, P: "=($m_total - $m_mot) * $g"}
+  gravity_motor:   {type: force, measure: motor, P: "=$m_mot * $g"}
+
+outputs:
+  F_plate_peak_N: {element: plate, quantity: force, reduce: max_abs, unit: N}
+  plate_defl_mm:  {element: plate, quantity: measure, reduce: max_abs, unit: mm}
+  F_floor_peak_N: {element: floor_contact, quantity: force, reduce: max, unit: N}
+  fpf_SF:         {expr: "= $plate.F_fpf / $F_plate_peak_N"}
+
+failure:
+  - {name: plate cracks, demand: "= $F_plate_peak_N", capacity: "= $plate.F_fpf",
+     origin: "trial user: plate fails at first-ply failure under the motor"}
+  - {name: plate hits rotor, metric: plate_defl_mm, limit: 5, fails_when: above,
+     origin: "trial user: plate may not flex more than 5 mm (rotor clearance)", assumption: 5 mm clearance}
+
+uncertain:
+  h: [0.5 m, 1.5 m]
+  k_floor: [100 kN/m, 400 kN/m]
+  e_floor: [0.2, 0.5]
+  m_mot: [0.10 kg, 0.14 kg]
+
+limits:
+  - {name: "no gravity, no drop -> no load", set: {h: 0, g: 0}, expect: {F_plate_peak_N: 0}}
+
+run: {t_end: 40 ms, dt: 2 us, mc_n: 200, bounds: {plate_defl_mm: [0, 50], F_plate_peak_N: [0, 100000]}}
+
+report:
+  plots:
+    - {title: Plate force from the motor, series: [{ref: plate.force, unit: N}], unit: N}
+    - {title: Plate flex under the motor, series: [{ref: plate.measure, unit: mm}], unit: mm}
+    - {title: Floor force on the wheels, series: [{ref: floor_contact.force, unit: N}], unit: N}
+  sweep: {param: h, values: [0.5 m, 1.0 m, 1.5 m, 2.0 m], unit: m, metric: fpf_SF, x_label: drop height (m),
+          y_label: first-ply safety factor,
+          variants: {"8 plies": {layup: "CF_3K_twill [0/45/0/45]s"}, "6 plies": {layup: "CF_3K_twill [0/45/0]s"}}}
+  input_labels: {h: drop height, k_floor: wheel/floor stiffness, e_floor: landing restitution, m_mot: motor mass}
