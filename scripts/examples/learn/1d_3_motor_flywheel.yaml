@@ -1,0 +1,64 @@
+simblocks: 1
+name: 1D-3 Motor, gearbox and flywheel spin-up
+question: "How long does a 4-cell battery and a 1000 kV motor take to spin a 5 kg flywheel up through a 5:1 gearbox, and what current does it pull?"
+dim: 1d
+
+params:
+  kv: {value: 1000 rpm/V, note: "motor speed constant"}
+  gear: {value: 5, note: "motor turns 5 times per flywheel turn"}
+  k_shaft: {value: 300 N m/rad, note: "twist stiffness of the shaft between gearbox and flywheel"}
+  bearing_drag: {value: 0.05, note: "bearing friction torque, N m"}
+
+bodies:
+  rotor: {dof: rotation, inertia: 3e-5 kg m^2, label: motor rotor (motor side of the gearbox)}
+  flywheel:
+    dof: rotation
+    shape: {kind: disc, R: 100 mm, t: 20 mm, material: 1018_CD}   # inertia m R^2 / 2 worked out from the shape
+    label: steel flywheel
+
+elements:
+  motor:
+    type: drive
+    measure: rotor              # the motor turns the rotor
+    kv: $kv
+    R: 0.04 ohm
+    I_max: 60 A
+    cells: 4
+    R0: 0.02 ohm
+    capacity: 2200 mAh
+    label: battery, ESC and motor
+    note: "full throttle: the ESC limits current to 60 A, the battery sags under load"
+  shaft:
+    type: kelvin_voigt
+    measure: "rotor / $gear - flywheel"   # twist of the output shaft: gearbox output angle minus flywheel angle
+    k: $k_shaft
+    c: 0.05
+    label: gearbox output shaft
+    note: "the 1 / gear coefficient is the gearbox: torque is multiplied by 5 on its way to the flywheel"
+  bearings:
+    type: friction
+    measure: flywheel
+    F_c: $bearing_drag
+    v_eps: 0.5
+    label: bearing drag
+
+outputs:
+  t_3000rpm_s:      {body: flywheel, quantity: velocity, reduce: first_time_above, value: 3000 rpm, label: time to reach 3000 rpm (90 % of top speed)}
+  rpm_end:        {body: flywheel, quantity: velocity, unit: rpm, label: flywheel speed at the end}
+  peak_current_A: {element: motor, quantity: current, reduce: max, label: peak motor current}
+  min_voltage_V:  {element: motor, quantity: bus_voltage, reduce: min, label: lowest battery voltage}
+  shaft_torque:   {element: shaft, quantity: force, reduce: max_abs, unit: N m, label: largest shaft torque}
+
+run:
+  t_end: 8 s
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **1D-3 Motor, gearbox and flywheel.** A battery-powered motor spins a flywheel through a 5:1 gearbox and a
+        slightly springy shaft. The motor block includes the battery sag and the ESC's current limit.
+        Textbook check: top speed $\approx kv \cdot V / \text{gear} = 1000 \times 16.8 / 5 = 3360$ rpm (a little less
+        with drag). While the ESC holds 60 A the torque is $\text{gear} \cdot K_t I_{max} = 2.9$ N m
+        ($K_t = 1/kv$ in SI), so the flywheel gains $\tau / J \approx 116$ rad/s every second.

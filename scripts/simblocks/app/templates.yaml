@@ -1,42 +1,6 @@
 # Starting points for New > template. One YAML document per template (separated by ---).
 # Each is an ordinary system file: change the numbers, keep what fits, delete what doesn't.
 simblocks: 1
-name: Spinner hit
-question: How hard does a spinning blade hit an opponent, and how much speed does the blade lose?
-dim: 1d
-units: mm
-params:
-  I_blade: 3.0e-3 kg m^2       # weapon inertia about its spin axis (CAD mass properties)
-  rpm0: 9000 rpm               # speed at impact
-  R_tip: 75 mm                 # radius of the tooth that hits
-  m_opp: 1.36 kg               # opponent mass
-  k_hit: 5 kN/mm               # contact stiffness (tooth + armour), ASSUMED
-  e_hit: 0.2                   # coefficient of restitution of the hit, ASSUMED
-derived:
-  m_eff: "= 1 / (1 / $m_opp + $R_tip ** 2 / $I_blade)"   # mass the tooth feels
-  c_hit: {block: damping_for_restitution, e: $e_hit, k: $k_hit, m: $m_eff}
-bodies:
-  blade: {dof: rotation, inertia: $I_blade, v0: $rpm0, label: Weapon}
-  opponent: {dof: translation, mass: $m_opp, label: Opponent}
-elements:
-  hit: {type: kelvin_voigt, measure: $R_tip * blade - opponent, one_sided: true, k: $k_hit, c: $c_hit,
-        label: Tooth on opponent}
-outputs:
-  F_peak: {element: hit, quantity: force, reduce: max, unit: N}
-  rpm_after: {body: blade, quantity: velocity, reduce: final, unit: rpm}
-  v_opp: {body: opponent, quantity: velocity, reduce: final, unit: m/s}
-exports:
-  - name: hit_force
-    columns: [{element: hit, quantity: force, unit: N, label: F_hit}]
-    folder: out/csv
-    naming: "{model}_{name}"
-    time_unit: ms
-    points: 1000
-    header: units
-    when: run
-run: {t_end: 2 ms}
----
-simblocks: 1
 name: Drop test
 question: What peak force and deflection does the robot see when it lands flat from a height?
 dim: 1d
@@ -64,167 +28,95 @@ outputs:
 run: {t_end: 40 ms}
 ---
 simblocks: 1
-name: Weapon spin-up and battery
-question: How long does the weapon take to spin up, and how far does the pack sag?
+name: Mass on a spring and damper
+question: "How fast does a 1 kg mass on a spring ring down after it is pulled 10 mm and let go?"
 dim: 1d
-units: mm
+
 params:
-  I_w: 1.2e-3 kg m^2           # weapon inertia
-  kv: 1350 rpm/V
-  R_m: 40 mohm                 # winding resistance
-  I_max: 60 A                  # ESC current limit
-  G: 1.0                       # motor turns per weapon turn
-  J_rot: 2.0e-6 kg m^2         # motor rotor inertia
-  cells: 6
-  R0: 0.12 ohm                 # pack resistance (about 20 mohm per cell), ASSUMED
-  R1: 0.04 ohm
-  C1: 600 farad
-  Q: 650 mAh
-  K_air: 2.0e-8 N m s^2        # windage, torque = K w^2, ASSUMED
-  T_brg: 0.01 N m              # bearing drag
-  target: 9000 rpm
+  m: {value: 1 kg, note: "the moving mass"}
+  k: {value: 400 N/m, note: "spring stiffness: natural frequency sqrt(k/m) = 20 rad/s (3.18 Hz)"}
+  c: {value: 4 N s/m, note: "damper: damping ratio c / (2 sqrt(k m)) = 0.1"}
+  x_start: {value: 10 mm, note: "how far it is pulled before it is let go"}
+
 bodies:
-  weapon: {dof: rotation, inertia: $I_w, label: Weapon}
+  mass: {dof: translation, mass: $m, x0: $x_start, label: the mass, note: "one body, one coordinate: its position x"}
+
 elements:
-  motor: {type: drive, measure: weapon, kv: $kv, R: $R_m, I_max: $I_max, gear: $G, J_rotor: $J_rot,
-          cells: $cells, R0: $R0, R1: $R1, C1: $C1, capacity: $Q, label: Motor + ESC + pack}
-  windage: {type: drag, measure: weapon, K: $K_air}
-  bearing: {type: friction, measure: weapon, F_c: $T_brg, v_eps: 1 rad/s}
+  spring:
+    type: spring
+    k: $k
+    measure: mass                # the spring stretches by the mass's position (its other end is fixed)
+    label: spring to the wall
+    note: "force = k x, pulling the mass back to x = 0"
+  damper:
+    type: dashpot
+    c: $c
+    measure: mass                # same measure: it acts on the mass's speed
+    label: damper to the wall
+    note: "force = c v: turns motion into heat"
+
 outputs:
-  t_spin: {body: weapon, quantity: velocity, reduce: first_time_above, value: $target, unit: s}
-  rpm_final: {body: weapon, quantity: velocity, reduce: final, unit: rpm}
-  v_bus_min: {element: motor, quantity: bus_voltage, reduce: min, unit: V}
-  I_peak: {element: motor, quantity: current, reduce: max, unit: A}
-  soc_final: {element: motor, quantity: soc, reduce: final}
-  v_min_cell: {expr: "= $v_bus_min / $cells"}
-run: {t_end: 4 s}
----
-simblocks: 1
-name: Drive push
-question: How fast does the robot push an opponent, and what current does the drive draw?
-dim: 1d
-units: mm
-params:
-  m_bot: 1.36 kg
-  m_opp: 1.36 kg
-  r_wheel: 25 mm
-  J_wheel: 2.0e-5 kg m^2       # wheel + gearbox reflected inertia
-  kv: 2000 rpm/V               # drive motor (both sides lumped)
-  R_m: 0.15 ohm
-  I_max: 30 A
-  G: 20                        # gearbox: motor turns per wheel turn
-  cells: 6
-  R0: 0.12 ohm
-  Q: 650 mAh
-  mu_wheel: 1.0                # tyre grip on the floor, ASSUMED
-  mu_opp: 0.4                  # opponent sliding friction, ASSUMED
-  g: 9.81 m/s^2
-  k_bump: 50 N/mm              # front contact stiffness, ASSUMED
-bodies:
-  wheel: {dof: rotation, inertia: $J_wheel, label: Wheels (lumped)}
-  bot: {dof: translation, mass: $m_bot, label: Robot}
-  opp: {dof: translation, mass: $m_opp, label: Opponent}
-elements:
-  motor: {type: drive, measure: wheel, kv: $kv, R: $R_m, I_max: $I_max, gear: $G, cells: $cells, R0: $R0,
-          capacity: $Q, label: Drive motors + ESC + pack}
-  traction: {type: friction, measure: $r_wheel * wheel - bot, F_c: "= $mu_wheel * $m_bot * $g", v_eps: 0.01 m/s,
-             label: Tyre grip (slips past this)}
-  bumper: {type: spring, measure: bot - opp, k: $k_bump, label: Robot on opponent}
-  opp_floor: {type: friction, measure: opp, F_c: "= $mu_opp * $m_opp * $g", v_eps: 0.01 m/s, label: Opponent sliding}
-outputs:
-  v_push: {body: opp, quantity: velocity, reduce: final, unit: m/s}
-  pushed: {body: opp, quantity: position, reduce: final, unit: mm}
-  I_peak: {element: motor, quantity: current, reduce: max, unit: A}
-  I_batt_peak: {element: motor, quantity: battery_current, reduce: max, unit: A}
-run: {t_end: 1 s}
----
-simblocks: 1
-name: Vertical spinner on a wedge (2D)
-question: How far does a 600 J vertical spinner bend a 60 degree wedge face, by contact angle?
-dim: 2d
-units: SI
-params:
-  hit: {value: 120 deg, note: "contact angle theta0 + alpha (tooth angle below horizontal plus face angle); 90 = pure glance"}
-  alpha: {value: 60 deg, note: wedge face angle from horizontal}
-  L: {value: 30 mm, note: face length root to lip}
-  t: {value: 2 mm, note: sheet thickness}
-  from_lip: {value: 3 mm, note: where along the face the tooth first lands}
-  R: {value: 90 mm, note: tooth radius}
-  I_w: {value: 7.56e-4 kg m^2, note: weapon inertia (597 J at 1257 rad/s)}
-  w0: {value: 1257 rad/s, note: weapon speed (113 m/s tip)}
-  I_face: {value: 1.35e-5 kg m^2, note: face inertia about its root (0.015 L^2 kg m^2 per m of L, as the 1d model)}
-  bend: {block: plate_root_hinge, material: 4130_45HRC, width: 60 mm, t: $t, L: $L, rate_factor: 1.2}
-  gouge: {block: plastic_indentation_table, R: 1.5 mm, Y: 1710 MPa, Estar: 115 GPa}
-  fold: {value: 30 deg, note: face rotation at which it lands on the chassis (60 deg face -> vertical)}
-  mu: {value: 0.2, note: tooth-on-face sliding friction (steel on steel, lubricated by chips)}
-  bite: {value: 4 mm, note: deepest the tooth can bite (its protrusion) before it tears through and loses purchase}
-derived:
-  th0: = $hit - $alpha
-  tx: = $R*cos($th0)
-  ty: = -$R*sin($th0)
-  cx: = $tx + 0.00005*sin($alpha)
-  cy: = $ty - 0.00005*cos($alpha)
-  rootx: = $cx + ($L - $from_lip)*cos($alpha)
-  rooty: = $cy + ($L - $from_lip)*sin($alpha)
-  lipx: = -$L*cos($alpha)
-  lipy: = -$L*sin($alpha)
-bodies:
-  weapon:
-    dof: [rz]
-    inertia: $I_w
-    omega0: $w0
-    points: {tooth: [$R, 0]}
-    angle0: = -$th0
-    label: Weapon (vertical spinner)
-  face:
-    dof: [rz]
-    inertia: $I_face
-    at: [$rootx, $rooty]
-    lines: {front: {from: [$lipx, $lipy], to: [0, 0], depth: $bite}}
-    label: Wedge face (turns about its root)
-elements:
-  gouge:
-    type: elastoplastic
-    table: $gouge
-    measure: {contact: [weapon.tooth, face.front]}
-    label: Tooth gouge
-  bend:
-    type: elastoplastic
-    table: $bend
-    measure: face.rz
-    label: Root bend hinge
-  backstop:
-    type: kelvin_voigt
-    one_sided: true
-    k: 2e5 N m/rad
-    c: 5 N m s/rad
-    measure: face.rz - $fold
-    label: Chassis backstop
-  slide:
-    type: contact_friction
-    contact: gouge
-    mu: $mu
-    v_eps: 0.05 m/s
-    label: Tooth sliding on the face
-outputs:
-  bend_set: {element: bend, quantity: plastic_set, reduce: max_abs, unit: deg, label: Permanent bend}
-  bend_rad: {element: bend, quantity: plastic_set, reduce: max_abs}
-  gouge_set: {element: gouge, quantity: plastic_set, reduce: max, unit: mm, label: Gouge depth}
-  F_peak: {element: gouge, quantity: force, reduce: max, unit: N, label: Peak contact force}
-  w_end: {body: weapon, quantity: omega}
-  E_lost: {expr: "0.5*$I_w*($w0**2 - $w_end**2)", label: Weapon energy lost (J)}
-  W_bend: {element: bend, quantity: absorbed_work, label: Work into the bend (J)}
-  W_gouge: {element: gouge, quantity: absorbed_work, label: Work into the gouge (J)}
-  face_rot: {body: face, quantity: angle, reduce: max, unit: deg, label: Peak face rotation}
-  tip_drop_mm: {expr: "1000*$L*(sin($alpha + $bend_rad) - sin($alpha))", label: Permanent lip drop (mm)}
-uncertain:
-  hit: [95 deg, 130 deg]
-  mu: [0.1, 0.4]
-failure:
-  - {name: tip drop, metric: tip_drop_mm, limit: 5, fails_when: above, origin: "Nicky: the wedge fails at a permanent 5 mm tip drop"}
+  first_trough_mm: {body: mass, quantity: position, reduce: min, unit: mm, label: deepest swing past zero}
+  peak_spring_N:   {element: spring, quantity: force, reduce: max_abs, unit: N, label: largest spring force}
+  heat_J:          {element: damper, quantity: dissipated, unit: J, label: energy the damper turned to heat}
+  x_end_mm:        {body: mass, quantity: position, unit: mm, label: position at the end}
+
 run:
-  t_end: 0.4 ms
-  dt: 20 ns
+  t_end: 2 s
+---
+simblocks: 1
+name: Motor, gearbox and flywheel spin-up
+question: "How long does a 4-cell battery and a 1000 kV motor take to spin a 5 kg flywheel up through a 5:1 gearbox, and what current does it pull?"
+dim: 1d
+
+params:
+  kv: {value: 1000 rpm/V, note: "motor speed constant"}
+  gear: {value: 5, note: "motor turns 5 times per flywheel turn"}
+  k_shaft: {value: 300 N m/rad, note: "twist stiffness of the shaft between gearbox and flywheel"}
+  bearing_drag: {value: 0.05, note: "bearing friction torque, N m"}
+
+bodies:
+  rotor: {dof: rotation, inertia: 3e-5 kg m^2, label: motor rotor (motor side of the gearbox)}
+  flywheel:
+    dof: rotation
+    shape: {kind: disc, R: 100 mm, t: 20 mm, material: 1018_CD}   # inertia m R^2 / 2 worked out from the shape
+    label: steel flywheel
+
+elements:
+  motor:
+    type: drive
+    measure: rotor              # the motor turns the rotor
+    kv: $kv
+    R: 0.04 ohm
+    I_max: 60 A
+    cells: 4
+    R0: 0.02 ohm
+    capacity: 2200 mAh
+    label: battery, ESC and motor
+    note: "full throttle: the ESC limits current to 60 A, the battery sags under load"
+  shaft:
+    type: kelvin_voigt
+    measure: "rotor / $gear - flywheel"   # twist of the output shaft: gearbox output angle minus flywheel angle
+    k: $k_shaft
+    c: 0.05
+    label: gearbox output shaft
+    note: "the 1 / gear coefficient is the gearbox: torque is multiplied by 5 on its way to the flywheel"
+  bearings:
+    type: friction
+    measure: flywheel
+    F_c: $bearing_drag
+    v_eps: 0.5
+    label: bearing drag
+
+outputs:
+  t_3000rpm_s:      {body: flywheel, quantity: velocity, reduce: first_time_above, value: 3000 rpm, label: time to reach 3000 rpm (90 % of top speed)}
+  rpm_end:        {body: flywheel, quantity: velocity, unit: rpm, label: flywheel speed at the end}
+  peak_current_A: {element: motor, quantity: current, reduce: max, label: peak motor current}
+  min_voltage_V:  {element: motor, quantity: bus_voltage, reduce: min, label: lowest battery voltage}
+  shaft_torque:   {element: shaft, quantity: force, reduce: max_abs, unit: N m, label: largest shaft torque}
+
+run:
+  t_end: 8 s
 ---
 simblocks: 1
 name: Bounce and roll (2D)
@@ -261,78 +153,134 @@ outputs:
 run: {t_end: 0.6 s}
 ---
 simblocks: 1
-name: Horizontal spinner on a wedge (3D)
-question: How far does a 600 J horizontal spinner bend a 60 degree wedge face, where the tooth meets it?
-dim: 3d
-units: SI
+name: Pendulum on a hinge
+question: "How long does a 0.5 m aluminium bar, let go at 30 degrees, take to swing down, and how hard does it pull on its hinge?"
+dim: 2d
+gravity: 9.81
+
 params:
-  phi0: {value: -30 deg, note: tooth angle at first touch (0 = pointing straight at the wedge; negative = before)}
-  z_tooth: {value: 12 mm, note: tooth height above the floor; sets where on the face it lands}
-  alpha: {value: 60 deg, note: wedge face angle from horizontal}
-  L: {value: 30 mm, note: face length root to lip}
-  width: {value: 60 mm, note: face width (the 45 degree dispersion width 2 L, as the 1d model)}
-  t: {value: 2 mm, note: sheet thickness}
-  z_lip: {value: 2 mm, note: lip height above the floor}
-  R: {value: 90 mm, note: tooth radius}
-  I_w: {value: 7.56e-4 kg m^2, note: weapon inertia (597 J at 1257 rad/s)}
-  w0: {value: 1257 rad/s, note: weapon speed (113 m/s tip)}
-  I_face: {value: 1.35e-5 kg m^2, note: face inertia about its root hinge}
-  bend: {block: plate_root_hinge, material: 4130_45HRC, width: $width, t: $t, L: $L, rate_factor: 1.2}
-  gouge: {block: plastic_indentation_table, R: 1.5 mm, Y: 1710 MPa, Estar: 115 GPa}
-  fold: {value: 30 deg, note: extra face rotation at which it lands on the chassis}
-  mu: {value: 0.2, note: tooth-on-face friction}
-  bite: {value: 4 mm, note: deepest the tooth can bite before it tears through}
-derived:
-  s_hit: = ($z_tooth - $z_lip) / sin($alpha)
-  xc: = $R*cos($phi0) + 0.00005
-  yc: = $R*sin($phi0)
-  x_lip: = $xc - $s_hit*cos($alpha)
-  x_root: = $x_lip + $L*cos($alpha)
-  z_root: = $z_lip + $L*sin($alpha)
-  mid_x: = -0.5*$L*cos($alpha)
-  mid_z: = -0.5*$L*sin($alpha)
-  nx: = -sin($alpha)
-  nz: = cos($alpha)
-  ux: = cos($alpha)
-  uz: = sin($alpha)
+  L: {value: 500 mm, note: "bar length; the hinge is at its top end"}
+
 bodies:
-  weapon:
-    dof: [spin]
-    axis: z
-    inertia: $I_w
-    omega0: $w0
-    angle0: $phi0
-    points: {tooth: [$R, 0, $z_tooth]}
-    label: Weapon (horizontal spinner)
-  face:
-    dof: [spin]
-    axis: y
-    inertia: $I_face
-    at: [$x_root, $yc, $z_root]
-    planes: {front: {at: [$mid_x, 0, $mid_z], normal: [$nx, 0, $nz], u: [$ux, 0, $uz], size: [$L, $width], depth: $bite}}
-    label: Wedge face (turns about its root)
+  wall:
+    ground: true
+    points: {pivot: [0, 0]}
+    note: "the fixed world: carries the hinge point"
+  bar:
+    dof: planar
+    shape: {kind: rod, L: $L, A: 200 mm^2, material: 6061-T6}   # 20 x 10 mm bar: mass and inertia from the shape
+    at: [0.125000, -0.216506]          # its centre, with the bar tilted 30 degrees
+    angle0: 30 deg
+    points: {top: [0, 250 mm]}      # the hinge point, 250 mm above the centre in the bar's own frame
+    note: "x, y and spin are all free: the hinge is what holds it"
+
 elements:
-  gouge: {type: elastoplastic, table: $gouge, measure: {contact: [weapon.tooth, face.front]}, label: Tooth gouge}
-  bend: {type: elastoplastic, table: $bend, measure: face.spin, label: Root bend hinge}
-  backstop: {type: kelvin_voigt, one_sided: true, k: 2e5 N m/rad, c: 5 N m s/rad, measure: -face.spin - $fold,
-             label: Chassis backstop}
-  slide: {type: contact_friction, contact: gouge, mu: $mu, v_eps: 0.05 m/s, label: Tooth sliding on the face}
+  hinge:
+    type: hinge
+    rigid: true                 # an exact joint: the two points never separate, no stiffness to choose
+    measure: [wall.pivot, bar.top]
+    label: hinge at the top of the bar
+
 outputs:
-  bend_set: {element: bend, quantity: plastic_set, reduce: max_abs, unit: deg, label: Permanent bend}
-  bend_rad: {element: bend, quantity: plastic_set, reduce: max_abs}
-  gouge_set: {element: gouge, quantity: plastic_set, reduce: max, unit: mm, label: Gouge depth}
-  F_peak: {element: gouge, quantity: force, reduce: max, unit: N, label: Peak contact force}
-  w_end: {body: weapon, quantity: omega}
-  face_rot: {body: face, quantity: angle, reduce: max_abs, unit: deg, label: Peak face rotation}
-  W_bend: {element: bend, quantity: absorbed_work, label: Work into the bend (J)}
-  W_gouge: {element: gouge, quantity: absorbed_work, label: Work into the gouge (J)}
-  E_lost: {expr: "0.5*$I_w*($w0**2 - $w_end**2)", label: Weapon energy lost (J)}
-  tip_drop_mm: {expr: "1000*$L*(sin($alpha + $bend_rad) - sin($alpha))", label: Permanent lip drop (mm)}
-uncertain:
-  phi0: [-35 deg, -5 deg]
-  z_tooth: [6 mm, 20 mm]
-failure:
-  - {name: tip drop, metric: tip_drop_mm, limit: 5, fails_when: above, origin: "Nicky: the wedge fails at a permanent 5 mm tip drop"}
+  quarter_period_s: {body: bar, quantity: angle, reduce: first_time_below, value: 0, label: time to reach the bottom}
+  max_speed_rad_s:  {body: bar, quantity: omega, reduce: max_abs, unit: rad/s, label: fastest swing rate}
+  hinge_force_N:    {element: hinge, quantity: force, reduce: max, unit: N, label: largest pull on the hinge}
+  hinge_drift:      {element: hinge, quantity: drift, reduce: max, label: largest gap the joint had to close (m)}
+
 run:
-  t_end: 0.4 ms
-  dt: 20 ns
+  t_end: 2.5 s
+  dt: 0.2 ms
+---
+simblocks: 1
+name: Spinning top
+question: "A spinning disc on a pointed stem, tilted 20 degrees: does it fall over, and how fast does it precess?"
+dim: 3d
+gravity: 9.81
+
+params:
+  spin: {value: 200 rad/s, note: "spin about its own axis (about 1900 rpm)"}
+  l: {value: 50 mm, note: "from the tip to the centre of the disc"}
+
+bodies:
+  floor:
+    ground: true
+    points: {tip_rest: [0, 0, 0]}
+    note: "the point the tip sits on"
+  top:
+    dof: free                   # slides and tumbles freely: only the joint holds the tip
+    shape: {kind: disc, R: 40 mm, t: 8 mm, material: 1018_CD, at: [0, 0, $l]}   # disc centre 50 mm up its own axis
+    orient0: {axis: [0, 1, 0], angle: 20 deg}   # tilted 20 degrees (its own z axis leans toward +x)
+    omega0: [67.360997, 0, 188.318157]   # spin about its tilted axis plus the steady precession (so it does not wobble)
+    points: {tip: [0, 0, 0]}
+    note: "the body's own frame: z along the stem, origin at the tip"
+
+elements:
+  pivot:
+    type: pin
+    rigid: true                 # a ball joint: the tip stays on its point, free to turn every way
+    measure: [floor.tip_rest, top.tip]
+    label: tip on the floor
+
+outputs:
+  quarter_turn_s: {body: top, quantity: x, reduce: first_time_below, value: 0, label: time for a quarter of a precession circle}
+  lowest_z_mm:    {body: top, quantity: z, reduce: min, unit: mm, label: lowest the disc centre gets}
+  tip_force_N:    {element: pivot, quantity: force, reduce: max, unit: N}
+
+run:
+  t_end: 1.2 s
+  dt: 0.1 ms
+---
+simblocks: 1
+name: Drone arm under a thrust punch
+question: "A 200 mm carbon tube arm carries a motor. Hover, then full throttle: how far does the tip bend and what moment reaches the hub?"
+dim: 3d
+gravity: 9.81
+
+params:
+  L_arm: {value: 200 mm, note: "hub centre to motor centre"}
+  do: {value: 12 mm, note: "tube outside diameter"}
+  di: {value: 10 mm, note: "tube inside diameter"}
+
+derived:
+  tube: {block: tube, do: $do, di: $di}       # section properties (A, I, J, Z) of the round tube
+
+bodies:
+  hub:
+    ground: true                # the frame is held still: we look at one arm
+    points: {root: [0, 0, 0]}
+  motor:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 60 g}   # a 60 g motor; its axis is z
+    at: [$L_arm, 0, 0]
+    points: {mount: [0, 0, 0]}
+
+elements:
+  arm:
+    type: beam                  # stretches, bends both ways and twists; 6 pieces so it can vibrate
+    measure: [hub.root, motor.mount]
+    section: $tube
+    E: 70 GPa                   # pultruded carbon tube along its length
+    G: 5 GPa
+    density: 1550 kg/m^3
+    segments: 6
+    damping: 0.02
+    orient: z
+    label: carbon tube arm
+  thrust:
+    type: force
+    measure: motor.z            # pushes the motor up
+    P: 8 N                      # constant thrust (a CSV table can replace it)
+    label: propeller thrust from a CSV
+
+outputs:
+  tip_up_mm:      {body: motor, quantity: z, reduce: max, unit: mm, label: highest the tip goes}
+  tip_down_mm:    {body: motor, quantity: z, reduce: min, unit: mm, label: lowest the tip goes}
+  root_moment:    {element: arm, quantity: moment, reduce: max, unit: N m, label: largest bending moment in the arm}
+  peak_thrust_N:  {element: thrust, quantity: force, reduce: max_abs, unit: N}
+
+failure:
+  - {name: tube bending, metric: root_moment, limit: 10, fails_when: above,
+     origin: "example: 12/10 mm tube, about 600 MPa allowable times Z = 0.1 cm^3 gives 10 N m (check your supplier's data)"}
+
+run:
+  t_end: 1.4 s

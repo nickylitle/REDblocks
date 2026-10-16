@@ -1,0 +1,81 @@
+simblocks: 1
+name: 2D-3 Four-bar linkage driven by a motor
+question: "A motor turns the crank of a four-bar linkage. How far does the rocker swing, how fast does the crank run, and what loads do the hinges carry?"
+dim: 2d
+gravity: 9.81
+
+params:
+  gear: {value: 30, note: "motor turns per crank turn"}
+  throttle: {value: 0.4, note: "fraction of battery voltage the ESC gives the motor"}
+
+bodies:
+  frame:
+    ground: true
+    points: {O2: [0, 0], O4: [0.3, 0]}
+    note: "the fixed link (300 mm between the two ground pivots)"
+  crank:
+    dof: planar
+    shape: {kind: rod, L: 100 mm, A: 100 mm^2, material: 6061-T6}
+    at: [0.000000, 0.050000]
+    angle0: 90.0000 deg
+    points: {a: [-0.0500, 0], b: [0.0500, 0]}
+  coupler:
+    dof: planar
+    shape: {kind: rod, L: 300 mm, A: 100 mm^2, material: 6061-T6}
+    at: [0.130753, 0.173509]
+    angle0: 29.3447 deg
+    points: {a: [-0.1500, 0], b: [0.1500, 0]}
+  rocker:
+    dof: planar
+    shape: {kind: rod, L: 250 mm, A: 100 mm^2, material: 6061-T6}
+    at: [0.280753, 0.123509]
+    angle0: 98.8574 deg
+    points: {a: [-0.1250, 0], b: [0.1250, 0]}
+
+elements:
+  O2_hinge: {type: hinge, rigid: true, measure: [frame.O2, crank.a], label: crank pivot}
+  A_hinge:  {type: hinge, rigid: true, measure: [crank.b, coupler.a], label: crank to coupler}
+  B_hinge:  {type: hinge, rigid: true, measure: [coupler.b, rocker.b], label: coupler to rocker}
+  O4_hinge: {type: hinge, rigid: true, measure: [frame.O4, rocker.a], label: rocker pivot}
+  motor:
+    type: drive
+    measure: crank.rz           # the motor turns the crank (through the gearbox)
+    kv: 300 rpm/V
+    R: 0.2 ohm
+    I_max: 20 A
+    gear: $gear
+    cells: 3
+    R0: 0.03 ohm
+    capacity: 2200 mAh
+    throttle: $throttle
+    J_rotor: 2e-5 kg m^2
+    label: gearmotor on the crank
+  friction:
+    type: friction
+    measure: crank.rz
+    F_c: 0.02                   # bearing drag torque, N m
+    v_eps: 0.1
+    label: bearing drag
+
+outputs:
+  rocker_min_deg: {body: rocker, quantity: angle, reduce: min, unit: deg}
+  rocker_max_deg: {body: rocker, quantity: angle, reduce: max, unit: deg}
+  crank_rpm:      {body: crank, quantity: omega, unit: rpm, label: crank speed at the end}
+  peak_current_A: {element: motor, quantity: current, reduce: max}
+  force_A_N:      {element: A_hinge, quantity: force, reduce: max, unit: N, label: peak load in the crank-coupler hinge}
+  force_O4_N:     {element: O4_hinge, quantity: force, reduce: max, unit: N, label: peak load in the rocker pivot}
+
+run:
+  t_end: 3 s
+  dt: 0.2 ms
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **2D-3 Four-bar linkage.** Crank 100 mm, coupler 300 mm, rocker 250 mm, ground 300 mm. The shortest link plus the
+        longest (400 mm) is less than the other two (550 mm), so the crank can turn all the way round while the rocker
+        rocks back and forth (a Grashof crank-rocker). Four rigid hinges join the links; a gearmotor drives the crank.
+        Textbook check: the rocker's end positions are where crank and coupler line up: it swings between
+        87.1 and 138.6 degrees, 51.5 degrees in all.

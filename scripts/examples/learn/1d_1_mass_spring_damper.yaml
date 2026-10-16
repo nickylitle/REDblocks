@@ -1,0 +1,46 @@
+simblocks: 1
+name: 1D-1 Mass on a spring and damper
+question: "How fast does a 1 kg mass on a spring ring down after it is pulled 10 mm and let go?"
+dim: 1d
+
+params:
+  m: {value: 1 kg, note: "the moving mass"}
+  k: {value: 400 N/m, note: "spring stiffness: natural frequency sqrt(k/m) = 20 rad/s (3.18 Hz)"}
+  c: {value: 4 N s/m, note: "damper: damping ratio c / (2 sqrt(k m)) = 0.1"}
+  x_start: {value: 10 mm, note: "how far it is pulled before it is let go"}
+
+bodies:
+  mass: {dof: translation, mass: $m, x0: $x_start, label: the mass, note: "one body, one coordinate: its position x"}
+
+elements:
+  spring:
+    type: spring
+    k: $k
+    measure: mass                # the spring stretches by the mass's position (its other end is fixed)
+    label: spring to the wall
+    note: "force = k x, pulling the mass back to x = 0"
+  damper:
+    type: dashpot
+    c: $c
+    measure: mass                # same measure: it acts on the mass's speed
+    label: damper to the wall
+    note: "force = c v: turns motion into heat"
+
+outputs:
+  first_trough_mm: {body: mass, quantity: position, reduce: min, unit: mm, label: deepest swing past zero}
+  peak_spring_N:   {element: spring, quantity: force, reduce: max_abs, unit: N, label: largest spring force}
+  heat_J:          {element: damper, quantity: dissipated, unit: J, label: energy the damper turned to heat}
+  x_end_mm:        {body: mass, quantity: position, unit: mm, label: position at the end}
+
+run:
+  t_end: 2 s
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **1D-1 Mass on a spring and damper.** A mass is pulled 10 mm and let go. The spring pulls it back, it overshoots,
+        and the damper takes a little energy each swing until it settles.
+        Textbook check: damped period $T_d = 2\pi / (\omega_n \sqrt{1-\zeta^2}) = 0.316$ s, and the first swing past zero
+        reaches $x_0 e^{-\zeta \omega_n T_d / 2} = 7.3$ mm. Open **Help > Examples** for the full walk-through.

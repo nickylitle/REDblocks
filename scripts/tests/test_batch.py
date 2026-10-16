@@ -217,8 +217,9 @@ def test_app_templates_compile_and_run():
     from simblocks.app.api import Api
     A = Api()
     T = A.templates()
-    assert [t["name"] for t in T] == ["Spinner hit", "Drop test", "Weapon spin-up and battery", "Drive push",
-                     "Vertical spinner on a wedge (2D)", "Bounce and roll (2D)", "Horizontal spinner on a wedge (3D)"]
+    assert [t["name"] for t in T] == ["Drop test", "Mass on a spring and damper", "Motor, gearbox and flywheel spin-up",
+                                      "Bounce and roll (2D)", "Pendulum on a hinge", "Spinning top",
+                                      "Drone arm under a thrust punch"]
     for t in T:
         r = A.run(t["text"])
         assert r["ok"] and r["outputs"]["_ledger_rel"] < 0.02, (t["name"], r.get("error"))

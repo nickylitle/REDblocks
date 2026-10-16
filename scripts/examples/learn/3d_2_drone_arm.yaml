@@ -1,0 +1,65 @@
+simblocks: 1
+name: 3D-2 Drone arm under a thrust punch
+question: "A 200 mm carbon tube arm carries a motor. Hover, then full throttle: how far does the tip bend and what moment reaches the hub?"
+dim: 3d
+gravity: 9.81
+
+params:
+  L_arm: {value: 200 mm, note: "hub centre to motor centre"}
+  do: {value: 12 mm, note: "tube outside diameter"}
+  di: {value: 10 mm, note: "tube inside diameter"}
+
+derived:
+  tube: {block: tube, do: $do, di: $di}       # section properties (A, I, J, Z) of the round tube
+
+bodies:
+  hub:
+    ground: true                # the frame is held still: we look at one arm
+    points: {root: [0, 0, 0]}
+  motor:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 60 g}   # a 60 g motor; its axis is z
+    at: [$L_arm, 0, 0]
+    points: {mount: [0, 0, 0]}
+
+elements:
+  arm:
+    type: beam                  # stretches, bends both ways and twists; 6 pieces so it can vibrate
+    measure: [hub.root, motor.mount]
+    section: $tube
+    E: 70 GPa                   # pultruded carbon tube along its length
+    G: 5 GPa
+    density: 1550 kg/m^3
+    segments: 6
+    damping: 0.02
+    orient: z
+    label: carbon tube arm
+  thrust:
+    type: force
+    measure: motor.z            # pushes the motor up
+    csv: {file: data/thrust_punch.csv, against: time, x_unit: s, y_unit: N}
+    label: propeller thrust from a CSV
+
+outputs:
+  tip_up_mm:      {body: motor, quantity: z, reduce: max, unit: mm, label: highest the tip goes}
+  tip_down_mm:    {body: motor, quantity: z, reduce: min, unit: mm, label: lowest the tip goes}
+  root_moment:    {element: arm, quantity: moment, reduce: max, unit: N m, label: largest bending moment in the arm}
+  peak_thrust_N:  {element: thrust, quantity: force, reduce: max_abs, unit: N}
+
+failure:
+  - {name: tube bending, metric: root_moment, limit: 10, fails_when: above,
+     origin: "example: 12/10 mm tube, about 600 MPa allowable times Z = 0.1 cm^3 gives 10 N m (check your supplier's data)"}
+
+run:
+  t_end: 1.4 s
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **3D-2 Drone arm.** One arm of a drone: a carbon tube clamped in the hub with a 60 g motor at its end. The thrust
+        follows a CSV: spool up to hover (2.5 N), then a full-throttle punch (8 N) for 0.3 s.
+        Textbook check (cantilever with an end load): net load $P = 8 - 0.06 \times 9.81 = 7.4$ N, tip deflection
+        $P L^3 / 3 E I = 0.54$ mm and root moment $P L = 1.48$ N m. The thrust rises in 50 ms, slower than the arm's
+        vibration, so the dynamic overshoot is small.

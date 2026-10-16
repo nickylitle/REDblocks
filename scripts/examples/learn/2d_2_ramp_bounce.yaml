@@ -1,0 +1,59 @@
+simblocks: 1
+name: 2D-2 Ball bouncing down a ramp
+question: "A rubber ball dropped onto a 20 degree ramp: how high does it bounce, how much energy turns to heat, and how fast is it rolling at the end?"
+dim: 2d
+gravity: 9.81
+
+params:
+  e: {value: 0.7, note: "coefficient of restitution: bounce speed / impact speed"}
+  mu: {value: 0.6, note: "friction coefficient between ball and ramp"}
+
+bodies:
+  ground:
+    ground: true
+    lines:
+      ramp: {from: [-1.0, 0.363970], to: [1.0, -0.363970]}
+      floor: {from: [1.0, -0.363970], to: [4, -0.363970]}
+    note: "a 20 degree ramp running into a flat floor"
+  ball:
+    dof: planar
+    shape: {kind: disc, R: 20 mm, t: 40 mm, material: TPU95A_print}   # a disc in 2D; gives it an 'outline' circle
+    at: [-0.6, 0.6]
+    note: "free in x, y and spin"
+
+elements:
+  hit_ramp:
+    type: impact                # a hard hit: no stiffness, just restitution and friction
+    e: $e
+    mu: $mu
+    measure: {contact: [ball.outline, ground.ramp]}
+    label: ball on the ramp
+  hit_floor:
+    type: impact
+    e: $e
+    mu: $mu
+    measure: {contact: [ball.outline, ground.floor]}
+    label: ball on the floor
+
+outputs:
+  peak_y:       {body: ball, quantity: y, reduce: max, unit: m}
+  heat_ramp_J:  {element: hit_ramp, quantity: heat, unit: J, label: energy lost on the ramp}
+  heat_floor_J: {element: hit_floor, quantity: heat, unit: J, label: energy lost on the floor}
+  vx_end:       {body: ball, quantity: vx, unit: m/s, label: speed along the floor at the end}
+  spin_end:     {body: ball, quantity: omega, unit: rad/s, label: spin at the end}
+  ke_end_J:     {body: ball, quantity: kinetic_energy, unit: J}
+
+run:
+  t_end: 3 s
+  dt: 0.1 ms
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **2D-2 Ball bouncing down a ramp.** A rubber ball falls onto a 20 degree ramp, bounces down it and rolls away
+        on the floor. Each impact keeps a fraction $e$ of the speed into the surface; friction spins the ball up until it
+        rolls. Every joule lost is booked as heat.
+        Textbook check: energy in = $m g \Delta h$, energy out = kinetic energy + heat (the ledger closes);
+        once it rolls on the floor, $v = \omega R$.

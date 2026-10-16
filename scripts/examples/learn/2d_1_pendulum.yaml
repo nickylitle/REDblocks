@@ -1,0 +1,48 @@
+simblocks: 1
+name: 2D-1 Pendulum on a hinge
+question: "How long does a 0.5 m aluminium bar, let go at 30 degrees, take to swing down, and how hard does it pull on its hinge?"
+dim: 2d
+gravity: 9.81
+
+params:
+  L: {value: 500 mm, note: "bar length; the hinge is at its top end"}
+
+bodies:
+  wall:
+    ground: true
+    points: {pivot: [0, 0]}
+    note: "the fixed world: carries the hinge point"
+  bar:
+    dof: planar
+    shape: {kind: rod, L: $L, A: 200 mm^2, material: 6061-T6}   # 20 x 10 mm bar: mass and inertia from the shape
+    at: [0.125000, -0.216506]          # its centre, with the bar tilted 30 degrees
+    angle0: 30 deg
+    points: {top: [0, 250 mm]}      # the hinge point, 250 mm above the centre in the bar's own frame
+    note: "x, y and spin are all free: the hinge is what holds it"
+
+elements:
+  hinge:
+    type: hinge
+    rigid: true                 # an exact joint: the two points never separate, no stiffness to choose
+    measure: [wall.pivot, bar.top]
+    label: hinge at the top of the bar
+
+outputs:
+  quarter_period_s: {body: bar, quantity: angle, reduce: first_time_below, value: 0, label: time to reach the bottom}
+  max_speed_rad_s:  {body: bar, quantity: omega, reduce: max_abs, unit: rad/s, label: fastest swing rate}
+  hinge_force_N:    {element: hinge, quantity: force, reduce: max, unit: N, label: largest pull on the hinge}
+  hinge_drift:      {element: hinge, quantity: drift, reduce: max, label: largest gap the joint had to close (m)}
+
+run:
+  t_end: 2.5 s
+  dt: 0.2 ms
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **2D-1 Pendulum on a hinge.** A bar hangs from a hinge at its top end and is let go at 30 degrees.
+        Gravity swings it; the hinge holds the top end exactly in place (rigid joint).
+        Textbook check: small swings take $T = 2\pi\sqrt{2L / 3g} = 1.158$ s; at 30 degrees it is about 1.7 % longer,
+        so the bar reaches the bottom after $T/4 \approx 0.295$ s.

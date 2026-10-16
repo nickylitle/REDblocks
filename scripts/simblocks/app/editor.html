@@ -166,7 +166,7 @@ textarea{width:100%;resize:vertical}
 .uv select{flex:0 0 auto;max-width:96px;padding:3px 2px;font:11.5px var(--mono);color:var(--ink2)}
 .uv input.bad{border-color:var(--fail)}
 .xp{font:10px var(--mono);color:var(--acc);padding:0 12px 2px 104px;margin-top:-2px}
-.sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair}
+.sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair;z-index:6}   /* above a selected wire (wiresTop is z 5), so its end never cuts the socket */
 .sock.in{left:-7px}.sock.out{right:-7px}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
 .sock.t-sig{background:var(--s-sig)}.sock.t-state{background:var(--s-state);border-radius:2px;transform:rotate(45deg)}
@@ -432,7 +432,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <div id="toast" role="alert"></div>
 
 
-    <div id="help">Shift+A add · drag socket to connect · click a wire to select it · Ctrl+click adds wires or nodes · Shift+drag box select · Ctrl+Z/Y undo · Ctrl+C/V/D copy, paste, duplicate · Ctrl+G group · Tab open group · drag empty space to pan</div>
+    <div id="help">Shift+A add · drag socket to connect · click a wire to select it · Ctrl+click adds wires or nodes · Shift+drag box select · Ctrl+Z/Y undo · Ctrl+C/V/D copy, paste, duplicate · Ctrl+G group · Tab open group · drag empty space to pan · H home view · F fit all</div>
   </div>
   <div id="side">
     <div id="tabs">
@@ -1183,6 +1183,16 @@ let view = {x:0, y:0, k:1}, sel = null;
 function applyView(){ world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; drawGrid(); }
 // the grid lives in canvas units: it pans and zooms with the nodes. Minor lines every 24 units, major every 5 minors;
 // when zoomed far out the minor spacing steps up by 5 so the grid never turns into a smear
+// camera: Home (or H) goes back to the origin at 100 % zoom; F fits every node on screen
+function viewHome(){ view = {x:40, y:40, k:1}; applyView(); drawWires(); status("", "View: origin, 100 %. F fits everything."); }
+function viewFit(){
+  const els = [...world.querySelectorAll(".node,.gframe")]; if (!els.length){ viewHome(); return; }
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  els.forEach(el => { const x = el.offsetLeft, y = el.offsetTop; x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x + el.offsetWidth); y1 = Math.max(y1, y + el.offsetHeight); });
+  const c = canvas.getBoundingClientRect(), pad = 40;
+  const k = Math.max(0.15, Math.min(1.25, Math.min((c.width - 2 * pad) / (x1 - x0), (c.height - 2 * pad) / (y1 - y0))));
+  view = {k, x: (c.width - k * (x1 - x0)) / 2 - k * x0, y: pad - k * y0}; applyView(); drawWires(); }
 function drawGrid(){
   const gl = document.getElementById("gridLayer"); if (!gl) return;
   let s = 24 * view.k; while (s < 9) s *= 5;
@@ -1845,6 +1855,7 @@ function drawWires(temp){
   if (wt) wt.innerHTML = top;
   if (temp) h += `<path class="temp" d="${curve(temp.a, temp.b)}" stroke="var(--acc)"></path>`;
   wires.innerHTML = h;
+  selStatus();
 }
 // ------------------------------------------------------------------------------------------------ interaction
 let drag = null, errNode = null;
@@ -1947,10 +1958,10 @@ window.addEventListener("mouseup", e => {
 function wireClick(e){ const p = e.target.closest("path[data-i]"); if (!p) return; const l = S.links[+p.dataset.i]; if (!l) return;
   if (e.ctrlKey || e.metaKey || e.shiftKey){ wireSel.has(l) ? wireSel.delete(l) : wireSel.add(l); }
   else { wireSel = new Set([l]); selSet = new Set(); sel = null; renderGroupPanel(); }
-  paintSel(); status("", `${wireSel.size} wire${wireSel.size === 1 ? "" : "s"} selected${selSet.size ? ` and ${selSet.size} node${selSet.size === 1 ? "" : "s"}` : ""} · Delete removes`); }
+  paintSel(); }
 wires.addEventListener("click", wireClick); document.getElementById("wiresTop").addEventListener("click", wireClick);
 canvas.addEventListener("wheel", e => {
-  if (e.target.closest("#info")) return;
+  if (e.target.closest("#info,#menu,#legend,#pcard,#orgMenu,.dlg")) return;     // panels over the canvas scroll themselves
   e.preventDefault(); hideInfo();
   const c = canvas.getBoundingClientRect(), mx = e.clientX - c.left, my = e.clientY - c.top;
   const k = Math.min(1.8, Math.max(0.3, view.k * Math.exp(-e.deltaY * 0.0012)));
@@ -2114,6 +2125,8 @@ window.addEventListener("keydown", e => {
   if (mod && k === "a"){ e.preventDefault(); setSel(S.nodes.filter(n => !hiddenIn(n.id)).map(n => n.id).concat((S.groups || []).filter(g => g.collapsed).map(g => g.id))); return; }
   if (mod && k === "g"){ e.preventDefault(); if (e.shiftKey || e.altKey){ const g = byGid([...selSet][0]) || groupOf([...selSet][0]); ungroup(g); } else makeGroup(); return; }
   if (e.key === "Tab"){ e.preventDefault(); toggleGroup(); return; }
+  if (!mod && (e.key === "Home" || k === "h")){ e.preventDefault(); viewHome(); return; }
+  if (!mod && k === "f" && !e.shiftKey){ e.preventDefault(); viewFit(); return; }
   if (e.shiftKey && k === "a"){ e.preventDefault(); showMenu(); return; }
   if ((e.key === "Delete" || e.key === "Backspace" || k === "x") && (selSet.size || wireSel.size)){ e.preventDefault(); deleteSel(); }
   if (e.key === "Escape"){ hideMenu(); hideInfo(); wireSel = new Set(); setSel([]); }
@@ -2130,6 +2143,15 @@ function paintSel(){
     x.classList.toggle("sel", selSet.has(id));
     x.classList.toggle("dim", !!F && !F.nodes.has(id) && !(x.classList.contains("gframe") && byGid(id).members.some(m => F.nodes.has(m)))); });
   drawWires();
+}
+// the status line always describes the selection as it is now (and clears once nothing is selected)
+let selMsgShown = false;
+function selStatus(){
+  const live = S.links.filter(l => wireSel.has(l)).length, nn = [...selSet].filter(id => byId(id) || byGid(id)).length;
+  if (live || nn > 1){
+    const parts = []; if (nn) parts.push(`${nn} node${nn === 1 ? "" : "s"}`); if (live) parts.push(`${live} wire${live === 1 ? "" : "s"}`);
+    status("", parts.join(" and ") + " selected · Delete removes"); selMsgShown = true;
+  } else if (selMsgShown){ selMsgShown = false; status("", "Ready."); }
 }
 const groupOf = id => (S.groups || []).find(g => g.members.includes(id));
 const hiddenIn = id => { const g = groupOf(id); return g && g.collapsed ? g : null; };
@@ -2871,7 +2893,8 @@ document.getElementById("orgMenu").onclick = e => { const b = e.target.closest("
 document.addEventListener("mousedown", e => { const m = document.getElementById("orgMenu"); if (m.style.display === "block" && !m.contains(e.target) && e.target.id !== "bArrange") m.style.display = "none"; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("orgMenu").style.display = "none"; });
 document.getElementById("bEx").addEventListener("change", async e => { const name = e.target.value; e.target.value = ""; if (!name) return;
-  const ex = (window.__examples || []).find(x => x.name === name); if (ex) loadText(ex.text, null); });
+  const ex = (window.__examples || []).find(x => x.name === name);
+  if (ex){ loadText(ex.text, null); if (ex.dir) API.call("set_model_dir", ex.dir + "/_example.yaml"); } });   // its CSVs and pictures sit beside it
 // ------------------------------------------------------------------------------------------------ help view
 // The guide below is the app's manual. Every feature has a section; every node, element type, block and material has an
 // entry built from the live catalog, so custom blocks and materials appear here as soon as their folder is connected.
@@ -2892,6 +2915,8 @@ const GUIDE = [
   <table class="ht"><tr><th>Do this</th><th>To</th></tr>
   <tr><td>Drag empty space, or middle-drag anywhere</td><td>pan</td></tr>
   <tr><td>Mouse wheel</td><td>zoom around the pointer</td></tr>
+  <tr><td>${K("Home")} or ${K("H")}</td><td>back to the origin at 100 % zoom</td></tr>
+  <tr><td>${K("F")}</td><td>fit every node on screen</td></tr>
   <tr><td>Drag a node by its header</td><td>move it (every selected node moves together)</td></tr>
   <tr><td><b>Organize</b></td><td>tidy the canvas like a desktop does. <b>Clean up</b> snaps every node onto a grid near where it already is. <b>Sort by kind</b> and <b>Sort by name</b> lay everything out on a grid in that order. <b>Flow, left to right</b> follows the wires so every node sits right of what feeds it. <b>Columns by role</b> is the classic layout: inputs, modifiers, bodies, elements, results. With 2 or more nodes selected, only the selection moves. Groups move as one block. Ctrl+Z undoes it.</td></tr>
   <tr><td>Right-click, ${K("Shift+A")} or <b>+ Add</b></td><td>open the block library at the pointer</td></tr></table>

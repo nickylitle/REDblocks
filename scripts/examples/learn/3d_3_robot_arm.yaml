@@ -1,0 +1,97 @@
+simblocks: 1
+name: 3D-3 Robot arm lifts a payload into a rubber stop
+question: "A gearmotor at the shoulder lifts a two-link arm with a 0.9 kg payload until the arm hits a stop. How long does it take, how hard is the hit, and what current does the motor draw?"
+dim: 3d
+gravity: 9.81
+
+params:
+  gear: {value: 100, note: "motor turns per shoulder turn"}
+  throttle: {value: 0.5, note: "half throttle"}
+  k_elbow: {value: 60 N m/rad, note: "the elbow is spring-loaded: it gives a little under load"}
+
+bodies:
+  base:
+    ground: true
+    points: {shoulder: [0, 0, 0.3]}
+    planes:
+      stop: {at: [0.125000, 0, 0.516506], normal: [0.866025, 0, -0.500000], size: [0.08, 0.08]}
+    note: "pedestal with the shoulder 300 mm up, and a hard stop the upper arm runs into at 60 degrees"
+  upper_arm:
+    dof: free
+    shape: {kind: box, a: 300 mm, b: 40 mm, c: 40 mm, material: 6061-T6}
+    at: [0.15, 0, 0.3]
+    points: {s: [-0.15, 0, 0], e: [0.15, 0, 0], bump: [0.1, 0, 0]}
+  forearm:
+    dof: free
+    shape: {kind: box, a: 250 mm, b: 40 mm, c: 40 mm, material: 6061-T6}
+    at: [0.425, 0, 0.3]
+    points: {e: [-0.125, 0, 0], w: [0.125, 0, 0]}
+  payload:
+    dof: free
+    shape: {kind: sphere, R: 30 mm, material: 1018_CD}
+    at: [0.58, 0, 0.3]
+    points: {grip: [-0.03, 0, 0]}
+
+elements:
+  shoulder:
+    type: hinge
+    rigid: true
+    axis: y
+    measure: [base.shoulder, upper_arm.s]
+    label: shoulder joint
+  elbow:
+    type: hinge
+    rigid: true                 # the pivot itself is exact...
+    axis: y
+    k_twist: $k_elbow           # ...and a torsion spring and damper act about it
+    c_twist: 0.4
+    measure: [upper_arm.e, forearm.e]
+    label: spring-loaded elbow
+  gripper:
+    type: weld
+    rigid: true                 # the payload is held fast
+    measure: [forearm.w, payload.grip]
+  motor:
+    type: drive
+    measure: {twist: [base, upper_arm], axis: -y}   # lifts the arm: turning about -y raises +x toward +z
+    kv: 200 rpm/V
+    R: 0.15 ohm
+    I_max: 15 A
+    gear: $gear
+    cells: 4
+    R0: 0.03 ohm
+    capacity: 3000 mAh
+    throttle: $throttle
+    label: shoulder gearmotor
+  stop_hit:
+    type: kelvin_voigt          # a rubber bumper: stiffness and damping, pushes only while pressed
+    k: 200 kN/m
+    c: 300 N s/m
+    measure: {contact: [upper_arm.bump, base.stop]}
+    label: arm hits the rubber stop
+
+outputs:
+  t_hit_s:          {element: stop_hit, quantity: force, reduce: first_time_above, value: 1, label: time the arm reaches the stop}
+  stop_force_N:     {element: stop_hit, quantity: force, reduce: max, unit: N, label: peak force on the stop}
+  stop_heat_J:      {element: stop_hit, quantity: dissipated, unit: J, label: energy the bumper turned to heat}
+  bumper_mm:        {element: stop_hit, quantity: measure, reduce: max, unit: mm, label: deepest bumper squash}
+  peak_current_A:   {element: motor, quantity: current, reduce: max}
+  start_current_A:  {element: motor, quantity: current, reduce: first_time_above, value: 0.1, label: when the motor starts drawing}
+  shoulder_force_N: {element: shoulder, quantity: force, reduce: max, unit: N}
+  payload_top_mm:   {body: payload, quantity: z, reduce: max, unit: mm}
+
+run:
+  t_end: 2.5 s
+  dt: 0.2 ms
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **3D-3 Robot arm.** A gearmotor at the shoulder lifts a two-link aluminium arm holding a 0.9 kg steel ball. The
+        shoulder is a rigid hinge, the elbow a rigid hinge with a torsion spring, the ball is welded on. The arm swings
+        up until a bump on it hits a rubber stop at 60 degrees (a contact with stiffness and damping), then the motor
+        pushes against the stop.
+        Textbook check: the arm's weight needs $\sum m g x \approx 11.5$ N m at the shoulder to start. Against the stop the motor
+        stalls, so it draws its 15 A limit.

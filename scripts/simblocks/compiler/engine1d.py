@@ -25,7 +25,7 @@ import numpy as np
 from numba import njit
 
 from ..constitutive.plasticity import tabular_return
-from ..actuators.motors import esc_supply, lipo_ocv_k
+from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
 
 NP = 10      # floats per element
 NAUX = 4
@@ -114,7 +114,7 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         ocv = lipo_ocv_k(soc, cells)
         Veff = ocv - R1 * iR1
         wm = G * sd
-        I, Ib, v, duty = esc_supply(Veff * thr, R0, Kt * wm, Rm, Imax)
+        I, Ib, v, duty = esc_supply_thr(Veff, R0, Kt * wm, Rm, Imax, thr)
         if Ib < 0.0:
             Ib = 0.0
         Ech = ocv * Ib * dt
@@ -165,6 +165,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         if typ[e] == 14:
             nimp += 1
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne); invn = np.zeros(ne)
+    vst = np.zeros(nb); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -203,6 +204,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 Q[b] -= C[e, b] * F
         first = False
         for b in range(nb):
+            vst[b] = v[b]
             v[b] += dt * Q[b] / m[b]
         # rigid impacts (sequential impulses; see engine2d)
         for b in range(nb):
@@ -212,7 +214,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                Fe[e] = 0.0; aux[e, 0] = 0.0
+                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 s = s0[e]; sd = 0.0; w_ = 0.0
@@ -225,6 +227,9 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 tgt[e] = -P[e, 0] * sd if sd > P[e, 2] else 0.0
                 jn[e] = 0.0; invn[e] = w_
                 aux[e, 3] += 0.5 * sd * sd / w_
+                ucd[e] = sd; lst[e] = D[e]; u0d[e] = 0.0
+                for b in range(nb):
+                    u0d[e] += C[e, b] * vst[b]
             for it in range(16):
                 for c in range(nc):
                     e = cand[c]
@@ -246,6 +251,15 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]
+                if held[e] > 0.0:                                 # held contact: books no heat
+                    A[e] -= D[e] - lst[e]; D[e] = lst[e]
+                    continue
+                u0 = u0d[e] if u0d[e] > 0.0 else 0.0              # book only the approach speed it came in with
+                corr = 0.5 * (ucd[e] * ucd[e] - u0 * u0) / invn[e]
+                if corr > D[e] - lst[e]:
+                    corr = D[e] - lst[e]
+                if corr > 0.0:
+                    D[e] -= corr; A[e] -= corr
         for e in range(ne):
             if typ[e] == 14:
                 aux[e, 1] = D[e]

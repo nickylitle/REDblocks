@@ -282,6 +282,21 @@ def _rows2(e, mk_, q, ba, bb, C, s0, GA, GB, GX, ref, J, cpos):
 
 
 @njit(cache=True, nogil=True)
+def _book_hits(cand, nc, jn, held, lossN, lossT, D, A):
+    """Heat of rigid contacts this step (the kinetic energy their own impulses removed). A NEW hit books all of it.
+    A HELD contact (pressed last step too: resting, or pushed by a motor) books only its sliding friction: the speed
+    this step's forces pressed into it never moved anything, so taking it back out is not a loss (the explicit step
+    made that energy without work). Energy that reaches a hit through rigid joints, and the explicit step's own
+    error, show in the energy ledger instead; both shrink with the time step."""
+    for c in range(nc):
+        e = cand[c]
+        if jn[e] <= 0.0:
+            continue
+        h = lossT[e] if held[e] > 0.0 else lossN[e] + lossT[e]
+        D[e] += h; A[e] += h
+
+
+@njit(cache=True, nogil=True)
 def _rate(mk, e, q, v, ba, bb, C, geo, which):
     """ds/dt with the current velocities and the stored application points (which = 0 normal, 1 tangent)."""
     if mk == MK_LIN:
@@ -320,7 +335,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         if typ[e] == 14:
             nimp += 1
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne); jt = np.zeros(ne)
-    invn = np.zeros(ne); invt = np.zeros(ne)
+    invn = np.zeros(ne); invt = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    lossN = np.zeros(ne); lossT = np.zeros(ne)
     # rigid joints (typ 15): projected constraints, rows in generalised coordinates
     nrig = 0
     for e in range(ne):
@@ -519,6 +535,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         # rigid impacts: sequential impulses on this step's velocities (restitution e, Coulomb mu)
         for k in range(nq):
             Dq[k] = 0.0
+        nc = 0
         if nimp > 0 or nrig > 0:
             for e in range(ne):
                 if typ[e] == 15:
@@ -527,7 +544,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
+                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 s, sd, ok = _measure(mk[e], e, q, v, ba, bb, C, s0, GA, GB, GX, geo)
@@ -554,6 +571,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                                _inv_mass_along(q, minv, bb[e], geo[e, 2], geo[e, 3], -geo[e, 5], geo[e, 4]))
                 if invn[e] > 0.0:
                     aux[e, 3] += 0.5 * sd * sd / invn[e]  # energy brought into the hit (ledger scale)
+                ucd[e] = sd; u0d[e] = _rate(MK_LIN if mk[e] == MK_LIN else MK_EDGE, e, q, vst, ba, bb, C, geo, 0); lst[e] = D[e]
+            for c in range(nc):
+                lossN[cand[c]] = 0.0; lossT[cand[c]] = 0.0
             for it in range(16):
                 for c in range(nc):
                     e = cand[c]; mke = MK_LIN if mk[e] == MK_LIN else MK_EDGE
@@ -565,8 +585,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             new = 0.0
                         dj = new - jn[e]; jn[e] = new
                         if dj != 0.0:
-                            loss = _impulse2(e, dj, 0, mke, q, v, minv, ba, bb, C, geo, Dq, tdt)
-                            D[e] += loss; A[e] += loss
+                            lossN[e] += _impulse2(e, dj, 0, mke, q, v, minv, ba, bb, C, geo, Dq, tdt)
                     if P[e, 1] > 0.0 and invt[e] > 0.0 and mke != MK_LIN:
                         ut = _rate(mke, e, q, v, ba, bb, C, geo, 1)
                         lim = P[e, 1] * jn[e]
@@ -577,8 +596,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             new = -lim
                         dj = new - jt[e]; jt[e] = new
                         if dj != 0.0:
-                            loss = _impulse2(e, dj, 1, mke, q, v, minv, ba, bb, C, geo, Dq, tdt)
-                            D[e] += loss; A[e] += loss
+                            lossT[e] += _impulse2(e, dj, 1, mke, q, v, minv, ba, bb, C, geo, Dq, tdt)
                 for e in range(ne):              # rigid joints: relative velocity along every row to zero
                     if typ[e] != 15 or active[e] == 0:
                         continue
@@ -604,13 +622,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]; aux[e, 2] = jt[e]
-            for e in range(ne):
-                if typ[e] == 15:
-                    if mk[e] == MK_PIN:
-                        Fe[e] = math.sqrt(lam[e, 0] ** 2 + lam[e, 1] ** 2) / dt
-                    else:
-                        Fe[e] = -lam[e, 0] / dt          # same sign as a spring: pulls the measure back
-                    aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = D[e]
+            _book_hits(cand, nc, jn, held, lossN, lossT, D, A)
+
         for e in range(ne):
             if typ[e] == 14:
                 aux[e, 1] = D[e]; inc[e] = 1 if jn[e] > 0.0 else 0                         # heat so far (J): every joule the impacts took
@@ -653,6 +666,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                         if it == 0:
                             aux[e, 3] = max(aux[e, 3], abs(cps[r]))       # largest drift before correction
                         dl = -cps[r] / kk
+                        lam[e, r] += dl / dt                 # the correction is an impulse dl / dt
                         for k in range(nq):
                             if Jold[e, r, k] != 0.0:
                                 q[k] += minv[k] * Jold[e, r, k] * dl
@@ -670,13 +684,28 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             if Jr[r, k] != 0.0:
                                 u += Jr[r, k] * v[k]; kk += Jr[r, k] * Jr[r, k] * minv[k]
                         if kk > 0.0 and u != 0.0:
+                            lam[e, r] -= u / kk
                             for k in range(nq):
                                 if Jr[r, k] != 0.0:
                                     v[k] -= minv[k] * Jr[r, k] * u / kk
+                for c in range(nc):                  # contacts that pushed this step keep pushing: no approach
+                    e = cand[c]                      # speed is left for the next step (not booked: numerical)
+                    if jn[e] <= 0.0 or invn[e] <= 0.0:
+                        continue
+                    mke = MK_LIN if mk[e] == MK_LIN else MK_EDGE
+                    u = _rate(mke, e, q, v, ba, bb, C, geo, 0)
+                    if u > 0.0:
+                        _impulse2(e, u / invn[e], 0, mke, q, v, minv, ba, bb, C, geo, Dq, 0.0)
             for e in range(ne):
                 if typ[e] == 15:
                     s_, sd_, ok_ = _measure(mk[e], e, q, v, ba, bb, C, s0, GA, GB, GX, geo)
                     se[e] = s_
+                    # joint force: every impulse the joint gave this step (catch, SHAKE, RATTLE) over the step
+                    if mk[e] == MK_PIN:
+                        Fe[e] = math.sqrt(lam[e, 0] ** 2 + lam[e, 1] ** 2) / dt
+                    else:
+                        Fe[e] = -lam[e, 0] / dt          # same sign as a spring: pulls the measure back
+                    aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = D[e]
         # trackers
         for e in range(ne):
             if Fe[e] < TR[e, 0]: TR[e, 0] = Fe[e]

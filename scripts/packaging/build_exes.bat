@@ -13,9 +13,9 @@ python -m venv .build_venv || goto :err
 call .build_venv\Scripts\activate.bat
 python -m pip install --upgrade pip >nul
 if not exist simblocks\app\examples mkdir simblocks\app\examples
-copy /y examples\systems\*.yaml simblocks\app\examples\ >nul
-copy /y examples\systems2d\*.yaml simblocks\app\examples\ >nul
-copy /y examples\systems3d\*.yaml simblocks\app\examples\ >nul
+copy /y examples\learn\*.yaml simblocks\app\examples\ >nul
+if not exist simblocks\app\examples\data mkdir simblocks\app\examples\data
+copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul
 python -m pip install ".[app]" pyinstaller || goto :err
 REM Help shows every block's Python source; the one-file exe has no .py files, so save the sources first
 python -c "from simblocks.app.api import write_block_sources; print(write_block_sources('simblocks/app/block_sources.json'))" || goto :err

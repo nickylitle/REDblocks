@@ -1,0 +1,49 @@
+simblocks: 1
+name: 3D-1 Spinning top
+question: "A spinning disc on a pointed stem, tilted 20 degrees: does it fall over, and how fast does it precess?"
+dim: 3d
+gravity: 9.81
+
+params:
+  spin: {value: 200 rad/s, note: "spin about its own axis (about 1900 rpm)"}
+  l: {value: 50 mm, note: "from the tip to the centre of the disc"}
+
+bodies:
+  floor:
+    ground: true
+    points: {tip_rest: [0, 0, 0]}
+    note: "the point the tip sits on"
+  top:
+    dof: free                   # slides and tumbles freely: only the joint holds the tip
+    shape: {kind: disc, R: 40 mm, t: 8 mm, material: 1018_CD, at: [0, 0, $l]}   # disc centre 50 mm up its own axis
+    orient0: {axis: [0, 1, 0], angle: 20 deg}   # tilted 20 degrees (its own z axis leans toward +x)
+    omega0: [67.360997, 0, 188.318157]   # spin about its tilted axis plus the steady precession (so it does not wobble)
+    points: {tip: [0, 0, 0]}
+    note: "the body's own frame: z along the stem, origin at the tip"
+
+elements:
+  pivot:
+    type: pin
+    rigid: true                 # a ball joint: the tip stays on its point, free to turn every way
+    measure: [floor.tip_rest, top.tip]
+    label: tip on the floor
+
+outputs:
+  quarter_turn_s: {body: top, quantity: x, reduce: first_time_below, value: 0, label: time for a quarter of a precession circle}
+  lowest_z_mm:    {body: top, quantity: z, reduce: min, unit: mm, label: lowest the disc centre gets}
+  tip_force_N:    {element: pivot, quantity: force, reduce: max, unit: N}
+
+run:
+  t_end: 1.2 s
+  dt: 0.1 ms
+
+editor:
+  notes:
+    - x: 40
+      y: -170
+      text: |
+        **3D-1 Spinning top.** A steel disc on a stem, spinning fast and tilted 20 degrees, sits on a ball joint at its
+        tip. Gravity tries to tip it over; because it spins, it swings round in a slow circle instead (precession).
+        Textbook check: the simple gyroscope rule gives $\Omega \approx m g l / (I_s \omega_s) = 3.07$ rad/s. The full
+        steady-precession equation $I_t \Omega^2 \cos\theta - I_s \omega_s \Omega + m g l = 0$ gives 3.25 rad/s, so a
+        quarter circle takes $\pi / (2 \Omega) = 0.484$ s, and the disc does not fall.

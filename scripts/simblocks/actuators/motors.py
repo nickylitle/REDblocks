@@ -99,6 +99,25 @@ def esc_supply(Veff, R0, E, Rm, Imax):
     return Imax, Ib, v, (E + Imax * Rm) / v
 
 
+@block("actuators", "esc", "throttled", "supply", kind="kernel",
+       source="averaged PWM ESC with its duty capped at the throttle, on a Thevenin source; energy-consistent",
+       tags=("ESC", "throttle", "current limit", "sag", "duty"))
+@kernel
+def esc_supply_thr(Veff, R0, E, Rm, Imax, thr):
+    """ESC whose duty is at most thr (throttle 0..1). Below the current limit the motor sees thr times the bus:
+    I = (thr Veff - E) / (Rm + thr^2 R0), battery current Ib = thr I. Above it, the ESC holds Imax (duty < thr).
+    Returns (I_motor, I_batt, v_bus, duty), with v_bus I_batt = (E + I Rm) I exactly (no energy made or lost)."""
+    if thr >= 1.0:
+        return esc_supply(Veff, R0, E, Rm, Imax)
+    if thr <= 0.0 or thr * Veff <= E:
+        return 0.0, 0.0, Veff, 0.0
+    I1 = (thr * Veff - E) / (Rm + thr * thr * R0)
+    if I1 <= Imax:
+        Ib = thr * I1
+        return I1, Ib, Veff - R0 * Ib, thr
+    return esc_supply(Veff, R0, E, Rm, Imax)
+
+
 @block("actuators", "battery", "pack", "open_circuit_kernel", kind="kernel", source="LiPo typical OCV curve (approx)",
        tags=("state of charge", "LiPo", "njit"))
 @kernel

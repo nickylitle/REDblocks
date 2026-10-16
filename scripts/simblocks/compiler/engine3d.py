@@ -22,6 +22,7 @@ import math
 import numpy as np
 from numba import njit
 
+from .engine2d import _book_hits
 from .engine1d import _force, NP, NAUX
 
 MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
@@ -509,7 +510,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             nimp += 1
             exact[e] = 0
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne)
-    jt3 = np.zeros((ne, 3)); invn = np.zeros(ne)
+    jt3 = np.zeros((ne, 3)); invn = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    lossN = np.zeros(ne); lossT = np.zeros(ne)
     nrig = 0
     for e in range(ne):
         if typ[e] == 15:
@@ -862,6 +864,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         # rigid impacts: sequential impulses on this step's velocities (restitution e, Coulomb mu)
         for b in range(nb):
             DX[b, 0] = 0.0; DX[b, 1] = 0.0; DX[b, 2] = 0.0; DW[b, 0] = 0.0; DW[b, 1] = 0.0; DW[b, 2] = 0.0
+        nc = 0
         if nimp > 0 or nrig > 0:
             for e in range(ne):
                 if typ[e] == 15:
@@ -870,7 +873,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
+                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 if mk[e] == MK_LIN:
@@ -909,6 +912,14 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 tgt[e] = -P[e, 0] * sd if sd > P[e, 2] else 0.0
                 jn[e] = 0.0; jt3[e, 0] = 0.0; jt3[e, 1] = 0.0; jt3[e, 2] = 0.0; invn[e] = w_
                 aux[e, 3] += 0.5 * sd * sd / w_
+                ucd[e] = sd; lst[e] = D[e]
+                if mk[e] == MK_LIN:
+                    u0d[e] = _lin_rate(e, Vst, wsp, C, nb)        # (spin rate change of this step ignored: small)
+                else:
+                    rx0, ry0, rz0 = _relv(e, X, Vst, Wst, ba, bb, geo)
+                    u0d[e] = geo[e, 6] * rx0 + geo[e, 7] * ry0 + geo[e, 8] * rz0
+            for c in range(nc):
+                lossN[cand[c]] = 0.0; lossT[cand[c]] = 0.0
             for it in range(16):
                 for c in range(nc):
                     e = cand[c]; tdt = tauv[e] * dt
@@ -933,8 +944,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                                     DW[b, 0] -= axis[b, 0] * dw * tdt; DW[b, 1] -= axis[b, 1] * dw * tdt
                                     DW[b, 2] -= axis[b, 2] * dw * tdt
                             u1 = _lin_rate(e, V, wsp, C, nb)
-                            loss = 0.5 * dj * (u + u1)
-                            D[e] += loss; A[e] += loss
+                            lossN[e] += 0.5 * dj * (u + u1)
                         continue
                     nx = geo[e, 6]; ny = geo[e, 7]; nz = geo[e, 8]
                     rx, ry, rz = _relv(e, X, V, W, ba, bb, geo)
@@ -944,9 +954,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                         new = 0.0
                     dj = new - jn[e]; jn[e] = new
                     if dj != 0.0:
-                        loss = _impulse3(e, dj * nx, dj * ny, dj * nz, X, V, W, R, Lw, wsp, minv, rmode, Iinv, axis,
-                                         Iax, ba, bb, geo, DX, DW, tdt)
-                        D[e] += loss; A[e] += loss
+                        lossN[e] += _impulse3(e, dj * nx, dj * ny, dj * nz, X, V, W, R, Lw, wsp, minv, rmode, Iinv,
+                                              axis, Iax, ba, bb, geo, DX, DW, tdt)
                     mu = P[e, 1]
                     if mu > 0.0:
                         rx, ry, rz = _relv(e, X, V, W, ba, bb, geo)
@@ -966,9 +975,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                                     gx *= lim / gm; gy *= lim / gm; gz *= lim / gm
                                 dx_ = gx - jt3[e, 0]; dy_ = gy - jt3[e, 1]; dz_ = gz - jt3[e, 2]
                                 jt3[e, 0] = gx; jt3[e, 1] = gy; jt3[e, 2] = gz
-                                loss = _impulse3(e, dx_, dy_, dz_, X, V, W, R, Lw, wsp, minv, rmode, Iinv, axis,
-                                                 Iax, ba, bb, geo, DX, DW, tdt)
-                                D[e] += loss; A[e] += loss
+                                lossT[e] += _impulse3(e, dx_, dy_, dz_, X, V, W, R, Lw, wsp, minv, rmode, Iinv, axis,
+                                                      Iax, ba, bb, geo, DX, DW, tdt)
                 for e in range(ne):              # rigid joints: relative velocity along every row to zero
                     if typ[e] != 15 or active[e] == 0:
                         continue
@@ -1000,14 +1008,11 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]
+
                 aux[e, 2] = math.sqrt(jt3[e, 0] ** 2 + jt3[e, 1] ** 2 + jt3[e, 2] ** 2)
-            for e in range(ne):
-                if typ[e] == 15:
-                    if mk[e] == MK_PIN or mk[e] == MK_ROT:
-                        Fe[e] = math.sqrt(lam[e, 0] ** 2 + lam[e, 1] ** 2 + lam[e, 2] ** 2) / dt
-                    else:
-                        Fe[e] = -lam[e, 0] / dt
-                    aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = lam[e, 2] / dt
+            if nc > 0:
+                _book_hits(cand, nc, jn, held, lossN, lossT, D, A)
+
         for e in range(ne):
             if typ[e] == 14:
                 aux[e, 1] = D[e]; inc[e] = 1 if jn[e] > 0.0 else 0
@@ -1095,6 +1100,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                         if it == 0 and abs(cps[r]) > aux[e, 3]:
                             aux[e, 3] = abs(cps[r])                    # largest drift seen before correction
                         dl = -cps[r] / kk
+                        lam[e, r] += dl / dt
                         for b in range(nb):
                             for k in range(3):
                                 X[b, k] += minv[b, k] * J3o[e, r, b, k] * dl
@@ -1126,6 +1132,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                         if kk <= 0.0 or u == 0.0:
                             continue
                         dl = -u / kk
+                        lam[e, r] += dl
                         for b in range(nb):
                             for k in range(3):
                                 V[b, k] += minv[b, k] * J3[r, b, k] * dl
@@ -1136,6 +1143,24 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                                 elif rmode[b] == R_FREE:
                                     Lw[b, 0] += jx; Lw[b, 1] += jy; Lw[b, 2] += jz
                                 _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
+            for it in range(8):
+                for c in range(nc):                         # contacts that pushed this step keep pushing (numerical)
+                    e = cand[c]
+                    if jn[e] <= 0.0 or invn[e] <= 0.0 or mk[e] == MK_LIN:
+                        continue
+                    rx, ry, rz = _relv(e, X, V, W, ba, bb, geo)
+                    u = geo[e, 6] * rx + geo[e, 7] * ry + geo[e, 8] * rz
+                    if u > 0.0:
+                        dj = u / invn[e]
+                        _impulse3(e, dj * geo[e, 6], dj * geo[e, 7], dj * geo[e, 8], X, V, W, R, Lw, wsp, minv, rmode,
+                                  Iinv, axis, Iax, ba, bb, geo, DX, DW, 0.0)
+        for e in range(ne):
+            if typ[e] == 15:                                # joint force: all impulses this step over the step
+                if mk[e] == MK_PIN or mk[e] == MK_ROT:
+                    Fe[e] = math.sqrt(lam[e, 0] ** 2 + lam[e, 1] ** 2 + lam[e, 2] ** 2) / dt
+                else:
+                    Fe[e] = -lam[e, 0] / dt
+                aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = lam[e, 2] / dt
         # trackers
         for e in range(ne):
             if Fe[e] < TR[e, 0]: TR[e, 0] = Fe[e]

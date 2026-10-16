@@ -769,16 +769,18 @@ class Api:
 
     def examples(self):
         """Bundled example models, so a new user has something to open."""
+        # the nine teaching examples (1D, 2D, 3D, simple to advanced); their CSV tables sit in data/ beside them
         here = os.path.join(os.path.dirname(__file__), "examples")            # packaged app (copied at build time)
-        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples"))
-        dirs = [here] if os.path.isdir(here) else [os.path.join(root, d) for d in ("systems", "systems2d", "systems3d")]
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "learn"))
+        d = here if os.path.isdir(here) else root
         out = []
-        for d in dirs:
-            if os.path.isdir(d):
-                for f in sorted(os.listdir(d)):
-                    if f.endswith((".yaml", ".yml")):
-                        with open(os.path.join(d, f), encoding="utf-8") as fh:
-                            out.append(dict(name=f, text=fh.read()))
+        if os.path.isdir(d):
+            for f in sorted(os.listdir(d)):
+                if f.endswith((".yaml", ".yml")):
+                    with open(os.path.join(d, f), encoding="utf-8") as fh:
+                        text = fh.read()
+                    title = next((ln.split(":", 1)[1].strip() for ln in text.splitlines() if ln.startswith("name:")), f)
+                    out.append(dict(name=title, file=f, text=text, dir=d.replace("\\", "/")))
         return out
 
 
