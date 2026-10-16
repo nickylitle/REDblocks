@@ -156,7 +156,11 @@ class Api:
                            legacy=e["legacy"], fig=e["fig"], doc=(e["doc"] or "")[:1400], tags=list(e.get("tags") or []))
                       for e in entries()]
             self._catalog = dict(
-                element_types={t: dict(fields=sorted(f), required=sorted(L.REQUIRED_ELEMENT[t]))
+                # mass (and segments for springs and dampers) is open to every 1D element; the editor hides it in 2D/3D
+                element_types={t: dict(fields=sorted(set(f) | ({"mass"} if t not in L.TYPES_2D_ONLY and t != "impact" else set())
+                                                     | ({"segments"} if t in ("spring", "dashpot", "kelvin_voigt") else set())
+                                                     | ({"mass", "segments"} if t == "beam" else set())),
+                                       required=sorted(L.REQUIRED_ELEMENT[t]))
                                for t, f in L.ELEMENT_KEYS.items()},
                 element_quantities=sorted(L.ELEMENT_QUANTITIES), body_quantities=sorted(L.BODY_QUANTITIES),
                 body_quantities_2d=["x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"],
@@ -457,6 +461,73 @@ class Api:
         except Exception as exc:
             return _err(exc)
 
+    def set_model_dir(self, model_path=None):
+        """Relative file paths in a model (CSV loads, pictures) are read from the saved model's folder."""
+        if model_path:
+            os.environ["SIMBLOCKS_MODEL_DIR"] = os.path.dirname(os.path.abspath(model_path))
+        else:
+            os.environ.pop("SIMBLOCKS_MODEL_DIR", None)
+        return dict(ok=True)
+
+    def pick_file(self, start=None, kind="csv"):
+        """Native file picker (desktop app). kind: csv (load tables) or image (diagrams on the canvas)."""
+        try:
+            if self._window is None:
+                return dict(ok=False, error="no window")
+            import webview
+            types = {"csv": ("Tables (*.csv;*.txt;*.dat)", "All files (*.*)"),
+                     "image": ("Pictures (*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg)", "All files (*.*)")}.get(kind, ("All files (*.*)",))
+            r = self._window.create_file_dialog(webview.OPEN_DIALOG, directory=start or "", file_types=types)
+            if not r:
+                return dict(ok=False, cancelled=True)
+            return dict(ok=True, path=r if isinstance(r, str) else r[0])
+        except Exception as exc:
+            return _err(exc)
+
+    def project_path(self, path, model_path=None, copy_to=None):
+        """Make a picked file usable from the model: the path relative to the model's folder when it is inside it.
+        If it is outside and copy_to is given (e.g. 'images'), copy it into <model folder>/<copy_to>/ first.
+        Without a saved model the absolute path is returned (and saving later keeps it)."""
+        try:
+            import shutil
+            path = os.path.abspath(path)
+            if not model_path:
+                return dict(ok=True, path=path.replace("\\", "/"), relative=False)
+            base = os.path.dirname(os.path.abspath(model_path))
+            rel = os.path.relpath(path, base)
+            if rel.startswith(".."):
+                if not copy_to:
+                    return dict(ok=True, path=path.replace("\\", "/"), relative=False)
+                dst_dir = os.path.join(base, copy_to); os.makedirs(dst_dir, exist_ok=True)
+                dst = os.path.join(dst_dir, os.path.basename(path))
+                stem, ext = os.path.splitext(dst); i = 2
+                while os.path.exists(dst) and not _same_file(dst, path):
+                    dst = f"{stem}_{i}{ext}"; i += 1
+                if not os.path.exists(dst):
+                    shutil.copy2(path, dst)
+                rel = os.path.relpath(dst, base)
+                return dict(ok=True, path=rel.replace("\\", "/"), relative=True, copied=True)
+            return dict(ok=True, path=rel.replace("\\", "/"), relative=True)
+        except Exception as exc:
+            return _err(exc)
+
+    def read_image(self, path, model_path=None):
+        """A picture for an image block, as a data: URL. A relative path is read from the model's folder."""
+        try:
+            import base64, mimetypes
+            p = path if os.path.isabs(path) or not model_path else os.path.join(os.path.dirname(os.path.abspath(model_path)), path)
+            mime = mimetypes.guess_type(p)[0] or ""
+            if mime not in ("image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"):
+                return dict(ok=False, error="an image block shows PNG, JPEG, GIF, WebP or SVG pictures")
+            if os.path.getsize(p) > 25 * 1024 * 1024:
+                return dict(ok=False, error="the picture is larger than 25 MB")
+            with open(p, "rb") as fh:
+                return dict(ok=True, image=f"data:{mime};base64," + base64.b64encode(fh.read()).decode("ascii"))
+        except FileNotFoundError:
+            return dict(ok=False, error=f"picture not found: {path}")
+        except Exception as exc:
+            return _err(exc)
+
     # ------------------------------------------------------------------ custom materials folder
     def _load_materials(self, folder):
         from ..materials import custom
@@ -716,6 +787,13 @@ class Api:
 THEME_IMAGE_MAX = 10 * 1024 * 1024
 _IMG_EXT = {"image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/webp": "webp", "image/gif": "gif"}
 _EXT_MIME = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp", "gif": "image/gif"}
+
+
+def _same_file(a, b):
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
 
 
 def config_dir():

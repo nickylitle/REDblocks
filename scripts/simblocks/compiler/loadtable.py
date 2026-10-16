@@ -4,7 +4,7 @@
            csv: {file: loads/impact.csv, against: time, x_unit: ms, y_unit: kN, interpolation: linear}}
 
 csv keys
-  file           path to the CSV (relative to the system file's folder). Or give the points inline with x: [..] and
+  file           path to the CSV (relative to the system file's folder; in the editor, the saved model's folder). Or give the points inline with x: [..] and
                  y: [..] instead of a file.
   against        time (default): F follows the clock. measure: F follows the element's measure (a nonlinear
                  load-deflection curve; it gives energy back on the way out, it is not a damper).
@@ -162,7 +162,8 @@ def load_table(d, ctx, where, doc):
             raise SpecError("give file or the x / y lists, not both", where, ln, f)
         p = str(resolve(spec["file"], ctx, where + ".csv.file"))
         if not os.path.isabs(p):
-            base = os.path.dirname(f) if f and not f.startswith("<") else os.getcwd()
+            # a model typed in the editor has no file: the app sets SIMBLOCKS_MODEL_DIR to the saved model's folder
+            base = os.path.dirname(f) if f and not f.startswith("<") else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
             p = os.path.join(base, p)
         xs, ys = _read_csv(p, spec.get("x_col"), spec.get("y_col"), where, ln, f)
     else:

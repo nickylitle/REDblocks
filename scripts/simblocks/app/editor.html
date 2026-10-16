@@ -10,6 +10,16 @@
 @font-face{font-family:"Inter";src:url("../viz/fonts/Inter-SemiBold.otf");font-weight:600}
 @font-face{font-family:"JetBrains Mono";src:url("../viz/fonts/JetBrainsMono-Regular.ttf");font-weight:400}
 @font-face{font-family:"JetBrains Mono";src:url("../viz/fonts/JetBrainsMono-Bold.ttf");font-weight:700}
+@font-face{font-family:"Atkinson Hyperlegible";src:url("fonts/atkinson-hyperlegible-latin-400-normal.woff2");font-weight:400}
+@font-face{font-family:"Atkinson Hyperlegible";src:url("fonts/atkinson-hyperlegible-latin-700-normal.woff2");font-weight:600 700}
+@font-face{font-family:"IBM Plex Sans";src:url("fonts/ibm-plex-sans-latin-400-normal.woff2");font-weight:400}
+@font-face{font-family:"IBM Plex Sans";src:url("fonts/ibm-plex-sans-latin-600-normal.woff2");font-weight:600 700}
+@font-face{font-family:"IBM Plex Mono";src:url("fonts/ibm-plex-mono-latin-400-normal.woff2");font-weight:400}
+@font-face{font-family:"IBM Plex Mono";src:url("fonts/ibm-plex-mono-latin-700-normal.woff2");font-weight:600 700}
+@font-face{font-family:"Source Serif 4";src:url("fonts/source-serif-4-latin-400-normal.woff2");font-weight:400}
+@font-face{font-family:"Fredoka";src:url("fonts/fredoka-latin-400-normal.woff2");font-weight:400}
+@font-face{font-family:"Fredoka";src:url("fonts/fredoka-latin-600-normal.woff2");font-weight:600 700}
+@font-face{font-family:"Source Serif 4";src:url("fonts/source-serif-4-latin-600-normal.woff2");font-weight:600 700}
 :root{
   /* every colour the editor uses lives here; Settings > Colours swaps these tokens (themes + your own overrides) */
   --bg:#0b1018;--grid:#141d2a;--panel:#111823;--panel2:#162131;--panel3:#1c2a3d;--edge:#2a3850;--hair:#1f2a3a;--selbg:#0e3a52;
@@ -63,9 +73,38 @@ textarea{width:100%;resize:vertical}
 #top .grp:first-of-type{border-left:0;padding-left:0}
 #top label{font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
 #top select{font:12px var(--sans);padding:4px 4px}
-#canvas{position:relative;overflow:hidden;background-color:var(--bg);
-  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-  background-size:24px 24px;cursor:default}
+#canvas{position:relative;overflow:hidden;background-color:var(--bg);cursor:default}
+#bgLayer{position:absolute;inset:0;pointer-events:none;background-position:center;display:none}
+#gridLayer{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(var(--gridM) 1px,transparent 1px),linear-gradient(90deg,var(--gridM) 1px,transparent 1px),
+    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px)}
+:root{--gridM:color-mix(in srgb,var(--grid) 55%,var(--ink3))}
+:root.nogrid #gridLayer{display:none}
+#legend{position:absolute;top:10px;right:10px;z-index:20;width:250px;background:color-mix(in srgb,var(--panel) 92%,transparent);
+  border:1px solid var(--edge);border-radius:7px;box-shadow:0 6px 18px var(--shadow);font:11px var(--sans);color:var(--ink2)}
+#legend .lh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;cursor:pointer;
+  font:700 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+#legend .lh button{border:0;background:none;color:var(--ink3);padding:0 2px;font:12px var(--mono);cursor:pointer}
+#legend .lb{padding:2px 9px 8px;display:grid;gap:7px}
+#legend .lt{font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:2px}
+#legend .lr{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:6px;line-height:1.35}
+#legend .lr svg{width:34px;height:10px;overflow:visible}
+#legend .lk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px}
+#legend .lk span{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#legend .lk i{width:4px;height:12px;border-radius:2px;flex:none}
+#legend .sk{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+#legend.min .lb{display:none}
+#legend.min{width:auto}
+:root.nolegend #legend{display:none}
+:root.dashwires #legend path[data-t="body"]{stroke-dasharray:11 4}
+:root.dashwires #legend path[data-t="sig"]{stroke-dasharray:2 4;stroke-linecap:round}
+:root.dashwires #legend path[data-t="state"]{stroke-dasharray:9 3 2 3}
+:root.dashwires #legend path[data-t="metric"]{stroke-dasharray:5 5}
+.utrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 2px}
+.utrow input[type=text]{flex:1;min-width:160px}
+.look{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;align-items:center;font-size:12px;color:var(--ink2)}
+.look label{display:flex;gap:6px;align-items:center}
+.look select{flex:1;min-width:0}
 #world{position:absolute;left:0;top:0;transform-origin:0 0}
 #canvas,#status,#help,#top,#bar2,#tabs{user-select:none;-webkit-user-select:none}
 #canvas input,#canvas textarea,#canvas select,#canvas .note .nb{user-select:text;-webkit-user-select:text}
@@ -272,6 +311,13 @@ label.cpick{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items
 label.cpick input{width:34px;height:22px;padding:0;border:1px solid var(--edge);border-radius:4px;background:none;cursor:pointer}
 label.cpick.own span{color:var(--ink)} label.cpick.own span::after{content:" ·";color:var(--acc)}
 label.cpick button{padding:0 6px;font-size:12px}
+.node.image{width:auto;background:var(--panel)}
+.node.image .im{display:block;padding:6px}
+.node.image .im img{display:block;max-width:none;border-radius:4px}
+.node.image .im .ph{padding:22px 14px;font:11.5px var(--sans);color:var(--ink3);text-align:center;border:1px dashed var(--edge);border-radius:5px;min-width:220px}
+.node.image .cap{font:11.5px var(--sans);color:var(--ink2);padding:0 8px 7px;max-width:100%}
+.node.image .imbar{display:flex;gap:4px;align-items:center;padding:4px 6px;border-top:1px solid var(--hair)}
+.node.image .imbar input{min-width:0}
 .node.note{width:300px;background:var(--note-bg);border-color:color-mix(in srgb,var(--c-note) 45%,var(--edge))}
 .node.note .hd{background:color-mix(in srgb,var(--note-bg) 80%,var(--c-note))}
 .note .nb{padding:8px 12px 10px;font:13px/1.5 var(--sans);color:var(--ink);cursor:text;min-height:40px;user-select:text;overflow-wrap:anywhere}
@@ -374,6 +420,8 @@ label.cpick button{padding:0 6px;font-size:12px}
       <div class="uv"><input id="toVal" class="tb" placeholder="60"><select id="toU"></select></div></div>
   </div>
   <div id="canvas">
+    <div id="bgLayer"></div><div id="gridLayer"></div>
+    <div id="legend" aria-label="What the canvas colours mean"><div class="lh" id="legendHd" title="Show or hide the canvas key"><span>Canvas key</span><button id="legendTog" aria-label="Collapse">&#8722;</button></div><div class="lb" id="legendBody"></div></div>
     <div id="world"><svg id="wires" width="1" height="1"></svg><svg id="wiresTop" width="1" height="1"></svg></div>
     <div id="pcard" role="status" aria-live="polite"><div class="pt"><b id="pcTitle">Running</b><span id="pcTime"></span></div><div class="pst" id="pcStages"></div>
       <div class="pbar"><i id="pcBar"></i></div><div class="pl"><span id="pcLabel"></span><b id="pcEta"></b></div><div id="pcBtns"></div></div>
@@ -434,7 +482,17 @@ label.cpick button{padding:0 6px;font-size:12px}
 <div id="helpView"><div id="hSide"><div class="top"><button id="hBack" title="Back to the canvas (Esc)">← Canvas</button><input id="hQ" placeholder="Search features and blocks"></div><div id="hNav"></div></div><div id="hBody"></div></div>
 <div class="dlg" id="setDlg" role="dialog" aria-modal="true"><div class="box" style="width:min(820px,95vw)">
   <h4>Settings</h4><div class="sub">Saved on this computer for every model. Model files never store colours.</div>
-  <h3 class="dsub">Theme</h3><div class="cards" id="setThemes"></div>
+  <h3 class="dsub">Default themes</h3><div class="cards" id="setThemes"></div>
+  <h3 class="dsub">User themes</h3><div class="cards" id="setUser"></div>
+  <div class="utrow"><input type="text" id="utName" placeholder="theme name" aria-label="Theme name"><button id="utNew" title="Save the theme you are using now, with your changes, as a new user theme">New from current</button><button id="utCopy" title="Duplicate the selected theme (built-in or yours) under the name in the box">Copy</button><button id="utRename" title="Rename the selected user theme to the name in the box">Rename</button><button id="utRemove" title="Delete the selected user theme and its folder">Remove</button></div>
+  <div class="sub" id="utDir"></div>
+  <h3 class="dsub">Look</h3>
+  <div class="look"><label>Font <select id="lookUi"></select></label><label>Mono font <select id="lookMono"></select></label>
+    <label><input type="checkbox" id="lookGrid">Grid on the canvas</label><label><input type="checkbox" id="lookLegend">Canvas key (top right)</label>
+    <label>Background <button id="lookBg" title="A picture behind the canvas, saved inside a user theme">Choose picture…</button><button id="lookBgOff">Remove</button></label>
+    <label>Fit <select id="lookFit"><option value="cover">Cover</option><option value="contain">Fit inside</option><option value="tile">Tile</option></select></label>
+    <label title="How strongly the picture shows: keep it low so wires stay readable">Picture strength <input type="range" id="lookDim" min="5" max="100" step="5"></label>
+    <input type="file" id="lookBgFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="setKeep">Keep my own colours when I switch theme</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Body wires long dashes, signals dotted, states dash-dot, metrics short dashes, values solid"><input type="checkbox" id="setDash">Wire patterns by type (dashes)</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
@@ -481,15 +539,25 @@ const API = {
 // ------------------------------------------------------------------------------------------------ model
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
-  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)"};
+  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
-const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"]};
+const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"],
+  beam:["moment","torque","shear","hinge_set"], impact:["impulse","heat","friction_impulse"],
+  pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"]};
 const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", alpha:"damping factor", table:"yield table",
   break_at:"tears off at set", F_c:"friction force", v_eps:"slip speed scale", F_s:"static peak", v_s:"Stribeck speed",
   P:"constant push", kv:"motor Kv", R:"winding R", I_max:"ESC limit", gear:"motor:load", cells:"cells", R0:"pack R0",
-  R1:"pack R1", C1:"pack C1", capacity:"pack mAh", throttle:"throttle 0-1", J_rotor:"rotor inertia"};
+  R1:"pack R1", C1:"pack C1", capacity:"pack mAh", throttle:"throttle 0-1", J_rotor:"rotor inertia",
+  e:"restitution 0-1", mu:"friction coefficient", v_rest:"rest speed (no bounce below)", rigid:"true: exact joint, no k",
+  k_rot:"turn stiffness", c_rot:"turn damping", k_twist:"twist stiffness", c_twist:"twist damping", axis:"axis (x, y, z or [..])",
+  friction:"slide friction force", length:"slack length", E:"Young's modulus", A:"section area", I:"second moment",
+  Iy:"second moment (y)", Iz:"second moment (z)", J:"torsion constant", G:"shear modulus", EA:"axial stiffness",
+  EI:"bending stiffness", EIy:"bending stiffness (y)", EIz:"bending stiffness (z)", GJ:"torsional stiffness",
+  section:"a section block", material:"material name", density:"density", hinge:"'auto' or a hinge table",
+  damping:"fraction of critical", orient:"section h direction (3D)", rotary_inertia:"rotary inertia", end_mass:"true/false",
+  mass:"element's own mass", segments:"pieces (needs mass)"};
 let CAT = null;
 let S = newState();
 let filePath = null, dirty = false;
@@ -524,6 +592,7 @@ function defaults(kind){
     case "mc": return {name:"mc", lo:"", hi:"", unit:"", nominal:"", n:"100"};
     case "load": return {name:"load", terms:[{coef:"1"}], const:"", raw:null, P:"", label:"", axis:"x"};
     case "note": return {text:""};
+    case "image": return {path:"", w:"360", caption:""};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
                            custom:"", time_unit:"s", points:"1000", header:"units", when:"run"};
   }
@@ -538,22 +607,22 @@ function sockets(n){
     outs.push({key:"out", label:"result", type:"val"});
   }
   if (n.kind === "body" && is3d()){
-    if (d.dof !== "ground"){ const f = free3(d), r = d.rot3;
-      ins.push({key:"mass", label:"mass", type:"val", req: f.x || f.y || f.z});
-      if (r !== "none") ins.push({key:"inertia", label:"inertia", type:"val", req:true});
+    if (d.dof !== "ground"){ const f = free3(d), r = d.rot3, sh = hasShape(d);
+      if (!sh) ins.push({key:"mass", label:"mass", type:"val", req: f.x || f.y || f.z});
+      if (r !== "none" && !sh && (d.inForm || "number") === "number") ins.push({key:"inertia", label:"inertia", type:"val", req:true});
       if (r === "spin"){ ins.push({key:"angle0", label:"angle0", type:"val"}); ins.push({key:"omega0", label:"spin0", type:"val"}); }
     }
     outs.push({key:"body", label:"body", type:"body"});
   } else if (n.kind === "body" && is2d()){
-    if (d.dof !== "ground"){ const f = free2(d);
-      ins.push({key:"mass", label:"mass", type:"val", req: f.x || f.y});
-      if (f.rz){ ins.push({key:"inertia", label:"inertia", type:"val", req:true}); ins.push({key:"angle0", label:"angle0", type:"val"}); ins.push({key:"omega0", label:"spin0", type:"val"}); }
+    if (d.dof !== "ground"){ const f = free2(d), sh = hasShape(d);
+      if (!sh) ins.push({key:"mass", label:"mass", type:"val", req: f.x || f.y});
+      if (f.rz){ if (!sh) ins.push({key:"inertia", label:"inertia", type:"val", req:true}); ins.push({key:"angle0", label:"angle0", type:"val"}); ins.push({key:"omega0", label:"spin0", type:"val"}); }
       else ins.push({key:"angle0", label:"angle0", type:"val"});
     }
     outs.push({key:"body", label:"body", type:"body"});
   } else if (n.kind === "body"){
     if (d.dof !== "ground"){
-      ins.push({key: d.dof === "rotation" ? "inertia" : "mass", label: d.dof === "rotation" ? "inertia" : "mass", type:"val", req:true});
+      if (!hasShape(d)) ins.push({key: d.dof === "rotation" ? "inertia" : "mass", label: d.dof === "rotation" ? "inertia" : "mass", type:"val", req:true});
       ins.push({key:"x0", label: d.dof === "rotation" ? "angle0" : "x0", type:"val"});
       ins.push({key:"v0", label: d.dof === "rotation" ? "speed0" : "v0", type:"val"});
     }
@@ -565,7 +634,9 @@ function sockets(n){
     else if (gk !== "coords"){ ensure2(n); ["A","B"].forEach((lab, i) => ins.push({key:"t" + i, label:lab, type:"body", term:i})); }
     else if (!d.raw) d.terms.forEach((t, i) => ins.push({key:"t" + i, label:"body " + (i + 1), type:"body", term:i}));
     const et = CAT ? CAT.element_types[d.type] : {fields:[], required:[]};
-    et.fields.filter(f => f !== "contact").forEach(f => ins.push({key:"f." + f, label:f, type:"val", req: et.required.includes(f)}));
+    const rigid = String(d.fields && d.fields.rigid || "").trim() === "true";
+    et.fields.filter(f => f !== "contact" && !(isGeo() && d.type !== "beam" && (f === "mass" || f === "segments")) && !(!is3d() && d.type === "hinge" && f === "axis") && !(rigid && /^(k|c|k_rot|c_rot)$/.test(f)))
+      .forEach(f => ins.push({key:"f." + f, label:f, type:"val", req: et.required.includes(f) && !(rigid && /^(k|k_rot)$/.test(f))}));
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
     (STATE_Q[d.type] || []).forEach(q => outs.push({key:"q." + q, label:q, type:"state"}));
   }
@@ -575,7 +646,7 @@ function sockets(n){
   if (n.kind === "sweep" || n.kind === "mc") outs.push({key:"out", label:"value", type:"val"});
   if (n.kind === "load"){
     if (!d.raw) d.terms.forEach((t, i) => ins.push({key:"t" + i, label:"body " + (i + 1), type:"body", term:i}));
-    ins.push({key:"P", label:"force", type:"val", req:true});
+    if (!d.csvOn) ins.push({key:"P", label:"force", type:"val", req:true});
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
   }
   if (n.kind === "export") d.cols.forEach((c, i) => ins.push({key:"c" + i, label:"column " + (i + 1), type:"any", col:i, req:i === 0}));
@@ -716,7 +787,9 @@ function featIn(b){ const out = [];
   Object.entries(b.lines || {}).forEach(([k, v]) => { const a = v.from || [0, 0], z = v.to || [0, 0], vals = [a[0], a[1], z[0], z[1]].concat(v.depth !== undefined ? [v.depth] : []);
     const c = commonUnit(vals, "length"); out.push({kind:"line", name:k, x:c.nums[0], y:c.nums[1], x2:c.nums[2], y2:c.nums[3], depth: v.depth !== undefined ? c.nums[4] : "", unit:c.unit}); });
   return out; }
-function geoKind(d){ return d.type === "pin" ? "pin" : (d.type === "contact_friction" ? "slip" : (d.mk || "coords")); }
+// joints and beams join two points: [A.point, B.point] (the editor calls this the "pin" shape of measure)
+const PAIR_TYPES = ["pin","weld","hinge","slider","beam"];
+function geoKind(d){ return PAIR_TYPES.includes(d.type) ? "pin" : (d.type === "contact_friction" ? "slip" : (d.mk || "coords")); }
 function vecRow3(d, key, dim, tip){
   const u = d[key + "u"] ?? defUnit(dim);
   return `<div class="row"><label title="${esc(tip)}">${key}</label><div class="uv vxyz">` + ["x","y","z"].map(c => `<input data-k="${key}${c}" value="${esc(d[key + c] ?? "")}" placeholder="${c} 0" title="${esc(tip)}: ${c}">`).join("") +
@@ -726,10 +799,11 @@ function ensure2(n){ const d = n.data; while (d.terms.length < 2) d.terms.push({
   S.links = S.links.filter(l => !(l.to.node === n.id && /^t\d+$/.test(l.to.key) && +l.to.key.slice(1) > 1)); } }
 function measure2(n){
   const d = n.data, gk = geoKind(d);
-  if (gk === "pin" || ["distance","along","contact"].includes(gk)){
+  if (gk === "pin" || ["distance","along","contact","twist"].includes(gk)){
     const ref = (i, f) => { const l = linkTo(n.id, "t" + i); if (!l) return null; const bn = byId(l.from.node).data.name; return f ? bn + "." + f : bn; };
-    const a = ref(0, d.fa), b = ref(1, d.fb); if (!a || !b) return "";
+    const a = ref(0, gk === "twist" ? "" : d.fa), b = ref(1, gk === "twist" ? "" : d.fb); if (!a || !b) return "";
     if (gk === "pin") return [a, b];
+    if (gk === "twist"){ const o = {twist:[a, b]}; if (is3d()) o.axis = lit(d.dir || "z"); return o; }
     const o = {[gk]:[a, b]}; if (gk === "along") o.dir = lit(d.dir || (is3d() ? "z" : "x"));
     if ((gk === "distance" || gk === "along") && String(d.mlen || "").trim()) o.length = lit(d.mlen);
     return o;
@@ -742,7 +816,7 @@ function measure2(n){
   const k = String(d.const || "").trim(); if (k && k !== "0") s += k.startsWith("-") ? " - " + k.slice(1).trim() : " + " + k;
   return s;
 }
-function measureText(m){ return typeof m === "string" ? m : (Array.isArray(m) ? "pin " + m.join(" / ") : Object.entries(m).map(([k, v]) => k + " " + (Array.isArray(v) ? v.join(" / ") : v)).join(", ")); }
+function measureText(m){ return typeof m === "string" ? m : (Array.isArray(m) ? m.join(" / ") : Object.entries(m).map(([k, v]) => k + " " + (Array.isArray(v) ? v.join(" / ") : v)).join(", ")); }
 function parseMeasure2(m, bodyNames){
   const terms = [], consts = [];
   for (const {sign, t} of splitTerms(String(m))){
@@ -798,6 +872,7 @@ function toDoc(){
       if (r === "spin") o.axis = axisOut(d);
       sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
       if (r === "free" && String(d.omega3 || "").trim()) o.omega0 = lit(d.omega3);
+      if (hasShape(d)) o.shape = shapeOut(d); else if (r !== "none" && (d.inForm || "number") !== "number") o.inertia = inertiaOut(d);
       [["at","length"],["com","length"],["v0","speed"]].forEach(([k, dim]) => { if (["x","y","z"].some(c => !blank(d[k + c]))) o[k] = vecOutN([d[k + "x"], d[k + "y"], d[k + "z"]], d[k + "u"] ?? defUnit(dim)); });
       if (d.orient0) o.orient0 = d.orient0;
       Object.assign(o, featOut(d)); if (d.label) o.label = d.label; bodies[d.name] = o; return;
@@ -806,12 +881,14 @@ function toDoc(){
       if (d.dof === "ground"){ bodies[d.name] = Object.assign({ground:true}, featOut(d)); return; }
       const f = free2(d), o = {dof: ["x","y","rz"].filter(k => f[k])}; if (o.dof.length === 3) o.dof = "planar";
       sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
+      if (hasShape(d)) o.shape = shapeOut(d);
       [["at","length"],["com","length"],["v0","speed"]].forEach(([k, dim]) => { if (!blank(d[k + "x"]) || !blank(d[k + "y"])) o[k] = vecOut(d[k + "x"], d[k + "y"], d[k + "u"] ?? defUnit(dim)); });
       Object.assign(o, featOut(d)); if (d.label) o.label = d.label; bodies[d.name] = o; return;
     }
     if (d.dof === "ground"){ bodies[d.name] = {ground:true}; return; }
     const o = {dof:d.dof};
     sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
+    if (hasShape(d)) o.shape = shapeOut(d);
     if (d.label) o.label = d.label; bodies[d.name] = o;
   });
   S.nodes.filter(n => n.kind === "element").forEach(n => {
@@ -852,7 +929,8 @@ function toDoc(){
     if (parseInt(d.n) > 0){ mcr[d.name] = r; mcn = Math.max(mcn, parseInt(d.n)); } });
   Object.assign(uncertain, S.meta.unc_extra || {});
   S.nodes.filter(n => n.kind === "load").forEach(n => {
-    const d = n.data, o = {type:"force", measure:measureOf(n), P:inVal(n, "P", d.P)};
+    const d = n.data, o = {type:"force", measure:measureOf(n)};
+    if (d.csvOn) o.csv = csvOut(n); else o.P = inVal(n, "P", d.P);
     if (d.label) o.label = d.label; elements[d.name] = o;
   });
   const exps = [];
@@ -881,13 +959,16 @@ function toDoc(){
   doc.run = run;
   Object.assign(doc, S.meta.extra || {});
   // editor-only: where nodes sit and how they are grouped (the compiler ignores this key)
-  const layout = {}; S.nodes.filter(n => n.kind !== "note").map(n => [nodeKey(n), n]).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([k, n]) => { layout[k] = [Math.round(n.x), Math.round(n.y)]; });
+  const layout = {}; S.nodes.filter(n => n.kind !== "note" && n.kind !== "image").map(n => [nodeKey(n), n]).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([k, n]) => { layout[k] = [Math.round(n.x), Math.round(n.y)]; });
   const ed = {layout};
   if ((S.groups || []).length) ed.groups = S.groups.map(g => ({name:g.name, collapsed:!!g.collapsed, x:Math.round(g.x), y:Math.round(g.y),
     members:g.members.map(id => byId(id)).filter(Boolean).map(nodeKey),
     expose:Object.fromEntries(Object.entries(g.expose || {}).map(([k, v]) => { const [id, key] = k.split("|"); const m = byId(id); return m ? [nodeKey(m) + "|" + key, v] : null; }).filter(Boolean))}));
   const notes = S.nodes.filter(n => n.kind === "note").map(n => ({text:n.data.text || "", x:Math.round(n.x), y:Math.round(n.y)}));
   if (notes.length) ed.notes = notes;
+  const imgs = S.nodes.filter(n => n.kind === "image").map(n => Object.assign({path:n.data.path || "", x:Math.round(n.x), y:Math.round(n.y), width:+n.data.w || 360},
+    n.data.caption ? {caption:n.data.caption} : {}));
+  if (imgs.length) ed.images = imgs;
   if (S.nodes.length) doc.editor = ed;
   return doc;
 }
@@ -983,8 +1064,10 @@ function fromDoc(doc){
         ["mass","inertia","angle0"].forEach(f => { d[f] = str(b[f] ?? ""); });
         if (d.rot3 === "free") d.omega3 = str(b.omega0 ?? ""); else d.omega0 = str(b.omega0 ?? "");
         if (b.orient0) d.orient0 = b.orient0;
+        if (b.shape) d.shape = shapeIn(b.shape);
+        if (typeof b.inertia === "object" && b.inertia !== null && inertiaIn(d, b.inertia)) d.inertia = "";
         [["at","length"],["com","length"],["v0","speed"]].forEach(([kk, dim]) => { if (b[kk] !== undefined) Object.assign(d, vecIn(kk, b[kk], dim)); }); }
-      const n = addNode("body", d); ["mass","inertia","angle0"].concat(d.rot3 === "free" ? [] : ["omega0"]).forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });
+      const n = addNode("body", d); ["mass","angle0"].concat(d.inForm && d.inForm !== "number" ? [] : ["inertia"]).concat(d.rot3 === "free" ? [] : ["omega0"]).forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });
       put(2, n); return;
     }
     if ((doc.dim || "1d") === "2d"){
@@ -993,22 +1076,24 @@ function fromDoc(doc){
         const dl = raw === "planar" ? ["x","y","rz"] : (raw === "translation" ? ["x","y"] : (raw === "rotation" || raw === "spin" ? ["rz"] : (Array.isArray(raw) ? raw : [raw])));
         d.free = {x:dl.includes("x"), y:dl.includes("y"), rz:dl.includes("rz")};
         ["mass","inertia","angle0","omega0"].forEach(f => { d[f] = str(b[f] ?? ""); });
+        if (b.shape) d.shape = shapeIn(b.shape);
         [["at","length"],["com","length"],["v0","speed"]].forEach(([kk, dim]) => { if (b[kk] !== undefined) Object.assign(d, vecIn(kk, b[kk], dim)); }); }
       const n = addNode("body", d); ["mass","inertia","angle0","omega0"].forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });
       put(2, n); return;
     }
     const d = {name:k, dof: b.ground ? "ground" : b.dof, label:b.label || "", axis:Array.isArray(b.axis) ? b.axis.map(String) : (b.axis || "x")};
     ["mass","inertia","x0","v0"].forEach(f => { d[f] = str(b[f] ?? ""); });
+    if (b.shape) d.shape = shapeIn(b.shape);
     const n = addNode("body", d); ["mass","inertia","x0","v0"].forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });
     put(2, n);
   });
   const two = (doc.dim || "1d") === "2d" || doc.dim === "3d";
   Object.entries(doc.elements || {}).forEach(([k, e]) => {
     if (two){
-      const m = e.measure, geo = e.type === "contact_friction" || e.type === "pin" || (m && typeof m === "object");
+      const m = e.measure, geo = e.type === "contact_friction" || PAIR_TYPES.includes(e.type) || (m && typeof m === "object");
       if (e.type === "force" && !geo){
         const pm = parseMeasure2(m, bodyNames);
-        const d = {name:k, label:e.label || "", P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef, co:t.co})) : [], const: pm ? pm.const : "", raw: pm ? null : str(m)};
+        const d = {name:k, label:e.label || "", P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef, co:t.co})) : [], const: pm ? pm.const : "", raw: pm ? null : str(m)}; Object.assign(d, csvIn(e.csv));
         const n = addNode("load", d);
         if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
         pend.push([n.id, "P", e.P]); put(3, n); return;
@@ -1016,9 +1101,9 @@ function fromDoc(doc){
       const d = {name:k, type:e.type, one_sided:!!e.one_sided, label:e.label || "", source:e.source || "", fields:{}, extra:{}, terms:[], const:"", raw:null};
       const links = [];
       if (e.type === "contact_friction") d.contact = e.contact || "";
-      else if (geo){ const kind = e.type === "pin" ? "pin" : ["distance","along","contact"].find(x => m[x] !== undefined);
+      else if (geo){ const kind = PAIR_TYPES.includes(e.type) ? "pin" : ["distance","along","contact","twist"].find(x => m[x] !== undefined);
         const refs = Array.isArray(m) ? m : (m.pin || m[kind] || []);
-        if (kind !== "pin") d.mk = kind; d.dir = str(m.dir ?? ""); d.mlen = str(m.length ?? ""); d.terms = [{coef:"1"},{coef:"-1"}];
+        if (kind !== "pin") d.mk = kind; d.dir = str(m.dir ?? m.axis ?? ""); d.mlen = str(m.length ?? ""); d.terms = [{coef:"1"},{coef:"-1"}];
         refs.forEach((r, i) => { const [bn, fn] = String(r).split("."); if (i === 0) d.fa = fn || ""; else d.fb = fn || ""; links.push([bn, i]); }); }
       else { const pm = parseMeasure2(m, bodyNames); d.mk = "coords";
         if (pm){ d.terms = pm.terms.map(t => ({coef:t.coef, co:t.co})); d.const = pm.const; pm.terms.forEach((t, i) => links.push([t.body, i])); } else d.raw = str(m); }
@@ -1033,6 +1118,7 @@ function fromDoc(doc){
     if (e.type === "force"){
       const pm = parseMeasure(e.measure, bodyNames);
       const d = {name:k, label:e.label || "", axis:Array.isArray(e.direction) ? e.direction.map(String) : (e.direction || "x"), P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef})) : [], const: pm ? pm.const : "", raw: pm ? null : str(e.measure)};
+      Object.assign(d, csvIn(e.csv));
       const n = addNode("load", d);
       if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
       pend.push([n.id, "P", e.P]); put(3, n); return;
@@ -1086,6 +1172,7 @@ function fromDoc(doc){
     Object.entries(ed.layout).forEach(([k, xy]) => { const n = byKey(k); if (n && Array.isArray(xy)){ n.x = +xy[0] || 0; n.y = +xy[1] || 0; hit++; } });
     S.meta.hasLayout = hit > 0; }
   (ed.notes || []).forEach(t => { const n = addNode("note", {text:String(t.text ?? "")}, +t.x || 0, +t.y || 0); });
+  (ed.images || []).forEach(t => { addNode("image", {path:String(t.path ?? ""), w:String(t.width ?? 360), caption:String(t.caption ?? "")}, +t.x || 0, +t.y || 0); });
   (ed.groups || []).forEach((g, i) => { const members = (g.members || []).map(byKey).filter(Boolean).map(n => n.id); if (!members.length) return;
     const expose = {}; Object.entries(g.expose || {}).forEach(([k, v]) => { const [mk, key] = k.split("|"); const m = byKey(mk); if (m) expose[m.id + "|" + key] = !!v; });
     S.groups.push({id:"g" + (S.nid++), name:g.name || "group", collapsed: g.collapsed !== false, x:+g.x || 0, y:+g.y || 0, members, expose}); });
@@ -1093,7 +1180,16 @@ function fromDoc(doc){
 // ------------------------------------------------------------------------------------------------ view
 const canvas = document.getElementById("canvas"), world = document.getElementById("world"), wires = document.getElementById("wires");
 let view = {x:0, y:0, k:1}, sel = null;
-function applyView(){ world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; }
+function applyView(){ world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; drawGrid(); }
+// the grid lives in canvas units: it pans and zooms with the nodes. Minor lines every 24 units, major every 5 minors;
+// when zoomed far out the minor spacing steps up by 5 so the grid never turns into a smear
+function drawGrid(){
+  const gl = document.getElementById("gridLayer"); if (!gl) return;
+  let s = 24 * view.k; while (s < 9) s *= 5;
+  const M = s * 5, px = view.x + "px " + view.y + "px";
+  gl.style.backgroundSize = `${M}px ${M}px,${M}px ${M}px,${s}px ${s}px,${s}px ${s}px`;
+  gl.style.backgroundPosition = `${px},${px},${px},${px}`;
+}
 function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function axisOut(d){ const v = axisVec(d); return v ? v.map(c => (c !== "" && isFinite(+c)) ? +c : c) : (d.axis || "x"); }
 function sel_(opts, v){ return opts.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o];
@@ -1107,11 +1203,14 @@ const UNITS = {
   rotation:["rpm","rad/s","rps","Hz"], angle:["deg","rad"], stress:["MPa","GPa","Pa","kPa","ksi","psi"],
   energy:["J","kJ","Wh"], power:["W","kW"], torque:["N m","N mm","lbf in"], voltage:["V"], current:["A","mA"],
   resistance:["mohm","ohm"], capacity:["mAh","Ah"], capacitance:["farad"], kv:["rpm/V"],
-  accel:["m/s^2"], density:["kg/m^3","g/cm^3"], ratio:["%"]
+  accel:["m/s^2"], density:["kg/m^3","g/cm^3"], ratio:["%"], area:["mm^2","m^2","cm^2","in^2"],
+  area_moment:["mm^4","m^4","cm^4","in^4"], rot_stiffness:["N m/rad","N mm/rad","N m/deg"], rot_damping:["N m s/rad"],
+  impulse:["N s"]
 };
 const SI = {force:"N", length:"m", mass:"kg", time:"s", stiffness:"N/m", damping:"N s/m", inertia:"kg m^2", speed:"m/s",
   rotation:"rad/s", angle:"rad", stress:"Pa", energy:"J", power:"W", torque:"N m", voltage:"V", current:"A",
-  resistance:"ohm", capacity:"Ah", capacitance:"farad", kv:"rpm/V", accel:"m/s^2", density:"kg/m^3", ratio:""};
+  resistance:"ohm", capacity:"Ah", capacitance:"farad", kv:"rpm/V", accel:"m/s^2", density:"kg/m^3", ratio:"",
+  area:"m^2", area_moment:"m^4", rot_stiffness:"N m/rad", rot_damping:"N m s/rad", impulse:"N s"};
 const SYSTEMS = {
   SI: {},
   mm: {length:"mm", stiffness:"N/mm", damping:"N s/mm", inertia:"kg mm^2", speed:"mm/s", rotation:"rpm", angle:"deg",
@@ -1132,8 +1231,13 @@ const DIM_ORDER = ["force","length","mass","time","rotation","speed","stiffness"
   "torque","energy","power","voltage","current","resistance","capacity","kv","accel","density","capacitance","ratio"];
 const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force", v_eps:"speed", v_s:"speed", kv:"kv",
   R:"resistance", I_max:"current", R0:"resistance", R1:"resistance", C1:"capacitance", capacity:"capacity",
-  J_rotor:"inertia", break_at:"length", gear:"none", cells:"none", throttle:"none", n:"none", alpha:"none"};
-const OUT_DIM = {force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
+  J_rotor:"inertia", break_at:"length", gear:"none", cells:"none", throttle:"none", n:"none", alpha:"none",
+  e:"none", mu:"none", v_rest:"speed", k_rot:"rot_stiffness", c_rot:"rot_damping", k_twist:"rot_stiffness", c_twist:"rot_damping",
+  friction:"force", length:"length", E:"stress", G:"stress", A:"area", I:"area_moment", Iy:"area_moment", Iz:"area_moment",
+  J:"area_moment", EA:"force", density:"density", damping:"none", mass:"mass", segments:"none"};
+const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse", heat:"energy",
+  friction_impulse:"impulse", drift:"none",
+  force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
   current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
   position:"length", velocity:"speed", kinetic_energy:"energy"};
 const NUMRE = /^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*(.*)$/;
@@ -1264,12 +1368,20 @@ function featsHTML(d){
 }
 function measure2HTML(n, ins){
   const d = n.data, gk = geoKind(d); let b = "";
-  if (gk !== "pin") b += `<div class="row"><label title="what the element measures">measures</label><select data-k="mk">${sel_([["coords","coordinates (A.x, B.rz…)"],["distance","distance between points"],["along","gap along a direction"],["contact","contact (penetration)"]], gk)}</select></div>`;
+  if (gk !== "pin") b += `<div class="row"><label title="what the element measures">measures</label><select data-k="mk">${sel_([["coords","coordinates (A.x, B.rz…)"],["distance","distance between points"],["along","gap along a direction"],["contact","contact (penetration)"],["twist","twist: B's turn relative to A"]], gk)}</select></div>`;
   if (gk === "coords") return b + termsHTML(n, ins);
+  if (gk === "twist"){
+    ins.filter(s => /^t\d$/.test(s.key)).forEach(s => { const l = linkTo(n.id, s.key), bn = l ? byId(l.from.node) : null;
+      b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-body" data-s="${s.key}" data-t="body"></span><label>${esc(bn ? bn.data.name : s.label)}</label><span class="hint" style="padding:0">${s.term ? "turns (B)" : "reference (A)"}</span></div>`; });
+    if (is3d()) b += `<div class="row"><label title="the axis, fixed in A, given in world directions at the start: x, y, z or [dx, dy, dz]">axis</label><input data-k="dir" value="${esc(d.dir || "")}" placeholder="z"></div>`;
+    const m = measureOf(n); return b + `<div class="hint">${m ? "s = " + esc(measureText(m)) : "connect two bodies"} (a motor between a frame and its rotor, a bearing, a torsion spring)</div>`;
+  }
   const kinds = gk === "contact" ? null : ["point","circle","sphere"];
   ins.filter(s => /^t\d$/.test(s.key)).forEach(s => {
     const l = linkTo(n.id, s.key), bn = l ? byId(l.from.node) : null, fk = s.term ? "fb" : "fa";
     const names = bn ? feats(bn.data).filter(f => f.name && (!kinds || kinds.includes(f.kind))).map(f => [f.name, f.name + " (" + f.kind + ")"]) : [];
+    if (bn && hasShape(bn.data) && ((is3d() && bn.data.shape.kind === "sphere") || (!is3d() && ["disc","ring"].includes(bn.data.shape.kind))) && !names.some(x => x[0] === "outline"))
+      names.push(["outline", "outline (" + (is3d() ? "sphere" : "circle") + " from its shape)"]);
     const opts = bn ? [["", gk === "contact" ? "pick a feature…" : "origin"], ...names] : [["", "connect a body"]];
     b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-body" data-s="${s.key}" data-t="body"></span><label title="${esc(bn ? bn.data.name : s.label)}">${esc(bn ? bn.data.name : s.label)}</label>` +
       `<select data-k="${fk}" title="the point, circle or line on this body">${sel_(opts, d[fk] || "")}</select></div>`;
@@ -1298,6 +1410,75 @@ function exportName(d){ const pat = d.naming === "custom" ? (d.custom || "{model
   let f = pat.replaceAll("{model}", model).replaceAll("{name}", d.name).replaceAll("{date}", `${now.getFullYear()}-${z(now.getMonth() + 1)}-${z(now.getDate())}`)
     .replaceAll("{time}", z(now.getHours()) + z(now.getMinutes()) + z(now.getSeconds())).replaceAll("{run}", "nominal");
   return (d.folder || "out/csv").replace(/[\\/]+$/, "") + "/" + f + (/\.csv$/i.test(f) ? "" : ".csv"); }
+// ---- body shapes: mass, inertia and centre of mass from dimensions and a material (or density, or mass)
+const SHAPE_DIMS = {rod:[["L","length"],["A","section area (for mass from density)"]], disc:[["R","radius"],["t","thickness"]],
+  ring:[["Ri","inner radius"],["Ro","outer radius"],["t","thickness"]], plate:[["a","size along x"],["b","size along y"],["t","thickness"]],
+  box:[["a","size along x"],["b","size along y"],["c","size along z"]], cylinder:[["R","radius"],["L","length along its axis"]],
+  tube:[["Ri","inner radius"],["Ro","outer radius"],["L","length along its axis"]], sphere:[["R","radius"]]};
+const SHAPES_2D = ["rod","disc","ring","plate"];
+function shapeKinds(){ return is3d() || !isGeo() ? Object.keys(SHAPE_DIMS) : SHAPES_2D; }
+function hasShape(d){ return !!(d.shape && d.shape.kind); }
+function shapeIn(sh){ if (!sh || typeof sh !== "object") return null; const o = {kind:sh.kind};
+  Object.keys(sh).forEach(k => { if (k === "kind") return; o[k] = Array.isArray(sh[k]) ? sh[k].map(String).join(", ") : str(sh[k]); });
+  o.src = sh.material !== undefined ? "material" : (sh.density !== undefined ? "density" : "mass"); o.val = o[o.src] || ""; return o; }
+function shapeOut(d){ const sh = d.shape, o = {kind:sh.kind};
+  (SHAPE_DIMS[sh.kind] || []).forEach(([k]) => { if (!blank(sh[k])) o[k] = lit(sh[k]); });
+  o[sh.src || "material"] = lit(sh.val || "");
+  if (!blank(sh.at)) o.at = vecLit(sh.at); if (is3d() && !blank(sh.axis)) o.axis = /^[-]?[xyz]$/.test(String(sh.axis).trim()) ? String(sh.axis).trim() : vecLit(sh.axis);
+  return o; }
+function vecLit(t){ const s_ = String(t).trim().replace(/^\[|\]$/g, ""); return s_.split(",").map(x => lit(x.trim())); }
+function shapeHTML(n){
+  const d = n.data, sh = d.shape || {};
+  let b = `<div class="row"><label title="give the body a shape and a material and its mass, inertia and centre of mass are worked out for you">shape</label><select data-k="sh.kind">${sel_([["", "none (type mass and inertia)"], ...shapeKinds().map(k => [k, k])], sh.kind || "")}</select></div>`;
+  if (!sh.kind) return b;
+  (SHAPE_DIMS[sh.kind] || []).forEach(([k, t]) => { if (isGeo() && !is3d() && sh.kind === "rod" && k === "L") t = "length (along x)";
+    b += `<div class="row"><label title="${esc(t)}">${k}</label><input data-k="sh.${k}" value="${esc(sh[k] || "")}" placeholder="${esc(t)}, e.g. 40 mm"></div>`; });
+  b += `<div class="row"><label title="where the mass comes from">from</label><div class="vxy" style="grid-template-columns:auto minmax(0,1fr)"><select data-k="sh.src">${sel_([["material","material"],["density","density"],["mass","mass"]], sh.src || "material")}</select><input data-k="sh.val" value="${esc(sh.val || "")}" placeholder="${{material:"6061_t6", density:"2700 kg/m^3", mass:"0.25 kg"}[sh.src || "material"]}" ${ (sh.src || "material") === "material" ? 'list="matlist"' : ""}></div></div>`;
+  b += `<div class="row"><label title="where the shape's centre sits in the body's own frame (blank = its origin)">centre</label><input data-k="sh.at" value="${esc(sh.at || "")}" placeholder="${is3d() ? "x, y, z" : "x, y"} (blank = origin)"></div>`;
+  if (is3d()) b += `<div class="row"><label title="world direction of the shape's own z axis at the start (a cylinder's axis, a plate's normal)">axis</label><input data-k="sh.axis" value="${esc(sh.axis || "")}" placeholder="z"></div>`;
+  if ((is2d() && ["disc","ring"].includes(sh.kind)) || (is3d() && sh.kind === "sphere")) b += `<div class="hint">adds a feature named <b>outline</b> for contacts</div>`;
+  return b; }
+// 3D inertia: a number, principal [Ixx, Iyy, Izz], or the CAD table (moments and products of inertia, as CAD reports them)
+function inertiaFormHTML(d){
+  const f = d.inForm || "number";
+  let b = `<div class="row"><label title="CAD (SolidWorks, Onshape, Fusion) reports Ixx, Iyy, Izz and products Pxy, Pxz, Pyz about the centre of mass: paste them as they are">inertia as</label><select data-k="inForm">${sel_([["number","one number (same every way)"],["principal","principal Ixx, Iyy, Izz"],["cad","CAD table (with products)"]], f)}</select></div>`;
+  if (f === "number") return b;
+  const ks = f === "cad" ? ["Ixx","Iyy","Izz","Pxy","Pxz","Pyz"] : ["Ixx","Iyy","Izz"], I = d.I6 || {};
+  b += `<div class="row"><label title="kg m^2 unless you type a unit (e.g. 1200 kg mm^2)">${f === "cad" ? "moments" : "Ixx Iyy Izz"}</label><div class="vxyz" style="grid-template-columns:repeat(3,minmax(0,1fr))">` + ks.slice(0, 3).map(k => `<input data-k="I6.${k}" value="${esc(I[k] || "")}" placeholder="${k}" title="${k}">`).join("") + `</div></div>`;
+  if (f === "cad") b += `<div class="row"><label title="products of inertia as CAD prints them: Pxy = sum(x y dm). The solver uses -Pxy in the tensor.">products</label><div class="vxyz" style="grid-template-columns:repeat(3,minmax(0,1fr))">` + ks.slice(3).map(k => `<input data-k="I6.${k}" value="${esc(I[k] || "")}" placeholder="${k}" title="${k}">`).join("") + `</div></div>`;
+  return b; }
+function inertiaOut(d){ const I = d.I6 || {}, v = k => lit(I[k] || "0");
+  if (d.inForm === "principal") return [v("Ixx"), v("Iyy"), v("Izz")];
+  const o = {Ixx:v("Ixx"), Iyy:v("Iyy"), Izz:v("Izz")}; ["Pxy","Pxz","Pyz"].forEach(k => { if (!blank(I[k])) o[k] = v(k); }); return o; }
+function inertiaIn(d, v){
+  if (v && typeof v === "object" && !Array.isArray(v)){ d.inForm = "cad"; d.I6 = {}; Object.entries(v).forEach(([k, x]) => {
+    const kk = {Ixy:"Pxy", Ixz:"Pxz", Iyz:"Pyz"}[k]; if (kk){ const q = splitQ(str(x)); d.I6[kk] = q.text ? "-(" + str(x) + ")" : String(-(+q.num)) + (q.unit ? " " + q.unit : ""); } else d.I6[k] = str(x); }); return true; }
+  if (Array.isArray(v) && v.length === 3 && !Array.isArray(v[0])){ d.inForm = "principal"; d.I6 = {Ixx:str(v[0]), Iyy:str(v[1]), Izz:str(v[2])}; return true; }
+  if (Array.isArray(v) && v.length === 3 && Array.isArray(v[0])){ d.inForm = "cad"; const n = x => String(x);
+    d.I6 = {Ixx:n(v[0][0]), Iyy:n(v[1][1]), Izz:n(v[2][2]), Pxy:String(-v[0][1]), Pxz:String(-v[0][2]), Pyz:String(-v[1][2])}; return true; }
+  return false; }
+// ---- CSV load tables: file, what x is (time or the measure), units of both columns, interpolation
+function csvIn(c){ if (!c || typeof c !== "object") return {};
+  return {csvOn:true, csvFile:str(c.file ?? ""), csvAgainst:c.against || "time", csvXu:c.x_unit || "", csvYu:c.y_unit || "",
+    csvInterp:c.interpolation || "linear", csvXcol:str(c.x_col ?? ""), csvYcol:str(c.y_col ?? "")}; }
+function csvOut(n){ const d = n.data, o = {file:d.csvFile || ""};
+  if (d.csvAgainst === "measure") o.against = "measure";
+  o.x_unit = d.csvXu || (d.csvAgainst === "measure" ? (rotOnly(n) ? "rad" : "m") : "s"); o.y_unit = d.csvYu || "N";
+  if (d.csvInterp && d.csvInterp !== "linear") o.interpolation = d.csvInterp;
+  if (String(d.csvXcol || "").trim()) o.x_col = lit(d.csvXcol); if (String(d.csvYcol || "").trim()) o.y_col = lit(d.csvYcol);
+  return o; }
+function csvHTML(n){
+  const d = n.data, ag = d.csvAgainst || "time";
+  const xu = d.csvXu || (ag === "time" ? "s" : "m"), yu = d.csvYu || "N";
+  const xs = ag === "time" ? UNITS.time : UNITS.length.concat(UNITS.angle), ys = UNITS.force.concat(UNITS.torque);
+  let b = `<div class="row req"><label title="path to the CSV; relative paths are read from the model's folder">file</label><div class="vxy" style="grid-template-columns:minmax(0,1fr) auto"><input data-k="csvFile" value="${esc(d.csvFile || "")}" placeholder="loads/hit.csv"><button class="mini" data-act="csvpick" title="Pick the file">…</button></div></div>`;
+  b += `<div class="row"><label title="time: the force follows the clock. measure: the force follows this load's measure (a load-deflection curve)">x is</label><select data-k="csvAgainst">${sel_([["time","time"],["measure","the measure (s)"]], ag)}</select></div>`;
+  b += `<div class="row"><label title="unit of the x column">x unit</label><select data-k="csvXu">${sel_(xs, xu)}</select></div>`;
+  b += `<div class="row"><label title="unit of the y column: a force, or a torque for a rotation">y unit</label><select data-k="csvYu">${sel_(ys, yu)}</select></div>`;
+  b += `<div class="row"><label title="linear between rows (default); step holds each value; smooth is a monotone cubic with no overshoot">between rows</label><select data-k="csvInterp">${sel_([["linear","linear"],["step","step (hold)"],["smooth","smooth (PCHIP)"]], d.csvInterp || "linear")}</select></div>`;
+  b += `<div class="row"><label title="column number (1 = first) or header text; blank = first two columns">columns</label><div class="vxy" style="grid-template-columns:1fr 1fr"><input data-k="csvXcol" value="${esc(d.csvXcol || "")}" placeholder="x: 1"><input data-k="csvYcol" value="${esc(d.csvYcol || "")}" placeholder="y: 2"></div></div>`;
+  b += `<div class="hint">positive pushes along +s; held at the end values outside the table</div>`;
+  return b; }
 function exportHTML(n, ins){
   const d = n.data; let b = "";
   ins.forEach(s => { const c = d.cols[s.col], l = linkTo(n.id, s.key), src = l ? byId(l.from.node) : null;
@@ -1347,8 +1528,28 @@ function noteHTML(n){
     (ed ? `<textarea data-k="text" spellcheck="true" placeholder="Notes. LaTeX: $F = m a$ inline, $$\\sigma = \\frac{M c}{I}$$ on its own line. **bold**, # heading, - bullet">${esc(n.data.text)}</textarea>`
         : `<div class="nb" title="Click to edit">${noteMarkup(n.data.text)}</div>`);
 }
+// ---- image blocks: a picture (a diagram, a photo of the rig) linked from the model's folder; editor-only, the solver
+// ignores it. The file is referenced, not embedded: picking one outside the model's folder copies it into images/.
+const IMG_CACHE = {};
+function imageSrc(path){
+  const key = (filePath || "") + "|" + path;
+  if (!path) return null;
+  if (IMG_CACHE[key] === undefined){ IMG_CACHE[key] = null;
+    API.call("read_image", path, filePath).then(r => { IMG_CACHE[key] = r && r.ok ? r.image : {error:(r && r.error) || "not found"}; render(); })
+      .catch(() => { IMG_CACHE[key] = {error:"pictures need the desktop app"}; render(); }); }
+  return IMG_CACHE[key]; }
+function imageHTML(n){
+  const d = n.data, src = imageSrc(d.path), w = Math.max(80, Math.min(4000, +d.w || 360));
+  const body = !d.path ? `<div class="ph">No picture yet. Pick one: it is linked from the model's folder (copied into <b>images/</b> if it lives elsewhere).</div>`
+    : (src && typeof src === "string" ? `<img src="${src}" style="width:${w}px" alt="${esc(d.caption || d.path)}" draggable="false">`
+    : `<div class="ph">${src && src.error ? esc(src.error) : "Loading " + esc(d.path) + "…"}</div>`);
+  return `<div class="hd"><span class="bar" style="background:${COL.image}"></span><span class="kind">image</span><span style="flex:1;font:11px var(--mono);color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.path)}">${esc(d.path || "")}</span><button class="x" data-act="del" title="Delete image block" aria-label="Delete"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>` +
+    `<div class="im">${body}</div>` + (d.caption ? `<div class="cap" style="width:${w}px">${esc(d.caption)}</div>` : "") +
+    `<div class="imbar"><button class="mini" data-act="imgpick" title="Pick a picture">Picture…</button><input data-k="w" value="${esc(String(d.w || 360))}" title="width on the canvas" style="width:56px"><input data-k="caption" value="${esc(d.caption || "")}" placeholder="caption" style="flex:1"></div>`;
+}
 function nodeHTML(n){
   if (n.kind === "note") return noteHTML(n);
+  if (n.kind === "image") return imageHTML(n);
   const d = n.data, {ins, outs} = sockets(n); let b = "";
   if (["value","sweep","mc"].includes(n.kind) && d.note) b += `<div class="hint pnote" title="note from the file (kept on save)">${esc(d.note)}</div>`;
   if (n.kind === "value"){
@@ -1364,7 +1565,9 @@ function nodeHTML(n){
       b += `<div class="row"><label title="Translation it may make">slides in</label><span class="chk3">${["x","y","z"].map(k => `<label><input type="checkbox" data-k="f3_${k}"${f[k] ? " checked" : ""}>${k}</label>`).join("")}</span></div>`;
       b += `<div class="row"><label title="none: keeps its orientation. spin: turns about one axis (a weapon on its shaft). free: tumbles, precesses, gyroscopic.">turns</label><select data-k="rot3">${sel_([["none","no rotation"],["spin","spin about an axis"],["free","free (3D rotation)"]], d.rot3)}</select></div>`;
       if (d.rot3 === "spin") b += axisRow(Object.assign(d, {dof: d.dof}), true);
-      ins.forEach(s => b += fieldRow(n, s, d[s.key], {inertia: d.rot3 === "free" ? "number or [Ixx, Iyy, Izz]" : "about the axis", mass: f.x || f.y || f.z ? "kg" : "only for an off-axis centre of mass", angle0:"0", omega0:"0"}[s.key] || ""));
+      b += shapeHTML(n);
+      if (!hasShape(d) && d.rot3 === "free") b += inertiaFormHTML(d);
+      ins.forEach(s => b += fieldRow(n, s, d[s.key], {inertia: d.rot3 === "free" ? "kg m^2" : "about the axis", mass: f.x || f.y || f.z ? "kg" : "only for an off-axis centre of mass", angle0:"0", omega0:"0"}[s.key] || ""));
       if (d.rot3 === "free") b += `<div class="row"><label title="starting angular velocity, world axes">spin0</label><input data-k="omega3" value="${esc(d.omega3 || "")}" placeholder="[wx, wy, wz] rad/s"></div>`;
       b += vecRow3(d, "at", "length", isRotBody(d) ? "the pivot it spins about (its drawing origin)" : "where its drawing origin starts");
       b += vecRow3(d, "com", "length", "centre of mass in its own drawing frame (blank = the origin)");
@@ -1376,6 +1579,7 @@ function nodeHTML(n){
     b += `<div class="row"><label>kind</label><select data-k="dof">${sel_([["free","moving body"],["ground","ground (fixed)"]], d.dof === "ground" ? "ground" : "free")}</select></div>`;
     if (d.dof !== "ground"){ const f = free2(d);
       b += `<div class="row"><label title="The coordinates it may move in. A body that only spins turns about its own origin (the pivot).">moves in</label><span class="chk3">${[["x","x"],["y","y"],["rz","spin"]].map(([k, l]) => `<label><input type="checkbox" data-k="free_${k}"${f[k] ? " checked" : ""}>${l}</label>`).join("")}</span></div>`;
+      b += shapeHTML(n);
       ins.forEach(s => b += fieldRow(n, s, d[s.key], {inertia:"about the centre of mass", mass: f.x || f.y ? "kg" : "only for an off-pivot centre of mass", angle0:"0", omega0:"0"}[s.key] || ""));
       b += vecRow(d, "at", "length", spinOnly(d) ? "the pivot it spins about (its drawing origin)" : "where its drawing origin starts");
       b += vecRow(d, "com", "length", "centre of mass in its own drawing frame (blank = the origin)");
@@ -1401,6 +1605,7 @@ function nodeHTML(n){
   } else if (n.kind === "body"){
     if (!["translation","rotation","ground"].includes(d.dof)) d.dof = d.free && spinOnly(d) ? "rotation" : "translation";
     b += `<div class="row"><label>dof</label><select data-k="dof">${sel_(["translation","rotation","ground"], d.dof)}</select></div>`;
+    if (d.dof !== "ground") b += shapeHTML(n);
     ins.forEach(s => b += fieldRow(n, s, d[s.key], s.key === "inertia" ? "kg m^2" : (s.key === "mass" ? "kg" : "0")));
 
     if (d.dof !== "ground") b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div>`;
@@ -1457,7 +1662,9 @@ function nodeHTML(n){
   } else if (n.kind === "load"){
     b += termsHTML(n, ins);
     b += `<div class="sep"></div>`;
-    b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
+    b += `<div class="row"><label title="a constant force, or one that follows a table in a CSV file">source</label><select data-k="csvOn">${sel_([["", "constant (P)"], ["1", "CSV table"]], d.csvOn ? "1" : "")}</select></div>`;
+    if (!d.csvOn) b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
+    else b += csvHTML(n);
     b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
   } else if (n.kind === "export"){
     b += exportHTML(n, ins);
@@ -1474,7 +1681,7 @@ function render(){
   for (const n of S.nodes){
     if (hiddenIn(n.id)) continue;
     const el = document.createElement("div");
-    el.className = "node" + (n.kind === "note" ? " note" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
+    el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
     el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
     el.innerHTML = nodeHTML(n); world.appendChild(el);
   }
@@ -1763,6 +1970,12 @@ world.addEventListener("input", e => {
   if (k === "rot3"){ free3(d); d.rot3 = el.value; const f = d.free3; if (el.value === "none" && !f.x && !f.y && !f.z) f.z = true; changed(true); return; }
   if (k && k.startsWith("free_")){ const f = free2(d); f[k.slice(5)] = el.checked; if (!f.x && !f.y && !f.rz){ f[k.slice(5)] = true; el.checked = true; status("bad", "A moving body needs at least one coordinate (or make it ground)."); return; }
     changed(true); return; }
+  if (k && k.startsWith("sh.")){ d.shape = d.shape || {}; const kk = k.slice(3); d.shape[kk] = el.value;
+    if (kk === "kind" && el.value && !d.shape.src) d.shape.src = "material";
+    changed(kk === "kind" || kk === "src"); return; }
+  if (k && k.startsWith("I6.")){ d.I6 = d.I6 || {}; d.I6[k.slice(3)] = el.value; changed(false); return; }
+  if (k === "inForm"){ d.inForm = el.value; changed(true); return; }
+  if (k && k.startsWith("csv")){ d[k] = k === "csvOn" ? !!el.value : el.value; changed(k === "csvOn" || k === "csvAgainst"); return; }
   if (k === "mk"){ d.mk = el.value; if (el.value === "coords"){ d.terms = d.terms.length ? d.terms : [{coef:"1"},{coef:"-1"}]; } else ensure2(n); changed(true); return; }
   if (!k) return;
   if (k === "axis" && el.value === "custom"){ const dim = S.meta.dim === "2d" ? 2 : 3; const named = {x:[1,0,0], y:[0,1,0], z:[0,0,1], "-x":[-1,0,0], "-y":[0,-1,0], "-z":[0,0,-1]}[d.axis] || [1,0,0];
@@ -1812,6 +2025,15 @@ world.addEventListener("click", async e => {
   const n = byId(b.closest(".node").dataset.id); if (!n) return; const d = n.data, act = b.dataset.act;
   if (act === "addcol"){ d.cols.push({label:"", unit:"", quantity:"position"}); changed(); return; }
   if (act === "delcol"){ const i = d.cols.length - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "c" + i)); d.cols.pop(); changed(); return; }
+  if (act === "imgpick"){ const r = await API.call("pick_file", "", "image");
+    if (r.ok){ const pp = await API.call("project_path", r.path, filePath, "images"); d.path = pp.ok ? pp.path : r.path; changed(true);
+      if (pp.ok && pp.copied) status("ok", "Copied the picture into the model's images folder: " + pp.path);
+      else if (pp.ok && !pp.relative) status("", "Save the model first to keep its pictures in the model's folder; the full path is used for now."); }
+    else if (!r.cancelled) status("bad", "Picking a picture needs the desktop app."); return; }
+  if (act === "csvpick"){ const r = await API.call("pick_file", "", "csv");
+    if (r.ok){ const pp = await API.call("project_path", r.path, filePath, null); d.csvFile = pp.ok ? pp.path : r.path; d.csvOn = true; changed(true);
+      if (pp.ok && !pp.relative) status("", filePath ? "The CSV is outside the model's folder: its full path is saved." : "Save the model to store this path relative to its folder."); }
+    else if (!r.cancelled) status("bad", "Type the CSV path into the box (the file picker needs the desktop app)."); return; }
   if (act === "folder"){ const r = await API.call("pick_folder", d.folder || ""); if (r.ok){ d.folder = r.path; changed(); }
     else if (!r.cancelled) status("bad", "Type the folder path into the box (the folder picker needs the desktop app)."); return; }
   if (act === "del"){ hideInfo(); deleteNode(n); return; }
@@ -2057,12 +2279,26 @@ function menuAll(){
     add("Bodies", "Body · ground", "fixed; can carry points, spheres and plane patches in world coordinates", COL.body, () => ["body", {name:"floor", dof:"ground"}], {words:"fixed wall floor 3d"});
     add("Elements", "Contact", "a point or sphere against a plane patch or sphere: pushes only while touching", COL.element, () => ["element", {name:"contact", type:"kelvin_voigt", mk:"contact", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hit impact touch penetration collision 3d"});
     add("Elements", "Ball joint (pin)", "holds two points together; two of them along a line make a hinge", COL.element, () => ["element", {name:"joint", type:"pin", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hinge axle bolt joint ball 3d"});
+    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost goes to heat", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 3d"});
+    add("Elements", "Hinge", "two points held together and turning only about an axis; rigid: true for an exact joint", COL.element, () => ["element", {name:"hinge", type:"hinge", fields:{rigid:"true", axis:"z"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"revolute pivot joint axle 3d"});
+    add("Elements", "Weld", "two bodies joined so they move and turn as one; rigid: true for an exact joint", COL.element, () => ["element", {name:"weld", type:"weld", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"fixed bonded bolted rigid joint 3d"});
+    add("Elements", "Slider", "B's point runs along a line fixed in A (a guide rail); rigid: true for an exact joint", COL.element, () => ["element", {name:"slider", type:"slider", fields:{rigid:"true", axis:"x"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"prismatic rail guide linear joint 3d"});
+    add("Elements", "Rope", "pulls only when stretched past its length: slack otherwise", COL.element, () => ["element", {name:"rope", type:"rope", mk:"distance", terms:[{coef:"1"},{coef:"-1"}]}], {words:"cable string tether slack 3d"});
+    add("Elements", "Beam", "a deformable beam between two points: stretches, bends both ways, twists; segments for its own vibration", COL.element, () => ["element", {name:"beam", type:"beam", fields:{segments:"6"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"strut arm cantilever flexible bending deflection 3d"});
+    add("Elements", "Motor or bearing (twist)", "acts on B's turn relative to A: put a drive, spring or damper on it", COL.element, () => ["element", {name:"motor", type:"drive", mk:"twist", terms:[{coef:"1"},{coef:"-1"}]}], {words:"drive torque bearing relative rotation 3d"});
   } else if (is2d()){
     add("Bodies", "Body · moving", "moves in x, y and spins; mass, inertia and its own points, circles, lines", COL.body, () => ["body", {name:"body", dof:"free", free:{x:true, y:true, rz:true}}], {words:"mass inertia rigid planar 2d"});
     add("Bodies", "Body · spinning on a pivot", "only spins, about its own origin (a weapon, a wheel on an axle)", COL.body, () => ["body", {name:"rotor", dof:"free", free:{x:false, y:false, rz:true}}], {words:"rotation weapon disc flywheel 2d"});
     add("Bodies", "Body · ground", "fixed; can carry points, circles and lines in world coordinates", COL.body, () => ["body", {name:"floor", dof:"ground"}], {words:"fixed wall floor 2d"});
     add("Elements", "Contact", "a point or circle against a line or circle: pushes only while touching", COL.element, () => ["element", {name:"contact", type:"kelvin_voigt", mk:"contact", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hit impact touch penetration collision 2d"});
     add("Elements", "Pin joint", "holds two points together: a hinge or axle between bodies", COL.element, () => ["element", {name:"pin", type:"pin", terms:[{coef:"1"},{coef:"-1"}]}], {words:"hinge axle bolt joint 2d"});
+    add("Elements", "Impact (rigid)", "a hard hit with no stiffness to choose: restitution e and friction mu; every joule lost goes to heat", COL.element, () => ["element", {name:"hit", type:"impact", mk:"contact", fields:{e:"0.5"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bounce collision restitution rigid impulse drop 2d"});
+    add("Elements", "Hinge", "two points held together; rigid: true for an exact joint", COL.element, () => ["element", {name:"hinge", type:"hinge", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"revolute pivot joint axle 2d"});
+    add("Elements", "Weld", "two bodies joined so they move and turn as one; rigid: true for an exact joint", COL.element, () => ["element", {name:"weld", type:"weld", fields:{rigid:"true"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"fixed bonded bolted rigid joint 2d"});
+    add("Elements", "Slider", "B's point runs along a line fixed in A (a guide rail); rigid: true for an exact joint", COL.element, () => ["element", {name:"slider", type:"slider", fields:{rigid:"true", axis:"x"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"prismatic rail guide linear joint 2d"});
+    add("Elements", "Rope", "pulls only when stretched past its length: slack otherwise", COL.element, () => ["element", {name:"rope", type:"rope", mk:"distance", terms:[{coef:"1"},{coef:"-1"}]}], {words:"cable string tether slack 2d"});
+    add("Elements", "Beam", "a deformable beam between two points: stretches, bends; segments for its own vibration", COL.element, () => ["element", {name:"beam", type:"beam", fields:{segments:"6"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"strut arm cantilever flexible bending deflection 2d"});
+    add("Elements", "Motor or bearing (twist)", "acts on B's turn relative to A: put a drive, spring or damper on it", COL.element, () => ["element", {name:"motor", type:"drive", mk:"twist", terms:[{coef:"1"},{coef:"-1"}]}], {words:"drive torque bearing relative rotation 2d"});
   } else
   ["translation","rotation","ground"].forEach(t => add("Bodies", "Body · " + t, t === "ground" ? "fixed, never moves" : (t === "rotation" ? "one angle, inertia" : "one position, mass"), COL.body, () => ["body", {name: t === "ground" ? "floor" : "body", dof:t}], {words:"mass inertia rigid"}));
   Object.keys(CAT.element_types).filter(t => isGeo() || !(CAT.types_2d_only || []).includes(t)).forEach(t => add("Elements", "Element · " + t, "fields: " + CAT.element_types[t].fields.join(", "), COL.element, () => ["element", {name:t, type:t, terms: t === "drive" || t === "drag" || t === "force" ? [{coef:"1"}] : [{coef:"1"},{coef:"-1"}]}], {words:((CAT.element_info || {})[t] || {}).what || ""}));
@@ -2074,6 +2310,7 @@ function menuAll(){
   add("Modifiers", "Range of values", "plug into any input: one run per value", COL.sweep, () => ["sweep", {name:"range"}], {words:"sweep vary parametric study"});
   add("Modifiers", "Monte Carlo", "plug into any input: sampled between low and high", COL.mc, () => ["mc", {name:"mc"}], {words:"random uncertainty statistics"});
   add("Notes", "Note", "free text on the canvas, with LaTeX ($...$, $$...$$)", COL.note, () => ["note", {text:""}], {words:"comment text latex equation"});
+  add("Notes", "Image", "a picture on the canvas (a diagram, a sketch, a photo), linked from the model's folder", COL.note, () => ["image", {}], {words:"picture diagram photo sketch figure png drawing"});
   LIB.forEach(g => add("Library", g.name, `${(g.data.nodes || []).length} nodes · your saved group`, COL.group, () => ["library", g.data], {kind:"library"}));
   CAT.blocks.forEach(b => add("Blocks · " + b.domain, b.name, b.summary, COL.builder, () => ["builder", {name:b.name.split("_").slice(0, 2).join("_"), block:b.name}],
     {kind:b.kind, domain:b.domain, words:[b.category, (b.tags || []).join(" "), b.domain].join(" ")}));
@@ -2543,7 +2780,7 @@ async function refreshRecent(){ const r = await API.call("load_settings"); SETTI
 async function loadText(text, path){
   const r = await API.call("import_yaml", text);
   if (!r.ok){ status("bad", "Could not read that file: " + r.error); return; }
-  fromDoc(r.doc); filePath = path || null; dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
+  fromDoc(r.doc); filePath = path || null; API.call("set_model_dir", filePath); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
   render(); if (!S.meta.hasLayout) arrange(); fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();
@@ -2557,7 +2794,7 @@ document.getElementById("fileIn").addEventListener("change", e => { const f = e.
 async function save(asNew){
   await renderYaml();
   if (window.pywebview){ const r = await API.call("save_file", yamlText, filePath, !!asNew || !filePath);
-    if (r.ok){ filePath = r.path; dirty = false; refreshRecent(); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); return true; }
+    if (r.ok){ filePath = r.path; API.call("set_model_dir", filePath); dirty = false; refreshRecent(); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); return true; }
     if (!r.cancelled) status("bad", r.error); return false; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([yamlText], {type:"text/yaml"}));
   a.download = (S.meta.name || "model").replace(/\W+/g, "_") + ".yaml"; a.click(); dirty = false; return true;
@@ -2572,7 +2809,7 @@ function showNew(){
   d.style.display = "flex";
   d.querySelectorAll(".card").forEach(c => c.onclick = async () => { d.style.display = "none"; const i = +c.dataset.t, u = document.getElementById("newUnits").value;
     window.__defaultUnits = u; SETTINGS.units = u; API.call("save_settings", SETTINGS);
-    if (i < 0){ S = newState(); S.meta.units = u; filePath = null; dirty = false; selSet = new Set(); docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0;
+    if (i < 0){ S = newState(); S.meta.units = u; filePath = null; API.call("set_model_dir", null); dirty = false; selSet = new Set(); docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0;
       document.getElementById("pRes").innerHTML = `<div class="empty">Press Run to see outputs and time histories.</div>`;
       render(); histReset(); document.getElementById("fname").textContent = "untitled"; check(); return; }
     await loadText(TEMPLATES[i].text, null);
@@ -3009,7 +3246,7 @@ const THEMES = {
     bg:"#f6f4ef", grid:"#e9e6de", panel:"#ffffff", panel2:"#efece5", panel3:"#e4e0d6", edge:"#c4bfb0", hair:"#e2ded4", selbg:"#f6dcc8", "note-bg":"#fffaf2", "group-hd":"#ebe9e4", ink:"#333f48", ink2:"#4a5660", ink3:"#5c6770", link:"#a34a00", acc:"#bf5700", accf:"#005f86", pass:"#3b6e22", warn:"#8f5500", fail:"#b3122e", shadow:"rgba(51,63,72,.15)", "s-val":"#bf5700", "s-body":"#056392", "s-sig":"#747c80", "s-state":"#367120", "s-metric":"#333f48", "c-value":"#bf5700", "c-builder":"#764471", "c-body":"#0e6490", "c-element":"#4b8427", "c-load":"#4b8427", "c-output":"#8c8270", "c-expr":"#0798a8", "c-fail":"#bb0f31", "c-sweep":"#f6972f", "c-mc":"#ae597c", "c-export":"#8daac4", "c-group":"#3c454d", "c-note":"#ccc7bd", p1:"#bf5700", p2:"#006190", p3:"#292f34", p4:"#4f7114", p5:"#0ba2aa"}},
   goldenrod: {name:"Goldenrod", note:"Yellow paper with dark brown ink and goldenrod accents.", scheme:"light", t:{
     bg:"#fbf5dc", grid:"#f1e8c4", panel:"#fffdf3", panel2:"#f6eecd", panel3:"#eee3b8", edge:"#cbbb7c", hair:"#ece2bd", selbg:"#f5dc8a", "note-bg":"#fffbe8", "group-hd":"#f0e9cc", ink:"#2b2410", ink2:"#4a4020", ink3:"#615535", link:"#7a5300", acc:"#9a6a00", accf:"#8a1f4b", pass:"#3f6a1a", warn:"#845000", fail:"#b0261f", shadow:"rgba(90,70,10,.15)", "s-val":"#ae7c05", "s-body":"#004c79", "s-sig":"#6d645d", "s-state":"#7f1f4b", "s-metric":"#2b2410", "c-value":"#e6b413", "c-builder":"#813e7e", "c-body":"#1c66a2", "c-element":"#647c2e", "c-load":"#647c2e", "c-output":"#a39c8c", "c-expr":"#279891", "c-fail":"#bc2e29", "c-sweep":"#9aa004", "c-mc":"#ca6598", "c-export":"#7cbae4", "c-group":"#7d81b8", "c-note":"#cec8ae", p1:"#2f517b", p2:"#a77f17", p3:"#4e6928", p4:"#851d58", p5:"#a04309"}},
-  candy: {name:"Candy", note:"For fun: a pink canvas with bold candy wires: teal, hot magenta, electric blue, grape, tangerine.", scheme:"light", t:{
+  candy: {name:"Candy", note:"Bubblegum pink with bold sweet-shop wires and a round, playful font.", scheme:"light", ui:"fredoka", t:{
     bg:"#fde8f2", grid:"#f8d9e8", panel:"#ffffff", panel2:"#fdf0f6", panel3:"#f8dceb", edge:"#d68db3", hair:"#f0c6da", selbg:"#fbd0e5", "note-bg":"#fffbea", "group-hd":"#f3eaff",
     ink:"#3b1433", ink2:"#683259", ink3:"#8c587d", link:"#a0246c", acc:"#d0337f", accf:"#c2580f", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(160,60,110,.2)",
     "s-val":"#00897b", "s-body":"#d6007a", "s-sig":"#2f5bff", "s-state":"#8a2be2", "s-metric":"#e05a00",
@@ -3025,47 +3262,238 @@ const THEMES = {
   monochrome: {name:"Monochrome", note:"Greys only. Wires differ by dash pattern, sockets by shape. For no colour vision (achromatopsia), greyscale printing or e-ink.", scheme:"light", dash:true, t:{
     bg:"#f4f4f4", grid:"#e6e6e6", panel:"#ffffff", panel2:"#ececec", panel3:"#dfdfdf", edge:"#8c8c8c", hair:"#d4d4d4", selbg:"#d2d2d2", "note-bg":"#fafafa", "group-hd":"#e2e2e2", ink:"#111111", ink2:"#353535", ink3:"#5e5e5e", link:"#111111", acc:"#1a1a1a", accf:"#4a4a4a", pass:"#2b2b2b", warn:"#4a4a4a", fail:"#000000", shadow:"rgba(0,0,0,.14)", "s-val":"#2a2a2a", "s-body":"#2a2a2a", "s-sig":"#5a5a5a", "s-state":"#444444", "s-metric":"#000000", "c-value":"#3a3a3a", "c-builder":"#5a5a5a", "c-body":"#222222", "c-element":"#4a4a4a", "c-load":"#4a4a4a", "c-output":"#7a7a7a", "c-expr":"#666666", "c-fail":"#111111", "c-sweep":"#555555", "c-mc":"#555555", "c-export":"#666666", "c-group":"#3d3d3d", "c-note":"#8a8a8a", p1:"#111111", p2:"#5a5a5a", p3:"#8a8a8a", p4:"#333333", p5:"#707070"}},
 };
-function themeId(){ return THEMES[SETTINGS.theme] ? SETTINGS.theme : "blueprint"; }
+// ------------------------------------------------------------------------------------------------ themes
+// Default themes are the built-ins above. User themes live on this computer, one folder each
+// (<config>/simblocks/themes/<slug>/theme.json and an optional background image), and carry every setting a
+// built-in has plus a font choice, grid on/off and a background picture.
+const OLD_THEME = {graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
+  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia"};
+// fonts: font-size-adjust holds every face to Inter's x-height, so swapping fonts never changes line heights or wraps
+const UI_FONTS = {
+  inter:{n:"Inter (default)", css:'"Inter",system-ui,"Segoe UI",sans-serif'},
+  atkinson:{n:"Atkinson Hyperlegible", css:'"Atkinson Hyperlegible","Inter",system-ui,sans-serif'},
+  plexsans:{n:"IBM Plex Sans", css:'"IBM Plex Sans","Inter",system-ui,sans-serif'},
+  sourceserif:{n:"Source Serif (serif)", css:'"Source Serif 4",Georgia,serif'},
+  fredoka:{n:"Fredoka (round and playful)", css:'"Fredoka","Inter",system-ui,sans-serif'},
+  system:{n:"System UI", css:'system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif'},
+  mono:{n:"Monospace (the mono font)", css:'var(--mono)'}};
+const MONO_FONTS = {
+  jetbrains:{n:"JetBrains Mono (default)", css:'"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace'},
+  plexmono:{n:"IBM Plex Mono", css:'"IBM Plex Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace'}};
+const FONT_ADJ = 0.545;                                 // Inter's x-height / em
+let USER_THEMES = {};                                   // slug -> {theme, img (data: URL or null)}
+async function loadUserThemes(){
+  try {
+    const r = await API.call("list_themes"); USER_THEMES = {};
+    if (!r || !r.ok) return;
+    for (const u of r.themes){
+      let img = null;
+      if (u.has_image){ const ri = await API.call("theme_image", u.slug); img = ri && ri.ok ? ri.image : null; }
+      USER_THEMES[u.slug] = {theme:u.theme, img};
+    }
+  } catch (err) { USER_THEMES = {}; }
+}
+function themeId(){
+  let id = SETTINGS.theme || "blueprint";
+  if (OLD_THEME[id]){ id = OLD_THEME[id]; SETTINGS.theme = id; }
+  if (id.startsWith("u:")) return USER_THEMES[id.slice(2)] ? id : "blueprint";
+  return THEMES[id] ? id : "blueprint";
+}
+const isUserTheme = id => id.startsWith("u:");
+function themeObj(id){ return isUserTheme(id) ? USER_THEMES[id.slice(2)].theme : THEMES[id]; }
+// the active look: the theme plus (for a built-in) your overrides; a user theme stores its own changes
+function curLook(){
+  const id = themeId(), th = themeObj(id), user = isUserTheme(id);
+  const look = Object.assign({ui: th.ui || (th.font === "mono" ? "mono" : "inter"), mono: th.mono || "jetbrains",
+    grid: th.grid !== false, bgFit: th.bgFit || "cover", bgOpacity: th.bgOpacity === undefined ? 0.35 : th.bgOpacity},
+    user ? {} : (SETTINGS.look || {}));
+  return {id, th, user, look, img: user ? USER_THEMES[id.slice(2)].img : null, own: user ? {} : (SETTINGS.colors || {})};
+}
 function applyColors(){
-  const th = THEMES[themeId()], own = SETTINGS.colors || {}, root = document.documentElement;
-  Object.entries(th.t).forEach(([k, v]) => root.style.setProperty("--" + k, own[k] || v));
-  root.style.setProperty("color-scheme", th.scheme);
+  const {th, look, img, own} = curLook(), root = document.documentElement;
+  Object.entries(THEMES.blueprint.t).forEach(([k, v]) => root.style.setProperty("--" + k, own[k] || (th.t && th.t[k]) || v));
+  root.style.setProperty("color-scheme", th.scheme || "dark");
   root.style.setProperty("--wire-w", th.wire || "2.2");
-  root.style.setProperty("--ui-fs", th.font === "mono" ? "11px" : "12px");
-  root.style.setProperty("--sans", th.font === "mono" ? 'var(--mono)' : '"Inter",system-ui,"Segoe UI",sans-serif');
+  const ui = UI_FONTS[look.ui] || UI_FONTS.inter, mono = MONO_FONTS[look.mono] || MONO_FONTS.jetbrains;
+  root.style.setProperty("--mono", mono.css);
+  root.style.setProperty("--sans", ui.css);
+  root.style.setProperty("--ui-fs", look.ui === "mono" ? "11px" : "12px");
+  root.style.fontSizeAdjust = String(FONT_ADJ);
   root.classList.toggle("dashwires", SETTINGS.dashes === undefined ? !!th.dash : !!SETTINGS.dashes);
+  root.classList.toggle("nogrid", !look.grid);
+  root.classList.toggle("nolegend", SETTINGS.legend === false);
+  const bg = document.getElementById("bgLayer");
+  if (bg){
+    if (img){
+      bg.style.display = "block"; bg.style.backgroundImage = `url("${img}")`;
+      bg.style.backgroundRepeat = look.bgFit === "tile" ? "repeat" : "no-repeat";
+      bg.style.backgroundSize = look.bgFit === "tile" ? "auto" : look.bgFit;
+      bg.style.backgroundPosition = look.bgFit === "tile" ? "0 0" : "center";
+      bg.style.opacity = String(Math.max(0.05, Math.min(1, +look.bgOpacity)));
+    } else { bg.style.display = "none"; bg.style.backgroundImage = ""; }
+  }
+  renderLegend();
   if (typeof plot === "function"){ if (document.getElementById("sy")) plotStudy(); else plot(); }
 }
-function settingsShow(){
-  const d = document.getElementById("setDlg"), cur = themeId(), own = SETTINGS.colors || {};
-  const sw = t => ["bg","panel","s-val","s-body","s-sig","s-state","acc"].map(k => `<i style="background:${t[k]}"></i>`).join("");
-  document.getElementById("setThemes").innerHTML = Object.entries(THEMES).map(([id, th]) =>
-    `<button class="card thc${id === cur ? " on" : ""}" data-th="${id}"><span class="sws" style="background:${th.t.bg};border-color:${th.t.edge}">${sw(th.t)}</span><b>${esc(th.name)}</b>${esc(th.note)}</button>`).join("");
-  const th = THEMES[cur].t, val = k => own[k] || th[k];
+// ---- canvas key (top right): reads the live theme colours through CSS variables
+function renderLegend(){
+  const b = document.getElementById("legendBody"), L = document.getElementById("legend"); if (!b) return;
+  L.classList.toggle("min", !!SETTINGS.legendMin);
+  document.getElementById("legendTog").innerHTML = SETTINGS.legendMin ? "i" : "&#8722;";
+  document.getElementById("legendTog").setAttribute("aria-label", SETTINGS.legendMin ? "Show the key" : "Collapse");
+  const wire = (t, lab, what) => `<div class="lr"><svg viewBox="0 0 34 10"><path data-t="${t}" d="M1 5 H33" style="stroke:${TYPE_COL[t]};stroke-width:var(--wire-w,2.2);fill:none"/></svg><span><b>${lab}</b> ${what}</span></div>`;
+  const kind = (k, lab) => `<span><i style="background:var(--c-${k})"></i>${lab}</span>`;
+  b.innerHTML = `<div><div class="lt">Wires (what flows)</div>` +
+    wire("val", "Value:", "a number or expression") + wire("body", "Body:", "which body a part acts on") +
+    wire("sig", "Signal:", "a time history out of a run") + wire("state", "State:", "a running state (set, broken, charge)") +
+    wire("metric", "Metric:", "a result checked or swept") + `</div>` +
+    `<div><div class="lt">Sockets</div><div class="lk" style="grid-template-columns:1fr"><span><i class="sk" style="background:var(--s-val);width:9px;height:9px;border-radius:50%"></i>round: value / signal</span><span><i class="sk" style="background:var(--s-body);width:9px;height:9px;border-radius:2px"></i>square: body</span><span><i class="sk" style="background:var(--s-state);width:9px;height:9px;transform:rotate(45deg);border-radius:1px"></i>diamond: state</span></div></div>` +
+    `<div><div class="lt">Node bars (what a node is)</div><div class="lk">` +
+    kind("value", "Value") + kind("builder", "Builder block") + kind("body", "Body") + kind("element", "Element") +
+    kind("load", "Load") + kind("output", "Output") + kind("expr", "Expression") + kind("fail", "Failure mode") +
+    kind("sweep", "Sweep") + kind("mc", "Monte Carlo") + kind("export", "Export") + kind("group", "Group") + `</div></div>` +
+    `<div><div class="lt">Highlights</div><div class="lk"><span><i style="background:var(--acc)"></i>selected</span><span><i style="background:var(--fail)"></i>error / unit clash</span><span><i style="background:var(--pass)"></i>passed check</span><span><i style="background:var(--warn)"></i>warning</span></div></div>` +
+    (document.documentElement.classList.contains("dashwires") ? `<div class="hint" style="padding:0">Wire patterns are on: each wire type also has its own dash.</div>` : "");
+}
+document.getElementById("legendHd").onclick = () => { SETTINGS.legendMin = !SETTINGS.legendMin; renderLegend(); settingsSave(); };
+// ---- settings dialog
+function themeCard(id, th){
+  const t = Object.assign({}, THEMES.blueprint.t, th.t || {});
+  const sw = ["bg","panel","s-val","s-body","s-sig","s-state","acc"].map(k => `<i style="background:${t[k]}"></i>`).join("");
+  const pic = isUserTheme(id) && USER_THEMES[id.slice(2)].img ? `<span class="hint" style="padding:0">has a background picture</span>` : "";
+  return `<button class="card thc${id === themeId() ? " on" : ""}" data-th="${id}"><span class="sws" style="background:${t.bg};border-color:${t.edge}">${sw}</span><b>${esc(th.name)}</b>${esc(th.note || "")}${pic}</button>`;
+}
+async function settingsShow(){
+  const d = document.getElementById("setDlg"), {id, th, user, look, own} = curLook();
+  document.getElementById("setThemes").innerHTML = Object.entries(THEMES).map(([k, t]) => themeCard(k, t)).join("");
+  const us = Object.entries(USER_THEMES);
+  document.getElementById("setUser").innerHTML = us.length ? us.map(([sl, u]) => themeCard("u:" + sl, u.theme)).join("")
+    : `<div class="hint" style="padding:0">No user themes yet. <b>New from current</b> saves the theme you are using (with your colour changes) as your own.</div>`;
+  document.getElementById("utName").value = user ? th.name : th.name + " (mine)";
+  document.getElementById("utRename").disabled = !user; document.getElementById("utRemove").disabled = !user;
+  const t = Object.assign({}, THEMES.blueprint.t, th.t || {}), val = k => own[k] || t[k];
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
-    list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + th[k] + ")" : "theme colour"}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
+    list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
   document.getElementById("setConfetti").checked = !!SETTINGS.confetti;
   document.getElementById("setDash").checked = document.documentElement.classList.contains("dashwires");
-  document.getElementById("setOwn").textContent = n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${THEMES[cur].name} theme.` : `All colours from the ${THEMES[cur].name} theme.`;
+  document.getElementById("setOwn").textContent = user ? `Changes save straight into your theme "${th.name}".`
+    : (n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${th.name} theme.` : `All colours from the ${th.name} theme.`);
+  document.getElementById("setResetAll").style.display = user ? "none" : "";
+  document.getElementById("lookUi").innerHTML = Object.entries(UI_FONTS).map(([k, f]) => `<option value="${k}"${k === look.ui ? " selected" : ""}>${esc(f.n)}</option>`).join("");
+  document.getElementById("lookMono").innerHTML = Object.entries(MONO_FONTS).map(([k, f]) => `<option value="${k}"${k === look.mono ? " selected" : ""}>${esc(f.n)}</option>`).join("");
+  document.getElementById("lookGrid").checked = !!look.grid;
+  document.getElementById("lookLegend").checked = SETTINGS.legend !== false;
+  document.getElementById("lookFit").value = look.bgFit;
+  document.getElementById("lookDim").value = Math.round(100 * look.bgOpacity);
+  document.getElementById("lookBgOff").disabled = !(user && USER_THEMES[id.slice(2)].img);
+  try { const inf = await API.call("themes_info"); if (inf && inf.ok) document.getElementById("utDir").textContent = `User themes are saved in ${inf.dir} (one folder each). Pictures up to ${inf.max_image_mb} MB: ${inf.image_types.join(", ")}.`; }
+  catch (err) { document.getElementById("utDir").textContent = "User themes need the desktop app (they are saved as folders on this computer)."; }
   d.style.display = "flex";
 }
 function settingsSave(){ API.call("save_settings", SETTINGS); }
+// the full theme as it looks now (colours with your changes, fonts, grid, picture settings): what New / Copy save
+function snapshotTheme(name){
+  const {th, look, own} = curLook();
+  return {name, note: th.note || "", scheme: th.scheme || "dark", dash: SETTINGS.dashes === undefined ? !!th.dash : !!SETTINGS.dashes,
+    wire: th.wire || 2.2, ui: look.ui, mono: look.mono, grid: look.grid, bgFit: look.bgFit, bgOpacity: look.bgOpacity,
+    t: Object.assign({}, THEMES.blueprint.t, th.t || {}, own)};
+}
+async function saveUserTheme(slug, image){
+  const r = await API.call("save_theme", slug, USER_THEMES[slug].theme, image === undefined ? null : image);
+  if (!r || !r.ok) status("bad", "Could not save the theme: " + (r && r.error || "no desktop app"));
+}
+async function newUserTheme(name, theme, image){
+  const r = await API.call("new_theme", name, theme, image || null);
+  if (!r || !r.ok){ status("bad", "Could not create the theme: " + (r && r.error || "no desktop app")); return null; }
+  await loadUserThemes(); return r.slug;
+}
+// change one look setting: a user theme saves it in its folder, a built-in keeps it as your override
+async function setLook(key, value){
+  const {id, user} = curLook();
+  if (user){ const sl = id.slice(2); USER_THEMES[sl].theme[key] = value; applyColors(); await saveUserTheme(sl); }
+  else { SETTINGS.look = SETTINGS.look || {}; SETTINGS.look[key] = value; applyColors(); settingsSave(); }
+}
 document.getElementById("bSettings").onclick = settingsShow;
 document.getElementById("setClose").onclick = () => document.getElementById("setDlg").style.display = "none";
-document.getElementById("setDlg").addEventListener("click", e => {
+document.getElementById("setDlg").addEventListener("click", async e => {
   const c = e.target.closest("[data-th]");
-  if (c){ SETTINGS.theme = c.dataset.th; delete SETTINGS.dashes; if (Object.keys(SETTINGS.colors || {}).length && !document.getElementById("setKeep").checked) SETTINGS.colors = {};
+  if (c){ SETTINGS.theme = c.dataset.th; delete SETTINGS.dashes;
+    if (Object.keys(SETTINGS.colors || {}).length && !document.getElementById("setKeep").checked) SETTINGS.colors = {};
+    if (!document.getElementById("setKeep").checked) delete SETTINGS.look;
     applyColors(); settingsSave(); settingsShow(); return; }
   const r = e.target.closest("[data-reset]");
   if (r){ e.preventDefault(); delete SETTINGS.colors[r.dataset.reset]; applyColors(); settingsSave(); settingsShow(); }
 });
 document.getElementById("setDlg").addEventListener("input", e => { const k = e.target.dataset.tok; if (!k) return;
-  SETTINGS.colors = SETTINGS.colors || {}; SETTINGS.colors[k] = e.target.value; document.documentElement.style.setProperty("--" + k, e.target.value); });
-document.getElementById("setDlg").addEventListener("change", e => { if (e.target.dataset.tok){ applyColors(); settingsSave(); settingsShow(); } });
+  const {id, user} = curLook();
+  if (user) USER_THEMES[id.slice(2)].theme.t[k] = e.target.value;
+  else { SETTINGS.colors = SETTINGS.colors || {}; SETTINGS.colors[k] = e.target.value; }
+  document.documentElement.style.setProperty("--" + k, e.target.value); });
+document.getElementById("setDlg").addEventListener("change", async e => { if (!e.target.dataset.tok) return;
+  const {id, user} = curLook(); applyColors();
+  if (user) await saveUserTheme(id.slice(2)); else settingsSave();
+  settingsShow(); });
 document.getElementById("setConfetti").onchange = e => { SETTINGS.confetti = e.target.checked; settingsSave(); if (e.target.checked) confetti(true); };
 document.getElementById("setDash").onchange = e => { SETTINGS.dashes = e.target.checked; applyColors(); settingsSave(); };
-document.getElementById("setResetAll").onclick = () => { SETTINGS.colors = {}; applyColors(); settingsSave(); settingsShow(); };
+document.getElementById("setResetAll").onclick = () => { SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow(); };
+document.getElementById("lookUi").onchange = e => setLook("ui", e.target.value);
+document.getElementById("lookMono").onchange = e => setLook("mono", e.target.value);
+document.getElementById("lookGrid").onchange = e => setLook("grid", e.target.checked);
+document.getElementById("lookFit").onchange = e => setLook("bgFit", e.target.value);
+document.getElementById("lookDim").oninput = e => { const {look} = curLook(); look.bgOpacity = e.target.value / 100;
+  const bg = document.getElementById("bgLayer"); if (bg) bg.style.opacity = String(Math.max(0.05, e.target.value / 100)); };
+document.getElementById("lookDim").onchange = e => setLook("bgOpacity", e.target.value / 100);
+document.getElementById("lookLegend").onchange = e => { SETTINGS.legend = e.target.checked; applyColors(); settingsSave(); };
+// background picture: belongs to a user theme. On a built-in it first saves a copy as your own theme.
+document.getElementById("lookBg").onclick = () => document.getElementById("lookBgFile").click();
+document.getElementById("lookBgFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)){ status("bad", "Pick a PNG, JPEG, WebP or GIF picture."); return; }
+  if (f.size > 10 * 1024 * 1024){ status("bad", "That picture is larger than 10 MB."); return; }
+  const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+  let {id, user, th} = curLook();
+  if (!user){
+    const sl = await newUserTheme(th.name + " (mine)", snapshotTheme(th.name + " (mine)"), url); if (!sl) return;
+    SETTINGS.theme = "u:" + sl; SETTINGS.colors = {}; delete SETTINGS.look;
+    status("ok", `Saved a copy of ${th.name} as your theme "${th.name} (mine)" with the picture.`);
+  } else {
+    const sl = id.slice(2); const r = await API.call("save_theme", sl, USER_THEMES[sl].theme, url);
+    if (!r || !r.ok){ status("bad", "Could not save the picture: " + (r && r.error || "")); return; }
+    USER_THEMES[sl].img = url;
+  }
+  applyColors(); settingsSave(); settingsShow();
+};
+document.getElementById("lookBgOff").onclick = async () => { const {id, user} = curLook(); if (!user) return;
+  const sl = id.slice(2); await saveUserTheme(sl, ""); USER_THEMES[sl].img = null; applyColors(); settingsShow(); };
+// user theme buttons
+document.getElementById("utNew").onclick = async () => {
+  const name = document.getElementById("utName").value.trim() || "My theme";
+  const {id, user} = curLook();
+  const img = user ? USER_THEMES[id.slice(2)].img : null;
+  const sl = await newUserTheme(name, snapshotTheme(name), img); if (!sl) return;
+  SETTINGS.theme = "u:" + sl; SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow();
+  status("ok", `Saved "${name}" as a user theme.`); };
+document.getElementById("utCopy").onclick = async () => {
+  const {id, user, th} = curLook(), name = (document.getElementById("utName").value.trim() || th.name) + (user ? " copy" : "");
+  let sl;
+  if (user){ const r = await API.call("copy_theme", id.slice(2), name); if (!r || !r.ok){ status("bad", "Could not copy: " + (r && r.error || "")); return; }
+    await loadUserThemes(); sl = r.slug; }
+  else sl = await newUserTheme(name, snapshotTheme(name), null);
+  if (!sl) return; SETTINGS.theme = "u:" + sl; SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow();
+  status("ok", `Copied to "${name}".`); };
+document.getElementById("utRename").onclick = async () => {
+  const {id, user} = curLook(); if (!user) return;
+  const name = document.getElementById("utName").value.trim(); if (!name) return;
+  const r = await API.call("rename_theme", id.slice(2), name); if (!r || !r.ok){ status("bad", "Could not rename: " + (r && r.error || "")); return; }
+  await loadUserThemes(); SETTINGS.theme = "u:" + r.slug; applyColors(); settingsSave(); settingsShow(); };
+document.getElementById("utRemove").onclick = async () => {
+  const {id, user, th} = curLook(); if (!user) return;
+  const b = document.getElementById("utRemove");
+  if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = `Really remove "${th.name}"?`; setTimeout(() => { delete b.dataset.armed; b.textContent = "Remove"; }, 4000); return; }
+  delete b.dataset.armed; b.textContent = "Remove";
+  const r = await API.call("delete_theme", id.slice(2)); if (!r || !r.ok){ status("bad", "Could not remove: " + (r && r.error || "")); return; }
+  await loadUserThemes(); SETTINGS.theme = "blueprint"; applyColors(); settingsSave(); settingsShow(); };
 function syncBars(){ const c = document.getElementById("canvas"); if (!c) return;
   document.documentElement.style.setProperty("--bars-h", c.getBoundingClientRect().top + "px"); drawWires(); }
 if (window.ResizeObserver){ new ResizeObserver(syncBars).observe(document.getElementById("top")); new ResizeObserver(syncBars).observe(document.getElementById("bar2")); }
@@ -3080,7 +3508,7 @@ async function start(){
     UF = CAT.unit_factors || {};
     const sv = document.createElementNS("http://www.w3.org/2000/svg", "svg"); sv.setAttribute("width", "0"); sv.setAttribute("height", "0");
     sv.style.position = "absolute"; sv.innerHTML = CAT.symbols || ""; document.body.appendChild(sv);
-    const info = await API.call("system_info"); SETTINGS = info.settings || {recent:[]}; applyColors();
+    const info = await API.call("system_info"); SETTINGS = info.settings || {recent:[]}; await loadUserThemes(); applyColors();
     window.__defaultUnits = SETTINGS.units || "SI"; S.meta.units = window.__defaultUnits;
     const nc = info.cores, cur = Math.min(SETTINGS.workers || nc, nc);
     document.getElementById("bCores").innerHTML = Array.from({length:nc}, (_, i) => nc - i).map(k => `<option value="${k}"${k === cur ? " selected" : ""}>${k}${k === nc ? " (all)" : ""}</option>`).join("");
