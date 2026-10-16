@@ -3512,8 +3512,14 @@ const THEMES = {
     "s-val":"#bf5700", "s-body":"#333f48", "s-sig":"#00818c", "s-state":"#005f86", "s-metric":"#3f7f2c",
     "c-value":"#f8971f", "c-builder":"#005f86", "c-body":"#333f48", "c-element":"#579d42", "c-load":"#579d42", "c-output":"#9cadb7", "c-expr":"#2bb3a6", "c-fail":"#b3122e", "c-sweep":"#ffd600", "c-mc":"#a6cd57", "c-export":"#6a4c93", "c-group":"#c9c4b3", "c-note":"#a07850",
     p1:"#bf5700", p2:"#333f48", p3:"#005f86", p4:"#3f7f2c", p5:"#00818c"}},
-  goldenrod: {name:"Goldenrod", note:"Yellow paper with dark brown ink and goldenrod accents.", scheme:"light", t:{
-    bg:"#fbf5dc", grid:"#f1e8c4", panel:"#fffdf3", panel2:"#f6eecd", panel3:"#eee3b8", edge:"#cbbb7c", hair:"#ece2bd", selbg:"#f5dc8a", "note-bg":"#fffbe8", "group-hd":"#f0e9cc", ink:"#2b2410", ink2:"#4a4020", ink3:"#615535", link:"#7a5300", acc:"#9a6a00", accf:"#8a1f4b", pass:"#3f6a1a", warn:"#845000", fail:"#b0261f", shadow:"rgba(90,70,10,.15)", "s-val":"#ae7c05", "s-body":"#004c79", "s-sig":"#6d645d", "s-state":"#7f1f4b", "s-metric":"#2b2410", "c-value":"#e6b413", "c-builder":"#813e7e", "c-body":"#1c66a2", "c-element":"#647c2e", "c-load":"#647c2e", "c-output":"#a39c8c", "c-expr":"#279891", "c-fail":"#bc2e29", "c-sweep":"#9aa004", "c-mc":"#ca6598", "c-export":"#7cbae4", "c-group":"#7d81b8", "c-note":"#cec8ae", p1:"#2f517b", p2:"#a77f17", p3:"#4e6928", p4:"#851d58", p5:"#a04309"}},
+  banana: {name:"Banana", note:"Ripe banana yellow with a cream canvas, brown-speckle ink and leafy green trim, in the same round, playful font as Candy.", scheme:"light", ui:"fredoka", t:{
+    bg:"#fff6c9", grid:"#f6e9a6", panel:"#fffadf", panel2:"#fff0b0", panel3:"#fbe48a", edge:"#d9b84a", hair:"#f2df95", selbg:"#ffe066", "note-bg":"#fff3bd", "group-hd":"#eef3c4",
+    bar:"#ffd93b", "bar-ink":"#4a3410", "bar-ink2":"#5e4518", hd:"#ffe36e", "hd-ink":"#3d2b0c", "hd-ink2":"#6b4f1c",
+    ink:"#3d2b0c", ink2:"#5a4317", ink3:"#6e5523", link:"#7a4a00", acc:"#5f8f1f", accf:"#8a4f14", pass:"#2f6e1d", warn:"#8a5200", fail:"#b3261e", shadow:"rgba(140,105,10,.2)",
+    "s-val":"#4f8a10", "s-body":"#6b3f12", "s-sig":"#1f6fbf", "s-state":"#b0306a", "s-metric":"#d2570a",
+    "c-value":"#f2a900", "c-builder":"#9a5bd1", "c-body":"#8a5a2b", "c-element":"#6aa52a", "c-load":"#6aa52a", "c-output":"#b0a27a", "c-expr":"#1d9a8a",
+    "c-fail":"#d93f3f", "c-sweep":"#f07f1a", "c-mc":"#e05f9a", "c-export":"#3d8ee0", "c-group":"#c3cf6a", "c-note":"#a6763c",
+    p1:"#6b3f12", p2:"#4f8a10", p3:"#1f6fbf", p4:"#d2570a", p5:"#b0306a"}},
   candy: {name:"Candy", note:"Bubblegum pink with bold sweet-shop wires and a round, playful font.", scheme:"light", ui:"fredoka", t:{
     bg:"#fbe0ee", grid:"#f4cfe2", panel:"#fff1f8", panel2:"#fbe1ee", panel3:"#f6cfe3", edge:"#d68db3", hair:"#efc2d8", selbg:"#f8c4de", "note-bg":"#fde9f3", "group-hd":"#efe2fb",
     bar:"#f5b8d5", "bar-ink":"#7a1450", "bar-ink2":"#5c2048", hd:"#f9cfe4", "hd-ink":"#3b1433", "hd-ink2":"#7a3d66",
@@ -3536,7 +3542,7 @@ const THEMES = {
 // (<config>/simblocks/themes/<slug>/theme.json and an optional background image), and carry every setting a
 // built-in has plus a font choice, grid on/off and a background picture.
 const OLD_THEME = {graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
-  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia"};
+  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana"};
 // fonts: font-size-adjust holds every face to Inter's x-height, so swapping fonts never changes line heights or wraps
 const UI_FONTS = {
   inter:{n:"Inter (default)", css:'"Inter",system-ui,"Segoe UI",sans-serif'},
