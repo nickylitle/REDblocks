@@ -605,9 +605,10 @@ const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
   pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"],
-  rocket:["thrust","mass_flow","back_pressure","vehicle_mass","throttle"], jettison:["dropped"],
+  rocket:["thrust","mass_flow","back_pressure","vehicle_mass","throttle","propellant"], jettison:["dropped"],
   aero_drag:["drag","dynamic_pressure","mach","air_density","ambient_pressure"],
-  steering:["altitude","speed_inertial","airspeed","flight_path_angle","pitch","downrange"]};
+  steering:["altitude","speed_inertial","airspeed","flight_path_angle","pitch","downrange"],
+  landing_guidance:["altitude","speed_forward","speed_up","throttle","thrust_command","range_to_site"]};
 const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", alpha:"damping factor", table:"yield table",
   break_at:"tears off at set", F_c:"friction force", v_eps:"slip speed scale", F_s:"static peak", v_s:"Stribeck speed",
   P:"constant push", kv:"motor Kv", R:"winding R", I_max:"ESC limit", gear:"motor:load", cells:"cells", R0:"pack R0",
@@ -863,7 +864,7 @@ function featIn(b){ const out = [];
 // joints and beams join two points: [A.point, B.point] (the editor calls this the "pin" shape of measure)
 const PAIR_TYPES = ["pin","weld","hinge","slider","beam"];
 // vehicle elements act on one body as a whole (a rocket's engines, staging, drag, steering)
-const VEH_TYPES = ["rocket","jettison","aero_drag","steering"];
+const VEH_TYPES = ["rocket","jettison","aero_drag","steering","landing_guidance"];
 function geoKind(d){ return VEH_TYPES.includes(d.type) ? "vehicle" : (PAIR_TYPES.includes(d.type) ? "pin" : (d.type === "contact_friction" ? "slip" : (d.mk || "coords"))); }
 function vecRow3(d, key, dim, tip){
   const u = d[key + "u"] ?? defUnit(dim);
@@ -1469,6 +1470,8 @@ const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force",
   thrust_vac:"force", exit_area:"area", mass_flow:"none", start:"time", stop:"time", rise:"time", tailoff:"time", cutoff:"none",
   at:"time", Cd:"none", pitch_start:"time", pitch_rate:"none", pitch_end:"time", tilt_arrest:"time", guidance_start:"time",
   target_altitude:"length", target_speed:"speed", tgo_freeze:"time",
+  propellant:"mass", mode:"none", site_range:"length", target:"none", freeze:"time", schedule:"none", tau:"time",
+  end_before:"time", stop_below:"length", contact_altitude:"length",
   EI:"none", EIy:"none", EIz:"none", GJ:"none", end_mass:"none", hinge:"none", material:"none", rotary_inertia:"none", orient:"none", section:"none", rigid:"none", one_sided:"none", contact:"none"};
 const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse",
   friction_impulse:"impulse", drift:"none",
@@ -1478,7 +1481,7 @@ const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"ang
   position:"length", velocity:"speed", kinetic_energy:"energy",
   thrust:"force", mass_flow:"none", back_pressure:"stress", vehicle_mass:"mass", throttle:"none", dropped:"mass",
   drag:"force", dynamic_pressure:"stress", mach:"none", air_density:"density", ambient_pressure:"stress",
-  altitude:"length", speed_inertial:"speed", airspeed:"speed", flight_path_angle:"none", pitch:"none", downrange:"length"};
+  altitude:"length", speed_inertial:"speed", airspeed:"speed", flight_path_angle:"none", pitch:"none", downrange:"length", thrust_command:"force", range_to_site:"length", speed_forward:"speed", speed_up:"speed", propellant:"mass"};
 const NUMRE = /^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*(.*)$/;
 function splitQ(v){ const t = String(v ?? "").trim(); if (!t) return {num:"", unit:"", text:false};
   const m = t.match(NUMRE); if (m) return {num:m[1], unit:m[2].trim(), text:false}; return {num:t, unit:"", text:true}; }
@@ -3929,6 +3932,7 @@ const GUIDE = [
    <li><b>rocket_engine</b> block: an engine from its propellants (RP-1, hydrogen or methane with liquid oxygen). Chemistry gives the ideal Isp and the nozzle exit area; one rating (sea-level or vacuum Isp, or vacuum thrust with flow) sets the real engine. Its F_vac, A_e and mdot feed a rocket element.</li>
    <li><b>rocket</b> element: thrust F_vac − p_outside · A_e along the steering direction, burning mass_flow off the vehicle. start / stop with a rise and tail-off, or cutoff: guidance.</li>
    <li><b>jettison</b>: a stage or part dropped at a time. <b>aero_drag</b>: drag from the air density and a Cd against Mach. <b>steering</b>: vertical, pitch-over, gravity turn, attitude hold, then guidance to a target orbit.</li>
+   <li><b>landing_guidance</b>: Apollo's descent guidance, one phase per element. mode: target aims at a state (altitude, range to the site, speeds, accelerations) at a time with the quadratic law the Apollo computer flew; mode: rate follows a schedule of descent rate and forward speed (P66). Phases chain with start: after, and set the throttle of a rocket with throttle: guidance (low start level, full throttle, throttle recovery, then 10-60 %). Give a rocket propellant: and it stops when that is gone. gravity: {planet: moon} has no air.</li>
   </ul>
   <p>Outputs read the flight: altitude, speeds, flight path angle, downrange, dynamic pressure, Mach, thrust, vehicle mass. <b>reduce: at</b> reads any quantity at a time (staging, insertion); <b>time_of_max</b> gives when it peaks (max q). Example: <b>2D-4 Apollo 11 Saturn V ascent</b>, checked against NASA's postflight trajectory.</p>`},
  {id:"circuit", grp:"Building models", t:"Electrical circuits", h:`

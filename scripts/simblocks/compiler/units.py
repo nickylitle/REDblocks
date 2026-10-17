@@ -8,7 +8,7 @@ import re
 # factor to SI for each token
 _U = {
     # length
-    "m": 1.0, "mm": 1e-3, "cm": 1e-2, "um": 1e-6, "km": 1e3, "in": 0.0254, "ft": 0.3048,
+    "m": 1.0, "mm": 1e-3, "cm": 1e-2, "um": 1e-6, "km": 1e3, "in": 0.0254, "ft": 0.3048, "nmi": 1852.0,
     # mass
     "kg": 1.0, "g": 1e-3, "lb": 0.45359237, "oz": 0.028349523125,
     # time

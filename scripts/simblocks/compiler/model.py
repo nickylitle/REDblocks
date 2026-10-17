@@ -22,8 +22,11 @@ AUX = {"plastic_set": 0, "broken": 2, "current": 0, "battery_current": 1, "bus_v
        # aero_drag (dynamic pressure, Mach, density, outside pressure), rocket (flow, back pressure, vehicle mass)
        "altitude": 0, "speed_inertial": 1, "flight_path_angle": 2, "airspeed": 3,
        "dynamic_pressure": 0, "mach": 1, "air_density": 2, "ambient_pressure": 3,
-       "mass_flow": 0, "back_pressure": 1, "vehicle_mass": 2, "throttle": 3}
-QALIAS = {"pitch": "force", "thrust": "force", "drag": "force", "dropped": "force", "downrange": "measure"}
+       "mass_flow": 0, "back_pressure": 1, "vehicle_mass": 2, "throttle": 3,
+       # landing guidance: altitude (0), forward speed over the ground, climb rate, throttle level (3)
+       "speed_forward": 1, "speed_up": 2}
+QALIAS = {"pitch": "force", "thrust": "force", "drag": "force", "dropped": "force", "downrange": "measure",
+          "thrust_command": "force", "range_to_site": "measure", "propellant": "measure"}
 KNOCK = "__knock__"          # override prefix: element switched off
 ELASTIC = "__elastic__"      # override prefix: elastoplastic element made elastic
 
@@ -415,7 +418,7 @@ def _run_settings(M, doc, ctx):
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))
     a2 = getattr(M, "arrays", None)
-    if a2 is not None and "typ" in a2 and np.any((a2["typ"] >= 18) & (a2["typ"] <= 21)):
+    if a2 is not None and "typ" in a2 and np.any((a2["typ"] >= 18) & (a2["typ"] <= 22)):
         # a vehicle in flight: resolve the engines' rise and tail-off, and never more than 50 ms a step
         ts = [a2["P"][e, k] for e in range(len(a2["typ"])) if a2["typ"][e] == 18 for k in (5, 6) if a2["P"][e, k] > 0]
         M.dt_auto = min(M.dt_auto, 0.05, *(x / 10.0 for x in ts))
@@ -585,7 +588,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     limit = getattr(M, "timeout", "auto") if timeout == "model" else timeout
     if limit == "auto":
         limit = auto_timeout(M, dt)
-    stop = np.zeros(2, dtype=np.int64)
+    stop = np.zeros(3, dtype=np.int64)            # [stop request, steps run, 1 = ended itself (touchdown)]
     dim2 = getattr(M, "dim", "1d") == "2d"
     dim3 = getattr(M, "dim", "1d") == "3d"
     if limit:
@@ -624,7 +627,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     finally:
         if timer is not None:
             timer.cancel()
-    timed_out = int(stop[1]) < n
+    timed_out = int(stop[1]) < n and int(stop[2]) == 0
     secs = _time.perf_counter() - t_run
     if secs > 0.05 and int(stop[1]) > 0:          # learn this computer's speed for the next estimate
         RATE[0] = 0.5 * RATE[0] + 0.5 * int(stop[1]) * max(1, len(M.el_names)) / secs
@@ -796,11 +799,13 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             nums.update({k: x for k, x in R.items() if not k.startswith("_")})
             nums.update(RSI)
             try:
-                R[name] = float(eval_numeric(o["expr"], nums))
+                val = float(eval_numeric(o["expr"], nums))
             except ZeroDivisionError:
-                R[name] = math.inf          # e.g. a safety factor when the demand is exactly zero
+                val = math.inf              # e.g. a safety factor when the demand is exactly zero
             except ExprError as exc:
                 raise SpecError(str(exc), f"outputs.{name}")
+            RSI[name] = val                 # the result is SI; its own unit only changes how it is shown
+            R[name] = val / unit_factor(o["unit"]) if "unit" in o else val
     if history and dim3:
         from .engine3d import NBQ
         from .model3d import BODY_Q3, body_slot3

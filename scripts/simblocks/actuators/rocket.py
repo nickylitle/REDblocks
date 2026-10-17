@@ -34,11 +34,21 @@ NASA7 = {
     "O": ({'O': 1.0}, 1000.0, (2.543636970e+00, -2.731624860e-05, -4.190295200e-09, 4.954818450e-12, -4.795536940e-16, 2.922601200e+04, 4.922294570e+00), (3.168267100e+00, -3.279318840e-03, 6.643063960e-06, -6.128066240e-09, 2.112659710e-12, 2.912225920e+04, 2.051933460e+00)),
     "HO2": ({'H': 1.0, 'O': 2.0}, 1000.0, (4.172287280e+00, 1.881176470e-03, -3.462774080e-07, 1.946578530e-11, 1.762542940e-16, 6.181029640e+01, 2.957677460e+00), (4.301798010e+00, -4.749120510e-03, 2.115828910e-05, -2.427638940e-08, 9.292251240e-12, 2.948080400e+02, 3.716662450e+00)),
     "H2O2": ({'H': 2.0, 'O': 2.0}, 1000.0, (4.573335370e+00, 4.049840700e-03, -1.294794790e-06, 1.972817100e-10, -1.134028460e-14, -1.805481210e+04, 7.042784880e-01), (4.276112690e+00, -5.428224170e-04, 1.673357010e-05, -2.157708130e-08, 8.624543630e-12, -1.775429890e+04, 3.435050740e+00)),
+    # nitrogen species, for storable propellants (N2O4 with hydrazines)
+    "N2": ({'N': 2.0}, 1000.0, (2.952576260e+00, 1.396900570e-03, -4.926316910e-07, 7.860103670e-11, -4.607553210e-15, -9.239486450e+02, 5.871892520e+00), (3.531005280e+00, -1.236609870e-04, -5.029994370e-07, 2.435306120e-09, -1.408812350e-12, -1.046976280e+03, 2.967474680e+00)),
+    "NO": ({'N': 1.0, 'O': 1.0}, 1000.0, (3.260712340e+00, 1.191011350e-03, -4.291226460e-07, 6.944814630e-11, -4.032956810e-15, 9.921431320e+03, 6.369005180e+00), (4.218598960e+00, -4.639881240e-03, 1.104430490e-05, -9.340555070e-09, 2.805548740e-12, 9.845099640e+03, 2.280610010e+00)),
+    "N": ({'N': 1.0}, 1000.0, (2.415942930e+00, 1.748906000e-04, -1.190236670e-07, 3.022623870e-11, -2.036097900e-15, 5.613377480e+04, 4.649609860e+00), (2.500000000e+00, 0.000000000e+00, 0.000000000e+00, 0.000000000e+00, 0.000000000e+00, 5.610463780e+04, 4.193909320e+00)),
+    "NO2": ({'N': 1.0, 'O': 2.0}, 1000.0, (4.884744290e+00, 2.172416390e-03, -8.280790200e-07, 1.574772930e-10, -1.051105490e-14, 2.316484620e+03, -1.173570750e-01), (3.944039070e+00, -1.585474440e-03, 1.665789840e-05, -2.047544780e-08, 7.835032650e-12, 2.896598650e+03, 6.311962250e+00)),
+    "N2O": ({'N': 2.0, 'O': 1.0}, 1000.0, (4.823188730e+00, 2.626852790e-03, -9.584260580e-07, 1.599912960e-10, -9.774169390e-15, 8.073356620e+03, -2.202366000e+00), (2.257168600e+00, 1.130463380e-02, -1.367103500e-05, 9.681620980e-09, -2.930555830e-12, 8.741771460e+03, 1.075791540e+01)),
+    "NH3": ({'H': 3.0, 'N': 1.0}, 1000.0, (2.717096920e+00, 5.568563380e-03, -1.768863960e-06, 2.674172600e-10, -1.527314190e-14, -6.584519890e+03, 6.092898370e+00), (4.301778080e+00, -4.771273300e-03, 2.193416190e-05, -2.298564890e-08, 8.289922680e-12, -6.748063940e+03, -6.906443930e-01)),
+    "NH2": ({'H': 2.0, 'N': 1.0}, 1000.0, (2.847689920e+00, 3.142800350e-03, -8.986414580e-07, 1.303182840e-10, -7.488129260e-15, 2.182390490e+04, 6.471654330e+00), (4.205568570e+00, -2.135613630e-03, 7.268513010e-06, -5.930698760e-09, 1.806909780e-12, 2.153522310e+04, -1.466627700e-01)),
+    "NH": ({'H': 1.0, 'N': 1.0}, 1000.0, (2.783726450e+00, 1.329858860e-03, -4.247855650e-07, 7.834944250e-11, -5.504512980e-15, 4.213451630e+04, 5.740848570e+00), (3.492950370e+00, 3.117957220e-04, -1.489066280e-06, 2.481674030e-09, -1.035709160e-12, 4.189429400e+04, 1.848349740e+00)),
+    "HNO": ({'H': 1.0, 'N': 1.0, 'O': 1.0}, 1000.0, (3.165547620e+00, 3.000051320e-03, -3.943502820e-07, -3.857874910e-11, 7.080919310e-15, 1.119441690e+04, 7.647646950e+00), (4.535258820e+00, -5.685469100e-03, 1.851999760e-05, -1.718836740e-08, 5.558330900e-12, 1.103988050e+04, 1.743147340e+00)),
 }
 SPECIES = list(NASA7)
-ELEMENTS = ["C", "H", "O"]
+ELEMENTS = ["C", "H", "O", "N"]
 A = np.array([[NASA7[s][0].get(el, 0.0) for s in SPECIES] for el in ELEMENTS])      # atoms per molecule
-MW_EL = {"C": 12.0107, "H": 1.00794, "O": 15.9994}
+MW_EL = {"C": 12.0107, "H": 1.00794, "O": 15.9994, "N": 14.0067}
 MW = np.array([sum(MW_EL[k] * v for k, v in NASA7[s][0].items()) for s in SPECIES]) * 1e-3   # kg/mol
 
 # propellants: (atoms per mole, molar mass kg/mol, enthalpy J/mol at storage temperature), CEA thermo.inp values
@@ -47,9 +57,21 @@ PROPELLANTS = {
     "LH2": ({"H": 2.0}, 2.01588e-3, -9012.0),                                          # liquid H2, 20.27 K
     "CH4": ({"C": 1.0, "H": 4.0}, 16.04246e-3, -89233.0),                              # liquid CH4, 111.6 K
     "LOX": ({"O": 2.0}, 31.9988e-3, -12979.0),                                         # liquid O2, 90.17 K
+    # storables at 298 K: N2O4 and the hydrazines (CEA thermo.inp liquids; UDMH 48.3 kJ/mol)
+    "N2O4": ({"N": 2.0, "O": 4.0}, 92.011e-3, -19564.0),
+    "N2H4": ({"N": 2.0, "H": 4.0}, 32.0452e-3, 50630.0),
+    "UDMH": ({"C": 2.0, "H": 8.0, "N": 2.0}, 60.0983e-3, 48300.0),
+    "MMH": ({"C": 1.0, "H": 6.0, "N": 2.0}, 46.0717e-3, 54200.0),
 }
+# Aerozine 50: half hydrazine, half UDMH by mass, written as one 'molecule' per gram of the blend
+_a50_n = (0.5 / 32.0452, 0.5 / 60.0983)                  # mol of N2H4 and of UDMH in 1 g
+PROPELLANTS["A50"] = ({"N": 2 * (_a50_n[0] + _a50_n[1]), "H": 4 * _a50_n[0] + 8 * _a50_n[1], "C": 2 * _a50_n[1]},
+                      1e-3, _a50_n[0] * 50630.0 + _a50_n[1] * 48300.0)
+OXIDIZERS = ("LOX", "N2O4")
 FUEL_NAMES = {"rp1": "RP1", "rp-1": "RP1", "kerosene": "RP1", "lh2": "LH2", "h2": "LH2", "hydrogen": "LH2",
-              "ch4": "CH4", "methane": "CH4", "lch4": "CH4"}
+              "ch4": "CH4", "methane": "CH4", "lch4": "CH4", "a50": "A50", "a-50": "A50", "aerozine": "A50",
+              "aerozine50": "A50", "aerozine-50": "A50", "aerozine 50": "A50", "n2h4": "N2H4", "hydrazine": "N2H4",
+              "udmh": "UDMH", "mmh": "MMH", "lox": "LOX", "o2": "LOX", "oxygen": "LOX", "n2o4": "N2O4", "nto": "N2O4"}
 
 
 def _coef(T):
@@ -117,8 +139,8 @@ def _props(T, P, nj):
     return H, S, 1.0 / n
 
 
-def _elements(fuel, OF):
-    f_atoms, f_mw, f_h = PROPELLANTS[fuel]; o_atoms, o_mw, o_h = PROPELLANTS["LOX"]
+def _elements(fuel, OF, ox="LOX"):
+    f_atoms, f_mw, f_h = PROPELLANTS[fuel]; o_atoms, o_mw, o_h = PROPELLANTS[ox]
     wf = 1.0 / (1.0 + OF); wo = OF / (1.0 + OF)                   # mass fractions
     b = np.zeros(len(ELEMENTS))
     for i, el in enumerate(ELEMENTS):
@@ -168,10 +190,10 @@ def _sound(S0, P, b):
 
 
 @functools.lru_cache(maxsize=256)
-def ideal_performance(fuel, OF, Pc, eps):
+def ideal_performance(fuel, OF, Pc, eps, oxidizer="LOX"):
     """Ideal shifting-equilibrium performance: Tc (K), c* (m/s), exit pressure (Pa), exhaust velocity (m/s), mass
     flux at the throat (kg/s/m^2), vacuum and sea-level Isp (s) for a nozzle of area ratio eps."""
-    b, h0 = _elements(fuel, OF)
+    b, h0 = _elements(fuel, OF, oxidizer)
     Tc, njc = _solve_T(h0, "h", Pc, b, 1000.0, 5500.0)
     Hc, S0, Mc = _props(Tc, Pc, njc)
 
@@ -204,22 +226,26 @@ def ideal_performance(fuel, OF, Pc, eps):
 @block("actuators", "rocket", "liquid", "equilibrium", kind="builder",
        source="NASA RP-1311 (Gordon & McBride 1994) equilibrium method; NASA TM-4513 thermodynamic data",
        tags=("rocket", "engine", "thrust", "Isp", "nozzle", "combustion", "F-1", "J-2", "Merlin", "RP-1", "LOX",
-             "hydrogen", "methane", "CEA"))
+             "hydrogen", "methane", "CEA", "N2O4", "Aerozine", "hydrazine", "UDMH", "MMH", "storable", "DPS", "LM"))
 def rocket_engine(fuel, OF, Pc, eps, mdot=None, Isp_sl=None, Isp_vac=None, F_vac=None, efficiency=None,
-                  eta_cstar=0.98, n=1):
+                  eta_cstar=0.98, n=1, oxidizer="LOX"):
     """Liquid rocket engine from its propellants: thrust against outside pressure F = F_vac - p_amb A_e.
-    fuel: RP1 (kerosene), LH2 or CH4, burnt with liquid oxygen at mixture ratio OF (oxidiser / fuel by mass);
+    fuel: RP1 (kerosene), LH2, CH4, A50 (Aerozine 50), N2H4, UDMH or MMH, burnt with oxidizer LOX (liquid oxygen,
+    the default) or N2O4 at mixture ratio OF (oxidiser / fuel by mass);
     Pc chamber pressure; eps nozzle area ratio. The chemistry gives the ideal Isp; the real engine's level comes from
     one rating: Isp_sl, Isp_vac, F_vac (with mdot) or efficiency (delivered / ideal vacuum Isp). mdot or F_vac sets
     the size. eta_cstar (combustion efficiency, 0.98 typical) sizes the throat, and so the exit area A_e.
     n engines: thrust, flow and exit area are totals for all of them. Returns F_vac, F_sl, A_e, mdot, Isp_vac,
     Isp_sl (delivered), Isp_vac_ideal, Isp_sl_ideal, efficiency, Tc, cstar, Pe."""
     key = FUEL_NAMES.get(str(fuel).strip().lower(), str(fuel).strip().upper())
-    if key not in PROPELLANTS or key == "LOX":
-        raise ValueError("fuel is RP1 (kerosene), LH2 (hydrogen) or CH4 (methane); the oxidiser is liquid oxygen")
+    ox = FUEL_NAMES.get(str(oxidizer).strip().lower(), str(oxidizer).strip().upper())
+    if key not in PROPELLANTS or key in OXIDIZERS:
+        raise ValueError("fuel is RP1 (kerosene), LH2 (hydrogen), CH4 (methane), A50 (Aerozine 50), N2H4, UDMH or MMH")
+    if ox not in OXIDIZERS:
+        raise ValueError("oxidizer is LOX (liquid oxygen) or N2O4 (nitrogen tetroxide)")
     if not (OF > 0 and Pc > 0 and eps > 1):
         raise ValueError("OF > 0, Pc > 0 and eps > 1 are needed")
-    ideal = ideal_performance(key, float(OF), float(Pc), float(eps))
+    ideal = ideal_performance(key, float(OF), float(Pc), float(eps), ox)
     p0 = 101325.0
     rated = [k for k, x in (("Isp_sl", Isp_sl), ("Isp_vac", Isp_vac), ("efficiency", efficiency)) if x is not None]
     if len(rated) > 1:

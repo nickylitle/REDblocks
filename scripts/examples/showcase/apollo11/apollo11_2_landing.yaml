@@ -1,0 +1,500 @@
+simblocks: 1
+name: Apollo 11 lunar landing, powered descent to touchdown
+question: "From powered descent initiation to touchdown: does the lunar module, flown by Apollo's own guidance law and then by the crew's callouts, come down the way Eagle did?"
+dim: 2d
+units: SI
+
+# Sources
+#  [MR]  Apollo 11 Mission Report, MSC-00171 (1969): table 3-1 event times, sections 4.10, 5.3, 5.4
+#  [TM]  Bennett, Apollo Lunar Descent and Ascent Trajectories, NASA TM X-58040 (1970): table I (Apollo 11's
+#        premission descent: event times, speeds, altitudes, delta-V), design phases, table II (propellant)
+#  [TN]  Apollo Experience Report: Descent Propulsion System, NASA TN D-7143 (1973): DPS ratings, throttle point
+#  [DL]  Klumpp, Apollo Lunar-Descent Guidance, MIT Draper Laboratory R-695 (1971): the guidance law, 57 % recovery
+#  [PK]  Apollo 11 Press Kit (1969): range at ignition, descent orbit insertion
+#  [AL]  Apollo Lunar Surface Journal, Apollo 11 landing transcript: the crew's altitude and rate callouts
+# The clock starts at descent engine ignition, 102:33:05.2 GET [MR table 3-1].
+
+params:
+  # the state at ignition: NASA's premission powered-descent summary for Apollo 11 [TM table I]
+  h_pdi: {value: 48814 ft, note: "altitude above the landing site at ignition [TM table I]"}
+  v_pdi: {value: 5560 ft/s, note: "inertial velocity at ignition [TM table I]"}
+  hd_pdi: {value: -4 ft/s, note: "altitude rate at ignition [TM table I]"}
+  w_moon: {value: -2.6617e-6, note: "the Moon's spin (rad/s), negative: Eagle flew west, against the surface's eastward turn (TM table I: -15 ft/s inertial at touchdown)"}
+  # the lunar module
+  m_launch: {value: 33294.5 lb, note: "LM-5 total mass at launch (NASA mission weights)"}
+  dv_doi: {value: 74.2 ft/s, note: "descent orbit insertion burn, done before this run [PK mission events]"}
+  dps_load: {value: "18185.1 lb", note: "DPS propellant capacity 18,260.5 lb less 75.4 lb offloaded [TM table II]"}
+  dps_rated: {value: 10500 lbf, note: "DPS maximum rated thrust, the 100 % throttle level [TN]"}
+  dps_isp: {value: 305, note: "DPS specific impulse (s), the design requirement at the end of its duty cycle [TN]"}
+  # the guidance design: the premission high gate [TM table I], typical phase lengths and terminus [DL]
+  site_range: {value: 260 nmi, note: "ground range from ignition to the landing site, about 260 nmi [TM, PK]"}
+  hg_alt: {value: 7515 ft, note: "high gate altitude, premission [TM table I]"}
+  hg_up: {value: -145 ft/s, note: "high gate altitude rate [TM table I]"}
+  hg_fwd: {value: "= (506 + 15) * 0.3048", note: "high gate speed over the ground: 506 ft/s inertial [TM table I] plus the 15 ft/s the surface turns away"}
+  hg_range: {value: 4.5 nmi, note: "range short of the site where the approach phase starts [TM]"}
+  t_p63: {value: 506 s, note: "high gate 8 min 26 s after ignition [TM table I]: the first estimate of the braking time to go"}
+  t_p64: {value: 146 s, note: "the approach phase typically lasts 146 s [DL]"}
+  p64_alt: {value: 30 m, note: "approach terminus, typical: 30 m above the site [DL]"}
+  p64_range: {value: 11 m, note: "and 11 m short of it [DL]"}
+  vd_rate: {value: 3 ft/s, note: "the automatic vertical descent rate to touchdown [TM]"}
+  t_project: {value: 60 s, note: "braking targets are the high-gate state projected 60 s on; P63 ends 60 s before them [DL, TM]"}
+  crew: {value: 1, note: "1: the landing as Armstrong flew it, from the crew's callouts below 400 ft [AL]. 0: the automatic landing NASA planned (P66 straight down at 3 ft/s)"}
+  crew_alt: {value: 400 ft, note: "Aldrin's first callout after Armstrong selected P66 (102:43:22): 400 ft at 102:43:26 [AL]"}
+  probe: {value: 5.6 ft, note: "the contact probes reach this far below the footpads: contact light, engine stop [TM]"}
+
+derived:
+  r_pdi: "= 1737400 + $h_pdi"
+  v_hor: "= sqrt($v_pdi**2 - $hd_pdi**2)"
+  # DPS: N2O4 / Aerozine 50 at mixture ratio 1.6, 110 psia chamber, 47.5 area ratio, rated at 305 s
+  dps: {block: rocket_engine, fuel: A50, oxidizer: N2O4, OF: 1.6, Pc: 110 psi, eps: 47.5, F_vac: $dps_rated, Isp_vac: $dps_isp}
+  # the mass at ignition: launch mass after the descent orbit insertion burn (RCS use before ignition left out)
+  m_doi: "= $m_launch * (1 - exp(-$dv_doi / ($dps_isp * 9.80665)))"
+  m_pdi: "= $m_launch - $m_doi"
+  prop_pdi: "= $dps_load - $m_doi"
+  # the braking phase's late acceleration: NASA's premission trajectory from throttle recovery (6:24: 1,456 ft/s,
+  # -106 ft/s) to high gate (8:26: 506 ft/s, -145 ft/s) [TM table I], an even slow-down over those 122 s
+  hg_afwd: "= (506 - 1456) * 0.3048 / 122"
+  hg_aup: "= (-145 + 106) * 0.3048 / 122"
+  # P63 targets: the high-gate state carried on 60 s at that acceleration
+  bt_range: "= -$hg_range + $hg_fwd * $t_project + 0.5 * $hg_afwd * $t_project**2"
+  bt_alt: "= $hg_alt + $hg_up * $t_project + 0.5 * $hg_aup * $t_project**2"
+  bt_fwd: "= $hg_fwd + $hg_afwd * $t_project"
+  bt_up: "= $hg_up + $hg_aup * $t_project"
+
+gravity: {planet: moon, rotation: $w_moon}
+
+bodies:
+  lm:
+    dof: [x, y]
+    mass: $m_pdi
+    at: [0, $r_pdi]
+    v0: [$v_hor, $hd_pdi]
+    label: Lunar module Eagle (LM-5)
+    note: "the origin is the Moon's centre; ignition is at the top, +x is the direction of flight"
+
+elements:
+  dps_engine: {type: rocket, measure: lm, thrust_vac: $dps.F_vac, mass_flow: $dps.mdot, throttle: guidance,
+               propellant: $prop_pdi, label: descent engine (DPS),
+               note: "throttled by the guidance; stops when its propellant is gone"}
+  p63:
+    type: landing_guidance
+    measure: lm
+    mode: target
+    start: 0
+    end_before: $t_project
+    site_range: $site_range
+    target: {time: "= $t_p63 + $t_project", altitude: $bt_alt, range: $bt_range, speed_forward: $bt_fwd, speed_up: $bt_up,
+             accel_forward: $hg_afwd, accel_up: $hg_aup, jerk_forward: 0}
+    throttle: {start_level: 0.10, start_hold: 26 s, full: 0.925, recovery: 0.57, min: 0.10, max: 0.60}
+    label: P63 braking phase
+    note: "Apollo's guidance law; the time to go from the downrange jerk condition [DL eq. 12]. 26 s at 10 % [MR 4.10.3], then the fixed throttle point (92.5 %, [TN]) until the thrust asked for falls below 57 % [DL]"
+  p64:
+    type: landing_guidance
+    measure: lm
+    mode: target
+    start: after
+    end_before: 5 s
+    stop_below: "= $crew * $crew_alt"
+    site_range: $site_range
+    target: {time: $t_p64, altitude: $p64_alt, range: "= -$p64_range", speed_forward: 0, speed_up: "= -$vd_rate"}
+    throttle: {start_level: 0.10, start_hold: 0, full: 0.925, recovery: 0.57, min: 0.10, max: 0.60}
+    label: P64 approach phase
+    note: "the same law from high gate, aimed at the approach terminus; flown as Apollo 11 did, it ends at 400 ft"
+  p66_crew:
+    type: landing_guidance
+    measure: lm
+    mode: rate
+    start: after
+    stop: "= 1e6 * $crew"
+    site_range: $site_range
+    schedule:
+      # Aldrin's callouts [AL], seconds after the 400 ft call (102:43:26); rates in ft/s, climb rate negative coming down. Values
+      # between callouts are interpolated. The last row: touchdown rates 1.7 ft/s down, 2.1 ft/s across [MR 5.4]
+      time:          [0.0, 7.0, 9.0, 20.0, 26.0, 41.0, 50.0, 57.0, 58.0, 60.0, 65.0, 67.0, 79.0, 88.0, 111.0, 115.0, 119.0, 122.0]
+      speed_up:      ["-9 ft/s", "-4 ft/s", "-3.5 ft/s", "-3.5 ft/s", "-1.5 ft/s", "-2.5 ft/s", "-3.5 ft/s", "-4.38 ft/s", "-4.5 ft/s", "-5.5 ft/s", "-6.5 ft/s", "-5.5 ft/s", "-3.5 ft/s", "-0.5 ft/s", "-2.5 ft/s", "-2.5 ft/s", "-0.5 ft/s", "-1.7 ft/s"]
+      speed_forward: ["58 ft/s", "54.15 ft/s", "53.05 ft/s", "47 ft/s", "39 ft/s", "19 ft/s", "13 ft/s", "11 ft/s", "10.8 ft/s", "10.4 ft/s", "9.4 ft/s", "9 ft/s", "9 ft/s", "6 ft/s", "4.52 ft/s", "4.26 ft/s", "4 ft/s", "2.1 ft/s"]
+    tau: 1.5 s
+    contact_altitude: $probe
+    throttle: {start_level: 0.10, start_hold: 0, full: 0.925, recovery: 0.57, min: 0.10, max: 0.60}
+    label: P66 rate of descent (as flown)
+    note: "Armstrong flies the rates Aldrin calls out, from the 400 ft call; the 1.5 s lag is the LGC's own rate-of-descent time constant [DL]"
+
+  p66_auto:
+    type: landing_guidance
+    measure: lm
+    mode: rate
+    start: after
+    site_range: $site_range
+    schedule: {time: [0, 1000], speed_up: ["= -$vd_rate", "= -$vd_rate"], speed_forward: [0, 0]}
+    tau: 1.5 s
+    contact_altitude: $probe
+    throttle: {start_level: 0.10, start_hold: 0, full: 0.925, recovery: 0.57, min: 0.10, max: 0.60}
+    label: P65 / P66 automatic vertical descent
+    note: "the planned landing: straight down at 3 ft/s [TM]. Flies only with crew: 0"
+outputs:
+  # NASA's premission trajectory for Apollo 11 [TM table I]: speed, altitude and altitude rate at its events
+  v_026:       {body: lm, quantity: speed, reduce: at, value: 26, unit: ft/s, label: "inertial speed at 26 s (throttle to maximum thrust)"}
+  h_026:       {element: p63, quantity: altitude, reduce: at, value: 26, unit: ft}
+  hd_026:      {element: p63, quantity: speed_up, reduce: at, value: 26, unit: ft/s}
+  v_176:       {body: lm, quantity: speed, reduce: at, value: 176, unit: ft/s, label: "inertial speed at 176 s (rotate to windows-up)"}
+  h_176:       {element: p63, quantity: altitude, reduce: at, value: 176, unit: ft}
+  hd_176:      {element: p63, quantity: speed_up, reduce: at, value: 176, unit: ft/s}
+  v_258:       {body: lm, quantity: speed, reduce: at, value: 258, unit: ft/s, label: "inertial speed at 258 s (landing radar altitude update)"}
+  h_258:       {element: p63, quantity: altitude, reduce: at, value: 258, unit: ft}
+  hd_258:      {element: p63, quantity: speed_up, reduce: at, value: 258, unit: ft/s}
+  v_384:       {body: lm, quantity: speed, reduce: at, value: 384, unit: ft/s, label: "inertial speed at 384 s (throttle recovery)"}
+  h_384:       {element: p63, quantity: altitude, reduce: at, value: 384, unit: ft}
+  hd_384:      {element: p63, quantity: speed_up, reduce: at, value: 384, unit: ft/s}
+  v_402:       {body: lm, quantity: speed, reduce: at, value: 402, unit: ft/s, label: "inertial speed at 402 s (landing radar velocity update)"}
+  h_402:       {element: p63, quantity: altitude, reduce: at, value: 402, unit: ft}
+  hd_402:      {element: p63, quantity: speed_up, reduce: at, value: 402, unit: ft/s}
+  v_506:       {body: lm, quantity: speed, reduce: at, value: 506, unit: ft/s, label: "inertial speed at 506 s (high gate)"}
+  h_506:       {element: p63, quantity: altitude, reduce: at, value: 506, unit: ft}
+  hd_506:      {element: p63, quantity: speed_up, reduce: at, value: 506, unit: ft/s}
+  # throttle recovery: [MR 5.3] 386 s (predicted 384 s)
+  t_throttle:  {element: p63, quantity: thrust_command, reduce: first_time_below, value: "= 0.57 * $dps_rated", label: throttle recovery}
+  # high gate, P64 start: 7,129 ft at 125 ft/s down [MR 5.3]
+  t_hg:        {element: p64, quantity: thrust_command, reduce: first_time_above, value: 1, label: high gate (P64 start)}
+  # altitude callouts during the approach [AL]
+  h_5000:      {element: p64, quantity: altitude, reduce: at, value: 525.8, unit: ft}
+  h_3000:      {element: p64, quantity: altitude, reduce: at, value: 547.8, unit: ft}
+  h_2000:      {element: p64, quantity: altitude, reduce: at, value: 558.8, unit: ft}
+  h_1000:      {element: p64, quantity: altitude, reduce: at, value: 571.8, unit: ft}
+  h_750:       {element: p64, quantity: altitude, reduce: at, value: 595.8, unit: ft}
+  h_540:       {element: p64, quantity: altitude, reduce: at, value: 610.8, unit: ft}
+  # the landing phase and touchdown, 102:45:39.9 GET = 754.7 s [MR]
+  t_touchdown: {element: p64, quantity: altitude, reduce: first_time_below, value: 0.05, label: touchdown}
+  m_landed:    {element: dps_engine, quantity: vehicle_mass, reduce: final, label: mass on the surface}
+  prop_left:   {element: dps_engine, quantity: propellant, reduce: final, unit: lb, label: DPS propellant left}
+  prop_used:   {expr: "= $prop_pdi - $prop_left", unit: lb, label: DPS propellant used in the descent}
+  dv_descent:  {expr: "= $dps_isp * 9.80665 * log($m_pdi / $m_landed)", unit: ft/s, label: "descent delta-V (NASA plan: 6,775 ft/s, TM table I)"}
+
+run:
+  t_end: 800 s
+  dt: 20 ms
+
+editor:
+  layout:
+    b:lm:
+    - 602
+    - 30
+    e:dps_engine:
+    - 888
+    - 30
+    e:p63:
+    - 888
+    - 631
+    e:p64:
+    - 888
+    - 1299
+    e:p66_auto:
+    - 888
+    - 2636
+    e:p66_crew:
+    - 888
+    - 1970
+    o:dv_descent:
+    - 1460
+    - 6766
+    o:h_026:
+    - 1460
+    - 282
+    o:h_1000:
+    - 1460
+    - 5316
+    o:h_176:
+    - 1460
+    - 978
+    o:h_2000:
+    - 1460
+    - 5094
+    o:h_258:
+    - 1460
+    - 1674
+    o:h_3000:
+    - 1460
+    - 4872
+    o:h_384:
+    - 1460
+    - 2370
+    o:h_402:
+    - 1460
+    - 3066
+    o:h_5000:
+    - 1460
+    - 4650
+    o:h_506:
+    - 1460
+    - 3762
+    o:h_540:
+    - 1460
+    - 5760
+    o:h_750:
+    - 1460
+    - 5538
+    o:hd_026:
+    - 1460
+    - 504
+    o:hd_176:
+    - 1460
+    - 1200
+    o:hd_258:
+    - 1460
+    - 1896
+    o:hd_384:
+    - 1460
+    - 2592
+    o:hd_402:
+    - 1460
+    - 3288
+    o:hd_506:
+    - 1460
+    - 3984
+    o:m_landed:
+    - 1460
+    - 6204
+    o:prop_left:
+    - 1460
+    - 6398
+    o:prop_used:
+    - 1460
+    - 6592
+    o:t_hg:
+    - 1460
+    - 4428
+    o:t_throttle:
+    - 1460
+    - 4206
+    o:t_touchdown:
+    - 1460
+    - 5982
+    o:v_026:
+    - 1460
+    - 30
+    o:v_176:
+    - 1460
+    - 726
+    o:v_258:
+    - 1460
+    - 1422
+    o:v_384:
+    - 1460
+    - 2118
+    o:v_402:
+    - 1460
+    - 2814
+    o:v_506:
+    - 1460
+    - 3510
+    p:bt_alt:
+    - 30
+    - 4976
+    p:bt_fwd:
+    - 30
+    - 5210
+    p:bt_range:
+    - 30
+    - 4742
+    p:bt_up:
+    - 30
+    - 5420
+    p:crew:
+    - 30
+    - 3039
+    p:crew_alt:
+    - 30
+    - 3214
+    p:dps:
+    - 316
+    - 30
+    p:dps_isp:
+    - 30
+    - 1238
+    p:dps_load:
+    - 30
+    - 944
+    p:dps_rated:
+    - 30
+    - 1091
+    p:dv_doi:
+    - 30
+    - 797
+    p:h_pdi:
+    - 30
+    - 30
+    p:hd_pdi:
+    - 30
+    - 310
+    p:hg_afwd:
+    - 30
+    - 4466
+    p:hg_alt:
+    - 30
+    - 1546
+    p:hg_aup:
+    - 30
+    - 4604
+    p:hg_fwd:
+    - 30
+    - 1812
+    p:hg_range:
+    - 30
+    - 1996
+    p:hg_up:
+    - 30
+    - 1679
+    p:m_doi:
+    - 30
+    - 3884
+    p:m_launch:
+    - 30
+    - 650
+    p:m_pdi:
+    - 30
+    - 4094
+    p:p64_alt:
+    - 30
+    - 2451
+    p:p64_range:
+    - 30
+    - 2598
+    p:probe:
+    - 30
+    - 3375
+    p:prop_pdi:
+    - 30
+    - 4280
+    p:r_pdi:
+    - 30
+    - 3536
+    p:site_range:
+    - 30
+    - 1399
+    p:t_p63:
+    - 30
+    - 2143
+    p:t_p64:
+    - 30
+    - 2304
+    p:t_project:
+    - 30
+    - 2878
+    p:v_hor:
+    - 30
+    - 3698
+    p:v_pdi:
+    - 30
+    - 177
+    p:vd_rate:
+    - 30
+    - 2731
+    p:w_moon:
+    - 30
+    - 443
+  groups:
+  - name: flight_data
+    collapsed: true
+    x: 30
+    y: 30
+    members:
+    - p:h_pdi
+    - p:v_pdi
+    - p:hd_pdi
+    - p:w_moon
+    - p:m_launch
+    - p:dv_doi
+    - p:dps_load
+    - p:dps_rated
+    - p:dps_isp
+    expose: {}
+  - name: guidance_design
+    collapsed: true
+    x: 30
+    y: 393
+    members:
+    - p:site_range
+    - p:hg_alt
+    - p:hg_up
+    - p:hg_fwd
+    - p:hg_range
+    - p:t_p63
+    - p:t_p64
+    - p:p64_alt
+    - p:p64_range
+    - p:vd_rate
+    - p:t_project
+    - p:crew
+    - p:crew_alt
+    - p:probe
+    expose: {}
+  - name: start_state_and_engine
+    collapsed: true
+    x: 30
+    y: 900
+    members:
+    - p:r_pdi
+    - p:v_hor
+    - p:dps
+    - p:m_doi
+    - p:m_pdi
+    - p:prop_pdi
+    expose: {}
+  - name: braking_targets
+    collapsed: true
+    x: 30
+    y: 1263
+    members:
+    - p:hg_afwd
+    - p:hg_aup
+    - p:bt_range
+    - p:bt_alt
+    - p:bt_fwd
+    - p:bt_up
+    expose: {}
+  - name: guidance_phases
+    collapsed: true
+    x: 888
+    y: 631
+    members:
+    - e:p63
+    - e:p64
+    - e:p66_crew
+    - e:p66_auto
+    expose: {}
+  - name: checks_against_NASA
+    collapsed: true
+    x: 1460
+    y: 30
+    members:
+    - o:v_026
+    - o:h_026
+    - o:hd_026
+    - o:v_176
+    - o:h_176
+    - o:hd_176
+    - o:v_258
+    - o:h_258
+    - o:hd_258
+    - o:v_384
+    - o:h_384
+    - o:hd_384
+    - o:v_402
+    - o:h_402
+    - o:hd_402
+    - o:v_506
+    - o:h_506
+    - o:hd_506
+    - o:t_throttle
+    - o:t_hg
+    - o:h_5000
+    - o:h_3000
+    - o:h_2000
+    - o:h_1000
+    - o:h_750
+    - o:h_540
+    - o:t_touchdown
+    - o:m_landed
+    - o:prop_left
+    - o:prop_used
+    - o:dv_descent
+    expose: {}

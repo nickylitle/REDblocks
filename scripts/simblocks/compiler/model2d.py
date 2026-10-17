@@ -234,7 +234,7 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
     els = doc["elements"]; enames = list(els); ne = len(enames)
     typ = np.zeros(ne, np.int64); one = np.zeros(ne, np.int64); act = np.ones(ne, np.int64)
     mk = np.zeros(ne, np.int64); ba = -np.ones(ne, np.int64); bb = -np.ones(ne, np.int64); ref = -np.ones(ne, np.int64)
-    P = np.zeros((ne, NP)); C = np.zeros((ne, 3 * nb)); s0 = np.zeros(ne)
+    P = np.zeros((ne, max(NP, 24))); C = np.zeros((ne, 3 * nb)); s0 = np.zeros(ne)
     GA = np.zeros((ne, 3)); GB = np.zeros((ne, 5)); GX = np.zeros((ne, 4))
     reach = np.zeros(ne)                      # largest lever radius per element (for the critical time step)
     tabs_x, tabs_F, tab_k = [], [], np.zeros(ne)
@@ -485,7 +485,7 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             G = gg("gear", 1.0)
             if t == "drive":
                 kv = gg("kv")
-                P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
+                P[e, :10] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
                            gg("capacity"), gg("throttle", 1.0)]
             else:                                 # a circuit motor: torque from the circuit, speed back to it
                 P[e, :4] = [G, gg("__idx__"), gg("__kt__"), gg("__R__")]
@@ -612,7 +612,8 @@ def body_slot(M, body, qn, where):
 
 
 # ---------------------------------------------------------------------------------------- vehicles in flight
-VEHICLE_TYPES = {"rocket": 18, "jettison": 19, "aero_drag": 20, "steering": 21}
+VEHICLE_TYPES = {"rocket": 18, "jettison": 19, "aero_drag": 20, "steering": 21, "landing_guidance": 22}
+THROTTLE_DEFAULTS = dict(start_level=0.10, start_hold=0.0, full=0.925, recovery=0.57, min=0.10, max=0.60)
 
 
 def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, act, tabs_x, tabs_F, overrides, f):
@@ -638,12 +639,18 @@ def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, 
             if k not in d:
                 raise SpecError(f"a rocket needs {k} (from a rocket_engine block: $eng.F_vac, $eng.mdot)", where,
                                 line_of(d, "type"), f)
+        thr = d.get("throttle")
+        if thr not in (None, "guidance"):
+            raise SpecError("throttle: guidance (a landing_guidance element sets the level), or leave it out", where,
+                            line_of(d, "throttle"), f)
         cut = d.get("cutoff")
         if cut not in (None, "guidance", "time"):
             raise SpecError("cutoff is guidance (the steering element's target speed stops it) or time (stop:)", where,
                             line_of(d, "cutoff"), f)
         P[e, :8] = [g("thrust_vac"), g("exit_area", 0.0), g("mass_flow"), g("start", 0.0), g("stop", 1e300),
                     g("rise", 0.0), g("tailoff", 0.0), 1.0 if cut == "guidance" else 0.0]
+        P[e, 8] = 1.0 if thr == "guidance" else 0.0
+        P[e, 9] = g("propellant", 0.0)
         if P[e, 0] <= 0 or P[e, 2] <= 0 or P[e, 1] < 0:
             raise SpecError("thrust_vac and mass_flow must be positive, exit_area >= 0", where, line_of(d, "type"), f)
     elif t == "jettison":
@@ -664,6 +671,9 @@ def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, 
             raise SpecError("Cd is a number or a table {mach: [...], cd: [...]}", where, line_of(d, "Cd"), f)
         if not P[e, 0] or P[e, 0] <= 0:
             raise SpecError("aero_drag needs area (the reference area its Cd is quoted on)", where, line_of(d, "area"), f)
+    elif t == "landing_guidance":
+        _landing_guidance(e, d, where, g, ctx, M, P, tabs_x, tabs_F, f)
+        tx = tF = None
     else:                                                       # steering
         R = M.planet[1] if getattr(M, "planet", None) is not None else 0.0
         P[e, :8] = [g("pitch_start", 1e300), g("pitch_rate", 0.0), g("pitch_end", g("pitch_start", 1e300)),
@@ -675,25 +685,85 @@ def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, 
         if "guidance_start" in d and R <= 0:
             raise SpecError("guidance to an orbit needs a planet: gravity: {planet: earth}", where,
                             line_of(d, "guidance_start"), f)
-    if t in ("aero_drag", "rocket") and getattr(M, "planet", None) is None and t == "aero_drag":
-        raise SpecError("aero_drag needs a planet and its atmosphere: gravity: {planet: earth}", where,
+    if t == "aero_drag" and (getattr(M, "planet", None) is None or M.planet[3] < 0.5):
+        raise SpecError("aero_drag needs a planet with an atmosphere: gravity: {planet: earth}", where,
                         line_of(d, "type"), f)
     if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
         act[e] = 0
-    tabs_x.append(tx); tabs_F.append(tF)
+    if tx is not None:
+        tabs_x.append(tx); tabs_F.append(tF)
     M.el_info[en] = dict(type=t, measure=m, params=P[e].copy(), k=None)
 
 
-PLANETS = {"earth": dict(mu=3.986004418e14, radius=6371000.0, rotation=7.2921159e-5)}
+def _landing_guidance(e, d, where, g, ctx, M, P, tabs_x, tabs_F, f):
+    """Apollo lunar-landing guidance for one phase. mode target (P63 braking, P64 approach): the quadratic law
+    a = a_T + 6 (v_T + v) / t_go + 12 (r_T - r) / t_go^2 (t_go negative) in altitude and range to the site, aimed at
+    a target state at a set time. mode rate (P66): follow a schedule of climb rate and forward speed with a first-
+    order lag (time constant tau). Both set the thrust direction and the throttle of throttle: guidance rockets:
+    a low start level, fixed full throttle until the thrust asked for falls below the recovery level, then the
+    throttle follows the ask between min and max."""
+    from .model import resolve, num
+    if getattr(M, "planet", None) is None:
+        raise SpecError("landing guidance needs a planet: gravity: {planet: moon}", where, line_of(d, "type"), f)
+    mode = str(d.get("mode", "target")).strip().lower()
+    if mode not in ("target", "rate"):
+        raise SpecError("mode is target (aim at a state at a time: P63, P64) or rate (follow a descent-rate "
+                        "schedule: P66)", where, line_of(d, "mode"), f)
+    th = dict(THROTTLE_DEFAULTS)
+    tv = d.get("throttle") or {}
+    if not isinstance(tv, dict) or set(tv) - set(th):
+        raise SpecError(f"throttle: {{{', '.join(th)}}} (fractions of the rated thrust; start_hold is a time)", where,
+                        line_of(d, "throttle"), f)
+    for k in tv:
+        th[k] = num(resolve(tv[k], ctx, f"{where}.throttle.{k}"), f"{where}.throttle.{k}")
+    after = str(d.get("start", "")).strip().lower() == "after"
+    P[e, 0] = -1.0 if after else g("start", 0.0); P[e, 1] = g("stop", 1e300); P[e, 2] = 1.0 if mode == "rate" else 0.0
+    P[e, 3] = g("site_range", 0.0)
+    P[e, 11:17] = [th["start_level"], th["start_hold"], th["full"], th["recovery"], th["min"], th["max"]]
+    P[e, 23] = g("stop_below", 0.0)               # the phase also ends at this altitude
+    if mode == "target":
+        tg = d.get("target")
+        keys = ("altitude", "range", "speed_forward", "speed_up", "accel_forward", "accel_up")
+        if not isinstance(tg, dict) or "time" not in tg or set(tg) - set(keys) - {"time", "jerk_forward"}:
+            raise SpecError(f"target: {{time, {', '.join(keys)}, jerk_forward}}: the state to arrive at (range: to the "
+                            "site, negative short of it; time: how long after the phase starts)", where,
+                            line_of(d, "target"), f)
+        val = lambda k: num(resolve(tg[k], ctx, f"{where}.target.{k}"), f"{where}.target.{k}") if k in tg else 0.0
+        P[e, 4] = val("time")
+        P[e, 5:11] = [val(k) for k in keys]
+        P[e, 17] = g("freeze", 5.0)
+        if "jerk_forward" in tg:              # Apollo: the time to go comes from the downrange jerk condition
+            P[e, 18] = val("jerk_forward"); P[e, 20] = 1.0
+        P[e, 21] = g("end_before", 0.0)
+        tabs_x.append(np.zeros(0)); tabs_F.append(np.zeros(0))
+    else:
+        sch = d.get("schedule")
+        if not isinstance(sch, dict) or not {"time", "speed_up", "speed_forward"} <= set(sch):
+            raise SpecError("schedule: {time: [...], speed_up: [...], speed_forward: [...]} (times from the phase start; "
+                            "climb rate negative going down)", where, line_of(d, "schedule"), f)
+        cols = {k: [num(resolve(x, ctx, f"{where}.schedule.{k}"), f"{where}.schedule.{k}") for x in sch[k]]
+                for k in ("time", "speed_up", "speed_forward")}
+        n = len(cols["time"])
+        if n < 1 or any(len(c) != n for c in cols.values()) or np.any(np.diff(cols["time"]) <= 0):
+            raise SpecError("schedule columns need the same length and rising times", where, line_of(d, "schedule"), f)
+        tt = np.array(cols["time"], float)
+        tabs_x.append(np.concatenate([tt, tt])); tabs_F.append(np.array(cols["speed_up"] + cols["speed_forward"], float))
+        P[e, 18] = g("tau", 1.5); P[e, 19] = g("contact_altitude", 0.0)
+
+
+PLANETS = {"earth": dict(mu=3.986004418e14, radius=6371000.0, rotation=7.2921159e-5, atmosphere="us76"),
+           # Moon: GM from the JPL DE ephemerides, IAU mean radius, sidereal spin; no atmosphere
+           "moon": dict(mu=4.9028e12, radius=1737400.0, rotation=2.6617e-6, atmosphere="none")}
 
 
 def planet_of(doc, ctx):
-    """gravity: {planet: earth, radius: .., mu: .., rotation: ..} -> [mu, R, in-plane rotation, 1], else None."""
+    """gravity: {planet: earth | moon, radius, mu, rotation, atmosphere: us76 | none} -> [mu, R, in-plane
+    rotation, 1 if air], else None."""
     from .model import resolve, num
     gv = doc.get("gravity")
     if not isinstance(gv, dict):
         return None
-    bad = set(gv) - {"planet", "radius", "mu", "rotation", "note"}
+    bad = set(gv) - {"planet", "radius", "mu", "rotation", "atmosphere", "note"}
     if bad or "planet" not in gv:
         raise SpecError("gravity is a number, a vector, or {planet: earth, radius: ..., mu: ..., rotation: ...}",
                         "gravity", line_of(doc, "gravity"))
@@ -703,4 +773,7 @@ def planet_of(doc, ctx):
                         "gravity", line_of(doc, "gravity"))
     base = base or {}
     g = lambda k: num(resolve(gv[k], ctx, f"gravity.{k}"), f"gravity.{k}") if k in gv else base.get(k, 0.0)
-    return np.array([g("mu"), g("radius"), g("rotation"), 1.0])
+    atm = str(gv.get("atmosphere", base.get("atmosphere", "none"))).strip().lower()
+    if atm not in ("us76", "none"):
+        raise SpecError("atmosphere is us76 (the US Standard Atmosphere 1976) or none", "gravity", line_of(doc, "gravity"))
+    return np.array([g("mu"), g("radius"), g("rotation"), 1.0 if atm == "us76" else 0.0])

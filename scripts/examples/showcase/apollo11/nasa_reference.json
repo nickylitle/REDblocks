@@ -1,0 +1,477 @@
+{
+ "about": "Measured and planned values for Apollo 11, used to check the Simblocks canvases. Every number names its source.",
+ "sources": {
+  "FE": {
+   "title": "Saturn V Launch Vehicle Flight Evaluation Report AS-506, Apollo 11 Mission (MSFC MPR-SAT-FE-69-9, 1969)",
+   "url": ""
+  },
+  "MR": {
+   "title": "Apollo 11 Mission Report (NASA MSC-00171, 1969)",
+   "url": "https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/a11mr_NoMissingPages_19700008096.pdf"
+  },
+  "TM": {
+   "title": "Bennett, Apollo Lunar Descent and Ascent Trajectories (NASA TM X-58040, 1970)",
+   "url": "https://www.lpi.usra.edu/lunar/documents/Bennett_NASA-TM-X-58040.pdf"
+  },
+  "DL": {
+   "title": "Klumpp, Apollo Lunar-Descent Guidance (MIT Draper Laboratory R-695, 1971)",
+   "url": "https://www.nasa.gov/wp-content/uploads/static/history/alsj/ApolloDescentGuidnce.pdf"
+  },
+  "TN": {
+   "title": "Apollo Experience Report: Descent Propulsion System (NASA TN D-7143, 1973)",
+   "url": "https://www.x-15.sierrafoot.org/NASA_TN_D-7143.pdf"
+  },
+  "PK": {
+   "title": "Apollo 11 Press Kit (NASA, 1969)",
+   "url": "https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A11_PressKit.pdf"
+  },
+  "AL": {
+   "title": "Apollo Lunar Surface Journal: The First Lunar Landing (transcript and commentary)",
+   "url": "https://apollojournals.org/alsj/a11/a11.landing.html"
+  },
+  "LM": {
+   "title": "Lunar Module Eagle: launch mass 33,294.5 lb",
+   "url": "https://en.wikipedia.org/wiki/Lunar_Module_Eagle"
+  },
+  "BO": {
+   "title": "Boeing D5-15560-6, Apollo/Saturn V Postflight Trajectory AS-506 (1969)",
+   "url": ""
+  }
+ },
+ "ascent": {
+  "checkpoints": [
+   [
+    "Mach 1",
+    "s",
+    "",
+    66.3,
+    66.3,
+    "T_mach1",
+    "FE table 4-1"
+   ],
+   [
+    "Max dynamic pressure, time",
+    "s",
+    "",
+    83.0,
+    83.0,
+    "T_qmax",
+    "FE table 4-1"
+   ],
+   [
+    "Max dynamic pressure",
+    "kPa",
+    "q",
+    83.0,
+    35.2,
+    "q_max",
+    "FE table 4-1"
+   ],
+   [
+    "Altitude at 83.0 s",
+    "km",
+    "alt",
+    83.0,
+    13.6,
+    "h_qmax",
+    "FE table 4-1"
+   ],
+   [
+    "S-IC/S-II separation: altitude",
+    "km",
+    "alt",
+    162.3,
+    66.7,
+    "h_sep1",
+    "FE table 4-3"
+   ],
+   [
+    "S-IC/S-II separation: surface range",
+    "km",
+    "range",
+    162.3,
+    95.1,
+    "x_sep1",
+    "FE table 4-3"
+   ],
+   [
+    "S-IC/S-II separation: space-fixed speed",
+    "m/s",
+    "v",
+    162.3,
+    2773.9,
+    "v_sep1",
+    "FE table 4-3"
+   ],
+   [
+    "S-IC/S-II separation: flight path angle",
+    "deg",
+    "fpa",
+    162.3,
+    19.02,
+    "fpa_sep1",
+    "FE table 4-3"
+   ],
+   [
+    "S-II/S-IVB separation: altitude",
+    "km",
+    "alt",
+    549.0,
+    187.4,
+    "h_sep2",
+    "FE table 4-3"
+   ],
+   [
+    "S-II/S-IVB separation: surface range",
+    "km",
+    "range",
+    549.0,
+    1623.4,
+    "x_sep2",
+    "FE table 4-3"
+   ],
+   [
+    "S-II/S-IVB separation: speed (in plane)",
+    "m/s",
+    "v",
+    549.0,
+    6916.6,
+    "v_sep2",
+    "FE table 4-3"
+   ],
+   [
+    "S-II/S-IVB separation: Earth-fixed speed",
+    "m/s",
+    "vE",
+    549.0,
+    6515.7,
+    "vE_sep2",
+    "FE table 4-3"
+   ],
+   [
+    "Mass near S-II cutoff",
+    "t",
+    "mass",
+    547.5,
+    213.888,
+    "m_sep2",
+    "FE table 20-9"
+   ],
+   [
+    "S-IVB guidance cutoff, time",
+    "s",
+    "",
+    699.33,
+    699.33,
+    "T_eco",
+    "FE table 7-1"
+   ],
+   [
+    "Surface range at cutoff",
+    "km",
+    "range",
+    699.33,
+    2634.0,
+    "x_eco",
+    "FE"
+   ],
+   [
+    "Orbit insertion: altitude",
+    "km",
+    "alt",
+    709.3,
+    191.1,
+    "h_orbit",
+    "FE table 4-5"
+   ],
+   [
+    "Orbit insertion: space-fixed speed",
+    "m/s",
+    "v",
+    709.3,
+    7793.1,
+    "v_orbit",
+    "FE table 4-5"
+   ],
+   [
+    "Orbit insertion: flight path angle",
+    "deg",
+    "fpa",
+    709.3,
+    0.012,
+    "fpa_orbit",
+    "FE table 4-5"
+   ],
+   [
+    "Orbit insertion: Earth-fixed speed",
+    "m/s",
+    "vE",
+    709.3,
+    7389.5,
+    "vE_orbit",
+    "FE table 4-5"
+   ],
+   [
+    "Mass in orbit",
+    "t",
+    "mass",
+    709.3,
+    135.102,
+    "m_orbit",
+    "FE table 20-9"
+   ]
+  ],
+  "peaks": [
+   [
+    "S-IC",
+    161.63,
+    38.61
+   ],
+   [
+    "S-II",
+    460.62,
+    17.84
+   ],
+   [
+    "S-IVB",
+    699.33,
+    6.73
+   ]
+  ],
+  "peaks_source": "FE table 4-1",
+  "events": [
+   [
+    "S-IC off",
+    162.3
+   ],
+   [
+    "S-II off",
+    549.0
+   ],
+   [
+    "Orbit",
+    699.33
+   ]
+  ]
+ },
+ "landing": {
+  "ignition_get": "102:33:05.2",
+  "plan": {
+   "source": "TM table I (Apollo 11 premission powered-descent summary)",
+   "columns": [
+    "event",
+    "t_s",
+    "v_inertial_fps",
+    "hdot_fps",
+    "h_ft",
+    "dv_fps"
+   ],
+   "rows": [
+    [
+     "Powered descent initiation",
+     0,
+     5560,
+     -4,
+     48814,
+     0
+    ],
+    [
+     "Throttle to maximum thrust",
+     26,
+     5529,
+     -3,
+     48725,
+     31
+    ],
+    [
+     "Rotate to windows-up",
+     176,
+     4000,
+     -50,
+     44934,
+     1572
+    ],
+    [
+     "Landing radar altitude update",
+     258,
+     3065,
+     -89,
+     39201,
+     2536
+    ],
+    [
+     "Throttle recovery",
+     384,
+     1456,
+     -106,
+     24639,
+     4239
+    ],
+    [
+     "Landing radar velocity update",
+     402,
+     1315,
+     -127,
+     22644,
+     4399
+    ],
+    [
+     "High gate",
+     506,
+     506,
+     -145,
+     7515,
+     5375
+    ],
+    [
+     "Low gate",
+     606,
+     55,
+     -16,
+     512,
+     6176
+    ],
+    [
+     "Touchdown",
+     714,
+     15,
+     -5,
+     null,
+     6775
+    ]
+   ]
+  },
+  "flight": [
+   [
+    "Throttle recovery",
+    386,
+    null,
+    "MR 5.3"
+   ],
+   [
+    "P64, high gate (7,129 ft, 125 ft/s down)",
+    506.8,
+    7129,
+    "MR 5.3, AL"
+   ],
+   [
+    "P66 selected by Armstrong",
+    616.8,
+    null,
+    "AL"
+   ],
+   [
+    "Touchdown",
+    754.7,
+    0,
+    "MR table 3-1"
+   ]
+  ],
+  "callouts": {
+   "source": "AL (Armstrong 5000 to 1000 ft, Aldrin below)",
+   "rows": [
+    [
+     525.8,
+     5000
+    ],
+    [
+     547.8,
+     3000
+    ],
+    [
+     558.8,
+     2000
+    ],
+    [
+     571.8,
+     1000
+    ],
+    [
+     595.8,
+     750
+    ],
+    [
+     601.8,
+     700
+    ],
+    [
+     605.8,
+     600
+    ],
+    [
+     610.8,
+     540
+    ],
+    [
+     620.8,
+     400
+    ],
+    [
+     627.8,
+     350
+    ],
+    [
+     629.8,
+     330
+    ],
+    [
+     640.8,
+     300
+    ],
+    [
+     661.8,
+     250
+    ],
+    [
+     670.8,
+     220
+    ],
+    [
+     678.8,
+     200
+    ],
+    [
+     685.8,
+     160
+    ],
+    [
+     694.8,
+     120
+    ],
+    [
+     699.8,
+     100
+    ],
+    [
+     708.8,
+     75
+    ],
+    [
+     731.8,
+     40
+    ],
+    [
+     735.8,
+     30
+    ],
+    [
+     739.8,
+     20
+    ],
+    [
+     754.7,
+     0
+    ]
+   ]
+  },
+  "propellant_left_lb": 770,
+  "propellant_left_source": "AL commentary: about 770 lb left at landing, about 100 lb of it unusable",
+  "dps_loaded_lb": 18185.1,
+  "dps_loaded_source": "TM table II: capacity 18,260.5 lb less 75.4 lb offloaded",
+  "auto_longer_s": [
+   52,
+   62
+  ],
+  "auto_longer_source": "TM: the flown landing took 52 to 62 s longer than the automatic one"
+ }
+}

@@ -180,7 +180,7 @@ outputs:
   the run's log), `time_of_max`, `time_of_min` (when it peaks).
 - `unit` converts the SI result for display; failure limits are written in that same unit.
 - `expr` outputs read every other output in SI (rad, rad/s, m, N), whatever its `unit`: a display unit never changes
-  an expression.
+  an expression. An expression's result is SI too; its own `unit` converts it for display.
 - peaks are tracked every step, not from the decimated log.
 
 ### failure (user-defined only)
@@ -248,27 +248,44 @@ Element quantities with a time history: force, measure, plus plastic_set and bro
 battery_current, bus_voltage, soc (drive), moment, torque, shear, hinge_set (beam) and impulse, dissipated,
 friction_impulse (impact). Otherwise absorbed_work and dissipated are end-of-run numbers.
 
-### Vehicles in flight (2d): rockets, staging, drag, steering, a planet
+### Vehicles in flight (2d): rockets, staging, drag, steering, landing guidance, a planet
 
 `gravity: {planet: earth, radius: 6373 km, rotation: $site.omega_plane}` puts the planet's centre at the origin:
 inverse-square gravity (mu), the US Standard Atmosphere 1976 above its surface (pressure for engine thrust, density and
 temperature for drag), and the air turning with the planet at `rotation` (rad/s about the model's plane; the
 `launch_plane(latitude, azimuth)` block gives it, and the pad's speed `v_surface` for the body's v0). A vehicle is one
-body with `dof: [x, y]`; its elements take `measure: <body>`:
+body with `dof: [x, y]`; its elements take `measure: <body>`. `gravity: {planet: moon, rotation: ...}` is the Moon
+(GM 4.9028e12 m^3/s^2, radius 1737.4 km, no air); `atmosphere: us76 | none` overrides either planet's air.
 
 | type | fields | law |
 |---|---|---|
-| `rocket` | **thrust_vac**, **mass_flow**, exit_area, start, stop, rise, tailoff, cutoff: guidance | F = level x (thrust_vac - p_amb exit_area) along the steering direction; the body loses level x mass_flow |
+| `rocket` | **thrust_vac**, **mass_flow**, exit_area, start, stop, rise, tailoff, cutoff: guidance, throttle: guidance, propellant | F = level x (thrust_vac - p_amb exit_area) along the steering direction; the body loses level x mass_flow; with propellant it stops when that is burnt |
 | `jettison` | **at**, **mass** | the body's mass drops by mass at time at (a stage, an interstage, a tower) |
 | `aero_drag` | **area**, **Cd** (number or {mach: [...], cd: [...]}) | D = 1/2 rho v^2 Cd area against the air-relative velocity |
 | `steering` | pitch_start, pitch_rate, pitch_end, tilt_arrest, guidance_start, target_altitude, target_speed, tgo_freeze | vertical, pitch-over, gravity turn, hold, then explicit guidance; cutoff at target_speed |
+| `landing_guidance` | **site_range**, mode (target, rate), start (time or `after`), stop, stop_below, end_before, target, schedule, freeze, tau, contact_altitude, throttle | one phase of Apollo's lunar descent guidance (below); sets the thrust direction and the level of `throttle: guidance` rockets |
+
+`landing_guidance` phases run in the order written: `start: after` begins when the one before it ends (at `stop`, at
+`stop_below` altitude, or `end_before` seconds ahead of its target). mode `target` flies Apollo's quadratic law in the
+landing-site frame (X up, Z downrange, turning with the planet): a = a_T + 6 (v_T + v) / T + 12 (r_T - r) / T^2 per
+axis, with `target: {time, altitude, range, speed_forward, speed_up, accel_forward, accel_up, jerk_forward}` (range
+negative short of the site; time after the phase starts). With `jerk_forward` the time to go T is solved every step
+from the downrange jerk condition (Draper R-695 eq. 12), otherwise it counts down to `time`; `freeze` holds the last
+command over the final seconds. mode `rate` follows `schedule: {time, speed_up, speed_forward}` (times from the phase
+start) with a lag `tau` (Apollo P66: 1.5 s); `contact_altitude` stops the engine at that altitude and the run ends at touchdown.
+`throttle: {start_level, start_hold, full, recovery, min, max}`: fractions of the rocket's thrust_vac; the engine sits
+at start_level until start_hold, then at full until the thrust asked for drops below recovery, then follows the ask
+between min and max (above max it goes to full). Outputs: `altitude`, `speed_forward` (over the ground), `speed_up`,
+`throttle`, `thrust_command`, `range_to_site`; rocket `propellant` (left).
 
 Engines come from `rocket_engine(fuel, OF, Pc, eps, mdot | F_vac, Isp_sl | Isp_vac | efficiency)`: equilibrium
-combustion and shifting-equilibrium nozzle expansion (NASA RP-1311 method) for RP1, LH2 or CH4 with liquid oxygen,
+combustion and shifting-equilibrium nozzle expansion (NASA RP-1311 method) for RP1, LH2, CH4, A50 (Aerozine 50),
+N2H4, UDMH or MMH with `oxidizer: LOX` (default) or `N2O4`,
 returning F_vac, F_sl, A_e, mdot, delivered and ideal Isp, Tc, c*. Outputs: steering `altitude`, `speed_inertial`,
 `airspeed` (earth-fixed), `flight_path_angle`, `pitch` (deg), `downrange` (over the turning ground); aero_drag `drag`,
 `dynamic_pressure`, `mach`, `air_density`, `ambient_pressure`; rocket `thrust`, `mass_flow`, `vehicle_mass`, `throttle`.
-Example: examples/learn/2d_4_apollo11_ascent.yaml (Saturn V AS-506 against NASA's postflight trajectory).
+Examples: examples/showcase/apollo11/ (the Saturn V ascent against NASA's postflight trajectory, and the lunar
+module's powered descent to touchdown).
 
 ### circuit (optional lumped electrical circuit)
 

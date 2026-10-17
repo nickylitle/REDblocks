@@ -93,21 +93,6 @@ def test_3d_3_robot_arm():
     assert o["_ledger_rel"] < 0.01
 
 
-def test_2d_4_apollo11_ascent_matches_the_flight():
-    """Saturn V AS-506 against NASA's postflight trajectory (Boeing D5-15560-6) and flight evaluation report."""
-    o = run("2d_4_apollo11_ascent.yaml")
-    assert o["h_sep1"] == pytest.approx(66.7, rel=0.02)          # S-IC/S-II separation, km
-    assert o["x_sep1"] == pytest.approx(95.1, rel=0.02)
-    assert o["v_sep1"] == pytest.approx(2773.9, rel=0.01)
-    assert o["fpa_sep1"] == pytest.approx(19.02, abs=0.3)
-    assert o["v_sep2"] == pytest.approx(6916.6, rel=0.005)       # S-II/S-IVB separation, in-plane
-    assert o["x_sep2"] == pytest.approx(1623.4, rel=0.01)
-    assert o["T_eco"] == pytest.approx(699.33, abs=6.0)          # S-IVB guidance cutoff
-    assert o["m_orbit"] == pytest.approx(135102, rel=0.01)
-    assert o["vE_orbit"] == pytest.approx(7389.5, rel=0.002)
-    assert o["_ledger_rel"] < 1e-3
-
-
 def test_rocket_engine_block_against_published_engines():
     from simblocks.actuators.rocket import rocket_engine, ideal_performance
     f1 = rocket_engine("RP1", 2.27, 7.0e6, 16, mdot=2578.0, Isp_sl=263.0)

@@ -388,7 +388,7 @@ def _rate(mk, e, q, v, ba, bb, C, geo, which):
 
 
 # ---- vehicles in flight: planet gravity, the US Standard Atmosphere 1976, rockets, staging, drag and steering
-TYP_ROCKET, TYP_JETTISON, TYP_AERO, TYP_STEER = 18, 19, 20, 21
+TYP_ROCKET, TYP_JETTISON, TYP_AERO, TYP_STEER, TYP_LAND = 18, 19, 20, 21, 22
 _US76_HB = (0.0, 11000.0, 20000.0, 32000.0, 47000.0, 51000.0, 71000.0, 84852.0)      # geopotential layer bases, m
 _US76_TB = (288.15, 216.65, 216.65, 228.65, 270.65, 270.65, 214.65, 186.946)
 _US76_PB = (101325.0, 22632.06, 5474.889, 868.0187, 110.9063, 66.93887, 3.956420, 0.3734)
@@ -477,7 +477,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     mu_p = planet[0]; Rp = planet[1]
     nveh = 0
     for e in range(ne):
-        if typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER:
+        if typ[e] >= TYP_ROCKET and typ[e] <= TYP_LAND:
             nveh += 1
     incr = mu_p > 0.0 or nveh > 0                      # gravity work booked step by step (mass and field vary)
     gfx = np.zeros(nb); gfy = np.zeros(nb)
@@ -487,11 +487,17 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             steer_of[ba[e]] = e
     Tb = np.zeros(nb); Mb = np.zeros(nb)               # this step's thrust and propellant flow on each body
     frx = np.zeros(ne); fry = np.zeros(ne); dmv = np.zeros(ne); cut_t = np.full(ne, 1e300)
+    # landing guidance (Apollo P63 / P64 / P66): this step's thrust direction and throttle level per body
+    gdx = np.zeros(nb); gdy = np.zeros(nb); gthr = np.zeros(nb); gon = np.zeros(nb, np.int64)
+    grec = np.zeros(nb, np.int64); Frated = np.zeros(nb); landed = False; lastend = np.zeros(nb, np.int64)
+    for e in range(ne):
+        if typ[e] == TYP_ROCKET and P[e, 8] > 0.5 and ba[e] >= 0:
+            Frated[ba[e]] += P[e, 0]
     th0 = np.zeros(nb)
     for b in range(nb):
         th0[b] = math.atan2(q0[3 * b], q0[3 * b + 1])   # starting angle round the planet (for downrange)
     Q = np.zeros(nq)
-    st = np.zeros((ne, 7))                     # beams: plastic rotations, accumulators, chord angle, damping state
+    st = np.zeros((ne, 10))                    # beams: plastic rotations, accumulators, chord angle, damping state
     # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
     npart = cpt.shape[0]
     cpst = cpst0.copy(); cpout = np.zeros((npart, 8)); cflg = np.zeros(npart)
@@ -591,7 +597,122 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         if nveh > 0:
             t_ = i * dt
             for b in range(nb):
-                Tb[b] = 0.0; Mb[b] = 0.0
+                Tb[b] = 0.0; Mb[b] = 0.0; gon[b] = 0
+            for b in range(nb):
+                lastend[b] = 1                                              # the first phase needs no predecessor
+            for e in range(ne):
+                if typ[e] != TYP_LAND or active[e] == 0:
+                    continue
+                Pe = P[e]
+                b = ba[e]
+                r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)
+                w = planet[2]
+                phi = math.atan2(q[3 * b], q[3 * b + 1]) - th0[b] - w * t_      # angle travelled over the ground
+                xg = Rp * phi - Pe[3]                                       # range to the site (negative: short of it)
+                phid = vh / r - w
+                xgd = Rp * phid; h = r - Rp
+                vf = r * phid                                               # forward speed over the ground
+                prev_done = lastend[b]
+                lastend[b] = int(st[e, 9])
+                if st[e, 8] < 0.5 and st[e, 9] < 0.5:                       # not started: by time, or after the last phase
+                    if (Pe[0] >= 0.0 and t_ >= Pe[0]) or (Pe[0] < 0.0 and prev_done == 1):
+                        st[e, 8] = 1.0; st[e, 7] = t_                       # started, at this time
+                        st[e, 6] = -Pe[4]                                   # first estimate of the target-referenced time
+                if st[e, 8] > 0.5 and st[e, 9] < 0.5 and (t_ >= Pe[1] or (Pe[23] > 0.0 and h <= Pe[23])):
+                    st[e, 9] = 1.0                                          # its stop time, or down to its stop altitude
+                if st[e, 8] < 0.5 or st[e, 9] > 0.5:                        # not this phase: report the state only
+                    se[e] = xg; aux[e, 0] = h; aux[e, 1] = vf; aux[e, 2] = vr; aux[e, 3] = 0.0; Fe[e] = 0.0
+                    lastend[b] = int(st[e, 9])
+                    continue
+                if Pe[2] > 0.5 and h <= 0.0:                                # touchdown: the run ends
+                    landed = True
+                    break
+                if Pe[2] < 0.5:
+                    # Apollo quadratic guidance in the landing-site frame (X up through the site, Z downrange), which
+                    # turns with the Moon: a = a_T + 6 (v_T + v) / T + 12 (r_T - r) / T^2, T the target-referenced time
+                    ths = th0[b] + Pe[3] / Rp + w * t_                          # the site's angle round the planet now
+                    sux = math.sin(ths); suy = math.cos(ths)                    # up at the site
+                    sdx = suy; sdy = -sux                                       # downrange at the site
+                    px_ = q[3 * b] - Rp * sux; py_ = q[3 * b + 1] - Rp * suy
+                    vfx = v[3 * b] - w * q[3 * b + 1]; vfy = v[3 * b + 1] + w * q[3 * b]   # velocity seen in the frame
+                    X = px_ * sux + py_ * suy; Z = px_ * sdx + py_ * sdy
+                    Xd = vfx * sux + vfy * suy; Zd = vfx * sdx + vfy * sdy
+                    rTz = Pe[6]; vTz = Pe[7]; aTz = Pe[9]
+                    if Pe[20] > 0.5:
+                        # target-referenced time from the downrange jerk condition (Draper R-695 eq. 12), Newton
+                        jTz = Pe[18]
+                        T = st[e, 6]
+                        for it in range(8):
+                            fT = jTz * T ** 3 + 6.0 * aTz * T * T + (18.0 * vTz + 6.0 * Zd) * T + 24.0 * (rTz - Z)
+                            dT = 3.0 * jTz * T * T + 12.0 * aTz * T + 18.0 * vTz + 6.0 * Zd
+                            if dT == 0.0:
+                                break
+                            Tn = T - fT / dT
+                            if Tn > -1e-3:
+                                Tn = 0.5 * T
+                            T = Tn
+                            if abs(fT) < 1e-9 * (abs(rTz - Z) + 1.0):
+                                break
+                        st[e, 6] = T
+                        TTF = T
+                    else:
+                        TTF = t_ - (st[e, 7] + Pe[4])
+                    if Pe[21] > 0.0 and TTF >= -Pe[21]:                     # the phase ends this far before its target
+                        st[e, 9] = 1.0; lastend[b] = 1
+                        se[e] = xg; aux[e, 0] = h; aux[e, 1] = vf; aux[e, 2] = vr; aux[e, 3] = 0.0; Fe[e] = 0.0
+                        continue
+                    if TTF < -Pe[17]:
+                        st[e, 3] = aTz + 6.0 * (vTz + Zd) / TTF + 12.0 * (rTz - Z) / (TTF * TTF)
+                        st[e, 4] = Pe[10] + 6.0 * (Pe[8] + Xd) / TTF + 12.0 * (Pe[5] - X) / (TTF * TTF)
+                        st[e, 5] = 1.0
+                    elif st[e, 5] < 0.5:
+                        st[e, 3] = aTz; st[e, 4] = Pe[10]
+                    # inertial specific force: frame acceleration + Coriolis + centrifugal - gravity
+                    aix = st[e, 4] * sux + st[e, 3] * sdx + 2.0 * w * vfy - w * w * q[3 * b]
+                    aiy = st[e, 4] * suy + st[e, 3] * sdy - 2.0 * w * vfx - w * w * q[3 * b + 1]
+                    r3 = r * r * r
+                    fxx = aix + mu_p * q[3 * b] / r3; fyy = aiy + mu_p * q[3 * b + 1] / r3
+                    fm = math.sqrt(fxx * fxx + fyy * fyy)
+                    if fm > 0.0:
+                        gdx[b] = fxx / fm; gdy[b] = fyy / fm
+                    else:
+                        gdx[b] = urx; gdy[b] = ury
+                else:                                                       # rate of descent: follow a schedule
+                    o = tab_off[e]; L = tab_len[e] // 2
+                    tt = tab_x[o:o + L]
+                    tr_ = t_ - st[e, 7]                                     # schedule times count from the phase start
+                    vu_c = _cd_at(tr_, tt, tab_F[o:o + L]); vf_c = _cd_at(tr_, tt, tab_F[o + L:o + 2 * L])
+                    tau = Pe[18] if Pe[18] > 0.0 else 1.5
+                    ahg = (vu_c - vr) / tau
+                    axg = (vf_c - vf) / tau * Rp / r
+                    # specific force the engine must give (inertial, polar): radial and along-track
+                    thd = phid + w
+                    fr = ahg - r * thd * thd + mu_p / (r * r)
+                    ft = r * (axg / Rp) + 2.0 * vr * thd
+                    fm = math.sqrt(fr * fr + ft * ft)
+                    if fm > 0.0:
+                        gdx[b] = (fr * urx + ft * uhx) / fm; gdy[b] = (fr * ury + ft * uhy) / fm
+                    else:
+                        gdx[b] = urx; gdy[b] = ury
+                cmd = mass[b] * fm / Frated[b] if Frated[b] > 0.0 else 0.0  # thrust asked for, fraction of rated
+                if t_ < Pe[12]:
+                    lvl = Pe[11]                                            # start at a low trim setting
+                elif grec[b] == 0:
+                    lvl = Pe[13]                                            # fixed full throttle until the ask falls
+                    if cmd < Pe[14]:
+                        grec[b] = 1                                         # throttle recovery
+                        lvl = max(Pe[15], min(Pe[16], cmd))
+                else:
+                    lvl = Pe[13] if cmd > Pe[16] else max(Pe[15], cmd)
+                if Pe[2] > 0.5 and Pe[19] > 0.0 and h <= Pe[19]:
+                    lvl = 0.0                                               # contact light: engine stop
+                gthr[b] = lvl; gon[b] = 1
+                Fe[e] = cmd * Frated[b]; se[e] = xg
+                aux[e, 0] = h; aux[e, 1] = vf; aux[e, 2] = vr; aux[e, 3] = lvl
+            if landed:
+                done = i
+                stop[2] = 1
+                break
             for e in range(ne):
                 if typ[e] != TYP_STEER:
                     continue
@@ -649,21 +770,33 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     if Pe[7] > 0.5 and se_ >= 0 and st[se_, 2] > 0.5:
                         off = min(off, cut_t[se_])               # guidance cutoff
                     f = _ramp(t_, Pe[3], off, Pe[5], Pe[6]) if active[e] == 1 else 0.0
+                    if Pe[8] > 0.5:                                  # throttled by landing guidance
+                        f = f * gthr[b] if gon[b] == 1 else 0.0
+                    if Pe[9] > 0.0:                                  # a propellant load: the engine stops when it is gone
+                        left = Pe[9] - st[e, 0]
+                        if left <= 0.0:
+                            f = 0.0
+                        elif f * Pe[2] * dt > left:
+                            f = left / (Pe[2] * dt)
+                        se[e] = left
                     r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)
-                    if mu_p > 0.0:
+                    if mu_p > 0.0 and planet[3] > 0.5:
                         pa, rho, Ta = atmosphere(r - Rp)
                     else:
                         pa = 0.0
                     F = f * (Pe[0] - pa * Pe[1])
                     if F < 0.0:
                         F = 0.0
-                    if se_ >= 0:
+                    if Pe[8] > 0.5 and gon[b] == 1:
+                        dx = gdx[b]; dy = gdy[b]
+                    elif se_ >= 0:
                         dx = st[se_, 0]; dy = st[se_, 1]
                     else:
                         dx = urx; dy = ury
                     frx[e] = F * dx; fry[e] = F * dy
                     Q[3 * b] += frx[e]; Q[3 * b + 1] += fry[e]
                     dmv[e] = f * Pe[2] * dt
+                    st[e, 0] += dmv[e]
                     Tb[b] += F; Mb[b] += f * Pe[2]
                     Fe[e] = F; aux[e, 0] = f * Pe[2]; aux[e, 1] = pa; aux[e, 2] = mass[b]; aux[e, 3] = f
                 elif te == TYP_JETTISON:
@@ -696,7 +829,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         for sweep in range(2):
             for e in range(ne):
                 if (typ[e] == 10) != (sweep == 1) or typ[e] == 14 or typ[e] == 15 or \
-                        (typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER):
+                        (typ[e] >= TYP_ROCKET and typ[e] <= TYP_LAND):
                     continue
                 m_ = mk[e]
                 if m_ == MK_SLIP:
@@ -938,7 +1071,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         # work this step for linear measures and friction (rate form, new velocities, this step's geometry)
         for e in range(ne):
             if exact[e] == 1 or typ[e] == 9 or mk[e] == MK_BEAM or typ[e] == 14 or typ[e] == 15 or \
-                    (typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER):
+                    (typ[e] >= TYP_ROCKET and typ[e] <= TYP_LAND):
                 continue
             if Fe[e] == 0.0 and Fp[e] == 0.0:
                 Fp[e] = 0.0; dsp[e] = 0.0

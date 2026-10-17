@@ -101,12 +101,13 @@ ELEMENTS = [
               "its surface, so it stops when the contact separates. Rolling, skidding and scraping come out of it.",
          yaml="grip:\n  type: contact_friction\n  contact: tyre_on_floor\n  mu: 0.8\n  v_eps: 1 mm/s"),
     dict(name="rocket", law="F = level (F_vac - p_amb A_e) along the steering direction; mass falls by level x mass_flow (2d)",
-         fields="thrust_vac, exit_area, mass_flow, start, stop, rise, tailoff, cutoff",
+         fields="thrust_vac, exit_area, mass_flow, start, stop, rise, tailoff, cutoff, throttle, propellant",
          what="2D, with a planet (gravity: {planet: earth}). Engines on a vehicle body (dof [x, y]): thrust grows as the "
               "outside pressure falls (US Standard Atmosphere at the body's altitude), and the body loses the propellant "
               "it burns. start / stop with a linear rise and tail-off; cutoff: guidance stops it when the steering "
               "element's target speed is reached. Take thrust_vac, exit_area and mass_flow from a rocket_engine block "
-              "(chemistry). Outputs: thrust, mass_flow, back_pressure, vehicle_mass, throttle.",
+              "(chemistry). throttle: guidance lets a landing_guidance element set the level; propellant: (kg) stops "
+              "the engine when it is burnt. Outputs: thrust, mass_flow, back_pressure, vehicle_mass, throttle, propellant.",
          yaml="first_stage:\n  type: rocket\n  measure: vehicle\n  thrust_vac: $f1.F_vac\n  exit_area: $f1.A_e\n  mass_flow: $f1.mdot\n  stop: 150 s"),
     dict(name="jettison", law="at time t the body's mass drops by mass", fields="at, mass",
          what="2D. Drops part of a vehicle (a spent stage, an interstage, a fairing): the body's mass falls at once and "
@@ -125,6 +126,16 @@ ELEMENTS = [
               "when the inertial speed reaches target_speed. Outputs: altitude, speed_inertial, airspeed (earth-fixed), "
               "flight_path_angle and pitch (deg), downrange (over the turning ground).",
          yaml="guidance:\n  type: steering\n  measure: vehicle\n  pitch_start: 12 s\n  pitch_rate: 0.15 deg/s\n  pitch_end: 22 s\n  tilt_arrest: 150 s\n  guidance_start: 190 s\n  target_altitude: 190 km\n  target_speed: 7790 m/s"),
+    dict(name="landing_guidance", law="Apollo descent guidance: a = a_T + 6 (v_T + v)/T + 12 (r_T - r)/T^2 in the site frame; or a rate schedule (2d)",
+         fields="site_range, mode, start, stop, stop_below, end_before, target, schedule, freeze, tau, contact_altitude, throttle",
+         what="2D, with a planet. One phase of a powered landing, as the Apollo lunar module flew it. mode: target aims "
+              "at a state at the landing site (altitude, range, speeds, accelerations) with the quadratic guidance law; "
+              "give jerk_forward and the time to go is solved from Apollo's jerk condition. mode: rate follows a "
+              "schedule of descent rate and forward speed (P66). Phases chain with start: after. It points the thrust "
+              "and sets the level of throttle: guidance rockets (start level, full throttle, throttle recovery, then "
+              "the ask between min and max). Outputs: altitude, speed_forward, speed_up, throttle, thrust_command, "
+              "range_to_site.",
+         yaml="braking:\n  type: landing_guidance\n  measure: lm\n  mode: target\n  start: 0\n  end_before: 60 s\n  site_range: 260 nmi\n  target: {time: 566 s, altitude: -540 m, range: -3080 m, speed_forward: 16 m/s, speed_up: -50 m/s, accel_forward: -2.4, accel_up: -0.1, jerk_forward: 0}"),
 ]
 
 
@@ -187,7 +198,9 @@ def _el_fig_raw(name):
                          '<line x1="80" y1="28" x2="80" y2="6" stroke="currentColor" stroke-width="2"/>',
                "jettison": '<rect x="66" y="66" width="28" height="14" fill="none" stroke="currentColor" stroke-dasharray="3 2"/>',
                "aero_drag": '<path d="M20,40 H52 M20,50 H52 M28,45 H52" fill="none" stroke="currentColor" stroke-width="1.2"/>',
-               "steering": '<path d="M80,30 Q100,8 128,10" fill="none" stroke="currentColor" stroke-width="1.6"/>'}.get(name, "")
+               "steering": '<path d="M80,30 Q100,8 128,10" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+               "landing_guidance": '<path d="M12,8 Q60,12 80,28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/>'
+                                   '<line x1="40" y1="86" x2="120" y2="86" stroke="currentColor" stroke-width="1.6"/>'}.get(name, "")
     if name == "impact":                         # ball dropping onto a surface, with a bounce arrow
         s = (FG._box(14, 58, 132, 15, "ground") + FG._circle(60, 38, 12) + FG._arrow(60, 8, 60, 24) +
              FG._arrow(96, 54, 112, 28) + FG._text(30, 88, "hit: speed out = e x speed in"))

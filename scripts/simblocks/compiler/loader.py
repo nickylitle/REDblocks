@@ -83,14 +83,17 @@ ELEMENT_KEYS = {
     "slider": {"k", "c", "k_rot", "c_rot", "axis", "friction", "v_eps", "rigid"},
     "beam": {"E", "A", "I", "Iy", "Iz", "J", "G", "EA", "EI", "EIy", "EIz", "GJ", "section", "material", "density",
              "hinge", "damping", "orient", "rotary_inertia", "end_mass"},
-    "rocket": {"thrust_vac", "exit_area", "mass_flow", "start", "stop", "rise", "tailoff", "cutoff"},
+    "rocket": {"thrust_vac", "exit_area", "mass_flow", "start", "stop", "rise", "tailoff", "cutoff", "throttle",
+               "propellant"},
     "jettison": {"at", "mass"},
     "aero_drag": {"area", "Cd"},
     "steering": {"pitch_start", "pitch_rate", "pitch_end", "tilt_arrest", "guidance_start", "target_altitude",
                  "target_speed", "tgo_freeze"},
+    "landing_guidance": {"mode", "start", "stop", "site_range", "target", "freeze", "schedule", "tau", "contact_altitude",
+                         "throttle", "end_before", "stop_below"},
 }
 TYPES_2D_ONLY = {"pin", "contact_friction", "rope", "weld", "hinge", "slider", "beam", "rocket", "jettison", "aero_drag",
-                 "steering"}
+                 "steering", "landing_guidance"}
 ELEMENT_COMMON = {"type", "measure", "one_sided", "label", "source", "note", "knockout", "mass", "segments",
                   "__lump__", "__hidden__", "__rigid__"}
 REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table"},
@@ -99,14 +102,15 @@ REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"
                     "contact_friction": {"mu", "contact"}, "rope": {"k"}, "weld": {"k", "k_rot"}, "hinge": {"k"},
                     "slider": {"k", "axis"}, "beam": set(), "impact": {"e"},
                     "rocket": {"thrust_vac", "mass_flow"}, "jettison": {"at", "mass"}, "aero_drag": {"area", "Cd"},
-                    "steering": set()}
+                    "steering": set(), "landing_guidance": {"site_range"}}
 OUTPUT_KEYS = {"element", "body", "part", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
 ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
                       "impulse", "friction_impulse", "drift",
                       "pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed",
                       "drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure",
-                      "thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "dropped"}
+                      "thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "dropped",
+                      "thrust_command", "range_to_site", "speed_forward", "speed_up", "propellant"}
 BODY_QUANTITIES = {"position", "velocity", "kinetic_energy"}
 BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
                       "velocity", "kinetic_energy"}
@@ -122,7 +126,9 @@ STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current"
                  "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"},
                  "steering": {"pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed"},
                  "aero_drag": {"drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure"},
-                 "rocket": {"thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle"},
+                 "rocket": {"thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "propellant"},
+                 "landing_guidance": {"thrust_command", "range_to_site", "altitude", "speed_forward", "speed_up",
+                                      "throttle"},
                  "jettison": {"dropped"}}
 EXPORT_HEADERS = {"units", "plain", "none"}
 EXPORT_ON = {"run", "study"}

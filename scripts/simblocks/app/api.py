@@ -73,7 +73,8 @@ _Dumper.add_representer(list, _seq)
 
 
 def _val(v):
-    return yaml.dump(v, Dumper=_Dumper, sort_keys=False, allow_unicode=True, width=118).rstrip("\n")
+    txt = yaml.dump(v, Dumper=_Dumper, sort_keys=False, allow_unicode=True, width=118).rstrip("\n")
+    return txt[:-4].rstrip("\n") if txt.endswith("\n...") else txt      # a bare scalar's document-end marker
 
 
 def _pair(k, v, ind):
@@ -85,6 +86,7 @@ def _pair(k, v, ind):
     txt = _val(v)
     if txt.endswith("\n..."):
         txt = txt[:-4].rstrip("\n")
+    txt = txt.replace("\n", "\n" + pad + "  ")          # a long text wraps: its next lines sit under the key
     return f"{pad}{k}: {txt}\n"
 
 
@@ -862,14 +864,19 @@ class Api:
         here = os.path.join(os.path.dirname(__file__), "examples")            # packaged app (copied at build time)
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "learn"))
         d = here if os.path.isdir(here) else root
+        # then the showcase: whole missions (Apollo 11) checked against real flight data
+        show = os.path.join(here, "showcase") if os.path.isdir(here) else \
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "showcase", "apollo11"))
         out = []
-        if os.path.isdir(d):
-            for f in sorted(os.listdir(d)):
+        for folder in (d, show):
+            if not os.path.isdir(folder):
+                continue
+            for f in sorted(os.listdir(folder)):
                 if f.endswith((".yaml", ".yml")):
-                    with open(os.path.join(d, f), encoding="utf-8") as fh:
+                    with open(os.path.join(folder, f), encoding="utf-8") as fh:
                         text = fh.read()
                     title = next((ln.split(":", 1)[1].strip() for ln in text.splitlines() if ln.startswith("name:")), f)
-                    out.append(dict(name=title, file=f, text=text, dir=d.replace("\\", "/")))
+                    out.append(dict(name=title, file=f, text=text, dir=folder.replace("\\", "/")))
         return out
 
 

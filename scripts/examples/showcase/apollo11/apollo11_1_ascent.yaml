@@ -1,5 +1,5 @@
 simblocks: 1
-name: 2D-4 Apollo 11 Saturn V ascent to Earth orbit
+name: Apollo 11 Saturn V ascent to Earth orbit
 question: "From the propellant chemistry up: does the Saturn V reach Apollo 11's parking orbit the way the flight did, at the same times, heights and speeds?"
 dim: 2d
 units: SI
