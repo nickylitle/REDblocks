@@ -3821,17 +3821,17 @@ const GUIDE = [
   <table class="ht"><tr><th>Theme</th><th>Looks like</th></tr>
   <tr><td>Blueprint</td><td>Deep navy with bright accents. High contrast that reads well on any screen, for everyday work.</td></tr>
   <tr><td>Graphite</td><td>Dark greys like a photo editor, with bright connections that stand out.</td></tr>
-  <tr><td>Synthwave</td><td>Neon pink, cyan and orange wires glowing on a deep purple night. Turn the lights down and press Run.</td></tr>
+  <tr><td>Synthwave</td><td>Neon pink, cyan and orange wires glowing on a deep purple night.</td></tr>
   <tr><td>Terminal</td><td>Green phosphor on black, monospace everywhere. It is 1983 and the mainframe is all yours.</td></tr>
   <tr><td>Mission control</td><td>Near-black console with amber readouts and cyan accents. Made for dim rooms and long runs, where a bright screen tires the eyes.</td></tr>
-  <tr><td>Ember</td><td>Warm charcoal with red, amber and rose wires. Low on blue light for late-night work, with reds that never glare.</td></tr>
+  <tr><td>Sakura night</td><td>Cherry blossoms after dark: dusky plum panels, petal-pink accents, lantern-yellow values and lilac wires. Tea is optional.</td></tr>
   <tr><td>Burning On</td><td>A funeral in black and white with blood-red roses: black lace panels, lily-white text, crimson wires and old-print lettering. Dramatic.</td></tr>
   <tr><td>Solarized dark</td><td>Ethan Schoonover&#x27;s low-glare palette, dark.</td></tr>
   <tr><td>Drafting</td><td>Vellum paper, blue-black ink and red markups, like a printed schematic. Good for screenshots that go into reports and slides.</td></tr>
   <tr><td>Sage</td><td>Matcha and moss greens on cream, with blush pink, sunflower yellow and a mushroom red. A picnic in the woods.</td></tr>
-  <tr><td>Texas</td><td>Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim. Hook &#x27;em.</td></tr>
+  <tr><td>Texas</td><td>Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim.</td></tr>
   <tr><td>Banana</td><td>Ripe banana yellow on a cream canvas, with brown-speckle ink, leafy green trim and a round, bouncy font. Peak potassium.</td></tr>
-  <tr><td>Candy</td><td>Bubblegum pink with bold sweet-shop wires and a round, bouncy font. Sugar rush included.</td></tr>
+  <tr><td>Pink lemonade</td><td>Strawberry pink poured over a squeeze of lemon: blush canvas, lemon-yellow bars, berry wires and a round, bouncy font. Ice cold.</td></tr>
   <tr><td>Clean</td><td>Plain white with grey borders and crisp blue, green, purple and orange, in the style of GitHub&#x27;s light code view. A neutral light theme for bright rooms and daytime work.</td></tr>
   <tr><td>Arctic</td><td>Cool slate blue with frosty pastel wires, after the Nord palette. Soft contrast that stays easy on the eyes through long sessions.</td></tr>
   <tr><td>Protanopia</td><td>For red-blind vision (protanopia and protanomaly). Colours differ along blue and yellow and in lightness, never by red alone. Wire patterns on by default.</td></tr>
@@ -3991,22 +3991,28 @@ const THEMES = {
     "c-value":"#ff9f1a", "c-builder":"#9d6bff", "c-body":"#2f9bff", "c-element":"#20d07a", "c-load":"#20d07a", "c-output":"#b0b0b0", "c-expr":"#19d3c5",
     "c-fail":"#ff4d6a", "c-sweep":"#ffd21f", "c-mc":"#f26bdc", "c-export":"#9be7ff", "c-group":"#8aa0d8", "c-note":"#8a8378",
     p1:"#3fa9ff", p2:"#ffb020", p3:"#20d07a", p4:"#b26bff", p5:"#ff4fa3"}},
-  synthwave: {name:"Synthwave", fun:true, note:"Neon pink, cyan and orange wires glowing on a deep purple night. Turn the lights down and press Run.", scheme:"dark", t:{
+  synthwave: {name:"Synthwave", fun:true, note:"Neon pink, cyan and orange wires glowing on a deep purple night.", scheme:"dark", t:{
     bg:"#1a1033", grid:"#231543", panel:"#21153f", panel2:"#2a1b50", panel3:"#36235f", edge:"#55368c", hair:"#2e1d55", selbg:"#4a1f6e", "note-bg":"#261a48", "group-hd":"#2f1d5c", ink:"#f8ecff", ink2:"#d6c2f2", ink3:"#a68ccc", link:"#6fe3ff", acc:"#ff4fd8", accf:"#ffb347", pass:"#39ff9e", warn:"#ffd23f", fail:"#ff4f6d", shadow:"rgba(5,0,20,.6)", "s-val":"#ff9f1c", "s-body":"#ff3cac", "s-sig":"#2de2e6", "s-state":"#b98aff", "s-metric":"#ffffff", "c-value":"#ff9f1c", "c-builder":"#a970ff", "c-body":"#2de2e6", "c-element":"#39ff9e", "c-load":"#39ff9e", "c-output":"#b8a2e3", "c-expr":"#3ee7c9", "c-fail":"#ff4f6d", "c-sweep":"#ffd23f", "c-mc":"#ff3cac", "c-export":"#2de2e6", "c-group":"#8f6bff", "c-note":"#b8a2e3", p1:"#ff3cac", p2:"#2de2e6", p3:"#ff9f1c", p4:"#b98aff", p5:"#39ff9e"}},
   terminal: {name:"Terminal", note:"Green phosphor on black, monospace everywhere. It is 1983 and the mainframe is all yours.", scheme:"dark", font:"mono", t:{
     bg:"#030603", grid:"#0a140a", panel:"#070d07", panel2:"#0c170c", panel3:"#132313", edge:"#2a6e2a", hair:"#0f240f", selbg:"#0f3d16", "note-bg":"#081108", "group-hd":"#0e1f0e", ink:"#c6ffc9", ink2:"#7fe38a", ink3:"#4fae5a", link:"#7dfcff", acc:"#39ff6a", accf:"#ffb000", pass:"#39ff6a", warn:"#ffb000", fail:"#ff5555", shadow:"rgba(0,0,0,.6)", "s-val":"#ffb000", "s-body":"#39ff6a", "s-sig":"#7dfcff", "s-state":"#ff6ad5", "s-metric":"#ffffff", "c-value":"#ffb000", "c-builder":"#9cff57", "c-body":"#39ff6a", "c-element":"#00d26a", "c-load":"#00d26a", "c-output":"#6fdc7a", "c-expr":"#7dfcff", "c-fail":"#ff5555", "c-sweep":"#ffd500", "c-mc":"#ff6ad5", "c-export":"#7dfcff", "c-group":"#9cff57", "c-note":"#4fae5a", p1:"#39ff6a", p2:"#ffb000", p3:"#7dfcff", p4:"#ff6ad5", p5:"#ffffff"}},
   mission: {name:"Mission control", note:"Near-black console with amber readouts and cyan accents. Made for dim rooms and long runs, where a bright screen tires the eyes.", scheme:"dark", t:{
     bg:"#07090d", grid:"#121925", panel:"#0c1016", panel2:"#121820", panel3:"#1a222d", edge:"#2c3746", hair:"#161d27", selbg:"#3b2a08", "note-bg":"#10141a", "group-hd":"#141b26", ink:"#f4e9d2", ink2:"#d2bf96", ink3:"#998b6e", link:"#4fd2ff", acc:"#ffb02e", accf:"#4fd2ff", pass:"#3ddc97", warn:"#ffb02e", fail:"#ff5a4f", shadow:"rgba(0,0,0,.6)", "s-val":"#ffb02e", "s-body":"#4fd2ff", "s-sig":"#a5b4c8", "s-state":"#c792ea", "s-metric":"#f4e9d2", "c-value":"#ffb02e", "c-builder":"#c792ea", "c-body":"#4fd2ff", "c-element":"#3ddc97", "c-load":"#3ddc97", "c-output":"#8a96a8", "c-expr":"#5ed6c8", "c-fail":"#ff5a4f", "c-sweep":"#ffd166", "c-mc":"#ff7eb6", "c-export":"#4fd2ff", "c-group":"#9d8cff", "c-note":"#998b6e", p1:"#4fd2ff", p2:"#ffb02e", p3:"#3ddc97", p4:"#c792ea", p5:"#ff7eb6"}},
-  ember: {name:"Ember", note:"Warm charcoal with red, amber and rose wires. Low on blue light for late-night work, with reds that never glare.", scheme:"dark", t:{
-    bg:"#170e0e", grid:"#211414", panel:"#201313", panel2:"#2a1919", panel3:"#362020", edge:"#573232", hair:"#2e1c1c", selbg:"#5a1d1d", "note-bg":"#241716", "group-hd":"#2f1a20", ink:"#f8ebe6", ink2:"#dcc4bc", ink3:"#b0948b", link:"#ff9a85", acc:"#ff5a4a", accf:"#f6b53c", pass:"#7fd1a8", warn:"#f6b53c", fail:"#ff6b5e", shadow:"rgba(0,0,0,.55)", "s-val":"#f6b53c", "s-body":"#f54f45", "s-sig":"#958d8a", "s-state":"#f6a0d1", "s-metric":"#fff1ea", "c-value":"#d39315", "c-builder":"#e18bcf", "c-body":"#fe987d", "c-element":"#459571", "c-load":"#459571", "c-output":"#af9a94", "c-expr":"#75c4d1", "c-fail":"#fd5745", "c-sweep":"#eed28f", "c-mc":"#cf2a5e", "c-export":"#6191b8", "c-group":"#9168a2", "c-note":"#74665c", p1:"#e84533", p2:"#f0b64b", p3:"#f8f1e9", p4:"#e892c3", p5:"#60a892"}},
+  sakura_night: {name:"Sakura night", fun:true, note:"Cherry blossoms after dark: dusky plum panels, petal-pink accents, lantern-yellow values and lilac wires. Tea is optional.", scheme:"dark", t:{
+    bg:"#2a2330", grid:"#332b3a", panel:"#332b39", panel2:"#3b3242", panel3:"#463c4e", edge:"#5e5068", hair:"#3e3546", selbg:"#6b3454", "note-bg":"#352d3b", "group-hd":"#3f3349",
+    bar:"#241e29", "bar-ink":"#f4ecf3", "bar-ink2":"#c6b7c8", hd:"#3a3041", "hd-ink":"#f4ecf3", "hd-ink2":"#cdb9cf",
+    ink:"#f4ecf3", ink2:"#d9cbdb", ink3:"#b0a0b3", link:"#ffa3c4", acc:"#f06b9c", accf:"#ffd479", pass:"#86d4b4", warn:"#ffcf6b", fail:"#ff6b86", shadow:"rgba(10,4,14,.55)",
+    "s-val":"#ffd479", "s-body":"#f06b9c", "s-sig":"#a094ab", "s-state":"#c98ce6", "s-metric":"#f7eff6",
+    "c-value":"#e8b44a", "c-builder":"#c98ce6", "c-body":"#f07aa6", "c-element":"#7cc7b2", "c-load":"#7cc7b2", "c-output":"#a596ad", "c-expr":"#8ec8ea",
+    "c-fail":"#ff5f7e", "c-sweep":"#ffd479", "c-mc":"#e05293", "c-export":"#7aa8e0", "c-group":"#9f7fd0", "c-note":"#7d6e86",
+    p1:"#f06b9c", p2:"#ffd479", p3:"#c98ce6", p4:"#7cc7b2", p5:"#8ec8ea"}},
   burning_on: {name:"Burning On", note:"A funeral in black and white with blood-red roses: black lace panels, lily-white text, crimson wires and old-print lettering. Dramatic.", scheme:"dark", ui:"fell", t:{
-    bg:"#1c171a", grid:"#262024", panel:"#241e21", panel2:"#2d2529", panel3:"#382e33", edge:"#57454d", hair:"#30282c", selbg:"#5a1724", "note-bg":"#272024", "group-hd":"#2e2428",
-    bar:"#171315", "bar-ink":"#f3ece4", "bar-ink2":"#c9bdb4", hd:"#2b2024", "hd-ink":"#f3ece4", "hd-ink2":"#c4a9ad",
-    ink:"#f3ece4", ink2:"#d6cbc2", ink3:"#a8999b", link:"#ff8095", acc:"#c8102e", accf:"#e7d7b8", pass:"#8fc7a0", warn:"#e0b25a", fail:"#ff5c6c", shadow:"rgba(0,0,0,.6)",
-    "s-val":"#e01e3c", "s-body":"#f3ece4", "s-sig":"#8d97a3", "s-state":"#b56bd6", "s-metric":"#e8c26a",
-    "c-value":"#c8102e", "c-builder":"#9b6bd1", "c-body":"#e9e1d6", "c-element":"#7f9c88", "c-load":"#7f9c88", "c-output":"#8a7e80", "c-expr":"#c78a9a",
-    "c-fail":"#ff4d5e", "c-sweep":"#e0b25a", "c-mc":"#d2457a", "c-export":"#6f8fb8", "c-group":"#6f5a8e", "c-note":"#6d5a5e",
-    p1:"#e01e3c", p2:"#f3ece4", p3:"#e8c26a", p4:"#b56bd6", p5:"#7fb0d6"}},
+    bg:"#0e0c0d", grid:"#181516", panel:"#141112", panel2:"#1b1719", panel3:"#25201f", edge:"#3d3536", hair:"#211c1d", selbg:"#4e0d18", "note-bg":"#171314", "group-hd":"#1e1819",
+    bar:"#0a0909", "bar-ink":"#f4efe7", "bar-ink2":"#c8beb5", hd:"#1a1617", "hd-ink":"#f4efe7", "hd-ink2":"#bfb2ad",
+    ink:"#f4efe7", ink2:"#d7cdc4", ink3:"#a39893", link:"#ff7a8c", acc:"#c8102e", accf:"#efe6d8", pass:"#9cc9a8", warn:"#e0b25a", fail:"#ff5466", shadow:"rgba(0,0,0,.7)",
+    "s-val":"#e3203e", "s-body":"#f4efe7", "s-sig":"#8f8a8d", "s-state":"#c47a8c", "s-metric":"#e2c071",
+    "c-value":"#c8102e", "c-builder":"#b8a8ad", "c-body":"#ece4da", "c-element":"#8a9a8e", "c-load":"#8a9a8e", "c-output":"#7f7678", "c-expr":"#c78a9a",
+    "c-fail":"#ff4155", "c-sweep":"#e2c071", "c-mc":"#d2457a", "c-export":"#8f9db0", "c-group":"#9b5a6a", "c-note":"#5e5052",
+    p1:"#e3203e", p2:"#f4efe7", p3:"#e2c071", p4:"#c47a8c", p5:"#8f9db0"}},
   solarized_dark: {name:"Solarized dark", note:"Ethan Schoonover's low-glare palette, dark.", scheme:"dark", t:{
     bg:"#002b36", grid:"#04313d", panel:"#073642", panel2:"#0b3d4a", panel3:"#104654", edge:"#2f5a66", hair:"#0c3c48", selbg:"#11506a", "note-bg":"#0a3a46", "group-hd":"#123f52", ink:"#eee8d5", ink2:"#b3b9b3", ink3:"#8a9ca0", link:"#5fb3f0", acc:"#268bd2", accf:"#cb4b16", pass:"#859900", warn:"#b58900", fail:"#ef5350", shadow:"rgba(0,0,0,.45)", "s-val":"#b58900", "s-body":"#e0488f", "s-sig":"#2aa198", "s-state":"#8b8fdc", "s-metric":"#eee8d5", "c-value":"#b58900", "c-builder":"#6c71c4", "c-body":"#268bd2", "c-element":"#859900", "c-load":"#859900", "c-output":"#839496", "c-expr":"#2aa198", "c-fail":"#dc322f", "c-sweep":"#cb4b16", "c-mc":"#d33682", "c-export":"#2aa198", "c-group":"#6c71c4", "c-note":"#839496", p1:"#3a9ee6", p2:"#b58900", p3:"#859900", p4:"#e0488f", p5:"#2aa198"}},
   drafting: {name:"Drafting", note:"Vellum paper, blue-black ink and red markups, like a printed schematic. Good for screenshots that go into reports and slides.", scheme:"light", t:{
@@ -4017,7 +4023,7 @@ const THEMES = {
     "s-val":"#5f7a1c", "s-body":"#b85a6c", "s-sig":"#4a7672", "s-state":"#7d5a3a", "s-metric":"#2f3b29",
     "c-value":"#d9b23a", "c-builder":"#c46f7e", "c-body":"#5f7a52", "c-element":"#8fae5d", "c-load":"#8fae5d", "c-output":"#a0a6ad", "c-expr":"#4fa39a", "c-fail":"#b54a3c", "c-sweep":"#e08a3a", "c-mc":"#d79aa0", "c-export":"#3f6b8a", "c-group":"#c3cdb0", "c-note":"#9c7a62",
     p1:"#2f4a28", p2:"#b85a6c", p3:"#6f8f1c", p4:"#7d5a3a", p5:"#a8811c"}},
-  texas: {name:"Texas", note:"Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim. Hook 'em.", scheme:"light", t:{
+  texas: {name:"Texas", note:"Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim.", scheme:"light", t:{
     bg:"#ffffff", grid:"#f3e9e1", panel:"#ffffff", panel2:"#f7f3ee", panel3:"#ece5dc", edge:"#d7c9bd", hair:"#efe6de", selbg:"#ffe0c7", "note-bg":"#fff8f1", "group-hd":"#f4ece4", ink:"#333f48", ink2:"#46525b", ink3:"#5c6770", link:"#a34a00", acc:"#bf5700", accf:"#005f86", pass:"#3d7a2a", warn:"#9a5b00", fail:"#b3122e", shadow:"rgba(51,63,72,.16)",
     bar:"#bf5700", "bar-ink":"#ffffff", "bar-ink2":"#ffe9d6", hd:"#bf5700", "hd-ink":"#ffffff", "hd-ink2":"#ffe0c2",
     "s-val":"#bf5700", "s-body":"#333f48", "s-sig":"#00818c", "s-state":"#005f86", "s-metric":"#3f7f2c",
@@ -4031,14 +4037,14 @@ const THEMES = {
     "c-value":"#f2a900", "c-builder":"#9a5bd1", "c-body":"#8a5a2b", "c-element":"#6aa52a", "c-load":"#6aa52a", "c-output":"#b0a27a", "c-expr":"#1d9a8a",
     "c-fail":"#d93f3f", "c-sweep":"#f07f1a", "c-mc":"#e05f9a", "c-export":"#3d8ee0", "c-group":"#c3cf6a", "c-note":"#a6763c",
     p1:"#6b3f12", p2:"#4f8a10", p3:"#1f6fbf", p4:"#d2570a", p5:"#b0306a"}},
-  candy: {name:"Candy", fun:true, note:"Bubblegum pink with bold sweet-shop wires and a round, bouncy font. Sugar rush included.", scheme:"light", ui:"fredoka", t:{
-    bg:"#fbe0ee", grid:"#f4cfe2", panel:"#fff1f8", panel2:"#fbe1ee", panel3:"#f6cfe3", edge:"#d68db3", hair:"#efc2d8", selbg:"#f8c4de", "note-bg":"#fde9f3", "group-hd":"#efe2fb",
-    bar:"#f5b8d5", "bar-ink":"#7a1450", "bar-ink2":"#5c2048", hd:"#f9cfe4", "hd-ink":"#3b1433", "hd-ink2":"#7a3d66",
-    ink:"#3b1433", ink2:"#683259", ink3:"#8c587d", link:"#a0246c", acc:"#d0337f", accf:"#c2580f", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(160,60,110,.2)",
-    "s-val":"#00897b", "s-body":"#d6007a", "s-sig":"#2f5bff", "s-state":"#8a2be2", "s-metric":"#e05a00",
-    "c-value":"#ee8420", "c-builder":"#9576ee", "c-body":"#3f95e8", "c-element":"#14b8a6", "c-load":"#14b8a6", "c-output":"#a8789b", "c-expr":"#0d9488",
-    "c-fail":"#e04f78", "c-sweep":"#d99a00", "c-mc":"#e2559c", "c-export":"#0ea5d0", "c-group":"#8a74ee", "c-note":"#b9819f",
-    p1:"#d6007a", p2:"#00897b", p3:"#2f5bff", p4:"#e05a00", p5:"#8a2be2"}},
+  pink_lemonade: {name:"Pink lemonade", fun:true, note:"Strawberry pink poured over a squeeze of lemon: blush canvas, lemon-yellow bars, berry wires and a round, bouncy font. Ice cold.", scheme:"light", ui:"fredoka", t:{
+    bg:"#fde4ec", grid:"#f6d1de", panel:"#fff6f9", panel2:"#fde6ee", panel3:"#f8d3e1", edge:"#de8fae", hair:"#f2c6d6", selbg:"#fbc4d9", "note-bg":"#fdecf2", "group-hd":"#fde6ee",
+    bar:"#ffd93d", "bar-ink":"#5a1a3c", "bar-ink2":"#7a3a52", hd:"#f9c9dc", "hd-ink":"#3d1230", "hd-ink2":"#7a3d63",
+    ink:"#3d1230", ink2:"#6a3058", ink3:"#8e587b", link:"#940c4f", acc:"#e0457b", accf:"#b88600", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(170,60,110,.2)",
+    "s-val":"#b36d00", "s-body":"#d6006e", "s-sig":"#2f5bff", "s-state":"#8a2be2", "s-metric":"#00897b",
+    "c-value":"#e8a200", "c-builder":"#9576ee", "c-body":"#ef4f8f", "c-element":"#14b8a6", "c-load":"#14b8a6", "c-output":"#a8789b", "c-expr":"#0d9488",
+    "c-fail":"#e04f78", "c-sweep":"#f2b705", "c-mc":"#f26a2e", "c-export":"#0ea5d0", "c-group":"#d46fc9", "c-note":"#b9819f",
+    p1:"#d6006e", p2:"#b36d00", p3:"#2f5bff", p4:"#00897b", p5:"#8a2be2"}},
   clean: {name:"Clean", note:"Plain white with grey borders and crisp blue, green, purple and orange, in the style of GitHub's light code view. A neutral light theme for bright rooms and daytime work.", scheme:"light", t:{
     bg:"#ffffff", grid:"#eef1f4", panel:"#ffffff", panel2:"#f6f8fa", panel3:"#eaeef2", edge:"#d0d7de", hair:"#e5e9ee", selbg:"#ddf4ff", "note-bg":"#f6f8fa", "group-hd":"#f3f0ff",
     ink:"#1f2328", ink2:"#3d444d", ink3:"#59636e", link:"#0969da", acc:"#0969da", accf:"#bc4c00", pass:"#1a7f37", warn:"#9a6700", fail:"#cf222e", shadow:"rgba(31,35,40,.12)",
@@ -4068,7 +4074,7 @@ const THEMES = {
 // Default themes are the built-ins above. User themes live on this computer, one folder each
 // (<config>/simblocks/themes/<slug>/theme.json and an optional background image), and carry every setting a
 // built-in has plus a font choice, grid on/off and a background picture.
-const OLD_THEME = {graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
+const OLD_THEME = {ember:"sakura_night", candy:"pink_lemonade", graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
   colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana", paper:"clean", helena:"burning_on"};
 // fonts: font-size-adjust holds every face to Inter's x-height, so swapping fonts never changes line heights or wraps
 const UI_FONTS = {
