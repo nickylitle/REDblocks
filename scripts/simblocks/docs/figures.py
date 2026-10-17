@@ -841,6 +841,39 @@ def figure_for(b):
 _FIXES = None
 
 
+_ARROWS = None
+
+
+def _fix_arrows(sym_id, inner):
+    """Run each load arrow on until its tip touches the part it points at (arrow_fixes.json, measured in a browser:
+    the first stroke or fill straight ahead of the tip, up to 5 units away)."""
+    global _ARROWS
+    if _ARROWS is None:
+        import json, os
+        try:
+            _ARROWS = json.load(open(os.path.join(os.path.dirname(__file__), "arrow_fixes.json")))
+        except Exception:
+            _ARROWS = {}
+    fx = _ARROWS.get(sym_id)
+    if not fx:
+        return inner
+    import re
+    count = [-1]
+    pat = re.compile(r'(<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)" ' + re.escape(ACC)
+                     + r' stroke-width="1.6"/>)(<polygon points="([^"]*)" ' + re.escape(ACCF) + r'/>)')
+
+    def sub(m):
+        count[0] += 1
+        p = fx.get(str(count[0]))
+        if not p:
+            return m.group(0)
+        x2, y2 = float(m.group(4)), float(m.group(5)); dx, dy = p[0] - x2, p[1] - y2
+        ln = m.group(1).replace(f'x2="{m.group(4)}" y2="{m.group(5)}"', f'x2="{p[0]:.1f}" y2="{p[1]:.1f}"')
+        pts = " ".join(f"{float(a) + dx:.1f},{float(b) + dy:.1f}" for a, b in (q.split(",") for q in m.group(7).split()))
+        return ln + m.group(6).replace(m.group(7), pts)
+    return pat.sub(sub, inner)
+
+
 def place_labels(sym_id, inner):
     """Move labels that sat on a line or shape to their checked spots (fig_fixes.json, made by measuring every
     figure in a browser: no label overlaps a stroke, a fill, another label or the frame)."""
@@ -851,6 +884,7 @@ def place_labels(sym_id, inner):
             _FIXES = json.load(open(os.path.join(os.path.dirname(__file__), "fig_fixes.json")))
         except Exception:
             _FIXES = {}
+    inner = _fix_arrows(sym_id, inner)
     fx = _FIXES.get(sym_id)
     if not fx:
         return inner

@@ -277,6 +277,12 @@ svg symbol .fl{font:7px var(--mono);fill:var(--ink2)} svg symbol .fc{font:8px va
 .pathbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .node.group{width:268px;border-color:color-mix(in srgb,var(--c-group) 55%,var(--edge))}
 .node.group .hd{background:var(--group-hd)}
+.node.group.vtab{width:320px}
+.gm.vt .row{grid-template-columns:96px minmax(0,1fr) 16px;column-gap:6px}
+.gm.vt input.vn{font:inherit;font-size:11px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:4px;padding:2px 4px;min-width:0}
+.gm.vt input.vn:hover{border-color:var(--hair)} .gm.vt input.vn:focus{border-color:var(--acc);background:var(--panel2)}
+.gm.vt .vx{display:grid;place-items:center;width:16px;height:16px;padding:0;border:0;background:transparent;color:var(--ink3);border-radius:3px;opacity:.55}
+.gm.vt .vx:hover{opacity:1;color:var(--bad);background:var(--panel3)}
 .node.ingroup{border-style:dashed}
 .gframe{position:absolute;border:1px dashed color-mix(in srgb,var(--c-group) 70%,var(--edge));border-radius:10px;background:color-mix(in srgb,var(--c-group) 5%,transparent);pointer-events:auto}
 .gframe.sel{border-color:var(--acc)}
@@ -570,6 +576,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <button data-o="name"><b>Sort by name</b><span>Grid in A to Z order.</span></button>
   <button data-o="flow"><b>Flow, left to right</b><span>Columns follow the wires: each node sits right of what feeds it.</span></button>
   <button data-o="role"><b>Columns by role</b><span>The classic Arrange: one column per node role.</span></button>
+  <button data-o="vtable"><b>Values into tables</b><span>Fold loose value nodes into compact tables: inputs in one, = expressions in another.</span></button>
   <p class="scope"></p>
 </div>
 <script>
@@ -905,7 +912,8 @@ function toDoc(){
   const params = {}, derived = {}, bodies = {}, elements = {}, outputs = {}, failure = [], uncertain = {};
   const withNote = (n, v) => n.data.note ? {value:v, note:n.data.note} : v;
   S.nodes.filter(n => n.kind === "value").forEach(n => {
-    const v = n.data.value; if (typeof v === "string" && v.trim().startsWith("=")) derived[n.data.name] = v.trim();
+    const v = n.data.value; if (blank(v) || (typeof v === "string" && !v.trim())) return;      // a row still being filled in
+    if (typeof v === "string" && v.trim().startsWith("=")) derived[n.data.name] = v.trim();
     else params[n.data.name] = withNote(n, lit(v));
   });
   S.nodes.filter(n => n.kind === "builder").forEach(n => {
@@ -2009,7 +2017,7 @@ function render(){
       f.innerHTML = `<div class="gfh"><span>${esc(g.name)}</span><button data-gact="close" title="Collapse (Tab)">collapse</button><button data-gact="ungroup" title="Ungroup (Ctrl+Shift+G)">ungroup</button></div>`;
       world.insertBefore(f, world.firstChild); continue; }
     const el = document.createElement("div");
-    el.className = "node group" + (isSel(g.id) ? " sel" : "");
+    el.className = "node group" + (isValTable(g) ? " vtab" : "") + (isSel(g.id) ? " sel" : "");
     el.dataset.id = g.id; el.style.left = g.x + "px"; el.style.top = g.y + "px";
     el.innerHTML = groupHTML(g); world.appendChild(el);
   }
@@ -2082,6 +2090,13 @@ function placeGrid(cells, ox, oy, gx = 24, gy = 20){
 }
 function organize(mode){
   if (mode === "role"){ arrange(); fitView(); changed(false); return; }
+  if (mode === "vtable"){ const scoped = selSet.size >= 2, pick = n => n.kind === "value" && !groupOf(n.id) && (!scoped || selSet.has(n.id));
+    const isExpr = n => String(n.data.value || "").trim().startsWith("=");
+    const a = valTable(S.nodes.filter(n => pick(n) && !isExpr(n)).map(n => n.id), "inputs"), b = valTable(S.nodes.filter(n => pick(n) && isExpr(n)).map(n => n.id), "derived");
+    if (!a && !b){ status("", "No loose value nodes to fold."); return; }
+    render();
+    if (a && b){ const ea = world.querySelector(`.node[data-id="${a.id}"]`); b.x = a.x; b.y = a.y + (ea ? ea.offsetHeight : 60 + 34 * a.members.length) + 24; render(); }
+    organize("clean"); status("ok", "Folded the values into tables. Open one (Tab) to spread it back out."); return; }
   const {units, scoped} = orgUnits(); if (!units.length) return;
   const ox = scoped ? gsnap(Math.min(...units.map(u => u.x))) : 30, oy = scoped ? gsnap(Math.min(...units.map(u => u.y))) : 30;
   if (mode === "kind" || mode === "name"){
@@ -2161,7 +2176,7 @@ function refWires(){
     el.querySelectorAll("input:not([type=checkbox]), textarea").forEach(inp => { if (inp.value && inp.value.includes("$")) fields.push([m, el, inp]); }); });
   if (!fields.length) return h;
   srcs.forEach(n => {
-    if (hiddenIn(n.id)) return;
+    if (hiddenIn(n.id) && !world.querySelector(`[data-m="${n.id}"] .sock.out`)) return;     // a value table row still wires out
     if (!sockets(n).outs.some(o => o.type === "val")) return;
     const aOf = f => sockPos(n.id, outKeyFor(n, f), "out");       // a named result wires from its own socket
     const nm = nodeName(n), re = new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
@@ -2425,7 +2440,9 @@ world.addEventListener("input", e => {
   changed(rerender);
   if (k === "const" || k === "raw") refreshMeasure(n);
 });
-world.addEventListener("change", e => { if (e.target.dataset.k === "name" && !e.target.closest("[data-m]")){ const n = byId(e.target.closest(".node").dataset.id); if (!n) return;
+world.addEventListener("change", e => { const hm = e.target.closest("[data-m]");
+  if (e.target.dataset.k === "name" && (!hm || hm.classList.contains("vt"))){ const n = byId(hm ? hm.dataset.m : e.target.closest(".node").dataset.id); if (!n) return;
+    n.data.name = String(n.data.name || "").trim().replace(/[^A-Za-z0-9_]/g, "_") || "p";
   const others = S.nodes.filter(x => x !== n && nodeName(x) === n.data.name && NS[x.kind] === NS[n.kind]); if (others.length) n.data.name = uniqueName(n.data.name, NS[n.kind]); changed(); } });
 function setField(n, k, v){ const d = n.data;
   if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v; else d[k] = v; }
@@ -2441,7 +2458,13 @@ world.addEventListener("click", async e => {
   const gb = e.target.closest("button[data-gact]");
   if (gb){ const holder = gb.closest(".node.group") || gb.closest(".gframe"), g = byGid(holder.dataset.id || holder.dataset.g), a = gb.dataset.gact; if (!g) return;
     if (a === "open") openGroup(g); if (a === "close") closeGroup(g); if (a === "ungroup") ungroup(g);
-    if (a === "save") saveGroupToLibrary(g); if (a === "del"){ setSel(g.id); deleteSel(); } return; }
+    if (a === "save") saveGroupToLibrary(g); if (a === "del"){ setSel(g.id); deleteSel(); }
+    if (a === "addval"){ const n = addNode("value", {name:"p", value:""}, g.x, g.y); g.members.push(n.id); changed();
+      setTimeout(() => { const el = world.querySelector(`.node[data-id="${g.id}"] [data-m="${n.id}"] input.vn`); if (el){ el.focus(); el.select(); } }, 30); }
+    if (a === "delval"){ const id = gb.dataset.mid; g.members = g.members.filter(m => m !== id);
+      S.nodes = S.nodes.filter(n => n.id !== id); S.links = S.links.filter(l => l.from.node !== id && l.to.node !== id);
+      if (!g.members.length) S.groups = S.groups.filter(x => x !== g); changed(); }
+    return; }
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const n = byId(b.closest(".node").dataset.id); if (!n) return; const d = n.data, act = b.dataset.act;
   if (act === "addcol"){ d.cols.push({label:"", unit:"", quantity:"position"}); changed(); return; }
@@ -2582,7 +2605,25 @@ function groupCandidates(g){
 }
 function fieldValue(m, key){ const d = m.data; if (key.startsWith("a.")) return d.args[key.slice(2)]; if (key.startsWith("f.")) return d.fields[key.slice(2)]; return d[key]; }
 const exposed = (g, c) => { const k = c.m.id + "|" + c.s.key; return (g.expose && k in g.expose) ? g.expose[k] : c.def; };
+const isValTable = g => g.members.length > 0 && g.members.every(id => { const m = byId(id); return m && m.kind === "value"; });
+function valTableHTML(g){
+  const X = `<svg viewBox="0 0 16 16" width="9" height="9" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+  let b = "";
+  g.members.map(byId).forEach(m => { b += `<div class="gm vt" data-m="${m.id}"><div class="row"><input class="vn" data-k="name" value="${esc(m.data.name)}" spellcheck="false" title="${esc(m.data.note || m.data.name)}">${uvControl("value", m.data.value, feedDim(m), "")}
+      <button class="vx" data-gact="delval" data-mid="${m.id}" title="Remove ${esc(m.data.name)}" aria-label="Remove">${X}</button><span class="sock out t-val" data-s="out" data-t="val"></span></div></div>`; });
+  b += `<div class="mini"><button data-gact="addval" title="Add a value to this table">+ value</button><button data-gact="open" title="Spread the values out as separate nodes (Tab)">open</button><button data-gact="ungroup" title="Ctrl+Shift+G">ungroup</button></div>`;
+  b += `<div class="hint">${g.members.length} value${g.members.length === 1 ? "" : "s"} · each row wires out from its own socket</div>`;
+  return `<div class="hd"><span class="bar" style="background:${COL.value}"></span><span class="kind">values</span><input class="nm" data-gk="name" value="${esc(g.name)}" spellcheck="false"><button class="x" data-gact="del" title="Delete the table and its values" aria-label="Delete">${X}</button></div><div class="bd">${b}</div>`;
+}
+function valTable(ids, name){
+  // fold loose value nodes into one table; values already in a group stay where they are
+  ids = ids.filter(id => { const m = byId(id); return m && m.kind === "value" && !groupOf(id); });
+  if (!ids.length) return null;
+  const p = bbox(ids), g = {id:"g" + (S.nid++), name:uniqueGroupName(name || "values"), collapsed:true, x:p.x, y:p.y, members:ids, expose:{}};
+  S.groups.push(g); return g;
+}
 function groupHTML(g){
+  if (isValTable(g)) return valTableHTML(g);
   const vals = g.members.map(byId).filter(m => m && m.kind === "value"), cand = groupCandidates(g); let b = "";
   vals.forEach(m => { b += `<div class="gm" data-m="${m.id}"><div class="row"><label title="${esc(m.data.name)}">${esc(m.data.name)}</label>${uvControl("value", m.data.value, feedDim(m), "")}
       <span class="sock out t-val" data-s="out" data-t="val"></span></div></div>`; });
@@ -2710,6 +2751,7 @@ function menuAll(){
   const it = [];
   const add = (grp, name, sub, color, make, extra) => it.push(Object.assign({grp, name, sub, color, make, kind:"node", words:""}, extra || {}));
   add("Inputs", "Value", "a named number with units, a material name, or = expression", COL.value, () => ["value", {name:"p"}]);
+  add("Inputs", "Value table", "several named values in one compact block, each with its own output socket", COL.value, () => ["valtable", {}], {words:"parameters params list group values constants"});
   add("Inputs", "Material", "a catalog material name as a value", COL.value, () => ["value", {name:"mat", mat:true, value:(CAT.materials[0] || [""])[0]}], {words:"steel aluminium titanium polymer"});
   if (is3d()){
     add("Bodies", "Body · moving (3D)", "slides in x, y, z and tumbles freely; mass, inertia, points, spheres, plane patches", COL.body, () => ["body", {name:"body", dof:"free", free3:{x:true, y:true, z:true}, rot3:"free"}], {words:"mass inertia rigid 3d tumble gyroscope"});
@@ -2840,6 +2882,7 @@ function pick(x){
   if (kind === "library"){ hideMenu(); const fr = data, p = bbox([]); const nodes = fr.nodes || [];
     const x0 = Math.min(...nodes.map(n => n.x)), y0 = Math.min(...nodes.map(n => n.y));
     insertFragment(Object.assign({}, fr, {doc:"library"}), menuAt.x - (isFinite(x0) ? x0 : 0), menuAt.y - (isFinite(y0) ? y0 : 0)); return; }
+  if (kind === "valtable"){ hideMenu(); const n = addNode("value", {name:"p", value:""}, menuAt.x, menuAt.y); const g = valTable([n.id], "values"); setSel(g.id); changed(); return; }
   const n = addNode(kind, data, menuAt.x, menuAt.y); hideMenu(); setSel(n.id); changed();
 }
 canvas.addEventListener("contextmenu", e => { e.preventDefault(); const c = canvas.getBoundingClientRect(); showMenu(e.clientX - c.left, e.clientY - c.top); });
