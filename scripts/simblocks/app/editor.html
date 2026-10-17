@@ -3387,7 +3387,8 @@ const GUIDE = [
   <p>A steel disc on a stem spins fast, tilted 20 degrees, with its tip on a ball joint. Gravity tries to tip it over; because it spins, it swings slowly round in a circle instead. This is gyroscopic precession, and it only appears in 3D.</p>
   <h3>The blocks and why they connect that way</h3>
   <ul><li><b>The floor</b> is ground with one point where the tip sits.</li>
-  <li><b>The top</b> is a free body (it slides and tumbles in every direction). Its <b>shape</b> is a disc whose centre is 50 mm up the stem (<code>at: [0, 0, $stem]</code>), so its centre of mass and inertia are placed for you. <code>orient0</code> tilts it by <i>tilt</i>; <code>omega0</code> gives it its spin (plus the slow <i>precession</i>, so it starts smoothly). These three values feed the body as text (<code>$stem</code>, <code>$tilt</code>, <code>$spin</code>) inside its shape and start fields, so they show no wire: each value block lists where it is used.</li>
+  <li><b>The top</b> is a free body (it slides and tumbles in every direction). Its <b>shape</b> is a disc whose centre is 50 mm up the stem (<code>at: [0, 0, $stem]</code>), so its centre of mass and inertia are placed for you. <code>orient0</code> tilts it by <i>tilt</i>; <code>omega0</code> gives it its spin, worked out in the expression blocks <i>w_x</i> and <i>w_z</i> from <i>spin</i>, <i>tilt</i> and <i>start_precession</i>.</li>
+  <li><b>start_precession is a starting condition, not the answer.</b> The solver works out the precession from gravity, the spin and the inertia. This value only sets how fast the top is already swinging round at t = 0: at the steady rate (3.25 rad/s) it goes round smoothly; at 0 it still precesses at about the same average rate but nods up and down (nutation).</li>
   <li><b>A pin with rigid: true</b> is a ball joint: it holds the tip on its point but lets it turn every way.</li></ul>
   <h3>What to look at</h3>
   <p>The disc's x and y trace a circle; its height barely changes (<i>lowest_z_mm</i>). <i>quarter_turn_s</i> is the time to go a quarter of the way round.</p>
@@ -3395,7 +3396,7 @@ const GUIDE = [
   <p>The simple gyroscope rule gives $\\Omega \\approx m g l / (I_s \\omega_s) = 3.07$ rad/s. The full steady-precession equation, $I_t \\Omega^2 \\cos\\theta - I_s \\omega_s \\Omega + m g l = 0$ (with $I_t$ about the tip), gives 3.25 rad/s, so a quarter turn takes 0.484 s. The model gives 0.484 s.</p>
   <h3>Things to try</h3>
   <ul><li>Halve the spin: it precesses twice as fast and wobbles more.</li>
-  <li>Set <i>precession</i> to 0 so it starts with only the spin: it nods up and down as it goes round (nutation).</li>
+  <li>Set <i>start_precession</i> to 0 so it starts with only the spin: it still precesses (quarter turn 0.467 s), but nods up and down as it goes round (nutation).</li>
   <li>Set the spin to zero: it simply falls over.</li></ul>`},
  {id:"ex-3d2", grp:"Examples", t:"3D-2 Drone arm (beam)", h:`
   <p class="exopen"><button data-ex="3D-2 Drone arm under a thrust punch">Open this example</button></p>
