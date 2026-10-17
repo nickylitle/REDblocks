@@ -15,7 +15,7 @@ from .units import parse_quantity, unit_factor, UnitError
 from . import engine1d as E
 
 TYPE_CODE = {"spring": 0, "dashpot": 1, "kelvin_voigt": 2, "elastoplastic": 3, "hertz": 4, "friction": 5,
-             "drag": 6, "force": 7, "drive": 8, "impact": 14}
+             "drag": 6, "force": 7, "drive": 8, "impact": 14, "emotor": 17}
 AUX = {"plastic_set": 0, "broken": 2, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
        "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3}
 KNOCK = "__knock__"          # override prefix: element switched off
@@ -219,9 +219,17 @@ def compile_model(doc, overrides=None):
             raise SpecError(str(exc), "", None, f) if f and f not in str(exc) else exc
         raise
     from .expand import expand
+    from .circuit import compile_circuit
     user_doc = doc
+    circ, circ_els = compile_circuit(doc, ctx)
+    if circ_els:                              # circuit motors join the elements (hidden, one per motor)
+        import copy as _copy
+        d2 = _copy.copy(doc); d2.lines = getattr(doc, "lines", {})
+        d2["elements"] = {**(doc.get("elements") or {}), **circ_els}
+        doc = d2
     doc, M_groups = expand(doc, ctx)
     M = Compiled(); M.doc = user_doc; M.cdoc = doc; M.groups = M_groups; M.ctx = ctx; M.dim = doc.get("dim", "1d")
+    M.circ = circ
     if M.dim == "2d":
         from .model2d import compile2d
         compile2d(doc, ctx, M, overrides)
@@ -307,6 +315,14 @@ def compile_model(doc, overrides=None):
                 check_load_kind(d, bool(nzb) and all(dof[i] == "rotation" for i in nzb), where, doc)
             else:
                 P[e, 0] = g("P")
+        elif t == "emotor":                       # a circuit motor: torque from the circuit, speed back to it
+            G = g("gear", 1.0)
+            P[e, 0] = G; P[e, 1] = g("__idx__"); P[e, 2] = g("__kt__"); P[e, 3] = g("__R__")
+            nz = [i for i in range(nb) if C[e, i] != 0.0]
+            if len(nz) != 1 or dof[nz[0]] != "rotation":
+                raise SpecError("a circuit motor's measure must be one rotation body (the shaft it turns)", where,
+                                line_of(d, "measure"), f)
+            m[nz[0]] += g("J_rotor", 0.0) * G * G
         elif t == "drive":
             kv = g("kv"); G = g("gear", 1.0)
             P[e, :] = [1.0 / kv, g("R"), g("I_max"), G, g("cells"), g("R0"), g("R1", 0.0), g("C1", 0.0),
@@ -352,6 +368,8 @@ def _run_settings(M, doc, ctx):
     run = doc["run"]
     M.t_end = num(resolve(run["t_end"], ctx, "run.t_end"), "run.t_end")
     M.dt_crit = critical_dt(M)
+    if getattr(M, "circ", None):                # each circuit motor's element, by motor number
+        M.circ["mot_el"] = np.array([M.el_names.index(f"__circ_{pn}") for pn in M.circ["motors"]] or [0], np.int64)
     dt = run.get("dt", "auto")
     # explicit-step share: 2% of the stability limit for contacts and springs (impact accuracy); beams are smooth
     # structural elements and run at 20% of theirs (their high modes need stability, not resolution)
@@ -393,8 +411,9 @@ def critical_dt(M):
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2) else 0.0)
         c = a["C"][e]
         inv = sum(c[i] ** 2 / a["m"][i] for i in range(len(c)) if c[i] != 0.0)
-        if t == 8:                       # motor: mechanical time constant J R / (G Kt)^2, stable below 2 tau
-            Kt, R, G = a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]
+        if t == 8 or t == 17:            # motor: mechanical time constant J R / (G Kt)^2, stable below 2 tau
+            Kt, R, G = ((a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]) if t == 8 else
+                        (a["P"][e, 2], a["P"][e, 3], a["P"][e, 0]))
             if inv > 0:
                 best = min(best, 2.0 * R / (inv * (G * Kt) ** 2))
             continue
@@ -404,6 +423,29 @@ def critical_dt(M):
 
 
 # ------------------------------------------------------------------------------------------- run
+CIRC_COL = {"current": 0, "voltage": 1, "power": 2, "energy": 3, "soc": 4, "state": 4, "torque": 5,
+            "temperature": 6, "heat": 7}
+
+
+def circuit_args(M):
+    """The circuit arrays the engines take (empty when the model has no circuit)."""
+    c = getattr(M, "circ", None)
+    if not c:
+        return (np.zeros(0, np.int64), np.zeros(0, np.int64), np.zeros(0, np.int64), np.zeros((0, 12)),
+                np.zeros((0, 6)), np.zeros((0, 8)), 0, np.zeros(1, np.int64))
+    a = c["arrays"]
+    return (a["ptype"], a["na"], a["nb"], a["prm"], a["pst0"], a["th"], int(a["nn"]), c["mot_el"])
+
+
+def _circ_history(M, H, LC):
+    c = getattr(M, "circ", None)
+    if not c or LC.shape[1] < 8:
+        return
+    for k, pn in enumerate(c["names"]):
+        for q, col in CIRC_COL.items():
+            H[f"{pn}.{q}"] = LC[:, k * 8 + col]
+
+
 def _group_history(M, H):
     for name, g in (getattr(M, "groups", None) or {}).items():
         for key in [k for k in list(H) if k.startswith(g.segs[0] + ".")]:
@@ -517,24 +559,25 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     import time as _time
     t_run = _time.perf_counter()
     Wg = 0.0; SP = None
+    cargs = circuit_args(M)
     try:
         if dim3:
             from . import engine3d as E3
-            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk) = E3.run_engine3d(
+            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC) = E3.run_engine3d(
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
                 a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
         elif dim2:
             from . import engine2d as E2
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk) = E2.run_engine2d(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC) = E2.run_engine2d(
                 n, dt, a["q0"], a["v0"], a["minv"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"],
                 a["active"], a["mk"], a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
         else:
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk) = E.run_engine(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk, CP, CTR, LC) = E.run_engine(
                 n, dt, a["q0"], a["v0"], a["m"], a["typ"], a["one_sided"], a["active"], a["P"], a["C"], a["s0"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
     finally:
         if timer is not None:
             timer.cancel()
@@ -563,6 +606,9 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     scale = max(KE0, KE1, KEpk, inputs, abs(Wg), np.abs(A).sum(), float(np.abs(S1).sum()), hits, gfloor, 1e-30)
     led = (abs(glob) + internal) / scale
     R = dict(_ledger_rel=float(led))
+    if getattr(M, "circ", None) and CP.shape[0]:        # the circuit's own books: part energies sum to zero
+        tot = float(np.abs(CP[:, 3]).sum())
+        R["_circuit_ledger_rel"] = float(abs(CP[:, 3].sum()) / tot) if tot > 0 else 0.0
     if dim2 or dim3:
         R["_gravity_work"] = float(Wg)
     if timed_out:
@@ -577,7 +623,13 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             continue
         red = o.get("reduce", "final")
         pk = None
-        if "body" in o and dim3:
+        if "part" in o:
+            k_ = M.circ["names"].index(o["part"]); col = CIRC_COL[o["quantity"]]
+            lo, hi, fin = CTR[k_, 2 * col], CTR[k_, 2 * col + 1], CP[k_, col]
+            if lo > 1e299:
+                lo = hi = fin
+            val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
+        elif "body" in o and dim3:
             qn = o["quantity"]; i = M.body_names.index(o["body"])
             if qn == "kinetic_energy":
                 if red != "final":
@@ -720,7 +772,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H)
+        _group_history(M, H); _circ_history(M, H, LC)
         return R, H
     if history and dim2:
         H = dict(t=LT); nq = 3 * len(M.body_names)
@@ -738,7 +790,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H)
+        _group_history(M, H); _circ_history(M, H, LC)
         return R, H
     if history:
         H = dict(t=LT)
@@ -751,6 +803,6 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H)
+        _group_history(M, H); _circ_history(M, H, LC)
         return R, H
     return R

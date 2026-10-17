@@ -164,7 +164,7 @@ class System:
             if t == "force":
                 s.note(f"{e.get('label', en)}: constant force {info(en)['params'][0]:.4g} N along +({e['measure']})")
                 continue
-            if t == "drive":
+            if t in ("drive", "dc_motor"):
                 mk = f"__motor_{en}"
                 s.body(mk, "motor", e.get("label", en), info=[f"Kt = {info(en)['params'][0]:.3g} N m/A",
                                                               f"gear {info(en)['params'][3]:g}:1"])

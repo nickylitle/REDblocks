@@ -1156,7 +1156,7 @@ def _run_payload(text, overrides=None, n_hist=600, model_path=None, export=False
         if track:
             _PROG.update(stage=2, label="Outputs, energy ledger and time history", solve_t0=0.0)
         types = {k: e["type"] for k, e in s.doc["elements"].items()}
-        keep = {"elastoplastic": ("plastic_set", "broken"), "drive": ("current", "battery_current", "bus_voltage", "soc")}
+        keep = {"elastoplastic": ("plastic_set", "broken"), "drive": ("current", "battery_current", "bus_voltage", "soc"), "dc_motor": ("current",)}
 
         def wanted(k):
             if "." not in k:

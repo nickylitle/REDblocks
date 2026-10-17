@@ -27,9 +27,39 @@ def _num(v, ctx, where):
     return num(resolve(v, ctx, where), where)
 
 
+def _desugar_dc_motors(doc, ctx):
+    """dc_motor: a DC motor on a fixed supply V (no battery, no circuit). It runs as a drive whose pack never sags:
+    zero internal resistance, a capacity that never empties, cells = V / 4.2 V (the pack's full-charge voltage)."""
+    els = doc.get("elements") or {}
+    if not any(isinstance(e, dict) and e.get("type") == "dc_motor" for e in els.values()):
+        return doc
+    from .model import resolve, num
+    out = copy.copy(doc); out.lines = getattr(doc, "lines", {}); new = {}
+    for en, e in els.items():
+        if not (isinstance(e, dict) and e.get("type") == "dc_motor"):
+            new[en] = e; continue
+        where = f"elements.{en}"
+        d = {k: v for k, v in e.items() if k not in ("Kt", "V", "type")}
+        d["type"] = "drive"
+        if "Kt" in e:
+            Kt = num(resolve(e["Kt"], ctx, where + ".Kt"), where + ".Kt")
+            if Kt <= 0:
+                raise SpecError("Kt must be positive", where, line_of(e, "Kt"), doc.get("__file__", ""))
+            d["kv"] = 1.0 / Kt                      # rad/s per volt
+        V = num(resolve(e["V"], ctx, where + ".V"), where + ".V")
+        if V <= 0:
+            raise SpecError("V (the supply voltage) must be positive", where, line_of(e, "V"), doc.get("__file__", ""))
+        d["cells"] = V / 4.2; d["R0"] = 0.0; d["capacity"] = 1e18
+        d.setdefault("I_max", 1e9)
+        new[en] = d
+    out["elements"] = new
+    return out
+
+
 def expand(doc, ctx):
     """Returns (doc_for_the_compiler, {parent: Group}). The input doc is not modified."""
     from .expand_shape import expand_shapes
+    doc = _desugar_dc_motors(doc, ctx)
     doc = expand_shapes(doc, ctx)
     dim = doc.get("dim", "1d")
     els = doc.get("elements") or {}

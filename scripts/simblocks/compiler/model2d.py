@@ -404,7 +404,7 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
                                         where, line_of(d, "measure"), f)
                     mk[e] = E2.MK_CIRC; GB[e, :3] = fb[1]
                     reach[e] = max(frame_r(ia, [fa[1][:2]]) + fa[1][2], frame_r(ib, [fb[1][:2]]) + fb[1][2])
-                if t in ("friction", "drag", "force", "drive"):
+                if t in ("friction", "drag", "force", "drive", "emotor"):
                     raise SpecError(f"a {t} element cannot act on a contact measure (use contact_friction for "
                                     "sliding friction on a contact)", where, line_of(d, "type"), f)
                 if t in ("kelvin_voigt", "elastoplastic"):
@@ -477,10 +477,14 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
                 check_load_kind(d, rot_, where, doc)
             else:
                 P[e, 0] = gg("P")
-        elif t == "drive":
-            kv = gg("kv"); G = gg("gear", 1.0)
-            P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
-                       gg("capacity"), gg("throttle", 1.0)]
+        elif t in ("drive", "emotor"):
+            G = gg("gear", 1.0)
+            if t == "drive":
+                kv = gg("kv")
+                P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
+                           gg("capacity"), gg("throttle", 1.0)]
+            else:                                 # a circuit motor: torque from the circuit, speed back to it
+                P[e, :4] = [G, gg("__idx__"), gg("__kt__"), gg("__R__")]
             nz = [k for k in range(3 * nb) if C[e, k] != 0.0]
             if mk[e] != E2.MK_LIN or not nz or any(k % 3 != 2 for k in nz):
                 raise SpecError("a drive turns spin coordinates: 'shaft.rz', or {twist: [chassis, shaft]} for a motor "
@@ -548,8 +552,9 @@ def critical_dt2d(M):
     for e in range(len(M.el_names)):
         t = a["typ"][e]
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9) else 0.0)
-        if t == 8:
-            Kt, R, G = a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]
+        if t == 8 or t == 17:
+            Kt, R, G = ((a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]) if t == 8 else
+                        (a["P"][e, 2], a["P"][e, 3], a["P"][e, 0]))
             inv = sum(a["C"][e, j] ** 2 * mi[j] for j in range(3 * nb))
             if inv > 0:
                 best = min(best, 2.0 * R / (inv * (G * Kt) ** 2))

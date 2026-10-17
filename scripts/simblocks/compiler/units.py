@@ -24,6 +24,9 @@ _U = {
     # electrical
     "V": 1.0, "A": 1.0, "mA": 1e-3, "ohm": 1.0, "mohm": 1e-3, "mOhm": 1e-3, "F": None,  # F is ambiguous
     "Ah": 3600.0, "mAh": 3.6, "C": 1.0,
+    "kV": 1e3, "mV": 1e-3, "kA": 1e3, "uA": 1e-6, "kohm": 1e3, "Mohm": 1e6, "uohm": 1e-6, "mW": 1e-3,
+    "H": 1.0, "mH": 1e-3, "uH": 1e-6, "nH": 1e-9, "mF": 1e-3, "uF": 1e-6, "nF": 1e-9, "pF": 1e-12,
+    "kHz": 1e3, "MHz": 1e6,
     # temperature differences / absolute in K
     "K": 1.0,
     # dimensionless

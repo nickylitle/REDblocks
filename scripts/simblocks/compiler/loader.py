@@ -62,7 +62,7 @@ def line_of(d, key):
 # ---------------------------------------------------------------------------------------------- schema
 TOP = {"simblocks", "name", "question", "dim", "units", "params", "derived", "bodies", "elements", "outputs",
        "failure", "uncertain", "limits", "knockouts", "run", "report", "notes", "assumptions", "sources",
-       "directions", "angles", "study", "exports", "editor", "gravity"}
+       "directions", "angles", "study", "exports", "editor", "gravity", "circuit"}
 REQUIRED_TOP = {"simblocks", "name", "dim", "bodies", "elements", "outputs", "run"}
 BODY_KEYS = {"dof", "mass", "inertia", "shape", "x0", "v0", "ground", "label", "note", "__hidden__"}
 BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0", "angle0", "v0", "omega0", "points", "spheres",
@@ -74,6 +74,8 @@ ELEMENT_KEYS = {
     "hertz": {"K", "n", "alpha"}, "friction": {"F_c", "v_eps", "F_s", "v_s"}, "drag": {"K"},
     "force": {"P", "csv", "pulse"}, "drive": {"kv", "R", "I_max", "gear", "cells", "R0", "R1", "C1", "capacity", "throttle",
                               "J_rotor"},
+    "dc_motor": {"kv", "Kt", "R", "V", "I_max", "gear", "throttle", "J_rotor"},
+    "emotor": {"__part__", "gear", "J_rotor", "__kt__", "__idx__", "__R__"},
     "impact": {"e", "mu", "v_rest"},
     "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact"},
     "rope": {"k", "c", "length"}, "weld": {"k", "c", "k_rot", "c_rot", "rigid"},
@@ -87,10 +89,10 @@ ELEMENT_COMMON = {"type", "measure", "one_sided", "label", "source", "note", "kn
                   "__lump__", "__hidden__", "__rigid__"}
 REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table"},
                     "hertz": {"K"}, "friction": {"F_c", "v_eps"}, "drag": {"K"}, "force": set(),
-                    "drive": {"kv", "R", "I_max", "cells", "R0", "capacity"}, "pin": {"k"},
+                    "drive": {"kv", "R", "I_max", "cells", "R0", "capacity"}, "dc_motor": {"R", "V"}, "emotor": set(), "pin": {"k"},
                     "contact_friction": {"mu", "contact"}, "rope": {"k"}, "weld": {"k", "k_rot"}, "hinge": {"k"},
                     "slider": {"k", "axis"}, "beam": set(), "impact": {"e"}}
-OUTPUT_KEYS = {"element", "body", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
+OUTPUT_KEYS = {"element", "body", "part", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
 ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
                       "impulse", "friction_impulse", "drift"}
@@ -103,6 +105,7 @@ EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "he
 EXPORT_COLUMN_KEYS = {"element", "body", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
+                 "dc_motor": {"current"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
                  "impact": {"impulse", "dissipated", "friction_impulse"},
                  "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"}}
@@ -189,8 +192,12 @@ def check(doc):
         if need not in b and "shape" not in b:
             raise SpecError(f"a {dof} body needs '{need}'", p, line_of(bodies, name), f)
     els = doc["elements"]
-    if not isinstance(els, dict) or not els:
-        raise SpecError("elements must be a non-empty mapping", "elements", line_of(doc, "elements"), f)
+    has_circ = isinstance(doc.get("circuit"), dict) and bool((doc["circuit"].get("parts") or {}))
+    if els is None and has_circ:
+        els = doc["elements"] = {}
+    if not isinstance(els, dict) or (not els and not has_circ):
+        raise SpecError("elements must be a non-empty mapping (or the model needs a circuit)", "elements",
+                        line_of(doc, "elements"), f)
     connected = set()
     for name, e in els.items():
         p = f"elements.{name}"
@@ -210,6 +217,9 @@ def check(doc):
             raise SpecError("rigid is true or false", p, line_of(e, "rigid"), f)
         for k in req - set(e):
             raise SpecError(f"a {t} element needs '{k}'", p, line_of(els, name), f)
+        if t == "dc_motor" and ("kv" in e) == ("Kt" in e):
+            raise SpecError("a dc_motor needs kv (speed per volt, e.g. 1350 rpm/V) or Kt (torque per amp, N m/A), "
+                            "one of them", p, line_of(els, name), f)
         if t == "contact_friction":
             if "measure" in e:
                 raise SpecError("contact_friction takes contact: <contact element> instead of a measure", p,
@@ -231,6 +241,13 @@ def check(doc):
         for tok in str(e["measure"]).replace("-", " ").replace("+", " ").replace("*", " ").split():
             if tok in bodies:
                 connected.add(tok)
+    circ_parts = ((doc.get("circuit") or {}).get("parts") or {}) if isinstance(doc.get("circuit"), dict) else {}
+    for pd in circ_parts.values():                 # a circuit motor turns the body in its measure
+        if isinstance(pd, dict) and "measure" in pd:
+            for tok in str(pd["measure"]).replace("-", " ").replace("+", " ").replace("*", " ").replace(".", " ") \
+                    .replace("[", " ").replace("]", " ").replace(",", " ").replace("{", " ").replace("}", " ").split():
+                if tok in bodies:
+                    connected.add(tok)
     for name, b in bodies.items():
         if two and doc.get("gravity") not in (None, 0, "0", "none", "off"):
             break                                  # with gravity a body may fly free
@@ -246,9 +263,19 @@ def check(doc):
             raise SpecError(f"unknown output key '{k}'", p, line_of(o, k), f)
         if "expr" in o:
             continue
-        if ("element" in o) == ("body" in o):
-            raise SpecError("an output names exactly one 'element' or one 'body' (or gives an 'expr')", p,
+        if sum(k in o for k in ("element", "body", "part")) != 1:
+            raise SpecError("an output names exactly one 'element', 'body' or circuit 'part' (or gives an 'expr')", p,
                             line_of(outs, name), f)
+        if "part" in o:
+            from .circuit import QUANTITIES as CQ
+            if o["part"] not in circ_parts:
+                raise SpecError(f"no circuit part named '{o['part']}'", p, line_of(o, "part"), f)
+            if o.get("quantity") not in CQ:
+                raise SpecError(f"a part's quantity is one of {', '.join(sorted(CQ))}", p, line_of(o, "quantity"), f)
+            red = o.get("reduce", "final")
+            if red not in REDUCES or red.startswith("first_time"):
+                raise SpecError("a part's reduce is final, max, min or max_abs", p, line_of(o, "reduce"), f)
+            continue
         if "element" in o and o["element"] not in els:
             raise SpecError(f"no element named '{o['element']}'", p, line_of(o, "element"), f)
         if "body" in o and o["body"] not in bodies:

@@ -508,7 +508,7 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                                         where, line_of(d, "measure"), f)
                     mk[e] = E3.MK_SPH; GB[e, :4] = fb[1]
                     reach[e] = max(rr(ia, fa[1]), rr(ib, fb[1]))
-                if t in ("friction", "drag", "force", "drive"):
+                if t in ("friction", "drag", "force", "drive", "emotor"):
                     raise SpecError(f"a {t} element cannot act on a contact measure (use contact_friction)", where,
                                     line_of(d, "type"), f)
                 if t in ("kelvin_voigt", "elastoplastic"):
@@ -580,10 +580,14 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                 check_load_kind(d, rot_, where, doc)
             else:
                 P[e, 0] = gg("P")
-        elif t == "drive":
-            kv = gg("kv"); G = gg("gear", 1.0)
-            P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
-                       gg("capacity"), gg("throttle", 1.0)]
+        elif t in ("drive", "emotor"):
+            G = gg("gear", 1.0)
+            if t == "drive":
+                kv = gg("kv")
+                P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
+                           gg("capacity"), gg("throttle", 1.0)]
+            else:                                 # a circuit motor: torque from the circuit, speed back to it
+                P[e, :4] = [G, gg("__idx__"), gg("__kt__"), gg("__R__")]
             nz = [k for k in range(4 * nb) if C[e, k] != 0.0]
             if mk[e] == E3.MK_TWIST:
                 bi = bb[e]; Jr = gg("J_rotor", 0.0)
@@ -713,8 +717,9 @@ def critical_dt3d(M):
                     if inv > 0 and kk > 0:
                         bbest = min(bbest, 2.0 / math.sqrt(kk * inv * 2.0))
             continue
-        if t == 8:
-            Kt, R_, G = a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]
+        if t == 8 or t == 17:
+            Kt, R_, G = ((a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]) if t == 8 else
+                        (a["P"][e, 2], a["P"][e, 3], a["P"][e, 0]))
             inv = sum((a["C"][e, 4 * b + 3] ** 2) * a["Iax"][b] for b in range(nb))
             if a["mk"][e] == E3.MK_TWIST:
                 inv = twist_inv(e)

@@ -22,6 +22,8 @@ import math
 import numpy as np
 from numba import njit
 
+from .circuit import circuit_step
+
 from .engine2d import _book_hits
 from .engine1d import _force, NP, NAUX
 
@@ -564,7 +566,8 @@ def _ke(V, W, Lw, wsp, minv, rmode, Iax, nb):
 @njit(cache=True, nogil=True)
 def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, Iax, mass, com, grav,
                  typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
-                 tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir, stop):
+                 tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
     """Iax: INVERSE inertia about the spin axis for spin bodies. Iinv: body-frame inverse inertia for free bodies.
     com: body-frame centre of mass (non-zero only for spin bodies turning about a pivot off their centre of mass)."""
     nb = X0.shape[0]; ne = typ.shape[0]
@@ -576,6 +579,14 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     _omega(R, rmode, Iinv, axis, Lw, wsp, W, nb)
     F = np.zeros((nb, 3)); T = np.zeros((nb, 3)); Q4 = np.zeros((nb, 4))
     st = np.zeros((ne, 5))
+    # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
+    npart = cpt.shape[0]
+    cpst = cpst0.copy(); cpout = np.zeros((npart, 8)); cflg = np.zeros(npart)
+    cG = np.zeros((cnn, cnn)); cI = np.zeros(cnn); cvn = np.zeros(cnn + 1)
+    CTR = np.empty((npart, 16))
+    for k in range(npart):
+        for c in range(8):
+            CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0
@@ -626,6 +637,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
     nlog = n // log_every + 2 if log_every > 0 else 1
+    LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, nb * NBQ)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     KE0 = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
     Wg = 0.0
@@ -1335,7 +1347,17 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for e in range(ne):
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
+        if npart > 0:
+            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            for k in range(npart):
+                for c in range(8):
+                    if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
+                    if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
         if log_every > 0 and i % log_every == 0 and j < nlog:
+            if npart > 0:
+                for k in range(npart):
+                    for c in range(8):
+                        LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
             for b in range(nb):
                 _body_q(X, V, W, th, wsp, rmode, b, BQ)
@@ -1360,4 +1382,4 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         _body_q(X, V, W, th, wsp, rmode, b, BQ)
         for k in range(NBQ):
             FB[b * NBQ + k] = BQ[k]
-    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw, KEpk)
+    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw, KEpk, cpout, CTR, LOGC[:j])

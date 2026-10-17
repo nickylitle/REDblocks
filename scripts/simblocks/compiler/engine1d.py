@@ -24,6 +24,8 @@ import math
 import numpy as np
 from numba import njit
 
+from .circuit import circuit_step
+
 from ..constitutive.plasticity import tabular_return
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
 
@@ -125,17 +127,30 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         aux[0] = I; aux[1] = Ib; aux[2] = v; aux[3] = st[3]
         cap = 0.5 * C1 * (R1 * st[4]) ** 2 if C1 > 0.0 else 0.0
         return -G * Kt * I, diss, Ech, cap
+    if typ == 17:                                # a circuit motor: torque set by the circuit, speed read back
+        st[2] = sd
+        aux[0] = st[1]; aux[1] = st[3]
+        return -st[0], 0.0, -1.0, 0.0
     return 0.0, 0.0, 0.0, 0.0
 
 
 @njit(cache=True, nogil=True)
 def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_len, tab_k, tab_x, tab_F,
-               log_every, cross_src, cross_idx, cross_thr, cross_dir, stop):
+               log_every, cross_src, cross_idx, cross_thr, cross_dir,
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
     """stop: int64[2]. Another thread sets stop[0] = 1 to end the run early (timeout); stop[1] returns steps done."""
     nb = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
     Q = np.zeros(nb)
     st = np.zeros((ne, 5))
+    # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
+    npart = cpt.shape[0]
+    cpst = cpst0.copy(); cpout = np.zeros((npart, 8)); cflg = np.zeros(npart)
+    cG = np.zeros((cnn, cnn)); cI = np.zeros(cnn); cvn = np.zeros(cnn + 1)
+    CTR = np.empty((npart, 16))
+    for k in range(npart):
+        for c in range(8):
+            CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0                     # pack starts full
@@ -154,6 +169,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
     nlog = n // log_every + 2 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
+    LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nb)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     KE0 = 0.0
     for b in range(nb):
@@ -312,7 +328,17 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for e in range(ne):
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
+        if npart > 0:
+            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            for k in range(npart):
+                for c in range(8):
+                    if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
+                    if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
         if log_every > 0 and i % log_every == 0 and j < nlog:
+            if npart > 0:
+                for k in range(npart):
+                    for c in range(8):
+                        LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
             for b in range(nb):
                 LOGB[j, 2 * b] = q[b]; LOGB[j, 2 * b + 1] = v[b]
@@ -328,4 +354,4 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     KE1 = 0.0
     for b in range(nb):
         KE1 += 0.5 * m[b] * v[b] * v[b]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, KEpk
+    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, KEpk, cpout, CTR, LOGC[:j]

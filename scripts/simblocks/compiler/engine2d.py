@@ -26,6 +26,8 @@ import math
 import numpy as np
 from numba import njit
 
+from .circuit import circuit_step
+
 from .engine1d import _force, NP, NAUX
 
 MK_LIN, MK_DIST, MK_ALONG, MK_EDGE, MK_CIRC, MK_PIN, MK_SLIP, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7
@@ -387,13 +389,22 @@ def _rate(mk, e, q, v, ba, bb, C, geo, which):
 
 @njit(cache=True, nogil=True)
 def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
-                 tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir, stop):
+                 tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
     """q0, v0, minv: flat [x, y, rz] per body. mass[b], com[b] = (cx, cy) body-frame centre of mass (for gravity).
     stop: int64[2] as in the 1D engine (timeout)."""
     nb = mass.shape[0]; nq = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
     Q = np.zeros(nq)
     st = np.zeros((ne, 7))                     # beams: plastic rotations, accumulators, chord angle, damping state
+    # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
+    npart = cpt.shape[0]
+    cpst = cpst0.copy(); cpout = np.zeros((npart, 8)); cflg = np.zeros(npart)
+    cG = np.zeros((cnn, cnn)); cI = np.zeros(cnn); cvn = np.zeros(cnn + 1)
+    CTR = np.empty((npart, 16))
+    for k in range(npart):
+        for c in range(8):
+            CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0
@@ -446,6 +457,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
     nlog = n // log_every + 2 if log_every > 0 else 1
+    LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nq)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     KE0 = 0.0
     for k in range(nq):
@@ -860,7 +872,17 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             for e in range(ne):
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
+        if npart > 0:
+            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            for k in range(npart):
+                for c in range(8):
+                    if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
+                    if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
         if log_every > 0 and i % log_every == 0 and j < nlog:
+            if npart > 0:
+                for k in range(npart):
+                    for c in range(8):
+                        LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
             for k in range(nq):
                 LOGB[j, k] = q[k]; LOGB[j, nq + k] = v[k]
@@ -881,4 +903,4 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     for k in range(nq):
         if minv[k] > 0.0:
             KE1 += 0.5 * v[k] * v[k] / minv[k]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, KEpk
+    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, KEpk, cpout, CTR, LOGC[:j]

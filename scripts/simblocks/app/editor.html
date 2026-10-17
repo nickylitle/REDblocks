@@ -602,7 +602,7 @@ const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-b
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
   failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
-const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"],
+const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
   pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"]};
 const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", alpha:"damping factor", table:"yield table",
