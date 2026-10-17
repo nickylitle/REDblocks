@@ -628,8 +628,9 @@ hundredth of a kelvin.</p>
 <div class="two"><div class="box"><h3>The canvases are given</h3>{in_table}</div>
 <div class="box"><h3>Simblocks works out</h3><ul>{"".join(f"<li>{esc(x)}</li>" for x in outputs)}</ul>
 <h3 style="margin-top:22px">Where it misses</h3><ul>{miss_html}</ul></div></div>
-<p class="next" style="margin-top:22px"><b>Next:</b> the translunar injection burn and the three-day coast, with the Moon as a second moving
-gravity body. Not in these canvases yet.</p>
+<p class="next" style="margin-top:22px"><b>Left out on purpose:</b> the translunar injection burn, the three-day coast and lunar orbit
+insertion. The page shows the two powered flights where the physics is hardest: climbing out of Earth's atmosphere, and landing on the Moon
+under guidance.</p>
 </section>
 <section id="run"><div class="kicker">Run it yourself</div><h2>Two files, one command each</h2>
 <pre>pip install .                                              # from the scripts folder

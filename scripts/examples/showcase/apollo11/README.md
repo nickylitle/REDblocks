@@ -36,4 +36,5 @@ generic drag curve); the descent's throttle recovery comes about 10 s late and t
 (Apollo 11's own guidance targets were loaded before flight and are not in these sources); the lander uses 3.4 %
 less propellant than Eagle did.
 
-Next: the translunar injection burn and the coast to the Moon.
+Left out on purpose: the translunar injection burn, the coast to the Moon and lunar orbit insertion. The showcase
+covers the two powered flights: the climb out of Earth's atmosphere and the guided landing.
