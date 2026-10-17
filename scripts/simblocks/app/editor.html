@@ -952,11 +952,11 @@ const TH_FOR = {kt_tempco:["motor"], vf_tempco:["diode"]};       // only these p
 function partDim(key){ const f = key.slice(2);
   if (key.startsWith("f.")) return PART_DIM[f] || null; if (key.startsWith("e.")) return ESC_DIM[f] || null; if (key.startsWith("h.")) return TH_DIM[f] || null;
   return null; }
-function partQuantities(d){ const q = ["current","voltage","power","energy"];
-  if (d.ptype === "battery") q.push("soc"); if (["capacitor","inductor","fuse","switch","diode"].includes(d.ptype)) q.push("state");
-  if (d.ptype === "motor") q.push("torque"); if (d.thOn) q.push("temperature","heat"); return q; }
+function partQuantities(d){ const q = ["current","voltage","power","energy","heat"];
+  if (d.ptype === "battery") q.push("soc"); if (d.ptype === "motor") q.push("torque"); if (d.thOn) q.push("temperature");
+  q.push("state"); return q; }
 const PART_Q_HELP = {current:"current + to −", voltage:"v(+) − v(−)", power:"absorbed (− = delivering)", energy:"absorbed so far", soc:"charge 0-1",
-  state:"capacitor v / inductor i / fuse heat / on-off", torque:"shaft torque", temperature:"°C", heat:"J lost to ambient"};
+  state:"fuse 1 = blown; switch, diode 1 = on; motor ESC duty; else 1 = intact", torque:"motor shaft torque", temperature:"°C", heat:"J lost in its resistance"};
 function partSockets(n, ins, outs){
   const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
   if (d.ptype === "motor"){ if (!String(d.mraw || "").trim()) ins.push({key:"t0", label:"shaft", type:"body", req:true}); ins.push({key:"t1", label:"frame", type:"body"}); }
@@ -964,8 +964,8 @@ function partSockets(n, ins, outs){
   if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen"), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
     .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:f === "C_th" || f === "R_th"}));
-  outs.push({key:"pa", label:"+ terminal", type:"elec"}, {key:"pb", label:"− terminal", type:"elec"});
-  partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
+  outs.push({key:"pa", label:"+ terminal", type:"elec", tip:"wire to a net: the first net (current flows + to − through the part)"}, {key:"pb", label:"− terminal", type:"elec", tip:"wire to a net"});
+  partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig", tip:PART_Q_HELP[q]}));
 }
 function netPins(n){   // every wired pin, plus one free pin to drop the next wire on
   const used = S.links.filter(l => l.to.node === n.id && /^p\d+$/.test(l.to.key)).map(l => +l.to.key.slice(1)).sort((a, b) => a - b);
@@ -1547,7 +1547,7 @@ function sockRow(n, s){
   return `<div class="row${s.req ? " req" : ""}"><span class="sock in t-${s.type}" data-s="${esc(s.key)}" data-t="${s.type}"></span>
     <label>${esc(s.label)}</label>${what}</div>`;
 }
-function outRow(s){ return `<div class="row out"><label>${esc(s.label)}</label><span class="sock out t-${s.type}" data-s="${esc(s.key)}" data-t="${s.type}"></span></div>`; }
+function outRow(s){ return `<div class="row out"><label${s.tip ? ` title="${esc(s.tip)}"` : ""}>${esc(s.label)}</label><span class="sock out t-${s.type}" data-s="${esc(s.key)}" data-t="${s.type}"></span></div>`; }
 // axis: a named direction, or your own vector (any length; it is normalised). 2d models use (x, y), 3d use (x, y, z).
 // a 2d rotation can only spin about the out-of-plane axis, so it gets +z / -z and no custom vector
 const AXES = d => S.meta.dim === "2d" ? (d.dof === "rotation" ? ["z","-z"] : ["x","y","-x","-y"]) : ["x","y","z","-x","-y","-z"];
@@ -3907,6 +3907,16 @@ const GUIDE = [
   <p>Outputs: x, y, z, vx, vy, vz, speed; angle and omega of a spinning body; wx, wy, wz of a freely rotating one. Example: <b>Examples → horizontal_spinner_wedge.yaml</b>.</p>`},
  {id:"loads", grp:"Building models", t:"Loads", h:`
   <p>A <b>Load</b> is a constant force on a body along its measure: gravity, a thrust, a push. Type the force, or plug a Range or Monte Carlo node into it to vary it. It is written to the file as a <code>force</code> element.</p>`},
+ {id:"circuit", grp:"Building models", t:"Electrical circuits", h:`
+  <p>Two ways to power a motor:</p>
+  <ul>
+   <li><b>Just motor values.</b> A <code>drive</code> element is a motor, an ESC and a LiPo pack in one block. A <code>dc_motor</code> element is a motor on a fixed supply voltage (kv or Kt, R, V). No circuit needed.</li>
+   <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
+  </ul>
+  <p>A motor part also takes a <b>shaft</b> body (and an optional <b>frame</b> body, for a motor that turns one body against another). Give kv or Kt. Tick <b>ESC</b> for a speed controller with a throttle and a current limit; <b>regen</b> lets it push current back.</p>
+  <p><b>Thermal</b> (advanced, on every part except the sources): the part heats with its I²R losses (C_th, J/K) and cools to ambient through R_th (K/W). Its resistance rises by alpha per K, a motor's Kt falls with its magnets' tempco, and a diode's Vf drops. Above T_max_C it fails open. Capacitors have an optional <b>ESR</b> (0 when blank).</p>
+  <p>Results: plug a part's <b>current</b>, <b>voltage</b>, <b>power</b>, <b>energy</b>, <b>heat</b>, <b>soc</b>, <b>torque</b>, <b>temperature</b> or <b>state</b> socket into an Output (final, max, min, max_abs) or a CSV export. Current flows from + to − through the part; power is absorbed, so a source delivering shows negative power.</p>
+  <p>How it is solved: every step, nodal analysis with backward-Euler companions for the capacitors, inductors and the battery's sag branch, re-solved until the diodes and ESC limits agree. The part powers sum to zero every step (<code>_circuit_ledger_rel</code> in Verify). The automatic time step resolves the circuit's fastest time constant (five steps per one). Example: <b>1D-4 Battery, ESCs and two motors</b>.</p>`},
  {id:"results", grp:"Results", t:"Outputs, expressions and failure modes", h:`
   <ul><li><b>Output</b> turns a signal into one number: final, max, min, max of the magnitude, or the first time it crosses a value. Its unit is for display and for failure limits.</li>
   <li><b>Expression output</b> computes from values and other outputs: <code>= $plate.F_fpf / $F_peak</code>.</li>

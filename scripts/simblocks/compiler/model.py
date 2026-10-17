@@ -385,6 +385,11 @@ def _run_settings(M, doc, ctx):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))
+    if getattr(M, "circ", None):                # the circuit's fastest transient, five steps a time constant
+        from .circuit import circuit_tau
+        M.dt_circ = circuit_tau(M.circ)
+        if math.isfinite(M.dt_circ):
+            M.dt_auto = min(M.dt_auto, 0.2 * M.dt_circ)
     M.timeout = parse_timeout(run.get("timeout", "auto"), ctx)
     if dt == "auto":
         # automatic step, optionally held inside user bounds (run.dt_min / run.dt_max)

@@ -103,6 +103,7 @@ generalized force is a torque.
 | `drag` | `K` | F = K v abs(v) (windage, quadratic air drag) |
 | `force` | `P`, or `csv` | constant push P along +measure, or a table against time or the measure (below) |
 | `drive` | `kv`, `R`, `I_max`, `gear`, `cells`, `R0`, `R1`, `C1`, `capacity`, `throttle`, `J_rotor` | DC motor + current-limited ESC (duty capped at the throttle) + LiPo 1-RC pack on one rotation body (or a twist measure in 2D/3D); `J_rotor gear^2` is added to that body |
+| `dc_motor` | `kv` or `Kt`, `R`, `V`, `I_max`, `gear`, `throttle`, `J_rotor` | a motor on a fixed supply V (no battery, no circuit): just the motor values; `current` has a time history |
 | `impact` | `e`, `mu` (0), `v_rest` (0) | rigid contact: no overlap; an impulse sets the separating speed to e x the approach speed, Coulomb friction up to mu x that impulse; every joule removed is booked as dissipated (history = running total). s > 0 means overlap |
 
 **Element mass (1D).** Any 1D element can carry its own `mass`: it is shared onto the bodies in its measure
@@ -233,6 +234,7 @@ exports:
     columns:                                   # element signals/states, or body position/velocity
       - {element: hit, quantity: force, unit: N, label: F_hit}
       - {body: blade, quantity: velocity, unit: rpm}
+      - {part: wpn, quantity: current}        # a circuit part
     folder: out/csv                            # relative to the model file, or absolute
     naming: "{model}_{name}"                   # tokens {model} {name} {date} {time} {run}
     time_unit: ms
@@ -244,6 +246,52 @@ exports:
 Element quantities with a time history: force, measure, plus plastic_set and broken (elastoplastic), current,
 battery_current, bus_voltage, soc (drive), moment, torque, shear, hinge_set (beam) and impulse, dissipated,
 friction_impulse (impact). Otherwise absorbed_work and dissipated are end-of-run numbers.
+
+### circuit (optional lumped electrical circuit)
+
+Parts wired between named nets; `ground` is the 0 V net (default `gnd`). Solved every step by nodal analysis
+(backward-Euler companions for C, L and the battery's RC branch; diodes, ESC current limits and freewheeling settled
+by re-solving). Motors couple to the mechanics like a drive: torque `gear Kt i` on their measure, back-EMF
+`gear Kt ds/dt`. Sign: a part's current flows from its first net to its second through the part; `voltage` is
+v(first) - v(second); `power` is absorbed (negative while delivering). The part powers sum to zero every step
+(`_circuit_ledger_rel`). A circuit-only model may leave out `elements` and `bodies`.
+
+```yaml
+circuit:
+  ground: gnd
+  parts:
+    pack:  {type: battery, between: [bat, gnd], cells: 6, capacity: 1300 mAh, R0: 20 mohm, R1: 8 mohm, C1: 2000 farad}
+    fuse:  {type: fuse, between: [bat, bus], I_rating: 100 A, t_blow: 1 s}
+    caps:  {type: capacitor, between: [bus, gnd], C: 2200 uF, ESR: 15 mohm}
+    wpn:   {type: motor, between: [bus, gnd], kv: 1100 rpm/V, R: 30 mohm, L: 12 uH, measure: blade,
+            esc: {throttle: 1, I_max: 120 A}, thermal: {C_th: 40 J/K, R_th: 4 K/W, T_max_C: 160}}
+```
+
+| type | fields (required in bold) | law |
+|---|---|---|
+| `resistor` | **R** | v = R i |
+| `capacitor` | **C**, ESR (0), R_leak (0 = none), v0 | i = C dv/dt behind ESR |
+| `inductor` | **L**, R, i0 | v = L di/dt + R i |
+| `voltage_source` | **V**, R (0.1 mohm) | v = V - R i, + is the first net |
+| `current_source` | **I** | i = I |
+| `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
+| `diode` | Vf (0.7 V), R_on (10 mohm), R_off (10 Mohm) | conducts first net to second past Vf |
+| `switch` | R_on, R_off, on_at, off_at, pwm_freq, duty, phase | closed from on_at to off_at, chopped at duty with pwm_freq |
+| `fuse` | **I_rating**, t_blow (1 s), I_trip, R | opens once integral (i/I_rating)^2 dt > t_blow, or at once above I_trip |
+| `motor` | **R**, **measure**, kv or Kt, L, gear, J_rotor, esc {throttle, I_max, regen} | v = R i + L di/dt + gear Kt ds/dt |
+
+`thermal` (optional on every part except sources): `{C_th: J/K, R_th: K/W, T_amb_C: 25, T0_C, alpha: 1/K,
+T_max_C, kt_tempco, vf_tempco}`. The part heats with its losses and cools to ambient through R_th. Its resistance
+scales by 1 + alpha (T - 25 C) (motor and inductor default alpha 0.00393, copper); a motor's Kt by
+1 + kt_tempco (T - 25 C) (default -0.0011, NdFeB); a diode's Vf by vf_tempco (default -0.002 V/K). Above T_max_C the
+part fails open.
+
+Part outputs and export columns: `{part: wpn, quantity: current, reduce: max}`. Quantities: `current`, `voltage`,
+`power`, `energy` (absorbed so far), `heat` (J turned to heat by its resistance so far), `soc` (battery), `torque`
+(motor shaft, before the gear), `temperature` (C, needs `thermal`) and `state`: a fuse 1 once blown; a switch or
+diode 1 while conducting; a motor its ESC duty (1 without an ESC); any other part 1 while intact, 0 once it has
+failed open from overheating.
+Reduce: `final`, `max`, `min`, `max_abs`.
 
 ### editor (written by the desktop editor, ignored by the solver)
 

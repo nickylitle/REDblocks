@@ -38,6 +38,17 @@ def test_1d_3_motor_flywheel():
     assert o["_ledger_rel"] < 1e-3
 
 
+def test_1d_4_weapon_circuit():
+    o = run("1d_4_weapon_circuit.yaml")
+    kv = 1100 * 2 * math.pi / 60 / 1.0                          # rad/s per V
+    top = kv * 25.2 / 2 * 60 / (2 * math.pi)                     # no-load drum rpm on a full pack
+    assert 0.93 * top < o["rpm_end"] < top                       # sag and drag take a little off
+    tau = 2 * 2 * (1 / kv) * 80                                  # both ESCs at their limit, through the 2:1 belt
+    assert o["t_90_s"] > 12000 * 2 * math.pi / 60 / (tau / 4e-3)  # never faster than the current-limited rate
+    assert o["fuse_blown"] == 0 and o["_circuit_ledger_rel"] < 1e-6
+    assert o["I_pack_peak"] < -400                               # inrush into the empty ESC caps
+
+
 def test_2d_1_pendulum():
     o = run("2d_1_pendulum.yaml")
     T0 = 2 * math.pi * math.sqrt(2 * 0.5 / (3 * 9.81))

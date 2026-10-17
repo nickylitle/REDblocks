@@ -1,0 +1,89 @@
+simblocks: 1
+name: 1D-4 Battery, ESCs and two motors spinning a weapon
+question: "How fast do two belt-driven motors on a 6S pack spin a drum up, how hard do they pull on the pack and the fuse, and how hot do the motors get?"
+dim: 1d
+
+params:
+  kv: {value: 1100 rpm/V, note: "both weapon motors"}
+  belt: {value: 2, note: "each motor turns twice per drum turn"}
+  I_esc: {value: 80 A, note: "each ESC's current limit"}
+
+bodies:
+  drum: {dof: rotation, inertia: 4e-3 kg m^2, label: weapon drum}
+
+elements:
+  bearings: {type: friction, measure: drum, F_c: 0.08, v_eps: 1, label: bearing drag (N m)}
+
+circuit:
+  ground: gnd
+  parts:
+    pack: {type: battery, between: [bat, gnd], cells: 6, capacity: 1300 mAh, R0: 18 mohm, R1: 6 mohm, C1: 1500 farad, label: 6S 1300 mAh LiPo}
+    fuse: {type: fuse, between: [bat, bus], I_rating: 120 A, t_blow: 2 s, label: main fuse}
+    wiring: {type: resistor, between: [bus, esc], R: 4 mohm, label: leads and switch}
+    caps: {type: capacitor, between: [esc, gnd], C: 1000 uF, ESR: 20 mohm, label: ESC input caps}
+    m1:
+      type: motor
+      between: [esc, gnd]
+      kv: $kv
+      R: 32 mohm
+      L: 10 uH
+      gear: $belt
+      measure: drum
+      esc: {throttle: 1, I_max: $I_esc}
+      thermal: {C_th: 45 J/K, R_th: 3 K/W, T_max_C: 150}
+      label: left motor
+    m2:
+      type: motor
+      between: [esc, gnd]
+      kv: $kv
+      R: 32 mohm
+      L: 10 uH
+      gear: $belt
+      measure: drum
+      esc: {throttle: 1, I_max: $I_esc}
+      thermal: {C_th: 45 J/K, R_th: 3 K/W, T_max_C: 150}
+      label: right motor
+
+outputs:
+  t_90_s:       {body: drum, quantity: velocity, reduce: first_time_above, value: 12000 rpm, label: time to 12000 rpm}
+  rpm_end:      {body: drum, quantity: velocity, unit: rpm, label: drum speed at the end}
+  I_pack_peak:  {part: pack, quantity: current, reduce: min, label: peak pack current (negative = discharging; the first microseconds charge the ESC caps)}
+  V_bus_min:    {part: caps, quantity: voltage, reduce: min, label: lowest ESC input voltage}
+  fuse_blown:   {part: fuse, quantity: state, reduce: final, label: fuse blown (1) or intact (0)}
+  T_motor_max:  {part: m1, quantity: temperature, reduce: max, label: hottest motor temperature (C)}
+  soc_end:      {part: pack, quantity: soc, reduce: final, label: pack charge left}
+  E_heat_J:     {part: m1, quantity: heat, reduce: final, label: heat in one motor (J)}
+
+run:
+  t_end: 4 s
+
+editor:
+  layout:
+    p:kv: [30, 140]
+    p:belt: [30, 280]
+    p:I_esc: [30, 420]
+    b:drum: [330, 140]
+    e:bearings: [330, 440]
+    c:pack: [650, 140]
+    c:fuse: [650, 670]
+    c:wiring: [650, 1170]
+    c:caps: [970, 140]
+    c:m1: [970, 670]
+    c:m2: [1290, 140]
+    n:gnd: [1610, 140]
+    n:bat: [1610, 340]
+    n:bus: [1610, 510]
+    n:esc: [1610, 680]
+    o:t_90_s: [1930, 140]
+    o:rpm_end: [1930, 350]
+    o:I_pack_peak: [1930, 530]
+    o:V_bus_min: [1930, 710]
+    o:fuse_blown: [1930, 890]
+    o:T_motor_max: [1930, 1050]
+    o:soc_end: [1930, 1210]
+    o:E_heat_J: [1930, 1370]
+  notes:
+  - text: '**1D-4 Battery, ESCs and two motors.** The electrical side is drawn as a circuit: a pack, a fuse, the leads, the ESC capacitors and two motors behind current-limited ESCs, all wired between nets. Both motors drive the drum through a 2:1 belt. Textbook check: top speed $\approx kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 \approx 13900$ rpm, a little less with sag and drag. While both ESCs hold 80 A the drum torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$ N m ($K_t = 1/kv$), about 690 rad/s gained every second. The peak pack current (about 540 A) is the inrush into the empty ESC capacitors in the first 50 microseconds: the spark you see when plugging in. Set the caps v0 to 25 V to see the motors alone (about 160 A). The motors carry a thermal model; tick thermal on any other part to see it heat.'
+    x: 30
+    y: -190
+    width: 640

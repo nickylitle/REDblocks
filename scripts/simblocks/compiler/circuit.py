@@ -223,7 +223,63 @@ def compile_circuit(doc, ctx):
     return circ, extra
 
 
+def circuit_tau(circ):
+    """The circuit's fastest time scale, for the automatic step: each capacitor's C (ESR + the smallest other
+    resistance), each inductor's or motor's L / (R + that), the battery's R1 C1, and a PWM switch's period.
+    Backward Euler is stable at any step; this keeps the fast transients (inrush, ripple) resolved."""
+    a = circ["arrays"]; pt, prm = a["ptype"], a["prm"]
+    rs = []
+    for k in range(len(pt)):
+        t = pt[k]; P = prm[k]
+        r = {R_: P[0], C_: P[2], L_: P[1], VS: P[1], BAT: P[2] + P[3], DIODE: P[1], SW: P[0], FUSE: P[0],
+             MOT: P[1], ESC: P[1]}.get(int(t), 0.0)
+        rs.append(r if r > 0 else math.inf)
+    taus = []
+    for k in range(len(pt)):
+        t = int(pt[k]); P = prm[k]
+        others = [rs[j] for j in range(len(pt)) if j != k]
+        rmin = min(others) if others and math.isfinite(min(others)) else 0.0
+        if t == C_:
+            taus.append(P[0] * (P[2] + rmin))
+        elif t in (L_, MOT, ESC) and P[0 if t == L_ else 2] > 0:
+            L = P[0] if t == L_ else P[2]
+            taus.append(L / max((P[1] if t == L_ else P[1]) + rmin, 1e-9))
+        elif t == BAT and P[3] > 0 and P[4] > 0:
+            taus.append(P[3] * P[4])
+        elif t == SW and P[4] > 0:
+            taus.append(1.0 / P[4])
+    taus = [x for x in taus if x > 0]
+    return min(taus) if taus else math.inf
+
+
 @njit(cache=True, nogil=True)
+def _gauss(A, b, n, out):
+    """Solve A x = b in place (Gaussian elimination, partial pivoting); x goes to out[1:]. A few nets: faster than
+    a LAPACK call per pass."""
+    for c in range(n):
+        p = c; best = abs(A[c, c])
+        for r in range(c + 1, n):
+            if abs(A[r, c]) > best:
+                best = abs(A[r, c]); p = r
+        if p != c:
+            for j in range(c, n):
+                A[c, j], A[p, j] = A[p, j], A[c, j]
+            b[c], b[p] = b[p], b[c]
+        piv = A[c, c]
+        for r in range(c + 1, n):
+            f = A[r, c] / piv
+            if f != 0.0:
+                for j in range(c, n):
+                    A[r, j] -= f * A[c, j]
+                b[r] -= f * b[c]
+    for r in range(n - 1, -1, -1):
+        acc = b[r]
+        for j in range(r + 1, n):
+            acc -= A[r, j] * out[j + 1]
+        out[r + 1] = acc / A[r, r]
+
+
+@njit(cache=True, nogil=True, inline="always")
 def _ocv(soc, cells, vfull, vempty):
     """LiPo-shaped open-circuit voltage between V_empty and V_full per cell (the same table as the drive)."""
     xs = (0.0, 0.05, 0.2, 0.5, 0.8, 0.95, 1.0)
@@ -260,63 +316,63 @@ def _kt(k, prm, th, pst):
     return prm[k, 0] * (f if f > 0.05 else 0.05)
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, nogil=True, inline="always")
 def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
     """Norton companion of part k for this solve: (G, J) with i = G v - J (passive sign, i from first to
     second net). flg carries the part's switching state for this pass."""
-    tp = ptype[k]; P = prm[k]
+    tp = ptype[k]
     if pst[k, 5] > 0.5 and tp != 4 and tp != 5:
         return 1e-9, 0.0                               # failed (overheated, or a blown fuse): open
     rf = _rf(k, th, pst)
     if tp == 1:
-        return 1.0 / (P[0] * rf), 0.0
+        return 1.0 / (prm[k, 0] * rf), 0.0
     if tp == 2:                                        # v = ESR i + v_c, i = C (v_c - v_prev)/dt (+ leak)
-        Z = P[2] * rf + dt / P[0]
-        gl = 1.0 / P[1] if P[1] > 0.0 else 0.0
+        Z = prm[k, 2] * rf + dt / prm[k, 0]
+        gl = 1.0 / prm[k, 1] if prm[k, 1] > 0.0 else 0.0
         return 1.0 / Z + gl, pst[k, 0] / Z
     if tp == 3:                                        # v = R i + L (i - i_prev)/dt
-        Z = P[1] * rf + P[0] / dt
-        return 1.0 / Z, -(P[0] / dt) * pst[k, 0] / Z
+        Z = prm[k, 1] * rf + prm[k, 0] / dt
+        return 1.0 / Z, -(prm[k, 0] / dt) * pst[k, 0] / Z
     if tp == 4:                                        # v = V - R (-i)  ->  i = (v - V)/R
-        return 1.0 / P[1], P[0] / P[1]
+        return 1.0 / prm[k, 1], prm[k, 0] / prm[k, 1]
     if tp == 5:                                        # pushes I into the first net: i = -I
-        return 0.0, P[0]
+        return 0.0, prm[k, 0]
     if tp == 6:                                        # battery: v = OCV - v1 - R0 (-i), v1 BE-advanced
-        ocv = _ocv(pst[k, 0], P[0], P[5], P[6])
-        R1 = P[3] * rf
-        if R1 > 0.0 and P[4] > 0.0:
-            den = 1.0 + dt / (R1 * P[4])
-            a = pst[k, 1] / den; b = (dt / P[4]) / den
+        ocv = _ocv(pst[k, 0], prm[k, 0], prm[k, 5], prm[k, 6])
+        R1 = prm[k, 3] * rf
+        if R1 > 0.0 and prm[k, 4] > 0.0:
+            den = 1.0 + dt / (R1 * prm[k, 4])
+            a = pst[k, 1] / den; b = (dt / prm[k, 4]) / den
         elif R1 > 0.0:
             a = 0.0; b = R1
         else:
             a = 0.0; b = 0.0
-        Rt = P[2] * rf + b                             # terminal: v = (OCV - a) + Rt i
+        Rt = prm[k, 2] * rf + b                             # terminal: v = (OCV - a) + Rt i
         return 1.0 / Rt, (ocv - a) / Rt
     if tp == 7:                                        # diode: Vf + R_on when on, R_off when off
         if flg[k] > 0.5:
-            vf = P[0] + (th[k, 7] * (pst[k, 4] - T_REF) if th[k, 0] > 0.5 else 0.0)
-            return 1.0 / (P[1] * rf), vf / (P[1] * rf)
-        return 1.0 / P[2], 0.0
+            vf = prm[k, 0] + (th[k, 7] * (pst[k, 4] - T_REF) if th[k, 0] > 0.5 else 0.0)
+            return 1.0 / (prm[k, 1] * rf), vf / (prm[k, 1] * rf)
+        return 1.0 / prm[k, 2], 0.0
     if tp == 8:
-        on = t >= P[2] and t < P[3]
-        if on and P[4] > 0.0:
-            ph = (t * P[4] + P[6]) % 1.0
-            on = ph < P[5]
-        return (1.0 / (P[0] * rf) if on else 1.0 / P[1]), 0.0
+        on = t >= prm[k, 2] and t < prm[k, 3]
+        if on and prm[k, 4] > 0.0:
+            ph = (t * prm[k, 4] + prm[k, 6]) % 1.0
+            on = ph < prm[k, 5]
+        return (1.0 / (prm[k, 0] * rf) if on else 1.0 / prm[k, 1]), 0.0
     if tp == 9:
-        return 1.0 / (P[0] * rf), 0.0
+        return 1.0 / (prm[k, 0] * rf), 0.0
     if tp == 10:                                       # motor: v = R i + L di/dt + e
-        Z = P[1] * rf + P[2] / dt
-        return 1.0 / Z, (emf - (P[2] / dt) * pst[k, 0]) / Z
+        Z = prm[k, 1] * rf + prm[k, 2] / dt
+        return 1.0 / Z, (emf - (prm[k, 2] / dt) * pst[k, 0]) / Z
     if tp == 11:                                       # motor behind an averaged ESC, duty d = flg
         d = flg[k]
         if d <= 0.0:
             return 0.0, 0.0
-        Z = P[1] * rf + P[2] / dt
+        Z = prm[k, 1] * rf + prm[k, 2] / dt
         Gm = 1.0 / Z
         # i_m = Gm (d v - emf + (L/dt) i_prev); bus current i = d i_m
-        return d * d * Gm, d * Gm * (emf - (P[2] / dt) * pst[k, 0])
+        return d * d * Gm, d * Gm * (emf - (prm[k, 2] / dt) * pst[k, 0])
     return 0.0, 0.0
 
 
@@ -350,9 +406,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 Gm[a, b] -= G; Gm[b, a] -= G
         for r in range(nn):
             Gm[r, r] += 1e-12                                   # a hair of leakage keeps a floating net defined
-        sol = np.linalg.solve(Gm, Iv)
-        for r in range(nn):
-            vnet[r + 1] = sol[r]
+        _gauss(Gm, Iv, nn, vnet)
         vnet[0] = 0.0
         changed = False
         for k in range(npart):
@@ -374,7 +428,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                         dn = 0.0
                     if dn > prm[k, 4]:
                         dn = prm[k, 4]
-                    if abs(dn - d) > 1e-12:
+                    if abs(dn - d) > 1e-7 * dn + 1e-12:              # settled to 0.1 ppm of the duty
                         flg[k] = dn; changed = True
                 elif im < 0.0 and prm[k, 6] < 0.5 and d > 0.0:
                     flg[k] = 0.0; changed = True                # no regen: the ESC stops driving (freewheels)
@@ -382,7 +436,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             break
     # currents, energy, heat, states
     for k in range(npart):
-        tp = ptype[k]; P = prm[k]
+        tp = ptype[k]
         v = vnet[na[k]] - vnet[nb[k]]
         G, J = _companion(k, ptype, prm, pst, th, flg, t, dt, emf[k])
         i = G * v - J
@@ -394,25 +448,25 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
         elif tp == 1 or tp == 7 or tp == 8 or tp == 9:
             heat = v * i
         elif tp == 2:
-            pst[k, 0] += i * dt / P[0]
-            heat = P[2] * rf * i * i
+            pst[k, 0] += i * dt / prm[k, 0]
+            heat = prm[k, 2] * rf * i * i
         elif tp == 3:
             pst[k, 0] = i
-            heat = P[1] * rf * i * i
+            heat = prm[k, 1] * rf * i * i
         elif tp == 6:
             iout = -i
-            R1 = P[3] * rf
-            if R1 > 0.0 and P[4] > 0.0:
-                pst[k, 1] = (pst[k, 1] + dt * iout / P[4]) / (1.0 + dt / (R1 * P[4]))
+            R1 = prm[k, 3] * rf
+            if R1 > 0.0 and prm[k, 4] > 0.0:
+                pst[k, 1] = (pst[k, 1] + dt * iout / prm[k, 4]) / (1.0 + dt / (R1 * prm[k, 4]))
             elif R1 > 0.0:
                 pst[k, 1] = R1 * iout
-            heat = P[2] * rf * iout * iout + (pst[k, 1] * pst[k, 1] / R1 if R1 > 0.0 else 0.0)
-            pst[k, 0] -= iout * dt / P[1]
+            heat = prm[k, 2] * rf * iout * iout + (pst[k, 1] * pst[k, 1] / R1 if R1 > 0.0 else 0.0)
+            pst[k, 0] -= iout * dt / prm[k, 1]
             pout[k, 4] = pst[k, 0]
         if tp == 9:
             if pst[k, 5] < 0.5:
                 pst[k, 0] += i * i * dt
-                if pst[k, 0] > P[1] * P[1] * P[2] or abs(i) > P[3]:
+                if pst[k, 0] > prm[k, 1] * prm[k, 1] * prm[k, 2] or abs(i) > prm[k, 3]:
                     pst[k, 5] = 1.0                             # blown
             pout[k, 4] = pst[k, 5]
         elif tp == 10 or tp == 11:
@@ -420,17 +474,17 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 im = i; vm = v
             else:
                 d = flg[k]
-                Z = P[1] * rf + P[2] / dt
-                im = (d * v - emf[k] + (P[2] / dt) * pst[k, 0]) / Z if d > 0.0 else 0.0
+                Z = prm[k, 1] * rf + prm[k, 2] / dt
+                im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z if d > 0.0 else 0.0
                 vm = d * v
             if pst[k, 5] > 0.5:
                 im = 0.0
             pst[k, 0] = im
             kt = _kt(k, prm, th, pst)
-            e = mot_el[int(P[7])]
-            st[e, 0] = P[3] * kt * im                            # torque on the measured coordinate
+            e = mot_el[int(prm[k, 7])]
+            st[e, 0] = prm[k, 3] * kt * im                            # torque on the measured coordinate
             st[e, 1] = im; st[e, 3] = vm
-            heat = P[1] * rf * im * im
+            heat = prm[k, 1] * rf * im * im
             pout[k, 4] = (flg[k] if tp == 11 else 1.0) if pst[k, 5] < 0.5 else 0.0
             pout[k, 5] = kt * im                                 # torque on the motor shaft
         elif tp == 7 or tp == 8:
