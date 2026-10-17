@@ -512,6 +512,63 @@ class Api:
         except Exception as exc:
             return _err(exc)
 
+    # ------------------------------------------------------------------ the small CSV table editor
+    def _csv_path(self, path, model_path=None):
+        if os.path.isabs(path):
+            return path
+        base = os.path.dirname(os.path.abspath(model_path)) if model_path else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
+        return os.path.join(base, path)
+
+    def read_csv_table(self, path, model_path=None):
+        """A CSV for the table editor: comment lines ('#'), an optional header row and the rows, all as text."""
+        try:
+            import csv
+            p = self._csv_path(path, model_path)
+            with open(p, newline="", encoding="utf-8-sig") as fh:
+                lines = fh.read().splitlines()
+            comments = [ln for ln in lines if ln.lstrip().startswith("#")]
+            body = [ln for ln in lines if ln.strip() and not ln.lstrip().startswith("#")]
+            try:
+                dialect = csv.Sniffer().sniff("\n".join(body[:50]), delimiters=",;\t ")
+                delim = dialect.delimiter
+            except csv.Error:
+                delim = ","
+            rows = [[c.strip() for c in r] for r in csv.reader(body, delimiter=delim, skipinitialspace=True)]
+            rows = [[c for c in r if c != ""] if delim == " " else r for r in rows]
+
+            def num(c):
+                try:
+                    float(c); return True
+                except ValueError:
+                    return False
+            header = rows.pop(0) if rows and not all(num(c) for c in rows[0] if c != "") else []
+            return dict(ok=True, path=p.replace("\\", "/"), comments=comments, header=header, rows=rows, delim=delim)
+        except FileNotFoundError:
+            return dict(ok=False, error=f"CSV not found: {path}", missing=True)
+        except Exception as exc:
+            return _err(exc)
+
+    def write_csv_table(self, path, comments, header, rows, delim=",", model_path=None):
+        """Save the table editor's rows back (comment lines first, then the header, then the rows)."""
+        try:
+            import csv, io
+            p = self._csv_path(path, model_path)
+            os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+            buf = io.StringIO()
+            for c in comments or []:
+                buf.write(c.rstrip("\n") + "\n")
+            w = csv.writer(buf, delimiter=delim if delim in (",", ";", "\t") else ",", lineterminator="\n")
+            if header:
+                w.writerow(header)
+            for r in rows:
+                if any(str(c).strip() for c in r):
+                    w.writerow([str(c).strip() for c in r])
+            with open(p, "w", newline="", encoding="utf-8") as fh:
+                fh.write(buf.getvalue())
+            return dict(ok=True, path=p.replace("\\", "/"))
+        except Exception as exc:
+            return _err(exc)
+
     def read_image(self, path, model_path=None):
         """A picture for an image block, as a data: URL. A relative path is read from the model's folder."""
         try:

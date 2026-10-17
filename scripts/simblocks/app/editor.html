@@ -313,6 +313,18 @@ label.gx span{color:var(--ink3);font-size:10px}
 .dlg .row2{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
 .dlg .row2 input{flex:1;min-width:200px}
 .dlg .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.csvwrap{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.3fr);gap:16px;align-items:start}
+@media (max-width:760px){.csvwrap{grid-template-columns:1fr}}
+.csvtab{max-height:62vh;overflow:auto;border:1px solid var(--hair);border-radius:6px}
+.csvtab table{border-collapse:collapse;width:100%;font:12px var(--mono)}
+.csvtab th,.csvtab td{padding:2px 3px;border-bottom:1px solid var(--hair)}
+.csvtab th{position:sticky;top:0;background:var(--panel2);z-index:1}
+.csvtab td.i{color:var(--ink3);text-align:right;width:28px;padding-right:6px}
+.csvtab input{width:100%;min-width:0;font:12px var(--mono);padding:3px 5px}
+.csvtab input.bad{border-color:var(--fail);background:color-mix(in srgb,var(--fail) 12%,var(--bg))}
+.csvtab tr.xcol input{} .csvtab button.mini{padding:0 6px}
+.csvplot svg{width:100%;height:auto;background:var(--bg);border:1px solid var(--hair);border-radius:6px;display:block}
+.csvmini{margin:2px 12px 6px;cursor:pointer}.csvmini svg{width:100%;height:56px;display:block;background:var(--bg);border:1px solid var(--hair);border-radius:4px}
 .mlist{font:11.5px var(--mono);color:var(--ink2);max-height:200px;overflow:auto;border:1px solid var(--hair);border-radius:5px;padding:6px 8px;background:var(--bg)}
 .mlist .err{color:var(--fail)}
 .dlg h3.dsub{font:700 10.5px var(--mono);letter-spacing:.12em;color:var(--acc);text-transform:uppercase;margin:16px 0 4px}
@@ -514,6 +526,10 @@ label.cpick button{padding:0 6px;font-size:12px}
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
   <h3 class="dsub">Colours</h3><div class="sub" id="setOwn"></div><div id="setColors"></div>
   <div class="btns"><button id="setResetAll">Reset all to the theme</button><button id="setClose" class="primary">Done</button></div></div></div>
+<div class="dlg" id="csvDlg" role="dialog" aria-modal="true" aria-labelledby="csvTitle"><div class="box" style="width:min(1040px,96vw)">
+  <h4 id="csvTitle">Load table</h4><div class="sub" id="csvSub"></div>
+  <div class="csvwrap"><div class="csvtab" id="csvTab"></div><div class="csvplot"><svg id="csvSvg" viewBox="0 0 560 330" role="img" aria-label="plot of the load table"></svg><div class="sub" id="csvNote" style="margin:6px 0 0"></div></div></div>
+  <div class="btns"><button id="csvAdd" title="add a row at the end">+ row</button><button id="csvReload" title="read the file again, dropping changes">Revert</button><span style="flex:1"></span><button id="csvCancel">Close</button><button id="csvSave" class="primary">Save</button></div></div></div>
 <div class="dlg" id="newDlg" role="dialog" aria-modal="true"><div class="box">
   <h4>New model</h4><div class="sub">Start blank or from a template, then change the numbers.</div>
   <div class="row2"><label for="newUnits" style="font:11px var(--mono);color:var(--ink3)">DEFAULT UNITS</label>
@@ -1312,7 +1328,7 @@ function uvControl(key, value, dim, ph, extra){
 }
 // ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
 // Plugging a value in writes $name into the field; the text stays the single source of truth.
-const NO_FIELD_SOCK = new Set(["name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","csvAgainst","reduce","quantity","unit"]);
+const NO_FIELD_SOCK = new Set(["csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","csvAgainst","reduce","quantity","unit"]);
 function fieldKey(inp){
   if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
   const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
@@ -1526,11 +1542,104 @@ function csvOut(n){ const d = n.data, o = {file:d.csvFile || ""};
   if (d.csvInterp && d.csvInterp !== "linear") o.interpolation = d.csvInterp;
   if (String(d.csvXcol || "").trim()) o.x_col = lit(d.csvXcol); if (String(d.csvYcol || "").trim()) o.y_col = lit(d.csvYcol);
   return o; }
+// ---- the small CSV table editor: edit a few values, add or remove rows, and see the load it makes
+const CSV_CACHE = {};
+function csvKey(file){ return (filePath || "") + "|" + file; }
+function csvCols(d, header){ const pick = (c, def) => { const t = String(c ?? "").trim(); if (!t) return def;
+    if (/^\d+$/.test(t)) return Math.max(0, +t - 1); const i = header.indexOf(t); return i >= 0 ? i : def; };
+  return [pick(d.csvXcol, 0), pick(d.csvYcol, 1)]; }
+function csvPoints(d, tab){ const [ix, iy] = csvCols(d, tab.header || []), pts = [], bad = new Set();
+  tab.rows.forEach((r, k) => { const x = +String(r[ix] ?? "").trim(), y = +String(r[iy] ?? "").trim();
+    if (String(r[ix] ?? "").trim() === "" || String(r[iy] ?? "").trim() === "" || !isFinite(x) || !isFinite(y)){ bad.add(k); return; }
+    if (pts.length && x <= pts[pts.length - 1][0]) bad.add(k); else pts.push([x, y, k]); });
+  return {pts, bad, ix, iy}; }
+function pchip(pts){ const n = pts.length; if (n < 3) return pts.map(p => [p[0], p[1]]);
+  const x = pts.map(p => p[0]), y = pts.map(p => p[1]), h = [], dl = [], d = new Array(n).fill(0);
+  for (let k = 0; k < n - 1; k++){ h.push(x[k + 1] - x[k]); dl.push((y[k + 1] - y[k]) / h[k]); }
+  for (let k = 1; k < n - 1; k++) if (dl[k - 1] * dl[k] > 0){ const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1]; d[k] = (w1 + w2) / (w1 / dl[k - 1] + w2 / dl[k]); }
+  const end = (h0, h1, d0, d1) => { let v = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1); if (v * d0 <= 0) v = 0; else if (d0 * d1 <= 0 && Math.abs(v) > Math.abs(3 * d0)) v = 3 * d0; return v; };
+  d[0] = end(h[0], h[1], dl[0], dl[1]); d[n - 1] = end(h[n - 2], h[n - 3], dl[n - 2], dl[n - 3]);
+  const out = [[x[0], y[0]]];
+  for (let k = 0; k < n - 1; k++) for (let j = 1; j <= 20; j++){ const t = j / 20, t2 = t * t, t3 = t2 * t;
+    out.push([x[k] + t * h[k], (2 * t3 - 3 * t2 + 1) * y[k] + (t3 - 2 * t2 + t) * h[k] * d[k] + (-2 * t3 + 3 * t2) * y[k + 1] + (t3 - t2) * h[k] * d[k + 1]]); }
+  return out; }
+function csvCurve(d, pts){ const m = d.csvInterp || "linear";
+  if (m === "smooth") return pchip(pts);
+  if (m === "step"){ const o = []; pts.forEach((p, i) => { if (i) o.push([p[0], pts[i - 1][1]]); o.push([p[0], p[1]]); }); return o; }
+  return pts.map(p => [p[0], p[1]]); }
+function niceTicks(lo, hi, n){ if (!(hi > lo)){ hi = lo + 1; } const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(f => f * mag).find(s_ => s_ >= step0) || mag * 10, t = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(10)); return t; }
+function csvSVG(d, pts, W, H, small){
+  const tok = v => `var(--${v})`;
+  if (pts.length < 1) return `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="${tok("ink3")}" font-size="12">no rows to plot</text>`;
+  const cur = csvCurve(d, pts), xs = cur.map(p => p[0]), ys = cur.map(p => p[1]).concat([0]);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys); if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1;
+  const pad = (y1 - y0) * 0.06; y0 -= pad; y1 += pad;
+  const L = small ? 4 : 58, R = small ? 4 : 14, T = small ? 4 : 14, B = small ? 4 : 40;
+  const sx = v => L + (v - x0) / (x1 - x0) * (W - L - R), sy = v => H - B - (v - y0) / (y1 - y0) * (H - T - B);
+  let g = "";
+  if (!small){ const fmt = v => String(+v.toPrecision(4));
+    niceTicks(x0, x1, 6).forEach(v => { g += `<line x1="${sx(v)}" y1="${T}" x2="${sx(v)}" y2="${H - B}" stroke="${tok("hair")}"/><text x="${sx(v)}" y="${H - B + 15}" text-anchor="middle" font-size="11" fill="${tok("ink3")}">${fmt(v)}</text>`; });
+    niceTicks(y0, y1, 5).forEach(v => { g += `<line x1="${L}" y1="${sy(v)}" x2="${W - R}" y2="${sy(v)}" stroke="${tok("hair")}"/><text x="${L - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" fill="${tok("ink3")}">${fmt(v)}</text>`; });
+    const ag = d.csvAgainst || "time", xu = d.csvXu || (ag === "time" ? "s" : "m"), yu = d.csvYu || "N";
+    g += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle" font-size="12" fill="${tok("ink2")}">${ag === "time" ? "time" : "measure"} (${esc(xu)})</text>`;
+    g += `<text transform="translate(14 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle" font-size="12" fill="${tok("ink2")}">${UNITS.torque && UNITS.torque.includes(yu) ? "torque" : "force"} (${esc(yu)})</text>`; }
+  if (y0 < 0 && y1 > 0) g += `<line x1="${L}" y1="${sy(0)}" x2="${W - R}" y2="${sy(0)}" stroke="${tok("ink3")}" stroke-width="1"/>`;
+  g += `<polyline points="${cur.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}" fill="none" stroke="${tok("p1")}" stroke-width="${small ? 1.6 : 2.2}" stroke-linejoin="round"/>`;
+  if (!small && pts.length <= 400) pts.forEach(p => { g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="3" fill="${tok("p1")}" stroke="${tok("bg")}" stroke-width="1.2"><title>row ${p[2] + 1}: ${p[0]}, ${p[1]}</title></circle>`; });
+  return g; }
+function csvMini(n){ const d = n.data; if (!d.csvFile) return "";
+  const key = csvKey(d.csvFile);
+  if (CSV_CACHE[key] === undefined){ CSV_CACHE[key] = null;
+    API.call("read_csv_table", d.csvFile, filePath).then(r => { CSV_CACHE[key] = r && r.ok ? r : {error:(r && r.error) || "not found"}; render(); })
+      .catch(() => { CSV_CACHE[key] = {error:"needs the desktop app"}; }); }
+  const t = CSV_CACHE[key]; if (!t) return "";
+  if (t.error) return `<div class="hint" style="color:var(--warn)">${esc(t.error)}</div>`;
+  const pts = csvPoints(d, t).pts;
+  return `<div class="csvmini" data-act="csvedit" title="${pts.length} rows: click to edit"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${csvSVG(d, pts, 220, 56, true)}</svg></div>`; }
+let CSVE = null;
+async function csvOpen(n){
+  const d = n.data;
+  if (!d.csvFile){
+    if (!filePath){ status("bad", "Save the model first: a new table is stored next to it (in a loads folder)."); return; }
+    d.csvFile = "loads/" + (d.name || "load") + ".csv"; d.csvOn = true;
+    const ag = d.csvAgainst || "time";
+    CSVE = {nid:n.id, path:d.csvFile, comments:["# " + (d.name || "load") + ": made in Simblocks"], header:[ag === "time" ? "time" : "s", "force"],
+            rows:[["0", "0"], ["1", "1"], ["2", "0"]], delim:",", fresh:true};
+    changed(true);
+  } else {
+    const r = await API.call("read_csv_table", d.csvFile, filePath);
+    if (!r.ok){ status("bad", r.error); return; }
+    CSVE = Object.assign({nid:n.id, path:d.csvFile}, r); }
+  csvDraw(); document.getElementById("csvDlg").style.display = "flex"; }
+function csvDraw(){
+  const n = byId(CSVE.nid); if (!n) return; const d = n.data, t = CSVE;
+  const ncol = Math.max(2, t.header.length, ...t.rows.map(r => r.length));
+  const {pts, bad, ix, iy} = csvPoints(d, t);
+  document.getElementById("csvTitle").textContent = "Load table: " + (d.name || "");
+  document.getElementById("csvSub").innerHTML = `<code>${esc(t.path)}</code>${t.fresh ? " (new: Save writes it)" : ""}. x is column ${ix + 1}, y is column ${iy + 1}. Rows in red need numbers with x rising down the table.`;
+  let h = `<table><thead><tr><th></th>` + Array.from({length:ncol}, (_, c) => `<th><input data-ch="${c}" value="${esc(t.header[c] ?? "")}" placeholder="${c === ix ? "x" : c === iy ? "y" : "col " + (c + 1)}" title="header (optional)"></th>`).join("") + `<th></th></tr></thead><tbody>`;
+  t.rows.forEach((r, k) => { h += `<tr><td class="i">${k + 1}</td>` + Array.from({length:ncol}, (_, c) =>
+      `<td><input data-r="${k}" data-c="${c}" value="${esc(r[c] ?? "")}" class="${bad.has(k) && (c === ix || c === iy) ? "bad" : ""}" inputmode="decimal"></td>`).join("") +
+    `<td><button class="mini" data-rdel="${k}" title="delete row ${k + 1}" aria-label="Delete row">&times;</button></td></tr>`; });
+  h += `</tbody></table>`;
+  const tab = document.getElementById("csvTab"), sc = tab.scrollTop; tab.innerHTML = h; tab.scrollTop = sc;
+  csvPlot(); }
+function csvPlot(){
+  const n = byId(CSVE.nid); if (!n) return; const d = n.data, {pts, bad} = csvPoints(d, CSVE);
+  document.getElementById("csvSvg").innerHTML = csvSVG(d, pts, 560, 330, false);
+  let note = `${pts.length} points${bad.size ? `, <b style="color:var(--fail)">${bad.size} row${bad.size > 1 ? "s" : ""} skipped</b>` : ""}. Between rows: ${esc(d.csvInterp || "linear")}; the end values hold outside the table.`;
+  if ((d.csvAgainst || "time") === "time" && pts.length > 1){
+    const cur = csvCurve(d, pts); let A = 0; for (let i = 1; i < cur.length; i++) A += (d.csvInterp === "step" ? cur[i - 1][1] : 0.5 * (cur[i][1] + cur[i - 1][1])) * (cur[i][0] - cur[i - 1][0]);
+    const f = unitFactor(d.csvXu || "s") * unitFactor(d.csvYu || "N"); if (isFinite(f)) note += ` Impulse (area under it): <b>${+(A * f).toPrecision(4)} ${UNITS.torque && UNITS.torque.includes(d.csvYu) ? "N m s" : "N s"}</b>.`; }
+  document.getElementById("csvNote").innerHTML = note; }
 function csvHTML(n){
   const d = n.data, ag = d.csvAgainst || "time";
   const xu = d.csvXu || (ag === "time" ? "s" : "m"), yu = d.csvYu || "N";
   const xs = ag === "time" ? UNITS.time : UNITS.length.concat(UNITS.angle), ys = UNITS.force.concat(UNITS.torque);
-  let b = `<div class="row req"><label title="path to the CSV; relative paths are read from the model's folder">file</label><div class="vxy" style="grid-template-columns:minmax(0,1fr) auto"><input data-k="csvFile" value="${esc(d.csvFile || "")}" placeholder="loads/hit.csv"><button class="mini" data-act="csvpick" title="Pick the file">…</button></div></div>`;
+  let b = `<div class="row req"><label title="path to the CSV; relative paths are read from the model's folder">file</label><div class="vxy" style="grid-template-columns:minmax(0,1fr) auto auto"><input data-k="csvFile" value="${esc(d.csvFile || "")}" placeholder="loads/hit.csv"><button class="mini" data-act="csvpick" title="Pick the file">…</button><button class="mini" data-act="csvedit" title="${d.csvFile ? "Edit the table and see its plot" : "Make a new table"}">${d.csvFile ? "edit" : "new"}</button></div></div>`;
+  b += csvMini(n);
   b += `<div class="row"><label title="time: the force follows the clock. measure: the force follows this load's measure (a load-deflection curve)">x is</label><select data-k="csvAgainst">${sel_([["time","time"],["measure","the measure (s)"]], ag)}</select></div>`;
   b += `<div class="row"><label title="unit of the x column">x unit</label><select data-k="csvXu">${sel_(xs, xu)}</select></div>`;
   b += `<div class="row"><label title="unit of the y column: a force, or a torque for a rotation">y unit</label><select data-k="csvYu">${sel_(ys, yu)}</select></div>`;
@@ -2191,6 +2300,7 @@ world.addEventListener("click", async e => {
       if (pp.ok && pp.copied) status("ok", "Copied the picture into the model's images folder: " + pp.path);
       else if (pp.ok && !pp.relative) status("", "Save the model first to keep its pictures in the model's folder; the full path is used for now."); }
     else if (!r.cancelled) status("bad", "Picking a picture needs the desktop app."); return; }
+  if (act === "csvedit"){ csvOpen(n); return; }
   if (act === "csvpick"){ const r = await API.call("pick_file", "", "csv");
     if (r.ok){ const pp = await API.call("project_path", r.path, filePath, null); d.csvFile = pp.ok ? pp.path : r.path; d.csvOn = true; changed(true);
       if (pp.ok && !pp.relative) status("", filePath ? "The CSV is outside the model's folder: its full path is saved." : "Save the model to store this path relative to its folder."); }
@@ -3046,6 +3156,30 @@ async function matRefresh(r){ await matShow(r); HELP = null; CAT = await API.cal
   if (dl) dl.innerHTML = CAT.materials.map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join(""); SETTINGS = await API.call("load_settings") || SETTINGS; check(); }
 document.getElementById("bMat").onclick = () => { document.getElementById("matDlg").style.display = "flex"; matShow(); blkShow(); };
 document.getElementById("matClose").onclick = () => document.getElementById("matDlg").style.display = "none";
+// table editor events
+document.getElementById("csvTab").addEventListener("input", e => { const el = e.target; if (!CSVE) return;
+  if (el.dataset.ch !== undefined){ const c = +el.dataset.ch; while (CSVE.header.length <= c) CSVE.header.push(""); CSVE.header[c] = el.value; csvPlot(); return; }
+  if (el.dataset.r === undefined) return; const r = +el.dataset.r, c = +el.dataset.c, row = CSVE.rows[r]; while (row.length <= c) row.push("");
+  row[c] = el.value; CSVE.dirty = true;
+  const n = byId(CSVE.nid), {bad, ix, iy} = csvPoints(n.data, CSVE);
+  document.querySelectorAll("#csvTab input[data-r]").forEach(x => x.classList.toggle("bad", bad.has(+x.dataset.r) && [ix, iy].includes(+x.dataset.c)));
+  csvPlot(); });
+document.getElementById("csvTab").addEventListener("keydown", e => { const el = e.target; if (el.dataset.r === undefined) return;
+  const r = +el.dataset.r, c = +el.dataset.c, go = (rr, cc) => { const t = document.querySelector(`#csvTab input[data-r="${rr}"][data-c="${cc}"]`); if (t){ t.focus(); t.select(); e.preventDefault(); } };
+  if (e.key === "Enter" || e.key === "ArrowDown"){ if (e.key === "Enter" && r === CSVE.rows.length - 1){ CSVE.rows.push(CSVE.rows[r].map(() => "")); CSVE.dirty = true; csvDraw(); } go(r + 1, c); }
+  else if (e.key === "ArrowUp") go(r - 1, c); });
+document.getElementById("csvTab").addEventListener("click", e => { const b = e.target.closest("[data-rdel]"); if (!b || !CSVE) return;
+  CSVE.rows.splice(+b.dataset.rdel, 1); CSVE.dirty = true; csvDraw(); });
+document.getElementById("csvAdd").onclick = () => { if (!CSVE) return; const last = CSVE.rows[CSVE.rows.length - 1] || ["", ""]; CSVE.rows.push(last.map(() => "")); CSVE.dirty = true; csvDraw();
+  const t = document.querySelector(`#csvTab input[data-r="${CSVE.rows.length - 1}"][data-c="0"]`); if (t) t.focus(); };
+document.getElementById("csvReload").onclick = async () => { if (!CSVE || CSVE.fresh) return; const n = byId(CSVE.nid); if (n) await csvOpen(n); };
+document.getElementById("csvCancel").onclick = () => { if (CSVE && CSVE.dirty && !CSVE.confirmClose){ CSVE.confirmClose = true; status("", "The table has unsaved changes: Close again to drop them, or Save."); return; }
+  document.getElementById("csvDlg").style.display = "none"; CSVE = null; };
+document.getElementById("csvSave").onclick = async () => { if (!CSVE) return;
+  const r = await API.call("write_csv_table", CSVE.path, CSVE.comments || [], CSVE.header.some(x => String(x).trim()) ? CSVE.header : [], CSVE.rows, CSVE.delim || ",", filePath);
+  if (!r.ok){ status("bad", "Could not save the table: " + r.error); return; }
+  CSVE.dirty = false; CSVE.fresh = false; CSVE.confirmClose = false; Object.keys(CSV_CACHE).forEach(k => delete CSV_CACHE[k]);
+  status("ok", "Saved " + r.path); render(); csvDraw(); if (typeof liveRun === "function") liveRun(); };
 document.getElementById("matPick").onclick = async () => { const r = await API.call("pick_folder", document.getElementById("matPath").value);
   if (r.ok) document.getElementById("matPath").value = r.path; else if (!r.cancelled) status("bad", "Type the folder path (the picker needs the desktop app)."); };
 document.getElementById("matUse").onclick = async () => { const f = document.getElementById("matPath").value.trim(); if (!f) return; matRefresh(await API.call("set_materials_dir", f)); };
@@ -3119,7 +3253,7 @@ const GUIDE = [
   <h3>The blocks and why they connect that way</h3>
   <ul><li><b>One body</b>, the instrument, free to move along x.</li>
   <li><b>A kelvin_voigt element</b> for the mounts: a spring and a damper side by side in one block ($F = k x + c v$). Its measure is the instrument's position, because the floor does not move. The force in this element is what the floor feels.</li>
-  <li><b>A load node set to CSV table</b> for the shock. The file <code>data/shock_pulse.csv</code> lists force (kN) against time (ms). The load node knows the units of both columns and joins the rows with a smooth curve. A CSV load is how you bring in a measured or designed load history.</li>
+  <li><b>A load node set to CSV table</b> for the shock. The file <code>data/shock_pulse.csv</code> lists force (kN) against time (ms). The load node knows the units of both columns and joins the rows with a smooth curve. A CSV load is how you bring in a measured or designed load history. The small plot on the node shows the load; click it (or <b>edit</b>) to open the table editor, change a few values, add or delete rows, and see the curve and its impulse update before you save. <b>new</b> starts a table next to a saved model.</li>
   <li><b>A failure mode</b> on the travel: the mounts bottom out at 15 mm.</li></ul>
   <h3>What to look at</h3>
   <p><i>peak_shock_kN</i> is about 2 kN, but <i>peak_floor_N</i> is under 200 N. The shock is over (5 ms) long before the mounts can push back (their period is 200 ms), so the instrument simply leaves with the shock's momentum and the mounts slow it down gently.</p>
