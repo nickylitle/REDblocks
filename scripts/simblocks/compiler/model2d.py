@@ -463,10 +463,13 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             if not 0.0 <= P[e, 0] <= 1.0 or P[e, 1] < 0.0 or P[e, 2] < 0.0:
                 raise SpecError("impact needs 0 <= e <= 1, mu >= 0 and v_rest >= 0", where, line_of(d, "e"), f)
         elif t == "force":
-            if ("P" in d) + ("csv" in d) != 1:
-                raise SpecError("a force needs P (a constant) or csv (a table against time or the measure), not both",
-                                where, line_of(d, "type"), f)
-            if "csv" in d:
+            if ("P" in d) + ("csv" in d) + ("pulse" in d) != 1:
+                raise SpecError("a force needs one of P (a constant), csv (a table against time or the measure) or pulse "
+                                "(a standard shape: half_sine, triangle, sine...)", where, line_of(d, "type"), f)
+            if "pulse" in d:
+                from .loadtable import compile_pulse
+                typ[e], tx, tF = compile_pulse(e, d, ctx, where, doc, P, tab_k)
+            elif "csv" in d:
                 from .loadtable import compile_load
                 typ[e], tx, tF = compile_load(e, d, ctx, where, doc, P, tab_k)
                 from .loadtable import check_load_kind

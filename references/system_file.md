@@ -126,6 +126,29 @@ shock:
 - `x_col`, `y_col`: column number (1 = first) or header text; default the first two. A header row and `#`
   comment lines are skipped; comma, semicolon, tab or space delimited. x must increase. End values hold outside.
 
+**Standard load shapes.** Instead of `P` or `csv`, a force can take `pulse:` (against time; numbers with units):
+
+```yaml
+punch: {type: force, measure: plate, pulse: {kind: half_sine, peak: 2 kN, duration: 5 ms, start: 1 ms}}
+shake: {type: force, measure: table, pulse: {kind: sine, amplitude: 50 N, frequency: 30 Hz, offset: 0 N}}
+```
+
+| kind | numbers |
+|---|---|
+| `half_sine`, `haversine` | `peak`, `duration`, `start` |
+| `triangle` | `peak`, `duration`, `peak_at` (0-1, default 0.5), `start` |
+| `rectangle` | `peak`, `duration`, `rise` (softens both edges), `start` |
+| `trapezoid` | `peak`, `duration`, `rise`, `fall` (default = rise), `start` |
+| `ramp` | `to`, `duration`, `from`, `start` (holds `to` after) |
+| `step` | `to`, `from`, `start` |
+| `sine` | `amplitude`, `frequency`, `offset`, `phase`, `start`, `stop` (default: the end of the run) |
+| `square_wave` | `amplitude`, `frequency`, `duty`, `offset`, `start`, `stop` |
+| `sweep` | `amplitude`, `f_start`, `f_end`, `duration`, `offset`, `start` (frequency rises linearly) |
+| `decay` | `peak`, `tau`, `start` |
+
+Before `start` the force is 0 (a ramp or step: `from`; a wave: its `offset`). Pulses end at 0. The automatic time
+step resolves the shape (a pulse gets at least 50 steps, a wave 40 per cycle). Torque for a rotation: give N m.
+
 Common element fields: `label`, `source` (shown in the schematic table), `note`, and
 `knockout: {expect: {metric: "+"|"-"}, expect_elastic: {...}}` to give the expected direction of change
 when the element is removed (or made elastic) in the knockout check.

@@ -512,6 +512,28 @@ class Api:
         except Exception as exc:
             return _err(exc)
 
+    # ------------------------------------------------------------------ material viewer
+    def material_curve(self, text):
+        """A material's stress-strain curve (engineering and true) and its main properties, for the viewer."""
+        try:
+            from ..materials import get
+            from ..materials.curves import load_curve, resolve_material
+            try:
+                key = text if get(text) else text
+            except Exception:
+                key = resolve_material(text)
+            m = get(key)
+            c = load_curve(key, write=False)
+            et, st = c.true
+            props = {k: getattr(m, k, None) for k in ("E", "sy", "su", "elong", "rho", "nu", "G", "family", "note")}
+            n = len(c.eng_strain); step = max(1, n // 400)
+            return dict(ok=True, key=key, name=getattr(m, "name", key), source=c.source,
+                        warnings=[str(v) for k, v in c.extras.items() if "warning" in k] + list(c.extras.get("nearest_fits", [])),
+                        eng=[[float(x), float(y)] for x, y in zip(c.eng_strain[::step], c.eng_stress[::step])],
+                        true=[[float(x), float(y)] for x, y in zip(et[::step], st[::step])], props=_clean(props))
+        except Exception as exc:
+            return _err(exc)
+
     # ------------------------------------------------------------------ the small CSV table editor
     def _csv_path(self, path, model_path=None):
         if os.path.isabs(path):

@@ -293,10 +293,13 @@ def compile_model(doc, overrides=None):
             if not 0.0 <= P[e, 0] <= 1.0 or P[e, 1] < 0.0 or P[e, 2] < 0.0:
                 raise SpecError("impact needs 0 <= e <= 1, mu >= 0 and v_rest >= 0", where, line_of(d, "e"), f)
         elif t == "force":
-            if ("P" in d) + ("csv" in d) != 1:
-                raise SpecError("a force needs P (a constant) or csv (a table against time or the measure), not both",
-                                where, line_of(d, "type"), f)
-            if "csv" in d:
+            if ("P" in d) + ("csv" in d) + ("pulse" in d) != 1:
+                raise SpecError("a force needs one of P (a constant), csv (a table against time or the measure) or pulse "
+                                "(a standard shape: half_sine, triangle, sine...)", where, line_of(d, "type"), f)
+            if "pulse" in d:
+                from .loadtable import compile_pulse
+                typ[e], tx, tF = compile_pulse(e, d, ctx, where, doc, P, tab_k)
+            elif "csv" in d:
                 from .loadtable import compile_load
                 typ[e], tx, tF = compile_load(e, d, ctx, where, doc, P, tab_k)
                 from .loadtable import check_load_kind
@@ -356,6 +359,11 @@ def _run_settings(M, doc, ctx):
     other = getattr(M, "dt_crit_other", None)
     M.dt_auto = min(0.02 * M.dt_crit if not math.isfinite(cb) or M.dt_crit < cb else
                     min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
+    a_ = getattr(M, "arrays", None)       # loads against time (CSV tables, standard shapes) must be resolved too
+    if a_ is not None and "typ" in a_:
+        feats = [a_["P"][e, 3] for e in range(len(a_["typ"])) if a_["typ"][e] == 13 and a_["P"][e, 1] == 0.0 and a_["P"][e, 3] > 0]
+        if feats:
+            M.dt_auto = min(M.dt_auto, min(feats))
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))

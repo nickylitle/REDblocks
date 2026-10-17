@@ -42,12 +42,13 @@ ELEMENTS = [
     dict(name="drag", law="F = K v |v|", fields="K",
          what="Quadratic drag: windage on a spinning rotor, air drag on a body.",
          yaml="windage:\n  type: drag\n  measure: rotor\n  K: $K_wind      # from bar_windage_torque at omega = 1"),
-    dict(name="force", law="F = P (constant), or F(t) / F(s) from a CSV table", fields="P, or csv: {file, against, x_unit, y_unit, interpolation, x_col, y_col}",
+    dict(name="force", law="F = P (constant), a standard shape F(t) (pulse), or F(t) / F(s) from a CSV table", fields="P, or pulse: {kind, ...}, or csv: {file, against, x_unit, y_unit, interpolation, x_col, y_col}",
          what="A push along the measure. Constant (P), or following a table: against time (a measured or designed load "
               "history) or against the measure itself (a load-deflection curve). The table comes from a CSV file (path "
               "relative to the model's folder) or inline x / y lists; you give the units of both columns; rows are joined "
               "linearly (default), held (step) or by a monotone cubic with no overshoot (smooth, PCHIP); the end values "
-              "hold outside the table.",
+              "hold outside the table. Or a standard shape (pulse): half_sine, haversine, triangle, rectangle, trapezoid, "
+              "ramp, step, sine, square_wave, sweep (chirp) or decay, each from a few numbers (peak, duration, frequency...).",
          yaml="shock:\n  type: force\n  measure: instrument\n  csv: {file: data/shock.csv, against: time, x_unit: ms, y_unit: kN, interpolation: linear}"),
     dict(name="drive", law="DC motor + current-limited ESC + LiPo 1-RC pack", fields="kv, R, I_max, gear, cells, R0, R1, C1, capacity, throttle, J_rotor",
          what="Powers one rotation body. Tracks motor current, battery current, bus voltage and state of charge.",

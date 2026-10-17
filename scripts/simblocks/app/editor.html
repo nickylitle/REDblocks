@@ -533,6 +533,12 @@ label.cpick button{padding:0 6px;font-size:12px}
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
   <h3 class="dsub">Colours</h3><div class="sub" id="setOwn"></div><div id="setColors"></div>
   <div class="btns"><button id="setResetAll">Reset all to the theme</button><button id="setClose" class="primary">Done</button></div></div></div>
+<div class="dlg" id="matvDlg" role="dialog" aria-modal="true" aria-labelledby="matvTitle"><div class="box" style="width:min(980px,96vw)">
+  <h4 id="matvTitle">Material</h4><div class="sub" id="matvSub"></div>
+  <div class="csvwrap" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)"><div class="csvplot"><svg id="matvSvg" viewBox="0 0 560 360" role="img" aria-label="stress-strain curve"></svg>
+    <div class="sub" style="margin:6px 0 0"><span style="color:var(--p1)">&#9644;</span> engineering &nbsp; <span style="color:var(--p2)">&#9644;</span> true (to necking) &nbsp; dots: yield and ultimate</div></div>
+    <div><table class="res" id="matvProps"></table><div class="sub" id="matvSrc" style="margin-top:10px"></div></div></div>
+  <div class="btns"><button id="matvClose">Close</button></div></div></div>
 <div class="dlg" id="csvDlg" role="dialog" aria-modal="true" aria-labelledby="csvTitle"><div class="box" style="width:min(1040px,96vw)">
   <h4 id="csvTitle">Load table</h4><div class="sub" id="csvSub"></div>
   <div class="csvwrap"><div class="csvtab" id="csvTab"></div><div class="csvplot"><svg id="csvSvg" viewBox="0 0 560 330" role="img" aria-label="plot of the load table"></svg><div class="sub" id="csvNote" style="margin:6px 0 0"></div></div></div>
@@ -685,7 +691,7 @@ function sockets(n){
   if (n.kind === "sweep" || n.kind === "mc") outs.push({key:"out", label:"value", type:"val"});
   if (n.kind === "load"){
     if (!d.raw) d.terms.forEach((t, i) => ins.push({key:"t" + i, label:"body " + (i + 1), type:"body", term:i}));
-    if (!d.csvOn) ins.push({key:"P", label:"force", type:"val", req:true});
+    if (!d.csvOn && !d.pulseOn) ins.push({key:"P", label:"force", type:"val", req:true});
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
   }
   if (n.kind === "export") d.cols.forEach((c, i) => ins.push({key:"c" + i, label:"column " + (i + 1), type:"any", col:i, req:i === 0}));
@@ -970,7 +976,7 @@ function toDoc(){
   Object.assign(uncertain, S.meta.unc_extra || {});
   S.nodes.filter(n => n.kind === "load").forEach(n => {
     const d = n.data, o = {type:"force", measure:measureOf(n)};
-    if (d.csvOn) o.csv = csvOut(n); else o.P = inVal(n, "P", d.P);
+    if (d.pulseOn) o.pulse = pulseOut(d); else if (d.csvOn) o.csv = csvOut(n); else o.P = inVal(n, "P", d.P);
     if (d.label) o.label = d.label; elements[d.name] = o;
   });
   const exps = [];
@@ -1133,7 +1139,7 @@ function fromDoc(doc){
       const m = e.measure, geo = e.type === "contact_friction" || PAIR_TYPES.includes(e.type) || (m && typeof m === "object");
       if (e.type === "force" && !geo){
         const pm = parseMeasure2(m, bodyNames);
-        const d = {name:k, label:e.label || "", P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef, co:t.co})) : [], const: pm ? pm.const : "", raw: pm ? null : str(m)}; Object.assign(d, csvIn(e.csv));
+        const d = {name:k, label:e.label || "", P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef, co:t.co})) : [], const: pm ? pm.const : "", raw: pm ? null : str(m)}; Object.assign(d, csvIn(e.csv), pulseIn(e.pulse));
         const n = addNode("load", d);
         if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
         pend.push([n.id, "P", e.P]); put(3, n); return;
@@ -1158,7 +1164,7 @@ function fromDoc(doc){
     if (e.type === "force"){
       const pm = parseMeasure(e.measure, bodyNames);
       const d = {name:k, label:e.label || "", axis:Array.isArray(e.direction) ? e.direction.map(String) : (e.direction || "x"), P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef})) : [], const: pm ? pm.const : "", raw: pm ? null : str(e.measure)};
-      Object.assign(d, csvIn(e.csv));
+      Object.assign(d, csvIn(e.csv), pulseIn(e.pulse));
       const n = addNode("load", d);
       if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
       pend.push([n.id, "P", e.P]); put(3, n); return;
@@ -1336,7 +1342,7 @@ function uvControl(key, value, dim, ph, extra){
 }
 // ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
 // Plugging a value in writes $name into the field; the text stays the single source of truth.
-const NO_FIELD_SOCK = new Set(["csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","csvAgainst","reduce","quantity","unit"]);
+const NO_FIELD_SOCK = new Set(["csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
 function fieldKey(inp){
   if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
   const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
@@ -1642,6 +1648,96 @@ function csvPlot(){
     const cur = csvCurve(d, pts); let A = 0; for (let i = 1; i < cur.length; i++) A += (d.csvInterp === "step" ? cur[i - 1][1] : 0.5 * (cur[i][1] + cur[i - 1][1])) * (cur[i][0] - cur[i - 1][0]);
     const f = unitFactor(d.csvXu || "s") * unitFactor(d.csvYu || "N"); if (isFinite(f)) note += ` Impulse (area under it): <b>${+(A * f).toPrecision(4)} ${UNITS.torque && UNITS.torque.includes(d.csvYu) ? "N m s" : "N s"}</b>.`; }
   document.getElementById("csvNote").innerHTML = note; }
+// ---- standard load shapes (pulse): half sine, triangle, oscillation... compiled to a dense table by the solver
+const PULSES = {
+  half_sine:["Half sine pulse", [["peak","1 kN"],["duration","5 ms"],["start","0 ms"]]],
+  haversine:["Haversine (smooth bump)", [["peak","1 kN"],["duration","5 ms"],["start","0 ms"]]],
+  triangle:["Triangle pulse", [["peak","1 kN"],["duration","5 ms"],["peak_at","0.5"],["start","0 ms"]]],
+  rectangle:["Rectangle pulse", [["peak","1 kN"],["duration","5 ms"],["rise","0 ms"],["start","0 ms"]]],
+  trapezoid:["Trapezoid pulse", [["peak","1 kN"],["duration","5 ms"],["rise","1 ms"],["fall",""],["start","0 ms"]]],
+  ramp:["Ramp, then hold", [["to","100 N"],["duration","50 ms"],["from","0 N"],["start","0 ms"]]],
+  step:["Step", [["to","100 N"],["from","0 N"],["start","10 ms"]]],
+  sine:["Sine oscillation", [["amplitude","100 N"],["frequency","50 Hz"],["offset","0 N"],["phase","0 deg"],["start","0 ms"],["stop",""]]],
+  square_wave:["Square wave", [["amplitude","100 N"],["frequency","20 Hz"],["duty","0.5"],["offset","0 N"],["start","0 ms"],["stop",""]]],
+  sweep:["Frequency sweep (chirp)", [["amplitude","100 N"],["f_start","10 Hz"],["f_end","200 Hz"],["duration","1 s"],["offset","0 N"],["start","0 ms"]]],
+  decay:["Exponential decay", [["peak","1 kN"],["tau","5 ms"],["start","0 ms"]]] };
+const PULSE_TIP = {peak:"the highest force (or torque)", duration:"how long the pulse lasts", start:"when it starts",
+  peak_at:"where the peak sits, as a fraction of the duration (0 to 1)", rise:"time to ramp up (and down, for a rectangle)", fall:"time to ramp down (blank = same as rise)",
+  to:"the value it ends at", from:"the value before it starts", amplitude:"half the swing, peak to peak / 2", frequency:"cycles per second",
+  offset:"the value it oscillates about", phase:"where in the cycle it starts", stop:"when it stops (blank = the end of the run)",
+  duty:"fraction of each cycle spent high", f_start:"frequency at the start", f_end:"frequency at the end", tau:"time to fall to 37 %"};
+function pulseIn(p){ if (!p || typeof p !== "object") return {}; const o = {kind:String(p.kind || "half_sine")};
+  Object.keys(p).forEach(k => { if (k !== "kind") o[k] = str(p[k]); }); return {pulseOn:true, pulse:o}; }
+function pulseOut(d){ const p = d.pulse || {}, o = {kind:p.kind || "half_sine"};
+  ((PULSES[o.kind] || [])[1] || []).forEach(([k]) => { if (!blank(String(p[k] ?? "").trim())) o[k] = lit(String(p[k]).trim()); }); return o; }
+function pulseSI(t){ const q = splitQ(String(t ?? "").trim()); if (q.text || q.num === "" || !isFinite(+q.num)) return NaN;
+  if (!q.unit) return +q.num; if (q.unit === "deg") return +q.num * Math.PI / 180; const f = unitFactor(q.unit); return isFinite(f) ? +q.num * f : NaN; }
+function pulsePts(d){   // preview only: the solver builds the real table
+  const p = d.pulse || {}, kind = p.kind || "half_sine", spec = PULSES[kind]; if (!spec) return null;
+  const v = {}; for (const [k, def] of spec[1]){ const raw = String(p[k] ?? "").trim(); v[k] = raw === "" ? (["stop","fall"].includes(k) ? null : pulseSI(def)) : pulseSI(raw); if (v[k] !== null && !isFinite(v[k])) return null; }
+  const t0 = v.start || 0, T = pulseSI(S.meta.run.t_end || "1 s") || 1, out = [], add = (t, y) => out.push([t0 + t, y]);
+  const n = 160;
+  if (kind === "half_sine" || kind === "haversine"){ for (let i = 0; i <= n; i++){ const t = v.duration * i / n; add(t, kind === "half_sine" ? v.peak * Math.sin(Math.PI * t / v.duration) : v.peak * 0.5 * (1 - Math.cos(2 * Math.PI * t / v.duration))); } }
+  else if (kind === "triangle"){ add(0, 0); add(Math.min(Math.max(v.peak_at, 0), 1) * v.duration, v.peak); add(v.duration, 0); }
+  else if (kind === "rectangle" || kind === "trapezoid"){ const r = v.rise || 0, f = kind === "rectangle" || v.fall === null ? r : v.fall; add(0, 0); add(r, v.peak); add(v.duration - f, v.peak); add(v.duration, 0); }
+  else if (kind === "ramp"){ add(0, v.from); add(v.duration, v.to); add(Math.max(v.duration * 1.3, T - t0), v.to); }
+  else if (kind === "step"){ add(0, v.from); add(0, v.to); add(Math.max(T - t0, 1e-3), v.to); }
+  else if (kind === "sine" || kind === "square_wave"){ const dur = (v.stop !== null ? v.stop : T) - t0, m = Math.min(4000, Math.max(200, 40 * v.frequency * dur));
+    for (let i = 0; i <= m; i++){ const t = dur * i / m, ph = (v.frequency * t) % 1;
+      add(t, v.offset + v.amplitude * (kind === "sine" ? Math.sin(2 * Math.PI * v.frequency * t + v.phase) : (ph < v.duty ? 1 : -1))); } }
+  else if (kind === "sweep"){ const m = Math.min(4000, Math.max(300, 40 * Math.max(v.f_start, v.f_end) * v.duration));
+    for (let i = 0; i <= m; i++){ const t = v.duration * i / m; add(t, v.offset + v.amplitude * Math.sin(2 * Math.PI * (v.f_start * t + 0.5 * (v.f_end - v.f_start) / v.duration * t * t))); } }
+  else { for (let i = 0; i <= n; i++){ const t = 8 * v.tau * i / n; add(t, v.peak * Math.exp(-t / v.tau)); } }
+  if (t0 > 0){ const pre = kind === "ramp" || kind === "step" ? v.from : (["sine","square_wave","sweep"].includes(kind) ? (v.offset || 0) : 0); out.unshift([t0, pre]); out.unshift([0, pre]); }
+  return out.map((p_, i) => [p_[0], p_[1], i]); }
+function pulseHTML(n){ const d = n.data; d.pulse = d.pulse || {kind:"half_sine", peak:"1 kN", duration:"5 ms", start:"0 ms"}; const p = d.pulse;
+  let b = `<div class="row"><label title="the shape of the load against time">shape</label><select data-k="pl.kind">${sel_(Object.entries(PULSES).map(([k, x]) => [k, x[0]]), p.kind || "half_sine")}</select></div>`;
+  (PULSES[p.kind] || PULSES.half_sine)[1].forEach(([k, def]) => {
+    b += `<div class="row${["peak","duration","to","amplitude","frequency","f_start","f_end","tau"].includes(k) ? " req" : ""}"><label title="${esc(PULSE_TIP[k] || k)}">${esc(k.replace("_", " "))}</label><input data-k="pl.${k}" value="${esc(p[k] ?? "")}" placeholder="${esc(def ? "e.g. " + def : "blank = default")}"></div>`; });
+  const pts = pulsePts(d);
+  b += pts ? `<div class="csvmini" title="the load against time (preview)"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${csvSVG({csvInterp: p.kind === "step" ? "linear" : "linear"}, pts, 220, 56, true)}</svg></div>`
+           : `<div class="hint">the preview needs plain numbers (values wired in by name show after a run)</div>`;
+  b += `<div class="hint">positive pushes along +s; a torque for a rotation (give N m)</div>`;
+  return b; }
+// ---- material viewer: the stress-strain curve the solver uses for a material, with its main properties
+const MAT_CACHE = {};
+function matData(key){ if (!key) return null;
+  if (MAT_CACHE[key] === undefined){ MAT_CACHE[key] = null;
+    API.call("material_curve", key).then(r => { MAT_CACHE[key] = r && r.ok ? r : {error:(r && r.error) || "no curve"}; render(); })
+      .catch(() => { MAT_CACHE[key] = {error:"needs the desktop app"}; }); }
+  return MAT_CACHE[key]; }
+function matSVG(r, W, H, small){
+  const tk = v => `var(--${v})`, eng = r.eng || [], tru = r.true || [];
+  if (!eng.length) return "";
+  const xs = eng.concat(tru).map(p => p[0] * 100), ys = eng.concat(tru).map(p => p[1] / 1e6);
+  const x1 = Math.max(...xs) * 1.04 || 1, y1 = Math.max(...ys) * 1.08 || 1;
+  const L = small ? 3 : 62, R = small ? 3 : 14, T = small ? 3 : 14, B = small ? 3 : 42;
+  const sx = v => L + v / x1 * (W - L - R), sy = v => H - B - v / y1 * (H - T - B);
+  let g = "";
+  if (!small){ const f = v => String(+v.toPrecision(4));
+    niceTicks(0, x1, 6).forEach(v => { g += `<line x1="${sx(v)}" y1="${T}" x2="${sx(v)}" y2="${H - B}" stroke="${tk("hair")}"/><text x="${sx(v)}" y="${H - B + 15}" text-anchor="middle" font-size="11" fill="${tk("ink3")}">${f(v)}</text>`; });
+    niceTicks(0, y1, 6).forEach(v => { g += `<line x1="${L}" y1="${sy(v)}" x2="${W - R}" y2="${sy(v)}" stroke="${tk("hair")}"/><text x="${L - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" fill="${tk("ink3")}">${f(v)}</text>`; });
+    g += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle" font-size="12" fill="${tk("ink2")}">strain (%)</text>`;
+    g += `<text transform="translate(14 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle" font-size="12" fill="${tk("ink2")}">stress (MPa)</text>`; }
+  const line = (pts, col, dash) => `<polyline points="${pts.map(p => sx(p[0] * 100).toFixed(1) + "," + sy(p[1] / 1e6).toFixed(1)).join(" ")}" fill="none" stroke="${tk(col)}" stroke-width="${small ? 1.6 : 2.2}"${dash ? ' stroke-dasharray="6 4"' : ""} stroke-linejoin="round"/>`;
+  if (!small && tru.length) g += line(tru, "p2", true);
+  g += line(eng, "p1", false);
+  if (!small){ const P = r.props || {}, E = +P.E;
+    if (P.sy && E){ const ey = P.sy / E + 0.002; g += `<circle cx="${sx(ey * 100)}" cy="${sy(P.sy / 1e6)}" r="4" fill="${tk("p1")}" stroke="${tk("bg")}"><title>0.2% yield ${+(P.sy / 1e6).toPrecision(4)} MPa</title></circle>`; }
+    if (P.su){ const top = eng.reduce((a, p) => p[1] > a[1] ? p : a, eng[0]); g += `<circle cx="${sx(top[0] * 100)}" cy="${sy(top[1] / 1e6)}" r="4" fill="${tk("p1")}" stroke="${tk("bg")}"><title>ultimate ${+(top[1] / 1e6).toPrecision(4)} MPa</title></circle>`; } }
+  return g; }
+function matMini(key){ const r = matData(key); if (!r) return "";
+  if (r.error) return `<div class="hint">${esc(r.error)}</div>`;
+  return `<div class="csvmini" data-act="matview" title="stress-strain curve: click for the full view"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${matSVG(r, 220, 56, true)}</svg></div>`; }
+function matView(key){ const r = MAT_CACHE[key]; if (!r || r.error) return;
+  const P = r.props || {}, row = (k, v) => v === null || v === undefined || v === "" ? "" : `<tr><td>${k}</td><td class="v">${esc(String(v))}</td></tr>`, M = v => v ? +(v / 1e6).toPrecision(4) + " MPa" : "", G = v => v ? +(v / 1e9).toPrecision(4) + " GPa" : "";
+  document.getElementById("matvTitle").textContent = "Material: " + (r.name || key);
+  document.getElementById("matvSub").innerHTML = `Library key <code>${esc(r.key)}</code>. This is the curve the plastic and failure blocks use for it.`;
+  document.getElementById("matvSvg").innerHTML = matSVG(r, 560, 360, false);
+  document.getElementById("matvProps").innerHTML = row("Young's modulus E", G(P.E)) + row("yield (0.2 %)", M(P.sy)) + row("ultimate", M(P.su)) + row("elongation", P.elong ? +(100 * P.elong).toPrecision(3) + " %" : "") +
+    row("shear modulus G", G(P.G)) + row("Poisson's ratio", P.nu) + row("density", P.rho ? P.rho + " kg/m^3" : "") + row("family", P.family);
+  document.getElementById("matvSrc").innerHTML = `<b>Curve source:</b> ${esc(r.source || "")}` + (r.warnings && r.warnings.length ? `<div style="color:var(--warn);margin-top:6px">${r.warnings.map(esc).join("<br>")}</div>` : "") + (P.note ? `<div style="margin-top:6px">${esc(P.note)}</div>` : "");
+  document.getElementById("matvDlg").style.display = "flex"; }
 function csvHTML(n){
   const d = n.data, ag = d.csvAgainst || "time";
   const xu = d.csvXu || (ag === "time" ? "s" : "m"), yu = d.csvYu || "N";
@@ -1755,7 +1851,7 @@ function nodeHTML(n){
     const cur = String(d.value || ""), known = CAT.materials.some(([k]) => k === cur);
     b += `<div class="row wide"><select data-k="value" title="a material from the library (Materials adds your own)">` +
       (known ? "" : `<option value="${esc(cur)}" selected>${esc(cur || "pick a material")}</option>`) +
-      CAT.materials.map(([k, nm]) => `<option value="${esc(k)}"${k === cur ? " selected" : ""}>${esc(nm)}</option>`).join("") + `</select></div>` + textUseHint(n);
+      CAT.materials.map(([k, nm]) => `<option value="${esc(k)}"${k === cur ? " selected" : ""}>${esc(nm)}</option>`).join("") + `</select></div>` + matMini(cur) + textUseHint(n);
   } else if (n.kind === "value"){
     const q = splitQ(d.value), word = q.text && !/^\s*=/.test(String(d.value || ""));
     b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 25 mm · = 2 * $x", "")}</div>` + expandHint(q.num) + exprInputs(d) +
@@ -1872,8 +1968,9 @@ function nodeHTML(n){
   } else if (n.kind === "load"){
     b += termsHTML(n, ins);
     b += `<div class="sep"></div>`;
-    b += `<div class="row"><label title="a constant force, or one that follows a table in a CSV file">source</label><select data-k="csvOn">${sel_([["", "constant (P)"], ["1", "CSV table"]], d.csvOn ? "1" : "")}</select></div>`;
-    if (!d.csvOn) b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
+    b += `<div class="row"><label title="a constant force, a standard shape against time (pulse, ramp, oscillation), or a table in a CSV file">source</label><select data-k="srcSel">${sel_([["", "constant (P)"], ["pulse", "standard shape"], ["1", "CSV table"]], d.pulseOn ? "pulse" : (d.csvOn ? "1" : ""))}</select></div>`;
+    if (d.pulseOn) b += pulseHTML(n);
+    else if (!d.csvOn) b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
     else b += csvHTML(n);
     b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
   } else if (n.kind === "export"){
@@ -2269,6 +2366,11 @@ world.addEventListener("input", e => {
     changed(kk === "kind" || kk === "src"); return; }
   if (k && k.startsWith("I6.")){ d.I6 = d.I6 || {}; d.I6[k.slice(3)] = el.value; changed(false); return; }
   if (k === "inForm"){ d.inForm = el.value; changed(true); return; }
+  if (k === "srcSel"){ d.csvOn = el.value === "1"; d.pulseOn = el.value === "pulse"; if (d.pulseOn && !d.pulse) d.pulse = {kind:"half_sine", peak:"1 kN", duration:"5 ms", start:"0 ms"}; changed(true); return; }
+  if (k && k.startsWith("pl.")){ d.pulse = d.pulse || {}; const kk = k.slice(3); d.pulse[kk] = el.value;
+    if (kk === "kind"){ const keep = d.pulse; d.pulse = {kind:el.value}; (PULSES[el.value] || [0, []])[1].forEach(([f, def]) => { d.pulse[f] = keep[f] ?? (["stop","fall"].includes(f) ? "" : def); }); changed(true); return; }
+    changed(false); const box = world.querySelector(`.node[data-id="${n.id}"] .csvmini svg`), pts = pulsePts(d);
+    if (box && pts) box.innerHTML = csvSVG({csvInterp:"linear"}, pts, 220, 56, true); return; }
   if (k && k.startsWith("csv")){ d[k] = k === "csvOn" ? !!el.value : el.value; changed(k === "csvOn" || k === "csvAgainst"); return; }
   if (k === "mk"){ d.mk = el.value; if (el.value === "coords"){ d.terms = d.terms.length ? d.terms : [{coef:"1"},{coef:"-1"}]; } else ensure2(n); changed(true); return; }
   if (!k) return;
@@ -2329,6 +2431,7 @@ world.addEventListener("click", async e => {
       else if (pp.ok && !pp.relative) status("", "Save the model first to keep its pictures in the model's folder; the full path is used for now."); }
     else if (!r.cancelled) status("bad", "Picking a picture needs the desktop app."); return; }
   if (act === "csvedit"){ csvOpen(n); return; }
+  if (act === "matview"){ matView(String(n.data.value || "")); return; }
   if (act === "csvpick"){ const r = await API.call("pick_file", "", "csv");
     if (r.ok){ const pp = await API.call("project_path", r.path, filePath, null); d.csvFile = pp.ok ? pp.path : r.path; d.csvOn = true; changed(true);
       if (pp.ok && !pp.relative) status("", filePath ? "The CSV is outside the model's folder: its full path is saved." : "Save the model to store this path relative to its folder."); }
@@ -3207,6 +3310,7 @@ async function matRefresh(r){ await matShow(r); HELP = null; CAT = await API.cal
   if (dl) dl.innerHTML = CAT.materials.map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join(""); SETTINGS = await API.call("load_settings") || SETTINGS; check(); }
 document.getElementById("bMat").onclick = () => { document.getElementById("matDlg").style.display = "flex"; matShow(); blkShow(); };
 document.getElementById("matClose").onclick = () => document.getElementById("matDlg").style.display = "none";
+document.getElementById("matvClose").onclick = () => document.getElementById("matvDlg").style.display = "none";
 // table editor events
 document.getElementById("csvTab").addEventListener("input", e => { const el = e.target; if (!CSVE) return;
   if (el.dataset.ch !== undefined){ const c = +el.dataset.ch; while (CSVE.header.length <= c) CSVE.header.push(""); CSVE.header[c] = el.value; csvPlot(); return; }

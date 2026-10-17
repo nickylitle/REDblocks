@@ -187,9 +187,12 @@ def load_table(d, ctx, where, doc):
     if len(x) > 1 and np.any(np.diff(x) <= 0):
         k = int(np.argmax(np.diff(x) <= 0))
         raise SpecError(f"x must increase down the table (row {k + 2}: {xs[k + 1]} after {xs[k]})", where, ln, f)
+    dx0 = np.diff(x); dx0 = dx0[dx0 > 1e-6 * (x[-1] - x[0] + 1e-30)] if len(x) > 1 else dx0
+    row_dx = float(np.median(dx0)) if len(dx0) else 0.0          # the table's own row spacing (before smoothing)
     if interp == "smooth":
         x, y = _pchip(x, y)
     slope = float(np.max(np.abs(np.diff(y) / np.diff(x)))) if len(x) > 1 else 0.0
+    load_table.row_dx = row_dx
     return against == "measure", interp == "step", np.ascontiguousarray(x, float), np.ascontiguousarray(y, float), slope
 
 
@@ -197,6 +200,8 @@ def compile_load(e, d, ctx, where, doc, P, tab_k):
     """Fill P and tab_k for a table load; returns (typ code 13, tx, tF)."""
     meas, step, tx, tF, slope = load_table(d, ctx, where, doc)
     P[e, 0] = 0.0; P[e, 1] = 1.0 if meas else 0.0; P[e, 2] = 1.0 if step else 0.0
+    if not meas:                          # a table against time: resolve its rows (half the typical row spacing)
+        P[e, 3] = 0.5 * getattr(load_table, "row_dx", 0.0)
     tab_k[e] = slope if meas else 0.0              # a load-deflection curve sets a time step like a spring
     return 13, tx, tF
 
@@ -214,3 +219,143 @@ def check_load_kind(d, rotation, where, doc):
     if not rotation and ky == "torque":
         raise SpecError(f"y_unit '{yu}' is a torque, but this load pushes a translation: give a force (N, kN, lbf)",
                         where, line_of(d, "csv"), f)
+
+
+# ---------------------------------------------------------------------------------- standard load shapes
+PULSE_KINDS = {
+    # kind: (required, optional with defaults)
+    "half_sine":  (("peak", "duration"), {"start": 0.0}),
+    "haversine":  (("peak", "duration"), {"start": 0.0}),
+    "triangle":   (("peak", "duration"), {"start": 0.0, "peak_at": 0.5}),
+    "rectangle":  (("peak", "duration"), {"start": 0.0, "rise": 0.0}),
+    "trapezoid":  (("peak", "duration", "rise"), {"start": 0.0, "fall": None}),
+    "ramp":       (("to", "duration"), {"start": 0.0, "from": 0.0}),
+    "step":       (("to",), {"start": 0.0, "from": 0.0}),
+    "sine":       (("amplitude", "frequency"), {"offset": 0.0, "phase": 0.0, "start": 0.0, "stop": None}),
+    "square_wave": (("amplitude", "frequency"), {"offset": 0.0, "duty": 0.5, "start": 0.0, "stop": None}),
+    "sweep":      (("amplitude", "f_start", "f_end", "duration"), {"start": 0.0, "offset": 0.0}),
+    "decay":      (("peak", "tau"), {"start": 0.0}),
+}
+PULSE_HELP = """pulse: a standard load shape against time (instead of P or csv). kind and its numbers (with units):
+  half_sine   peak, duration, start          F = peak sin(pi t / duration) for one half wave
+  haversine   peak, duration, start          F = peak (1 - cos(2 pi t / duration)) / 2: a smooth bump
+  triangle    peak, duration, start, peak_at (0-1 of the duration, default 0.5)
+  rectangle   peak, duration, start, rise    a flat pulse; rise (optional) softens both edges
+  trapezoid   peak, duration, rise, fall, start
+  ramp        to, duration, start, from      from -> to over the duration, then held
+  step        to, start, from                jumps at start (one time step wide)
+  sine        amplitude, frequency, offset, phase, start, stop     an oscillation (runs to the end if no stop)
+  square_wave amplitude, frequency, duty, offset, start, stop
+  sweep       amplitude, f_start, f_end, duration, start, offset   a chirp: frequency rises linearly
+  decay       peak, tau, start               F = peak exp(-t / tau)
+Before start and after the pulse the force is 0 (ramp and step hold their end value; sine and square_wave their
+offset)."""
+
+
+def pulse_table(d, ctx, where, doc):
+    """(x seconds, F newtons or N m) dense enough for linear lookup."""
+    from .model import resolve, num
+    f = doc.get("__file__", ""); spec = d["pulse"]; ln = line_of(d, "pulse")
+    if not isinstance(spec, dict) or "kind" not in spec:
+        raise SpecError("pulse is {kind: half_sine, peak: 2 kN, duration: 5 ms} (kinds: " + ", ".join(PULSE_KINDS) + ")",
+                        where, ln, f)
+    kind = str(spec["kind"]).strip().lower()
+    if kind not in PULSE_KINDS:
+        raise SpecError(f"pulse kind '{kind}' is not one of: " + ", ".join(PULSE_KINDS), where, ln, f)
+    req, opt = PULSE_KINDS[kind]
+    bad = set(spec) - {"kind"} - set(req) - set(opt)
+    if bad:
+        raise SpecError(f"a {kind} pulse takes " + ", ".join(list(req) + list(opt)) + "; unknown: " + ", ".join(sorted(bad)),
+                        where, ln, f)
+    miss = [k for k in req if k not in spec]
+    if miss:
+        raise SpecError(f"a {kind} pulse needs " + ", ".join(miss), where, ln, f)
+    v = {k: num(resolve(spec[k], ctx, f"{where}.pulse.{k}"), f"{where}.pulse.{k}") for k in req}
+    for k, dv in opt.items():
+        v[k] = num(resolve(spec[k], ctx, f"{where}.pulse.{k}"), f"{where}.pulse.{k}") if k in spec else dv
+    try:
+        T = float(num(resolve((doc.get("run") or {}).get("t_end", 1.0), ctx, "run.t_end"), "run.t_end"))
+    except Exception:
+        T = 1.0
+    t0 = float(v["start"])
+    for k in ("duration", "tau", "frequency", "f_start", "f_end"):
+        if k in v and v[k] is not None and v[k] <= 0:
+            raise SpecError(f"pulse {k} must be positive", where, ln, f)
+    N = 400
+    if kind in ("half_sine", "haversine"):
+        D = v["duration"]; t = np.linspace(0, D, N + 1)
+        y = v["peak"] * (np.sin(np.pi * t / D) if kind == "half_sine" else 0.5 * (1 - np.cos(2 * np.pi * t / D)))
+        x, F = t0 + t, y
+    elif kind == "triangle":
+        D = v["duration"]; a = min(max(float(v["peak_at"]), 0.0), 1.0)
+        x = t0 + np.array([0.0, a * D, D]); F = np.array([0.0, v["peak"], 0.0])
+    elif kind in ("rectangle", "trapezoid"):
+        D = v["duration"]; r = float(v["rise"] or 0.0); fl = r if kind == "rectangle" or v.get("fall") is None else float(v["fall"])
+        if r + fl > D:
+            raise SpecError("rise + fall is longer than the pulse", where, ln, f)
+        e = max(D * 1e-6, 1e-12)
+        r = r or e; fl = fl or e
+        x = t0 + np.array([0.0, r, D - fl, D]); F = np.array([0.0, v["peak"], v["peak"], 0.0])
+    elif kind == "ramp":
+        x = t0 + np.array([0.0, v["duration"]]); F = np.array([v["from"], v["to"]])
+    elif kind == "step":
+        e = max(abs(T) * 1e-7, 1e-12); x = t0 + np.array([0.0, e]); F = np.array([v["from"], v["to"]])
+    elif kind in ("sine", "square_wave"):
+        stop = float(v["stop"]) if v.get("stop") is not None else max(T, t0)
+        dur = max(stop - t0, 0.0); fr = v["frequency"]
+        if kind == "sine":
+            n = int(min(400000, max(200, 60 * fr * dur)))
+            t = np.linspace(0, dur, n + 1); y = v["offset"] + v["amplitude"] * np.sin(2 * np.pi * fr * t + v["phase"])
+        else:
+            per = 1.0 / fr; duty = min(max(float(v["duty"]), 0.01), 0.99); e = per * 1e-4; ts = []; ys = []
+            k = 0
+            while k * per < dur and len(ts) < 400000:
+                a = k * per; b = a + duty * per
+                ts += [a, a + e, b, b + e]; ys += [-1, 1, 1, -1]; k += 1
+            t = np.array(ts); y = v["offset"] + v["amplitude"] * np.array(ys, float)
+            keep = t <= dur; t, y = t[keep], y[keep]
+            if len(t) and t[-1] < dur:                     # hold the level the wave is at until the stop
+                t = np.append(t, dur); y = np.append(y, y[-1])
+        x, F = t0 + t, y
+    elif kind == "sweep":
+        D = v["duration"]; f0, f1 = v["f_start"], v["f_end"]
+        n = int(min(400000, max(400, 60 * max(f0, f1) * D)))
+        t = np.linspace(0, D, n + 1); ph = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) / D * t * t)
+        x, F = t0 + t, v["offset"] + v["amplitude"] * np.sin(ph)
+    else:  # decay
+        tau = v["tau"]; t = np.linspace(0, 8 * tau, N + 1); x, F = t0 + t, v["peak"] * np.exp(-t / tau)
+    x = np.asarray(x, float); F = np.asarray(F, float)
+    # before the start the force is 0 (or the ramp/step's from, or the wave's offset); after: 0 except ramp, step, decay
+    pre = {"ramp": v.get("from", 0.0), "step": v.get("from", 0.0)}.get(kind, v.get("offset", 0.0) if kind in ("sine", "square_wave", "sweep") else 0.0)
+    if t0 > 0:
+        x = np.concatenate([[0.0, t0 - max(t0 * 1e-9, 1e-12)], x]); F = np.concatenate([[pre, pre], F])
+    if kind in ("half_sine", "haversine", "triangle", "rectangle", "trapezoid", "sine", "square_wave", "sweep"):
+        end = 0.0 if kind not in ("sine", "square_wave", "sweep") else v.get("offset", 0.0)
+        x = np.concatenate([x, [x[-1] + max(abs(x[-1]) * 1e-9, 1e-12)]]); F = np.concatenate([F, [end]])
+    # strictly increasing x
+    keep = np.concatenate([[True], np.diff(x) > 0]); x, F = x[keep], F[keep]
+    return x, F
+
+
+def compile_pulse(e, d, ctx, where, doc, P, tab_k):
+    x, F = pulse_table(d, ctx, where, doc)
+    P[e, 0] = 0.0; P[e, 1] = 0.0; P[e, 2] = 0.0; tab_k[e] = 0.0
+    sp = d["pulse"]; kind = str(sp.get("kind", "")).lower()
+    from .model import resolve, num
+    def val(k):
+        return num(resolve(sp[k], ctx, where), where) if k in sp else None
+    if kind in ("sine", "square_wave"):
+        feat = 1.0 / val("frequency") / 40.0
+    elif kind == "sweep":
+        feat = 1.0 / max(val("f_start"), val("f_end")) / 40.0
+    elif kind == "decay":
+        feat = val("tau") / 20.0
+    elif kind == "step":
+        feat = 0.0
+    else:
+        feat = val("duration") / 50.0
+        r = val("rise") if kind in ("rectangle", "trapezoid") else None
+        if r:
+            feat = min(feat, r / 10.0)
+    P[e, 3] = feat                     # the time step should resolve the shape (see _run_settings)
+    return 13, np.ascontiguousarray(x), np.ascontiguousarray(F)

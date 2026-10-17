@@ -120,3 +120,46 @@ run: {t_end: 1 s}
 """)
     with pytest.raises(SpecError, match="cannot open"):
         load_system(str(p))
+
+
+# ---- standard load shapes (pulse)
+import math as _m
+import pytest as _pt
+from simblocks.compiler.system import load_system as _ls
+
+_BASE = """simblocks: 1
+name: t
+dim: 1d
+bodies:
+  m: {dof: translation, mass: 1}
+elements:
+  f: {type: force, measure: m, pulse: %s}
+outputs:
+  v: {body: m, quantity: velocity}
+run: {t_end: 0.05 s, dt: 10 us}
+"""
+
+
+@_pt.mark.parametrize("spec,J", [
+    ("{kind: half_sine, peak: 1 kN, duration: 5 ms, start: 2 ms}", 2 / _m.pi * 5),
+    ("{kind: haversine, peak: 1 kN, duration: 5 ms}", 2.5),
+    ("{kind: triangle, peak: 1 kN, duration: 5 ms, peak_at: 0.2}", 2.5),
+    ("{kind: trapezoid, peak: 1 kN, duration: 5 ms, rise: 1 ms}", 4.0),
+    ("{kind: ramp, to: 100 N, duration: 10 ms}", 4.5),
+    ("{kind: sine, amplitude: 100 N, frequency: 100 Hz}", 0.0),
+    ("{kind: square_wave, amplitude: 100 N, frequency: 100 Hz, offset: 100 N}", 5.0),
+    ("{kind: decay, peak: 1 kN, tau: 2 ms}", 2.0)])
+def test_pulse_impulse(spec, J):
+    o = _ls(_BASE % spec).run()
+    assert o["v"] == _pt.approx(J, abs=0.02 * max(J, 1.0))
+
+
+def test_pulse_unknown_kind_is_refused():
+    from simblocks.compiler.loader import SpecError
+    with _pt.raises(SpecError, match="not one of"):
+        _ls(_BASE % "{kind: wobble, peak: 1 kN}")
+
+
+def test_auto_time_step_resolves_a_short_pulse():
+    s = _ls((_BASE % "{kind: half_sine, peak: 1 kN, duration: 5 ms}").replace(", dt: 10 us", ""))
+    assert s.nominal.dt <= 5e-3 / 50 * 1.0001

@@ -72,7 +72,7 @@ BODY_KEYS_2D = {"dof", "mass", "inertia", "shape", "at", "com", "angle0", "v0", 
 ELEMENT_KEYS = {
     "spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table", "break_at"},
     "hertz": {"K", "n", "alpha"}, "friction": {"F_c", "v_eps", "F_s", "v_s"}, "drag": {"K"},
-    "force": {"P", "csv"}, "drive": {"kv", "R", "I_max", "gear", "cells", "R0", "R1", "C1", "capacity", "throttle",
+    "force": {"P", "csv", "pulse"}, "drive": {"kv", "R", "I_max", "gear", "cells", "R0", "R1", "C1", "capacity", "throttle",
                               "J_rotor"},
     "impact": {"e", "mu", "v_rest"},
     "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact"},
