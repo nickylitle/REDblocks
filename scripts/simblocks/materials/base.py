@@ -22,6 +22,7 @@ class Isotropic:
     cowper_q: float = float("nan")   # Cowper-Symonds q
     jc: tuple = ()                   # Johnson-Cook (A, B, n, C, m, Tmelt, Tref)
     note: str = ""
+    upper_yield: float = float("nan")  # hot-rolled / annealed carbon steel: upper yield point / lower yield (sy)
 
     @property
     def G(self):

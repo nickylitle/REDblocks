@@ -47,10 +47,25 @@ STEELS = {
                            alpha=17.3e-6, elong=0.70, hardness="HRB 70",
                            note="ASM / MatWeb AISI 304 typical (near MIL-HDBK-5 S-basis level). Real sheet often "
                                 "250-310 / 580-650 MPa. Strongly rate sensitive"),
-    "maraging_300": _steel("Maraging 18Ni(300) aged 900 F (MIL-HDBK-5 S-basis bar)", 1862, 1931, E=182.7 * GPa,
-                           nu=0.31, rho=7920, k=25.0, elong=0.05, hardness="HRC 50-55",
-                           note="MIL-HDBK-5 Table 2.5.1.0(c) via KasperCalc. Typical ~2000/2050 UNVERIFIED. "
-                                "Ec = 197 GPa in compression"),
+    "maraging_300": _steel("Maraging 18Ni(300) aged 900 F (typical)", 2000, 2050, E=182.7 * GPa,
+                           nu=0.31, rho=7920, k=25.0, elong=0.07, hardness="HRC 52-54",
+                           note="Typical aged 300 grade (nominally 300 ksi yield): ~2000 / 2050 MPa, 7 %. Design "
+                                "minimums in maraging_300_min. E MIL-HDBK-5; Ec = 197 GPa in compression"),
+    "maraging_300_min": _steel("Maraging 18Ni(300) aged (MIL-HDBK-5 S-basis bar)", 1862, 1931, E=182.7 * GPa,
+                               nu=0.31, rho=7920, k=25.0, elong=0.05, hardness="HRC 50 min",
+                               note="MIL-HDBK-5 Table 2.5.1.0(c) via KasperCalc: conservative variant"),
+    "A36": _steel("A36 structural steel, hot rolled (spec minimums)", 250, 400, E=200 * GPa, nu=0.26, elong=0.23,
+                  upper_yield=1.08, hardness="HB 119-162",
+                  note="ASTM A36: yield 36 ksi (250 MPa) min, tensile 58-80 ksi (400-550 MPa), 23 % in 50 mm; E, nu "
+                       "AISC. Mill plate usually yields 280-350 MPa: use A36_typical for an expected part. Yield "
+                       "point: upper/lower ~1.08 (representative), Luders plateau and hardening per Yun & Gardner 2017"),
+    "A36_typical": _steel("A36 hot rolled, typical mill plate", 300, 450, E=200 * GPa, nu=0.26, elong=0.25,
+                          upper_yield=1.08, hardness="HB 130-150",
+                          note="Typical mill test values for A36 plate (yield 280-350, tensile 440-500 MPa; mid-range "
+                               "used). Same yield-point curve model as A36"),
+    "1018_HR": _steel("1018 hot rolled", 220, 400, elong=0.25, upper_yield=1.08, k=51.9, hardness="HB 116",
+                      note="AISI 1018 hot rolled typical (32 / 58 ksi, 25 %), as noted on 1018_CD. Yield-point curve "
+                           "per Yun & Gardner 2017; upper/lower yield ~1.08 representative"),
     "1006_mild": _steel("1006 low-carbon steel cold drawn", 300, 370, E=190 * GPa, rho=7890, elong=0.22,
                         hardness="HB 100", jc=(350e6, 275e6, 0.36, 0.022, 1.0, 1811.0, 298.0),
                         note="CORRECTED (old 350 yield was copied from JC A). MakeItFrom CD 1006 (ASM / ASTM A29). "

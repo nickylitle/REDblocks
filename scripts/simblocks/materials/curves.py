@@ -190,6 +190,65 @@ def ramberg_osgood_n(E, sy, su, e_u):
 
 @block("materials", "curves", "metal", "uniaxial", kind="builder", source="Ramberg & Osgood 1943",
        tags=("ramberg-osgood", "curve"))
+def hot_rolled_curve(mat, n_pts=160):
+    """Hot-rolled carbon steel with its yield point: elastic to the upper yield point, a drop to the lower yield sy,
+    the Luders plateau to eps_sh, then strain hardening to su at eps_u. Plateau, hardening and eps_u from Yun &
+    Gardner (2017) eqs. 8, 9 and 14 (fitted to 500+ hot-rolled steel tests); the upper yield point is the entry's
+    upper_yield ratio."""
+    fy, fu, E = mat.sy, mat.su, mat.E
+    r = fy / fu
+    eu = max(0.6 * (1.0 - r), 0.06)
+    esh = min(max(0.1 * r - 0.055, 0.015), 0.03)
+    up = mat.upper_yield if math.isfinite(mat.upper_yield) and mat.upper_yield > 1.0 else 1.0
+    ey = fy / E
+    e = [0.0, up * fy / E]; s_ = [0.0, up * fy]
+    if up > 1.0:                                  # the drop from the upper to the lower yield point
+        e.append(up * fy / E + 0.0008); s_.append(fy)
+    e.append(esh); s_.append(fy)
+    x = np.linspace(0.0, 1.0, n_pts)[1:]
+    eh = esh + x * (eu - esh)
+    sh = fy + (fu - fy) * (0.4 * x + 2.0 * x / (1.0 + 400.0 * x ** 5) ** 0.2)
+    sh = np.minimum(sh, fu)
+    e = np.concatenate([e, eh]); s_ = np.concatenate([s_, sh])
+    src = (f"hot-rolled steel with a yield point ({mat.name} catalog): upper yield {up:.2f} x sy, Luders plateau to "
+           f"{100 * esh:.1f} %, hardening to su at {100 * eu:.1f} % (Yun & Gardner, J. Constr. Steel Res. 133 (2017) "
+           f"36-46, eqs. 8, 9, 14)")
+    return Curve(_key_of(mat), e, s_, E, src, dict(e_u=eu, e_sh=esh, upper_yield=up))
+
+
+def _scale_to_catalog(c, mat, ref=None):
+    """Keep a published fit's shape but pass it through the catalog's E, 0.2 % yield and ultimate (the generally
+    accepted values): stresses below the fit's yield scale with sy, the hardening rise maps onto su - sy. ref: the
+    fit at its own reference rate, whose yield and top set the mapping (so a rate-raised curve keeps its rise)."""
+    ex = dict(c.extras or {})
+    if math.isfinite(mat.elong) and c.eng_strain[-1] > mat.elong:        # a fit never runs past the elongation
+        keep = c.eng_strain <= mat.elong
+        if keep.sum() >= 3:
+            def cut(cv):
+                k_ = cv.eng_strain <= mat.elong
+                return Curve(cv.name, cv.eng_strain[k_], cv.eng_stress[k_], cv.E, cv.source, dict(cv.extras or {}))
+            c = cut(c); ref = cut(ref) if ref is not None else None
+            ex["cut"] = f"fit stopped at the catalog elongation {100 * mat.elong:.0f} %"
+            c.extras = dict(ex)
+    r_ = ref or c
+    y = _offset_yield(r_); top = float(np.max(r_.eng_stress))
+    if math.isfinite(y) and y > 0 and top <= y * 1.0001:          # a flat (perfectly plastic) fit: scale to sy
+        s2 = c.eng_stress * mat.sy / y; e2 = np.maximum(c.eng_strain - c.eng_stress / c.E, 0.0) + s2 / mat.E
+        ex.pop("consistency_warning", None); ex["scaled"] = f"flat fit at {y / 1e6:.0f} MPa scaled to sy {mat.sy / 1e6:.0f} MPa"
+        return Curve(c.name, e2, s2, mat.E, c.source + " | scaled to the catalog sy", ex)
+    if not (math.isfinite(y) and y > 0 and top > y * 1.0001 and mat.su > mat.sy):
+        return c
+    if abs(y / mat.sy - 1) < 0.01 and abs(top / mat.su - 1) < 0.01 and abs(c.E / mat.E - 1) < 0.01:
+        return c
+    s = c.eng_stress; ep = c.eng_strain - s / c.E
+    s2 = np.where(s <= y, s * mat.sy / y, mat.sy + (s - y) * (mat.su - mat.sy) / (top - y))
+    e2 = np.maximum(ep, 0.0) + s2 / mat.E
+    ex.pop("consistency_warning", None)
+    ex["scaled"] = (f"published fit (0.2 % yield {y / 1e6:.0f} MPa, top {top / 1e6:.0f} MPa) scaled to the catalog "
+                    f"{mat.sy / 1e6:.0f} / {mat.su / 1e6:.0f} MPa, shape kept")
+    return Curve(c.name, e2, s2, mat.E, c.source + " | scaled to the catalog sy and su", ex)
+
+
 def ramberg_osgood_curve(mat, e_u=None, n_pts=160):
     """Engineering curve to UTS: e = s/E + 0.002 (s/sy)^n, n fit to pass through (e_u, su)."""
     given = e_u is not None
@@ -366,16 +425,29 @@ def load_curve(text_or_key, curve_dir=None, prefer=None, write=True, rate=None):
         fits = [f for f in fits if f["model"] == "johnson_cook"] or fits
     elif prefer == "ro":
         fits = []
-    if fits:
+    if math.isfinite(getattr(mat, "upper_yield", float("nan"))):
+        c = hot_rolled_curve(mat)
+    elif fits:
         c = curve_from_fit(mat, fits[0], rate=rate)      # records stored best-first
-        y = _offset_yield(c)
-        dev = y / mat.sy - 1.0
-        if abs(dev) > 0.15 and mat.family != "elastomer":
-            c.extras["consistency_warning"] = (
-                f"fit 0.2% yield {y / 1e6:.0f} MPa is {100 * dev:+.0f}% vs catalog {mat.sy / 1e6:.0f} MPa "
-                f"({mat.name}): fit lot/rate differs from the datasheet; check before sizing")
+        if mat.family != "elastomer":                      # every entry passes through its accepted values
+            if rate:                                       # scale the reference-rate fit, then apply the rate rise
+                ref = curve_from_fit(mat, fits[0]); n_ = min(len(ref.eng_stress), len(c.eng_stress))
+                fp = fits[0].get("params", {})
+                if fits[0]["model"] == "johnson_cook" and fp.get("ref_rate"):
+                    k_ = 1.0 + fp["C"] * math.log(rate / fp["ref_rate"]) if rate > fp["ref_rate"] else 1.0
+                else:
+                    k_ = float(np.median(c.eng_stress[1:n_] / np.maximum(ref.eng_stress[1:n_], 1e-30)))
+                c = _scale_to_catalog(ref, mat)
+                if abs(k_ - 1.0) > 1e-9:
+                    s2 = c.eng_stress * k_
+                    e2 = np.maximum(c.eng_strain - c.eng_stress / c.E, 0.0) + s2 / c.E
+                    c = Curve(c.name, e2, s2, c.E, c.source + f" | x{k_:.3f} for strain rate {rate:g}/s",
+                              dict(c.extras or {}, rate_factor=k_))
+            else:
+                c = _scale_to_catalog(c, mat)
     elif mat.family == "elastomer":
         c = neo_hookean_curve(mat)
+        _truncate_at_uts(c, mat)
         c.source = "NO PUBLISHED FIT FOR THIS CONDITION -> " + c.source
     else:
         c = ramberg_osgood_curve(mat)
