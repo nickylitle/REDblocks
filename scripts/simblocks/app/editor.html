@@ -2143,7 +2143,8 @@ function nodeHTML(n){
   } else if (n.kind === "value"){
     const q = splitQ(d.value), word = q.text && !/^\s*=/.test(String(d.value || ""));
     b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 25 mm · = 2 * $x", "")}</div>` + expandHint(q.num) + exprInputs(d) +
-      (word ? `<div class="hint" style="color:var(--warn)">a value is a number or an = expression. For a material, add a Material block.</div>` : "") + textUseHint(n);
+      (word ? `<div class="hint" style="color:var(--warn)">a value is a number or an = expression. For a material, add a Material block.</div>` : "") + textUseHint(n) +
+      (groupOf(n.id) ? "" : `<div class="mini"><button data-act="tablify" title="Turn this value into a value table and add another row">+ value</button></div>`);
   } else if (n.kind === "builder"){
     const blk = CAT.blocks.find(x => x.name === d.block);
     b += `<div class="hint" title="${esc(blk ? blk.summary + "\n" + blk.source : "")}">${esc(d.block)}${blk ? " · " + esc(blk.kind) : " (not in catalog)"}</div>`;
@@ -2786,6 +2787,9 @@ world.addEventListener("click", async e => {
     return; }
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const n = byId(b.closest(".node").dataset.id); if (!n) return; const d = n.data, act = b.dataset.act;
+  if (act === "tablify"){ const g = valTable([n.id], "values"); if (!g) return;
+    const m = addNode("value", {name:"p", value:""}, g.x, g.y); g.members.push(m.id); changed();
+    setTimeout(() => { const el = world.querySelector(`.node[data-id="${g.id}"] [data-m="${m.id}"] input.vn`); if (el){ el.focus(); el.select(); } }, 30); return; }
   if (act === "addcol"){ d.cols.push({label:"", unit:"", quantity:"position"}); changed(); return; }
   if (act === "delcol"){ const i = d.cols.length - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "c" + i)); d.cols.pop(); changed(); return; }
   if (act === "imgpick"){ const r = await API.call("pick_file", "", "image");
