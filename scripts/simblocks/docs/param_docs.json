@@ -1502,5 +1502,50 @@
   "csv_unit": "unit of the CSV force-per-length column (default N/m)",
   "csv_m_unit": "unit of the CSV moment-per-length column (default N m/m)",
   "n": "points along the beam for the integration"
+ },
+ "circular_plate_large_deflection": {
+  "a": "plate radius (m)",
+  "t": "plate thickness (m)",
+  "value": "the load: pressure q (Pa) or centre force F (N)",
+  "load": "pressure or point (a force at the centre)",
+  "edge": "clamped (edge cannot turn) or simply_supported (edge can turn)",
+  "inplane": "held (the rim cannot slide inward, so the plate stretches) or free (it can slide in)",
+  "E": "Young's modulus (Pa)",
+  "nu": "Poisson's ratio (no unit)",
+  "mat": "material name from the library (gives E and nu)",
+  "n": "rows in the load-deflection table"
+ },
+ "membrane_circular": {
+  "a": "membrane radius (m)",
+  "t": "sheet thickness (m)",
+  "value": "pressure q (Pa) or centre force F (N)",
+  "load": "pressure or point",
+  "E": "Young's modulus (Pa)",
+  "nu": "Poisson's ratio (no unit)",
+  "mat": "material name from the library"
+ },
+ "plate_strip_large_deflection": {
+  "l": "span between the two long edges (m)",
+  "t": "plate thickness (m)",
+  "q": "pressure on the plate (Pa)",
+  "edge": "simply_supported or clamped long edges (both held in-plane)",
+  "E": "Young's modulus (Pa)",
+  "nu": "Poisson's ratio (no unit)",
+  "mat": "material name from the library"
+ },
+ "plate_plastic_membrane": {
+  "t": "plate thickness (m)",
+  "sy": "flow stress (Pa): yield strength; 0.618 x sy gives a lower bound",
+  "shape": "circular or rectangular",
+  "edge": "clamped or simply_supported (edges held in-plane)",
+  "a": "radius of a circular plate (m)",
+  "B": "half-width of a rectangular plate (m): the plate is 2B x 2L",
+  "L": "half-length of a rectangular plate (m)",
+  "mat": "material name from the library (gives sy, E, nu)",
+  "rate_factor": "strain-rate factor on the flow stress (1.2 for a fast hit)",
+  "W_max": "deepest centre deflection in the table (m), default 10 t",
+  "E": "Young's modulus (Pa), for the elastic start",
+  "nu": "Poisson's ratio (no unit)",
+  "n": "rows in the table"
  }
 }

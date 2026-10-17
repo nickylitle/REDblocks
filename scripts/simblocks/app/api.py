@@ -6,6 +6,7 @@ import io
 import json
 import math
 import os
+import re
 import numpy as np
 import threading
 import time
@@ -254,7 +255,8 @@ class Api:
             V.set_progress_hook(_verify_hook)
             s = self._system(text)
             base = os.path.dirname(model_path) if model_path else os.path.join(os.path.expanduser("~"), "simblocks")
-            stem = os.path.splitext(os.path.basename(model_path))[0] if model_path else "model"
+            stem = os.path.splitext(os.path.basename(model_path))[0] if model_path else \
+                (re.sub(r"[^A-Za-z0-9_-]+", "_", str(s.doc.get("name") or "model")).strip("_") or "model")
             out_dir = os.path.join(base, "out", stem)
             rep = s.verify(int(mc_n) if mc_n else None)
             _PROG.update(stage=len(V.STAGES), label="Writing the report (plots, PDF, HTML)", sub_done=0, sub_total=0)

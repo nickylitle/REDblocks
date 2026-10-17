@@ -286,6 +286,28 @@ def _():
     return s + _text(70, 78, "pressure q")
 
 
+@fig("plate_sag")
+def _():
+    # a plate sagging under pressure between held edges: the curve stretches, so tension N pulls at both edges
+    s = _wall(28, 22, 58) + _wall(132, 22, 58, 1)
+    s += ('<path d="M28,36 Q80,72 132,36" fill="none" style="stroke:var(--soft)" stroke-width="6"/>'
+          '<path d="M28,36 Q80,72 132,36" fill="none" stroke="currentColor" stroke-width="1.2"/>')
+    for x in range(44, 120, 14):
+        y = 36 + 36 * (1 - ((x - 80) / 52.0) ** 2) * 0.5
+        s += _arrow(x, 12, x, y - 3)
+    return s + _text(52, 84, "bends + stretches")
+
+
+@fig("plate_dent")
+def _():
+    # a plastic plate pushed at its centre: a cone held at the rim, membrane tension N along the flanks
+    s = _wall(22, 26, 52) + _wall(138, 26, 52, 1)
+    s += ('<polyline points="22,36 80,62 138,36" fill="none" style="stroke:var(--soft)" stroke-width="6"/>'
+          '<polyline points="22,36 80,62 138,36" fill="none" stroke="currentColor" stroke-width="1.2"/>')
+    s += _arrow(80, 10, 80, 58) + _pt(80, 62, "P")
+    return s + _text(40, 84, "collapse, then membrane")
+
+
 @fig("annular")
 def _():
     return (_wall(20, 30, 60) + _wall(140, 30, 60, 1) + _beam(20, 66, 45, 6) + _beam(94, 140, 45, 6) +
@@ -731,6 +753,10 @@ def figure_for(b):
         if c == "joints":
             return {"bolt": "bolt", "member": "bolt", "plate_hole": "plate_hole", "thread": "thread", "tab": "tab"}[g]
         if c == "plates":
+            if l in ("large_deflection",) or g == "membrane":
+                return "plate_sag"
+            if l == "membrane_collapse":
+                return "plate_dent"
             if l == "uniform_pressure":
                 return "circ_pressure" if "circ" in g else "rect_plate_ss"
             return {"circular_clamped": "circ_plate_clamped", "circular_ss": "circ_plate_ss", "circular": "circ_pressure",

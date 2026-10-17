@@ -438,7 +438,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <button id="bRun" class="primary" title="Run once at the nominal values and write CSV exports (F5)">Run</button>
       <button id="bStudy" title="Run every sweep value x Monte Carlo sample on the chosen cores">Study</button>
       <button id="bVerify" title="Full verification battery">Verify</button>
-      <button id="bReport" title="Verify + PDF/HTML report next to the saved file">Report</button>
+      <button id="bReport" title="Verify, then write a PDF and HTML report: next to the saved file, or in your home folder (simblocks/out) if it is not saved">Report</button>
     </div>
     <div class="grp"><button id="bSettings" title="Settings: colours and themes">Settings</button><button id="bHelp" title="Feature guide and every block (F1)">Help</button></div>
   </div>
@@ -3136,8 +3136,8 @@ async function doVerify(){
 }
 async function doReport(){
   if (!needCheck()) return;
-  if (!filePath){ status("busy", "Save the model first: the report goes in an out folder next to it."); if (!(await save())) return; }
-  await renderYaml(); status("busy", "Verifying and writing the report…"); tab("pVer");
+  // a saved model gets its report in an out folder next to it; an unsaved one in ~/simblocks/out (no save dialog)
+  await renderYaml(); status("busy", filePath ? "Verifying and writing the report…" : "Verifying and writing the report (not saved yet: it goes in your home folder, simblocks/out)…"); tab("pVer");
   pcStart("report"); const r = await API.call("report", yamlText, filePath, S.meta.run.mc_n || null), pane = document.getElementById("pVer"); pcStop();
   if (!r.ok){ status("bad", r.error); return; }
   status(r.verified ? "ok" : "bad", `Report written to ${r.out_dir}`);

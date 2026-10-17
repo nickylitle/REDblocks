@@ -173,7 +173,10 @@ def load_table(d, ctx, where, doc):
         if "x" not in spec or "y" not in spec:
             raise SpecError("csv needs file (a path) or both x and y lists", where, ln, f)
         try:
-            xs = [float(v) for v in spec["x"]]; ys = [float(v) for v in spec["y"]]
+            # a list of numbers, or $block.result naming a table a block returned (in SI, like every block result)
+            xv = resolve(spec["x"], ctx, where + ".csv.x") if isinstance(spec["x"], str) else spec["x"]
+            yv = resolve(spec["y"], ctx, where + ".csv.y") if isinstance(spec["y"], str) else spec["y"]
+            xs = [float(v) for v in xv]; ys = [float(v) for v in yv]
         except (TypeError, ValueError):
             raise SpecError("inline x and y are plain numbers in x_unit and y_unit (e.g. x: [0, 1, 2], x_unit: ms), "
                             "not quantities with units", where, ln, f)
