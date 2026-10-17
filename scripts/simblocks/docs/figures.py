@@ -16,6 +16,14 @@ def _arrow(x1, y1, x2, y2):
             f'<polygon points="{x2:.1f},{y2:.1f} {p1[0]:.1f},{p1[1]:.1f} {p2[0]:.1f},{p2[1]:.1f}" {ACCF}/>')
 
 
+def _head(ex, ey, ux, uy, h=5.0):
+    """An arrowhead whose BACK sits at (ex, ey), the end of a curve, pointing along the unit tangent (ux, uy)."""
+    w = h * math.tan(0.45)
+    tx, ty = ex + h * ux, ey + h * uy
+    return (f'<polygon points="{tx:.1f},{ty:.1f} {ex - w * uy:.1f},{ey + w * ux:.1f} {ex + w * uy:.1f},{ey - w * ux:.1f}" '
+            f'{ACCF}/>')
+
+
 SHAFT_BACK = 4.0      # a load arrow's shaft stops this far behind the tip, inside the head (never past its point)
 
 
@@ -130,12 +138,11 @@ def _circle(cx, cy, r, soft=True):
 
 def _spin(cx, cy, r):
     a0, a1 = -0.3, 1.2
-    d = 5.5 / r                                       # the head's length, as an angle along the arc
     P = lambda a: (cx + r * math.cos(a), cy - r * math.sin(a))
-    x0, y0 = P(a0); xb, yb = P(a1 - d); xt, yt = P(a1)
-    # the arc stops where the head starts, and the head points along the arc (its chord to the tip)
+    x0, y0 = P(a0); xb, yb = P(a1)
+    # the arc ends where the head's BACK sits; the head carries on along the arc's tangent there
     s = f'<path d="M{x0:.1f},{y0:.1f} A{r},{r} 0 0 0 {xb:.1f},{yb:.1f}" {ACC} stroke-width="1.6"/>'
-    s += _arrow(xb, yb, xt, yt)
+    s += _head(xb, yb, -math.sin(a1), -math.cos(a1))
     return s
 
 
@@ -488,7 +495,7 @@ def _():
     rx_, ry, rcx = 16 * k, 16, 104                # the torque ring: around the shaft near its end
     shaft = (f'<rect x="20" y="{cy - R}" width="{ex - 20}" height="{2 * R}" style="fill:var(--soft)" stroke="currentColor"/>'
              f'<ellipse cx="{ex}" cy="{cy}" rx="{R * k:.1f}" ry="{R}" style="fill:var(--soft)" stroke="currentColor"/>')
-    pts = [(rcx + rx_ * math.cos(math.radians(a)), cy + ry * math.sin(math.radians(a))) for a in range(150, 437, 4)]
+    pts = [(rcx + rx_ * math.cos(math.radians(a)), cy + ry * math.sin(math.radians(a))) for a in range(150, 421, 3)]
     segs, cur = [], []
     for x, y in pts:
         if x < rcx and abs(y - cy) < R + 1.2:      # behind the shaft
@@ -498,9 +505,10 @@ def _():
         else:
             cur.append((x, y))
     line = lambda sg: f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in sg)}" {ACC} stroke-width="1.6"/>'
-    (xa, ya), (xb, yb) = cur[-3], cur[-1]
-    return (_wall(20, 28, 62) + shaft + "".join(line(sg) for sg in segs) + line(cur[:-2]) + _arrow(xa, ya, xb, yb)
-            + _pt(ex, cy) + _text(rcx + 9, cy - ry - 2, "T"))
+    (xa, ya), (xb, yb) = cur[-2], cur[-1]
+    L = math.hypot(xb - xa, yb - ya)
+    return (_wall(20, 28, 62) + shaft + "".join(line(sg) for sg in segs) + line(cur)
+            + _head(xb, yb, (xb - xa) / L, (yb - ya) / L) + _pt(ex, cy) + _text(rcx + 9, cy - ry - 2, "T"))
 
 
 @fig("keyed")
