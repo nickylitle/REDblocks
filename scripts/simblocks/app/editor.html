@@ -26,7 +26,7 @@
   --bg:#0b1018;--grid:#141d2a;--panel:#111823;--panel2:#162131;--panel3:#1c2a3d;--edge:#2a3850;--hair:#1f2a3a;--selbg:#0e3a52;
   --ink:#e6edf5;--ink2:#a8b6c8;--ink3:#6b7d94;--link:#7cc4ff;--acc:#38bdf8;--accf:#f2a541;--warn:#fbbf24;--fail:#f87171;--pass:#2dd4bf;
   --shadow:rgba(0,0,0,.5);
-  --s-val:#e0a340;--s-body:#f472b6;--s-sig:#9fb3c8;--s-state:#c084fc;--s-metric:#f2f2f2;
+  --s-val:#e0a340;--s-body:#f472b6;--s-sig:#9fb3c8;--s-state:#c084fc;--s-metric:#f2f2f2;--s-elec:var(--pass);
   --c-value:#c27c00;--c-builder:#8c72f2;--c-body:#1b95d8;--c-element:#14a06e;--c-output:#94a3b8;--c-expr:#5fa8a0;--c-fail:#d84b8b;
   --c-sweep:#e0b341;--c-mc:#d84b8b;--c-load:#14a06e;--c-export:#3fc1c9;--c-group:#7c8cf8;--c-note:#8a94a6;
   --note-bg:#151a22;--group-hd:#1d2340;
@@ -194,7 +194,7 @@ textarea{width:100%;resize:vertical}
 .sock.fsock{width:9px;height:9px;margin-top:0;border-width:1.5px;opacity:.6}.sock.fsock:hover,.sock.fsock.on{opacity:1}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
 .sock.t-sig{background:var(--s-sig)}.sock.t-state{background:var(--s-state);border-radius:2px;transform:rotate(45deg)}
-.sock.t-metric{background:var(--s-metric)}.sock.t-any{background:linear-gradient(135deg,var(--s-sig),var(--s-state))}
+.sock.t-metric{background:var(--s-metric)}.sock.t-elec{background:var(--s-elec);box-shadow:0 0 0 2px color-mix(in srgb,var(--s-elec) 35%,transparent)}.sock.t-any{background:linear-gradient(135deg,var(--s-sig),var(--s-state))}
 .sock:hover{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 45%,transparent)}
 .mini{display:flex;gap:4px;padding:2px 12px 0}
 .mini button{padding:2px 7px;font-size:11px}
@@ -506,7 +506,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <div class="legend">
         <span><i style="background:var(--s-val)"></i>value</span><span><i style="background:var(--s-body);border-radius:2px"></i>body</span>
         <span><i style="background:var(--s-sig)"></i>signal</span><span><i style="background:var(--s-state);border-radius:2px"></i>state</span>
-        <span><i style="background:var(--s-metric)"></i>metric</span>
+        <span><i style="background:var(--s-metric)"></i>metric</span><span><i style="background:var(--s-elec)"></i>electrical</span>
       </div>
       <h3>Kept from the file</h3>
       <div class="hint" style="padding:0" id="kept">Nothing extra.</div>
@@ -598,9 +598,9 @@ const API = {
 // ------------------------------------------------------------------------------------------------ model
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
-  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)"};
+  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
@@ -625,7 +625,7 @@ let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
 // names live in separate YAML sections, so uniqueness is per namespace: p params+derived, b bodies, e elements, o outputs, f failure
-const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x"};
+const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n"};
 const byName = (nm, ns) => S.nodes.find(n => nodeName(n) === nm && (!ns || ns.includes(NS[n.kind])));
 function nodeName(n){ return n.data.name; }
 function uniqueName(base, ns){
@@ -650,6 +650,8 @@ function defaults(kind){
     case "sweep": return {name:"range", values:"", unit:"", nominal:""};
     case "mc": return {name:"mc", lo:"", hi:"", unit:"", nominal:"", n:"100"};
     case "load": return {name:"load", terms:[{coef:"1"}], const:"", raw:null, P:"", label:"", axis:"x"};
+    case "part": return {name:"part", ptype:"resistor", fields:{}, escOn:false, esc:{}, regen:false, thOn:false, th:{}, axis:"z", mraw:"", label:""};
+    case "net": return {name:"net", ground:false};
     case "note": return {text:""};
     case "image": return {path:"", w:"360", caption:""};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
@@ -711,6 +713,8 @@ function sockets(n){
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
   }
   if (n.kind === "export") d.cols.forEach((c, i) => ins.push({key:"c" + i, label:"column " + (i + 1), type:"any", col:i, req:i === 0}));
+  if (n.kind === "part") partSockets(n, ins, outs);
+  if (n.kind === "net") netPins(n).forEach(k => ins.push({key:k, label:"pin", type:"elec"}));
   return {ins, outs};
 }
 // ---- units on wires: a value's kind (length, angle, force…) must match the input it feeds
@@ -754,6 +758,7 @@ function toast(msg, x, y){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = "none", 5000);
 }
 function compatible(outType, inType){
+  if (outType === "elec" || inType === "elec") return outType === inType;
   if (inType === "any") return ["sig","state","body"].includes(outType);
   return outType === inType;
 }
@@ -761,6 +766,7 @@ const linkTo = (nid, key) => S.links.find(l => l.to.node === nid && l.to.key ===
 const linksFrom = nid => S.links.filter(l => l.from.node === nid);
 function connect(from, to, field){
   S.links = S.links.filter(l => !(l.to.node === to.node && l.to.key === to.key));
+  const fn = byId(from.node); if (fn && fn.kind === "part" && /^p[ab]$/.test(from.key)) S.links = S.links.filter(l => !(l.from.node === from.node && l.from.key === from.key));
   S.links.push({from, to, field: field || ""}); changed();
 }
 // ------------------------------------------------------------------------------------------------ YAML export
@@ -908,6 +914,141 @@ function measureOf(n){
   if (k && k !== "0") s += k.startsWith("-") ? " - " + k.slice(1).trim() : " + " + k;
   return s;
 }
+// ------------------------------------------------------------------------------------------------ electrical circuit
+// A part is a two-terminal law (+ / -); each terminal wires into a net block, and one net is ground (0 V).
+// Motors also take a shaft body: the circuit drives it, and its speed makes the back-EMF.
+const PART_NAME = {resistor:"resistor", capacitor:"capacitor", inductor:"inductor", voltage_source:"voltage source", current_source:"current source",
+  battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor"};
+const PART_INFO = {
+  resistor:["v = R i", "An ideal resistor."],
+  capacitor:["i = C dv/dt", "A capacitor with optional series ESR (equivalent series resistance, default 0) and leakage resistance R_leak (0 = none). v0 is its starting voltage."],
+  inductor:["v = L di/dt + R i", "An inductor with optional winding resistance R. i0 is its starting current."],
+  voltage_source:["v = V - R i", "A DC voltage source; + is the first terminal. R is its internal resistance (default 0.1 mohm)."],
+  current_source:["i = I", "Pushes current I from + to − through itself (out of + into the circuit is negative i by the passive sign)."],
+  battery:["v = OCV(soc) - R0 i - v1", "A LiPo pack: open-circuit voltage from charge (V_full to V_empty per cell), series R0, and an R1 || C1 branch for the voltage sag that recovers. Charge drains with the current; capacity in mAh."],
+  diode:["on: v = Vf + R_on i", "Conducts from + (anode) to − (cathode) once forward biased past Vf; off it leaks through R_off."],
+  switch:["R_on or R_off", "Closed (R_on) from on_at to off_at. With pwm_freq it chops at duty (0 to 1)."],
+  fuse:["blows when ∫(i/I_rating)² dt > t_blow", "Heats with (i/I_rating)²; opens once that has gone on for t_blow at the rating, or at once above I_trip."],
+  motor:["v = R i + L di/dt + Kt ω, τ = Kt i", "A DC (or lumped brushless) motor. Give kv or Kt, not both. Its shaft is the body plugged in; gear is motor turns per shaft turn. ESC (optional) chops the supply at throttle and limits current to I_max; regen lets it push current back."]};
+const PART_PH = {R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
+  cells:"e.g. 6", capacity:"e.g. 1300", R0:"pack R", R1:"sag R", C1:"sag C", soc0:"1 = full", V_full:"4.2 /cell", V_empty:"3.3 /cell",
+  Vf:"0.7 V", R_on:"default 1 mohm", R_off:"open", on_at:"0 s", off_at:"never", pwm_freq:"0 = no PWM", duty:"1", phase:"0",
+  I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
+  throttle:"1 = full", I_max:"no limit", C_th:"heat cap.", R_th:"to ambient", T_amb_C:"25 °C", T0_C:"= ambient", alpha:"0 (Cu 0.00393)",
+  T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002"};
+// fields in the order a datasheet gives them
+const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty"],
+  capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R"], current_source:["I"], resistor:["R"],
+  diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
+  esc:["throttle","I_max"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
+const byOrder = (list, ord) => list.slice().sort((a, b) => ((ord || []).indexOf(a) + 1 || 99) - ((ord || []).indexOf(b) + 1 || 99));
+const PART_DIM = {R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
+  cells:"none", capacity:"capacity", R0:"resistance", R1:"resistance", C1:"capacitance", soc0:"none", V_full:"voltage", V_empty:"voltage",
+  Vf:"voltage", R_on:"resistance", R_off:"resistance", on_at:"time", off_at:"time", pwm_freq:"frequency", duty:"none", phase:"none",
+  I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia"};
+const ESC_DIM = {throttle:"none", I_max:"current"};
+const TH_DIM = {C_th:"heat_cap", R_th:"th_res", T_amb_C:"none", T0_C:"none", alpha:"tempco", T_max_C:"none", kt_tempco:"tempco", vf_tempco:"vtempco"};
+const TH_FOR = {kt_tempco:["motor"], vf_tempco:["diode"]};       // only these parts have them
+function partDim(key){ const f = key.slice(2);
+  if (key.startsWith("f.")) return PART_DIM[f] || null; if (key.startsWith("e.")) return ESC_DIM[f] || null; if (key.startsWith("h.")) return TH_DIM[f] || null;
+  return null; }
+function partQuantities(d){ const q = ["current","voltage","power","energy"];
+  if (d.ptype === "battery") q.push("soc"); if (["capacitor","inductor","fuse","switch","diode"].includes(d.ptype)) q.push("state");
+  if (d.ptype === "motor") q.push("torque"); if (d.thOn) q.push("temperature","heat"); return q; }
+const PART_Q_HELP = {current:"current + to −", voltage:"v(+) − v(−)", power:"absorbed (− = delivering)", energy:"absorbed so far", soc:"charge 0-1",
+  state:"capacitor v / inductor i / fuse heat / on-off", torque:"shaft torque", temperature:"°C", heat:"J lost to ambient"};
+function partSockets(n, ins, outs){
+  const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
+  if (d.ptype === "motor"){ if (!String(d.mraw || "").trim()) ins.push({key:"t0", label:"shaft", type:"body", req:true}); ins.push({key:"t1", label:"frame", type:"body"}); }
+  byOrder(ct.fields, PART_ORDER[d.ptype]).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
+  if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen"), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
+  if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
+    .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:f === "C_th" || f === "R_th"}));
+  outs.push({key:"pa", label:"+ terminal", type:"elec"}, {key:"pb", label:"− terminal", type:"elec"});
+  partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
+}
+function netPins(n){   // every wired pin, plus one free pin to drop the next wire on
+  const used = S.links.filter(l => l.to.node === n.id && /^p\d+$/.test(l.to.key)).map(l => +l.to.key.slice(1)).sort((a, b) => a - b);
+  return used.map(i => "p" + i).concat(["p" + (used.length ? used[used.length - 1] + 1 : 0)]); }
+function netOf(n, key){ const l = S.links.find(x => x.from.node === n.id && x.from.key === key); const m = l && byId(l.to.node); return m && m.kind === "net" ? m.data.name : null; }
+function groundNet(){ const nets = S.nodes.filter(n => n.kind === "net"); return nets.find(n => n.data.ground) || nets.find(n => n.data.name === "gnd") || nets[0]; }
+function motorMeasure(n){
+  const d = n.data; if (String(d.mraw || "").trim()) return lit(d.mraw);
+  const r = linkTo(n.id, "t0"), f = linkTo(n.id, "t1"); if (!r) return "";
+  const rb = byId(r.from.node).data, rn = rb.name, fn = f ? byId(f.from.node).data.name : null;
+  if (fn){ if (!isGeo()) return `${rn} - ${fn}`; const o = {twist:[fn, rn]}; if (is3d()) o.axis = lit(d.axis || "z"); return o; }
+  if (!isGeo()) return rn;
+  return rn + "." + (is3d() ? "spin" : "rz");
+}
+function circuitOut(){
+  const parts = S.nodes.filter(n => n.kind === "part"); if (!parts.length) return null;
+  const g = groundNet(), P = {};
+  parts.forEach(n => { const d = n.data, o = {type:d.ptype}, a = netOf(n, "pa"), b = netOf(n, "pb");
+    if (a || b) o.between = [a || "(unwired)", b || "(unwired)"];
+    sockets(n).ins.forEach(s => { const v = inVal(n, s.key, fieldValue(n, s.key)); if (blank(v) || !/^[feh]\./.test(s.key)) return;
+      const f = s.key.slice(2); if (s.key[0] === "f") o[f] = v; else if (s.key[0] === "e") (o.esc = o.esc || {})[f] = v; else (o.thermal = o.thermal || {})[f] = v; });
+    if (d.ptype === "motor"){ o.measure = motorMeasure(n); if (d.escOn){ o.esc = o.esc || {}; if (d.regen) o.esc.regen = true; } }
+    if (d.label) o.label = d.label; P[d.name] = o; });
+  return {ground: g ? g.data.name : "gnd", parts:P};
+}
+function circuitIn(doc, pend, put){
+  const c = doc.circuit; if (!c || typeof c !== "object") return;
+  const gnd = String(c.ground || "gnd"), nets = {}, pin = {};
+  const net = nm => { nm = String(nm); if (!nets[nm]){ nets[nm] = addNode("net", {name:nm, ground: nm === gnd}); pin[nm] = 0; } return nets[nm]; };
+  net(gnd);
+  Object.entries(c.parts || {}).forEach(([k, e]) => { if (!e || typeof e !== "object") return;
+    const d = {name:k, ptype:String(e.type || "resistor"), fields:{}, esc:{}, th:{}, escOn:e.esc !== undefined, regen:!!(e.esc && e.esc.regen === true),
+               thOn:e.thermal !== undefined, label:e.label || "", axis:"z", mraw:""};
+    Object.entries(e).forEach(([f, v]) => { if (!["type","between","esc","thermal","measure","label"].includes(f)) d.fields[f] = str(v); });
+    Object.entries(e.esc || {}).forEach(([f, v]) => { if (f !== "regen") d.esc[f] = str(v); });
+    Object.entries(e.thermal || {}).forEach(([f, v]) => { d.th[f] = str(v); });
+    const n = addNode("part", d), bodyLinks = [];
+    if (d.ptype === "motor"){ const m = e.measure, bn = s => String(s).replace(/\.(rz|spin)$/, "");
+      const isB = s => typeof s === "string" && byName(bn(s.trim()), "b") && /^[A-Za-z_]\w*(\.(rz|spin))?$/.test(s.trim());
+      if (isB(m)) bodyLinks.push([bn(m.trim()), 0]);
+      else if (m && typeof m === "object" && Array.isArray(m.twist) && m.twist.length === 2){ bodyLinks.push([m.twist[1], 0], [m.twist[0], 1]); d.axis = str(m.axis ?? "z"); }
+      else if (typeof m === "string" && /^\s*([A-Za-z_]\w*)\s*-\s*([A-Za-z_]\w*)\s*$/.test(m) && !isGeo()){ const [, a, b] = m.match(/^\s*([A-Za-z_]\w*)\s*-\s*([A-Za-z_]\w*)\s*$/); bodyLinks.push([a, 0], [b, 1]); }
+      else d.mraw = str(m ?? ""); }
+    bodyLinks.forEach(([b, i]) => { const bb = byName(String(b), "b"); if (bb) S.links.push({from:{node:bb.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); else d.mraw = str(e.measure); });
+    (Array.isArray(e.between) ? e.between : []).slice(0, 2).forEach((nm, i) => { const t = net(nm); S.links.push({from:{node:n.id, key: i ? "pb" : "pa"}, to:{node:t.id, key:"p" + (pin[t.data.name]++)}, field:""}); });
+    Object.keys(d.fields).forEach(f => pend.push([n.id, "f." + f, e[f]]));
+    Object.keys(d.esc).forEach(f => pend.push([n.id, "e." + f, e.esc[f]]));
+    Object.keys(d.th).forEach(f => pend.push([n.id, "h." + f, e.thermal[f]]));
+    put(3, n); });
+  Object.values(nets).forEach(t => put(4, t));
+}
+function partHTML(n, ins){
+  const d = n.data, ct = CAT.circuit.types[d.ptype] || {}; let b = "";
+  b += `<div class="hint" title="${esc((PART_INFO[d.ptype] || ["",""])[1])}">${esc((PART_INFO[d.ptype] || [""])[0])}</div>`;
+  if (d.ptype === "motor"){
+    if (!String(d.mraw || "").trim()) b += sockRow(n, ins.find(s => s.key === "t0"));
+    b += sockRow(n, ins.find(s => s.key === "t1"));
+    if (linkTo(n.id, "t1") && is3d()) b += `<div class="row"><label title="the frame's axis the shaft turns about">axis</label><select data-k="axis">${sel_(["x","y","z","-x","-y","-z"], d.axis || "z")}</select></div>`;
+    if (!linkTo(n.id, "t0")) b += `<div class="row"><label title="or type a measure (a body name, b.rz, b.spin, {twist: [frame, b]})">measure</label><input data-k="mraw" value="${esc(d.mraw || "")}" placeholder="or plug a shaft body"></div>`;
+    b += `<div class="hint">give kv or Kt, one of them</div>`;
+  }
+  b += `<div class="sep"></div>`;
+  ins.filter(s => s.key.startsWith("f.")).forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
+  if (d.ptype === "motor"){
+    b += `<div class="row"><label title="chop the supply at a throttle and limit the current, like a speed controller">ESC</label><input type="checkbox" data-k="escOn"${d.escOn ? " checked" : ""} style="justify-self:start"></div>`;
+    if (d.escOn){ ins.filter(s => s.key.startsWith("e.")).forEach(s => b += fieldRow(n, s, d.esc[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
+      b += `<div class="row"><label title="let the motor push current back into the supply when it is driven faster than the throttle asks">regen</label><input type="checkbox" data-k="regen"${d.regen ? " checked" : ""} style="justify-self:start"></div>`; }
+  }
+  if (ct.thermal){
+    b += `<div class="row"><label title="advanced: the part heats with its losses, cools to ambient, and its resistance (and a motor's Kt, a diode's Vf) shift with temperature">thermal</label><input type="checkbox" data-k="thOn"${d.thOn ? " checked" : ""} style="justify-self:start"></div>`;
+    if (d.thOn) ins.filter(s => s.key.startsWith("h.")).forEach(s => b += fieldRow(n, s, d.th[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
+  }
+  b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
+  return b;
+}
+function netHTML(n, ins){
+  const d = n.data; let b = "";
+  b += `<div class="row"><label title="the 0 V reference: every net is measured against it (one per circuit)">ground</label><input type="checkbox" data-k="ground"${d.ground ? " checked" : ""} style="justify-self:start"></div>`;
+  ins.forEach(s => { const l = linkTo(n.id, s.key), src = l && byId(l.from.node);
+    const what = src ? `<span class="linked">${esc(src.data.name)} ${l.from.key === "pa" ? "+" : "−"}</span>` : `<span class="hint" style="padding:0">wire a terminal here</span>`;
+    b += `<div class="row"><span class="sock in t-elec" data-s="${esc(s.key)}" data-t="elec"></span><label>pin</label>${what}</div>`; });
+  return b;
+}
 function toDoc(){
   const doc = {simblocks:1, name:S.meta.name || "model"};
   if (S.meta.question) doc.question = S.meta.question;
@@ -969,6 +1110,7 @@ function toDoc(){
     const d = n.data, l = linkTo(n.id, "src"), o = {};
     if (l){ const src = byId(l.from.node);
       if (src.kind === "body"){ o.body = src.data.name; o.quantity = d.quantity; }
+      else if (src.kind === "part"){ o.part = src.data.name; o.quantity = l.from.key.slice(2); }
       else { o.element = src.data.name; o.quantity = l.from.key.slice(2); } }
     o.reduce = d.reduce; if (d.reduce.startsWith("first_time")) o.value = lit(d.value);
     if (d.unit) o.unit = d.unit; if (d.abs) o.abs = true; if (d.label) o.label = d.label;
@@ -1002,7 +1144,7 @@ function toDoc(){
   const exps = [];
   S.nodes.filter(n => n.kind === "export").forEach(n => { const d = n.data, cols = [];
     d.cols.forEach((c, i) => { const l = linkTo(n.id, "c" + i); if (!l) return; const src = byId(l.from.node), o = {};
-      if (src.kind === "body"){ o.body = src.data.name; o.quantity = c.quantity || "position"; } else { o.element = src.data.name; o.quantity = l.from.key.slice(2); }
+      if (src.kind === "body"){ o.body = src.data.name; o.quantity = c.quantity || "position"; } else if (src.kind === "part"){ o.part = src.data.name; o.quantity = l.from.key.slice(2); } else { o.element = src.data.name; o.quantity = l.from.key.slice(2); }
       if (c.unit) o.unit = c.unit; if (c.label) o.label = c.label; cols.push(o); });
     const x = {name:d.name, columns:cols, folder:d.folder || "out/csv", naming: d.naming === "custom" ? (d.custom || "{model}_{name}") : (d.naming || "{model}_{name}"),
                time_unit:d.time_unit || "s", points: String(d.points || "1000").trim() === "all" ? "all" : (parseInt(d.points) || 1000), header:d.header || "units", when:d.when || "run"};
@@ -1010,7 +1152,9 @@ function toDoc(){
   const study = {};
   if (Object.keys(sweep).length) study.sweep = sweep;
   if (Object.keys(mcr).length && mcn > 0) study.monte_carlo = {n: mcn, ranges: mcr};
-  Object.assign(doc, {params, derived, bodies, elements, outputs});
+  Object.assign(doc, {params, derived, bodies, elements});
+  const circ = circuitOut(); if (circ) doc.circuit = circ;
+  doc.outputs = outputs;
   if (failure.length) doc.failure = failure;
   if (Object.keys(uncertain).length) doc.uncertain = uncertain;
   if (Object.keys(study).length) doc.study = study;
@@ -1085,7 +1229,7 @@ function fromDoc(doc){
   const to = run.timeout; S.meta.toMode = (to === undefined || String(to).toLowerCase() === "auto") ? "auto" : (["none","off","never"].includes(String(to).toLowerCase()) ? "off" : "limit");
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
   ["t_end","dt","dt_min","dt_max","mc_n","timeout"].forEach(k => delete run[k]); S.meta.run_extra = run;
-  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","outputs","failure","uncertain","run","study","exports","editor"];
+  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","outputs","failure","uncertain","run","study","exports","editor"];
   S.meta.gravity = str(doc.gravity ?? "");
   S.meta.units = ["SI","mm","US"].includes(doc.units) ? doc.units : "SI";
   S.meta.dim = doc.dim || "1d";
@@ -1202,11 +1346,12 @@ function fromDoc(doc){
     et.fields.forEach(f => { if (e[f] !== undefined) pend.push([n.id, "f." + f, e[f]]); });
     put(3, n);
   });
+  circuitIn(doc, pend, put);
   Object.entries(doc.outputs || {}).forEach(([k, o]) => {
     if (o.expr !== undefined){ put(4, addNode("expr", {name:k, expr:str(o.expr), label:o.label || "", unit:o.unit || ""})); return; }
     const n = addNode("output", {name:k, quantity:o.quantity || "force", reduce:o.reduce || "final", unit:o.unit || "",
       value:str(o.value ?? ""), abs:!!o.abs, label:o.label || ""});
-    const src = o.element ? byName(o.element, "e") : byName(o.body, "b");
+    const src = o.part ? byName(o.part, "c") : (o.element ? byName(o.element, "e") : byName(o.body, "b"));
     if (src) S.links.push({from:{node:src.id, key: o.body ? "body" : "q." + o.quantity}, to:{node:n.id, key:"src"}, field:""});
     put(4, n);
   });
@@ -1228,8 +1373,8 @@ function fromDoc(doc){
     const n = addNode("export", {name:x.name, folder:str(x.folder || "out/csv"), naming: known_.includes(nm) ? nm : "custom", custom: known_.includes(nm) ? "" : nm,
       time_unit:x.time_unit || "s", points:str(x.points ?? "1000"), header:x.header || "units", when:x.when || "run",
       cols:(x.columns || []).map(c => ({label:c.label || "", unit:c.unit || "", quantity:c.quantity || (c.body ? "position" : "force")}))});
-    (x.columns || []).forEach((c, i) => { const src = c.element ? byName(c.element, "e") : byName(c.body, "b");
-      if (src) S.links.push({from:{node:src.id, key: c.element ? "q." + (c.quantity || "force") : "body"}, to:{node:n.id, key:"c" + i}, field:""}); });
+    (x.columns || []).forEach((c, i) => { const src = c.part ? byName(c.part, "c") : (c.element ? byName(c.element, "e") : byName(c.body, "b"));
+      if (src) S.links.push({from:{node:src.id, key: c.part ? "q." + (c.quantity || "current") : (c.element ? "q." + (c.quantity || "force") : "body")}, to:{node:n.id, key:"c" + i}, field:""}); });
     put(5, n);
   });
   const ed = doc.editor || {};
@@ -1277,15 +1422,17 @@ const UNITS = {
   time:["s","ms","us","min","h","ns"], stiffness:["N/m","kN/m","N/mm","lbf/in"], damping:["N s/m","N s/mm","kN s/m","lbf s/in"],
   inertia:["kg m^2","kg mm^2","g mm^2","lb in^2"], speed:["m/s","mm/s","km/h","ft/s","in/s"],
   rotation:["rpm","rad/s","rps","Hz"], angle:["deg","rad"], stress:["MPa","GPa","Pa","kPa","ksi","psi"],
-  energy:["J","kJ","Wh"], power:["W","kW"], torque:["N m","N mm","lbf in"], voltage:["V"], current:["A","mA"],
-  resistance:["mohm","ohm"], capacity:["mAh","Ah"], capacitance:["farad"], kv:["rpm/V"],
+  energy:["J","kJ","Wh"], power:["W","kW","mW"], torque:["N m","N mm","lbf in"], voltage:["V","mV","kV"], current:["A","mA","kA","uA"],
+  resistance:["mohm","ohm","kohm","Mohm","uohm"], capacity:["mAh","Ah"], capacitance:["uF","mF","nF","pF","farad"], kv:["rpm/V"],
+  inductance:["uH","mH","nH","H"], frequency:["Hz","kHz","MHz"], kt:["N m/A"], heat_cap:["J/K"], th_res:["K/W"], tempco:["1/K"], vtempco:["V/K","mV/K"],
   accel:["m/s^2"], density:["kg/m^3","g/cm^3"], ratio:["%"], area:["mm^2","m^2","cm^2","in^2"],
   area_moment:["mm^4","m^4","cm^4","in^4"], rot_stiffness:["N m/rad","N mm/rad","N m/deg"], rot_damping:["N m s/rad"],
   impulse:["N s"]
 };
 const SI = {force:"N", length:"m", mass:"kg", time:"s", stiffness:"N/m", damping:"N s/m", inertia:"kg m^2", speed:"m/s",
   rotation:"rad/s", angle:"rad", stress:"Pa", energy:"J", power:"W", torque:"N m", voltage:"V", current:"A",
-  resistance:"ohm", capacity:"Ah", capacitance:"farad", kv:"rpm/V", accel:"m/s^2", density:"kg/m^3", ratio:"",
+  resistance:"ohm", capacity:"Ah", capacitance:"uF", kv:"rpm/V", inductance:"uH", frequency:"Hz", kt:"N m/A", heat_cap:"J/K", th_res:"K/W",
+  tempco:"1/K", vtempco:"V/K", accel:"m/s^2", density:"kg/m^3", ratio:"",
   area:"m^2", area_moment:"m^4", rot_stiffness:"N m/rad", rot_damping:"N m s/rad", impulse:"N s"};
 const SYSTEMS = {
   SI: {},
@@ -1304,7 +1451,7 @@ function unitFactor(expr){
   num.split(/[\s*]+/).forEach(t => tok(t, 1)); if (den) den.split(/[\s*]+/).forEach(t => tok(t, -1)); return f;
 }
 const DIM_ORDER = ["force","length","mass","time","rotation","speed","stiffness","damping","inertia","stress","angle",
-  "torque","energy","power","voltage","current","resistance","capacity","kv","accel","density","capacitance","ratio"];
+  "torque","energy","power","voltage","current","resistance","capacity","kv","accel","density","capacitance","inductance","frequency","kt","ratio"];
 const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force", v_eps:"speed", v_s:"speed", kv:"kv",
   R:"resistance", I_max:"current", R0:"resistance", R1:"resistance", C1:"capacitance", capacity:"capacity",
   J_rotor:"inertia", break_at:"length", gear:"none", cells:"none", throttle:"none", n:"none", alpha:"none",
@@ -1316,6 +1463,7 @@ const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"ang
   friction_impulse:"impulse", drift:"none",
   force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
   current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
+  voltage:"voltage", power:"power", energy:"energy", state:"none", temperature:"none", heat:"energy",
   position:"length", velocity:"speed", kinetic_energy:"energy"};
 const NUMRE = /^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*(.*)$/;
 function splitQ(v){ const t = String(v ?? "").trim(); if (!t) return {num:"", unit:"", text:false};
@@ -1330,6 +1478,7 @@ function fieldDim(n, key){
   if ((n.kind === "element" || n.kind === "load") && (key.startsWith("f.") || key === "P")){
     const f = key === "P" ? "P" : key.slice(2); return EL_DIM[f] || null; }
   if (["value","sweep","mc"].includes(n.kind) && (key === "value" || key === "unit")) return feedDim(n);
+  if (n.kind === "part") return partDim(key);
   return null;                                   // builder args: any dimension
 }
 function feedDim(n, seen){   // a value / range / Monte Carlo node takes the dimension of the first field it feeds
@@ -1362,7 +1511,7 @@ function uvControl(key, value, dim, ph, extra){
 }
 // ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
 // Plugging a value in writes $name into the field; the text stays the single source of truth.
-const NO_FIELD_SOCK = new Set(["csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
+const NO_FIELD_SOCK = new Set(["mraw","csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
 function fieldKey(inp){
   if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
   const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
@@ -1956,8 +2105,9 @@ function nodeHTML(n){
     b += sockRow(n, ins[0]);
     if (src && src.kind === "body"){ const ql = is3d() ? CAT.body_quantities_3d : (is2d() ? CAT.body_quantities_2d : CAT.body_quantities); if (!ql.includes(d.quantity)) d.quantity = ql[0];
       b += `<div class="row"><label>quantity</label><select data-k="quantity">${sel_(ql, d.quantity)}</select></div>`; }
+    const PRED = ["final","max","min","max_abs"]; if (src && src.kind === "part" && !PRED.includes(d.reduce)) d.reduce = "max";
     if (!(src && src.kind === "body" && d.quantity === "kinetic_energy"))
-      b += `<div class="row"><label>reduce</label><select data-k="reduce">${sel_(CAT.reduces, d.reduce)}</select></div>`;
+      b += `<div class="row"><label>reduce</label><select data-k="reduce">${sel_(src && src.kind === "part" ? PRED : CAT.reduces, d.reduce)}</select></div>`;
     if (d.reduce.startsWith("first_time")) b += `<div class="row req"><label title="the level to cross, in the quantity's own SI unit unless you type one (0, 25 mm, 3 kN)">value</label><input data-k="value" value="${esc(d.value)}" placeholder="level, e.g. 25 mm"></div>`;
     const qn = src ? (src.kind === "body" ? d.quantity : l.from.key.slice(2)) : "force";
     const od = d.reduce.startsWith("first_time") ? "time" : (src ? quantityDim(src, qn) : (OUT_DIM[qn] || null));
@@ -2004,11 +2154,16 @@ function nodeHTML(n){
     b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
   } else if (n.kind === "export"){
     b += exportHTML(n, ins);
+  } else if (n.kind === "part"){
+    b += partHTML(n, ins);
+  } else if (n.kind === "net"){
+    b += netHTML(n, ins);
   }
   outs.forEach(s => b += outRow(s));
   const title = `<input class="nm" data-k="name" value="${esc(d.name)}" spellcheck="false">`;
   const color = COL[n.kind];
-  const kl = (n.kind === "value" && d.mat ? "material" : KIND_LABEL[n.kind]) + (n.kind === "element" ? " · " + esc(d.type) : "");
+  const kl = (n.kind === "value" && d.mat ? "material" : KIND_LABEL[n.kind]) + (n.kind === "element" ? " · " + esc(d.type) : "") +
+    (n.kind === "part" ? " · " + esc(PART_NAME[d.ptype] || d.ptype) : "") + (n.kind === "net" && d.ground ? " · ground 0 V" : "");
   return `<div class="hd"><span class="bar" style="background:${color}"></span><span class="kind">${kl}</span>${title}<button class="ib" data-act="info" title="What this node does" aria-label="Info"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7" fill="currentColor"/><rect x="6.5" y="6.4" width="3" height="7.6" rx="1.3" fill="currentColor"/></svg></button><button class="x" data-act="del" title="Delete node" aria-label="Delete"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div><div class="bd">${b}</div>`;
 }
 function render(){
@@ -2036,7 +2191,7 @@ function render(){
 }
 function countValues(v){ const t = String(v || "").trim(); if (!t) return 0;
   if (t.includes(":") && !t.includes(",")) return parseInt(t.split(":")[2]) || 0; return t.split(",").filter(x => x.trim()).length; }
-const KIND_COL = {value:0, builder:1, sweep:1, mc:1, body:2, element:3, load:3, output:4, expr:4, failure:5, export:5};
+const KIND_COL = {value:0, builder:1, sweep:1, mc:1, body:2, element:3, load:3, part:3, net:4, output:5, expr:5, failure:6, export:6};
 function arrange(){
   // columns by role, stacked with the real rendered heights so nothing overlaps; a closed group moves as one block,
   // an open group keeps its members together in its own band
@@ -2163,7 +2318,7 @@ function sockPos(nid, key, dir){
   const r = el.getBoundingClientRect(), c = canvas.getBoundingClientRect();
   return {x:(r.left + r.width / 2 - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
 }
-const TYPE_COL = {val:"var(--s-val)", body:"var(--s-body)", sig:"var(--s-sig)", state:"var(--s-state)", metric:"var(--s-metric)"};
+const TYPE_COL = {val:"var(--s-val)", body:"var(--s-body)", sig:"var(--s-sig)", state:"var(--s-state)", metric:"var(--s-metric)", elec:"var(--s-elec)"};
 function curve(a, b){ const dx = Math.max(40, Math.abs(b.x - a.x) * 0.5); return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`; }
 let wireSel = new Set();
 // focus: with a selection, everything not connected to it dims; its wires are drawn on top
@@ -2456,7 +2611,10 @@ world.addEventListener("change", e => { const hm = e.target.closest("[data-m]");
     n.data.name = String(n.data.name || "").trim().replace(/[^A-Za-z0-9_]/g, "_") || "p";
   const others = S.nodes.filter(x => x !== n && nodeName(x) === n.data.name && NS[x.kind] === NS[n.kind]); if (others.length) n.data.name = uniqueName(n.data.name, NS[n.kind]); changed(); } });
 function setField(n, k, v){ const d = n.data;
-  if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v; else d[k] = v; }
+  if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v;
+  else if (n.kind === "part" && k.startsWith("e.")) d.esc[k.slice(2)] = v; else if (n.kind === "part" && k.startsWith("h.")) d.th[k.slice(2)] = v;
+  else if (n.kind === "net" && k === "ground" && v){ S.nodes.forEach(x => { if (x.kind === "net") x.data.ground = false; }); d.ground = true; }
+  else d[k] = v; }
 function refreshMeasure(n){ const el = world.querySelector(`.node[data-id="${n.id}"] .hint[title="the stretch this element acts on"]`); if (el) el.textContent = "s = " + (measureOf(n) || "…"); }
 world.addEventListener("mousedown", e => { const nb = e.target.closest(".note .nb"); if (!nb) return;
   const el = nb.closest(".node"), id = el.dataset.id; editingNote = id;
@@ -2511,6 +2669,8 @@ world.addEventListener("click", async e => {
   changed();
 });
 const NODE_INFO = {
+  net: ["Net", null, "one voltage shared by every terminal on it", "A junction of wires. Every part terminal plugged into it sits at the same voltage. Tick ground on one net: it is 0 V and every other net is measured from it. Each net needs a path to ground through parts."],
+  part: ["Circuit part", null, "a two-terminal electrical law", "Wire + and − into nets."],
   export: ["CSV export", null, "time histories to a CSV file on Run", "Writes element signals, element states and body motion to a CSV file each time you press Run (live runs never write). Pick the folder, a naming scheme, the time unit, rows and the header style (names with units, plain, or none). Optional: models without one write nothing."],
   note: ["Note", null, "LaTeX: $...$ inline, $$...$$ display", "Free text for the people reading the model: assumptions, sources, equations. It connects to nothing and never changes the results. Click to edit, click off to render. Saved in the file under editor: notes."],
   value: ["Value", "spring_mass", "", "A named input: a number with a unit, a material name (4140 prehard, 7075-T6), a layup, or an = expression of other values. Becomes params (or derived for = expressions). Plug it into any value socket to share one number between nodes."],
@@ -2524,6 +2684,9 @@ const NODE_INFO = {
 };
 function infoFor(n){
   const d = n.data;
+  if (n.kind === "part"){ const I = PART_INFO[d.ptype] || ["", ""]; return {t:"Circuit part · " + (PART_NAME[d.ptype] || d.ptype), fig:null, law:I[0],
+    text:I[1] + "\n\nWire each terminal to a net. + (a) is the first net: current flows from + to − through the part, and its voltage is v(+) − v(−)." +
+      (CAT.circuit.types[d.ptype].thermal ? "\n\nThermal (optional): the part heats with its I²R losses, cools to ambient through R_th, and its resistance rises by alpha per K. Past T_max_C it fails open." : ""), src:""}; }
   if (n.kind === "element"){ const e = (CAT.element_info || {})[d.type] || {};
     return {t:"Element · " + d.type, fig:"el-" + d.type, law:e.law, text:(e.what || "") + "\n\nFields: " + (e.fields || ""), src:""}; }
   if (n.kind === "builder"){ const b = CAT.blocks.find(x => x.name === d.block) || {};
@@ -2614,7 +2777,8 @@ function groupCandidates(g){
   });
   return {ins, outs};
 }
-function fieldValue(m, key){ const d = m.data; if (key.startsWith("a.")) return d.args[key.slice(2)]; if (key.startsWith("f.")) return d.fields[key.slice(2)]; return d[key]; }
+function fieldValue(m, key){ const d = m.data; if (key.startsWith("a.")) return d.args[key.slice(2)]; if (key.startsWith("f.")) return d.fields[key.slice(2)];
+  if (m.kind === "part" && key.startsWith("e.")) return d.esc[key.slice(2)]; if (m.kind === "part" && key.startsWith("h.")) return d.th[key.slice(2)]; return d[key]; }
 const exposed = (g, c) => { const k = c.m.id + "|" + c.s.key; return (g.expose && k in g.expose) ? g.expose[k] : c.def; };
 const isValTable = g => g.members.length > 0 && g.members.every(id => { const m = byId(id); return m && m.kind === "value"; });
 function valTableHTML(g){
@@ -2798,6 +2962,14 @@ function menuAll(){
   add("Results", "Expression output", "= arithmetic on params and outputs", COL.expr, () => ["expr", {name:"metric"}], {words:"safety factor formula"});
   add("Results", "Failure mode", "your limit on a metric, with its origin", COL.fail, () => ["failure", {name:"fails"}], {words:"limit criterion"});
   add("Results", "CSV export", "write time histories to a CSV file (time vs value tables)", COL.export, () => ["export", {name:"csv"}], {words:"table file save history tabular"});
+  if (CAT.circuit){
+    const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current",
+      battery:"lipo pack cells mah", diode:"rectifier flyback freewheel", switch:"relay contactor pwm mosfet", fuse:"breaker protection", motor:"dc brushless bldc kv esc spinner weapon"};
+    Object.keys(CAT.circuit.types).forEach(t => add("Electrical", "Part · " + PART_NAME[t], (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "")}));
+    add("Electrical", "Part · motor with ESC", "a motor behind a speed controller: throttle and current limit", "var(--s-elec)", () => ["part", {name:"motor", ptype:"motor", escOn:true, esc:{throttle:"1"}}], {words:"circuit electrical esc speed controller weapon drive bldc"});
+    add("Electrical", "Net", "a wire junction: every terminal plugged in shares one voltage", "var(--s-elec)", () => ["net", {name:"net"}], {words:"circuit node wire junction bus"});
+    add("Electrical", "Ground net", "the 0 V reference (one per circuit)", "var(--s-elec)", () => ["net", {name:"gnd", ground:true}], {words:"circuit ground zero earth reference"});
+  }
   add("Loads", "Load", "a force on a body: type it, or plug in a Range or Monte Carlo node", COL.load, () => ["load", {name:"load"}], {words:"force gravity push"});
   add("Modifiers", "Range of values", "plug into any input: one run per value", COL.sweep, () => ["sweep", {name:"range"}], {words:"sweep vary parametric study"});
   add("Modifiers", "Monte Carlo", "plug into any input: sampled between low and high", COL.mc, () => ["mc", {name:"mc"}], {words:"random uncertainty statistics"});
@@ -2894,7 +3066,9 @@ function pick(x){
     const x0 = Math.min(...nodes.map(n => n.x)), y0 = Math.min(...nodes.map(n => n.y));
     insertFragment(Object.assign({}, fr, {doc:"library"}), menuAt.x - (isFinite(x0) ? x0 : 0), menuAt.y - (isFinite(y0) ? y0 : 0)); return; }
   if (kind === "valtable"){ hideMenu(); const n = addNode("value", {name:"p", value:""}, menuAt.x, menuAt.y); const g = valTable([n.id], "values"); setSel(g.id); changed(); return; }
-  const n = addNode(kind, data, menuAt.x, menuAt.y); hideMenu(); setSel(n.id); changed();
+  const n = addNode(kind, data, menuAt.x, menuAt.y); hideMenu();
+  if (kind === "net" && n.data.ground) setField(n, "ground", true);
+  setSel(n.id); changed();
 }
 canvas.addEventListener("contextmenu", e => { e.preventDefault(); const c = canvas.getBoundingClientRect(); showMenu(e.clientX - c.left, e.clientY - c.top); });
 document.getElementById("bAdd").onclick = () => showMenu();
@@ -3281,6 +3455,7 @@ function convertDefaults(oldSys, newSys){
     if (n.kind === "body") ["mass","inertia","x0","v0"].forEach(k => { if (!linkTo(n.id, k)) d[k] = fixQ(d[k], fieldDim(n, k)); });
     if (n.kind === "element") Object.keys(d.fields).forEach(f => { if (!linkTo(n.id, "f." + f)) d.fields[f] = fixQ(d.fields[f], fieldDim(n, "f." + f)); });
     if (n.kind === "load" && !linkTo(n.id, "P")) d.P = fixQ(d.P, "force");
+    if (n.kind === "part") [["f.", d.fields], ["e.", d.esc], ["h.", d.th]].forEach(([pre, o]) => Object.keys(o).forEach(f => { if (!linkTo(n.id, pre + f)) o[f] = fixQ(o[f], fieldDim(n, pre + f)); }));
     if (n.kind === "value") d.value = fixQ(d.value, feedDim(n));
     if ((n.kind === "sweep" || n.kind === "mc") && feedDim(n)){ const dim = feedDim(n), o = defUnit(dim, oldSys), nw = defUnit(dim, newSys);
       if ((d.unit || o) === o && o !== nw){ changedN++;
@@ -3971,7 +4146,7 @@ const TOKEN_GROUPS = [
                          ["edge","Outlines"],["hair","Thin dividers, plot grid"],["selbg","Selected button / item"],["note-bg","Note background"],["group-hd","Group header"]]],
   ["Text and accents", [["ink","Text"],["ink2","Secondary text"],["ink3","Muted text, labels"],["link","Links"],["acc","Accent, selection, focus"],["accf","Diagram highlight"],
                         ["pass","Pass / OK"],["warn","Warning"],["fail","Fail / error"]]],
-  ["Wires and sockets", [["s-val","Value wires"],["s-body","Body wires"],["s-sig","Signal wires"],["s-state","State wires"],["s-metric","Metric wires"]]],
+  ["Wires and sockets", [["s-val","Value wires"],["s-body","Body wires"],["s-sig","Signal wires"],["s-state","State wires"],["s-metric","Metric wires"],["s-elec","Electrical wires and parts"]]],
   ["Node colour bars", [["c-value","Value"],["c-builder","Builder"],["c-body","Body"],["c-element","Element"],["c-load","Load"],["c-output","Output"],["c-expr","Expression"],
                         ["c-fail","Failure"],["c-sweep","Range"],["c-mc","Monte Carlo"],["c-export","CSV export"],["c-group","Group"],["c-note","Note"]]],
   ["Plots", [["p1","Series 1"],["p2","Series 2"],["p3","Series 3"],["p4","Series 4"],["p5","Series 5"]]],
@@ -4128,6 +4303,7 @@ function applyColors(){
   root.style.setProperty("--bar-ink2", T["bar-ink2"] || T.ink3);
   root.style.setProperty("--hd", T.hd || T.panel2); root.style.setProperty("--hd-ink", T["hd-ink"] || T.ink);
   root.style.setProperty("--hd-ink2", T["hd-ink2"] || T.ink3);
+  root.style.setProperty("--s-elec", T["s-elec"] || T.pass);          // electrical wires: the theme's own, else its pass colour
   root.style.setProperty("--wire-w", th.wire || "2.2");
   const ui = UI_FONTS[look.ui] || UI_FONTS.inter, mono = MONO_FONTS[look.mono] || MONO_FONTS.jetbrains;
   root.style.setProperty("--mono", mono.css);
@@ -4161,7 +4337,7 @@ function renderLegend(){
   b.innerHTML = `<div><div class="lt">Wires (what flows)</div>` +
     wire("val", "Value:", "a number or expression") + wire("body", "Body:", "which body a part acts on") +
     wire("sig", "Signal:", "a time history out of a run") + wire("state", "State:", "a running state (set, broken, charge)") +
-    wire("metric", "Metric:", "a result checked or swept") +
+    wire("metric", "Metric:", "a result checked or swept") + wire("elec", "Electrical:", "a part terminal on a net (one voltage)") +
     `<div class="lr"><svg viewBox="0 0 34 10"><path d="M1 5 H29" style="stroke:var(--s-val);stroke-width:1.1;opacity:.6;fill:none"/><circle cx="30" cy="5" r="2.6" style="fill:var(--bg);stroke:var(--s-val);stroke-width:1.2"/></svg><span><b>Thin value, open ring:</b> used by name ($x) inside a field, not a socket</span></div>` + `</div>` +
     `<div><div class="lt">Sockets</div><div class="lk" style="grid-template-columns:1fr"><span><i class="sk" style="background:var(--s-val);width:9px;height:9px;border-radius:50%"></i>round: value / signal</span><span><i class="sk" style="background:var(--s-body);width:9px;height:9px;border-radius:2px"></i>square: body</span><span><i class="sk" style="background:var(--s-state);width:9px;height:9px;transform:rotate(45deg);border-radius:1px"></i>diamond: state</span></div></div>` +
     `<div><div class="lt">Node bars (what a node is)</div><div class="lk">` +

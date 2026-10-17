@@ -102,7 +102,7 @@ BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega"
 BODY_QUANTITIES_2D = {"x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"}
 REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_below"}
 EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
-EXPORT_COLUMN_KEYS = {"element", "body", "quantity", "unit", "label"}
+EXPORT_COLUMN_KEYS = {"element", "body", "part", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "dc_motor": {"current"},
@@ -119,6 +119,10 @@ def check(doc):
     unknown = set(doc) - TOP - {"__file__"}
     for k in unknown:
         raise SpecError(f"unknown top-level key '{k}' (allowed: {', '.join(sorted(TOP))})", k, line_of(doc, k), f)
+    if "elements" not in doc and doc.get("circuit"):
+        doc["elements"] = {}                     # a circuit-only model: the motors are the elements
+    if not doc.get("bodies") and doc.get("circuit"):
+        doc["bodies"] = {"__ground__": {"ground": True}}      # a pure circuit: no mechanics to move
     for k in REQUIRED_TOP:
         if k not in doc:
             raise SpecError(f"missing required key '{k}'", k, None, f)
@@ -346,9 +350,15 @@ def check_exports(doc):
                 raise SpecError("a column is {element: name, quantity: force} or {body: name, quantity: velocity}", q, None, f)
             for k in set(c) - EXPORT_COLUMN_KEYS:
                 raise SpecError(f"unknown column key '{k}'", q, line_of(c, k), f)
-            if ("element" in c) == ("body" in c):
-                raise SpecError("a column names either an element or a body", q, line_of(c, "__self__"), f)
-            if "element" in c:
+            if sum(k in c for k in ("element", "body", "part")) != 1:
+                raise SpecError("a column names one element, body or circuit part", q, line_of(c, "__self__"), f)
+            if "part" in c:
+                from .circuit import QUANTITIES as CQ
+                if c["part"] not in ((doc.get("circuit") or {}).get("parts") or {}):
+                    raise SpecError(f"no circuit part named '{c['part']}'", q, line_of(c, "part"), f)
+                if c.get("quantity", "current") not in CQ:
+                    raise SpecError(f"a part column exports one of: {', '.join(sorted(CQ))}", q, line_of(c, "quantity"), f)
+            elif "element" in c:
                 e = els.get(c["element"])
                 if e is None:
                     raise SpecError(f"element '{c['element']}' is not defined", q, line_of(c, "element"), f)

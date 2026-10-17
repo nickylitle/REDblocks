@@ -139,3 +139,24 @@ outputs:
   i: {part: m, quantity: current}
 run: {t_end: 1 ms}
 """).run()
+
+
+def test_circuit_only_model_needs_no_elements_and_exports_part_columns(tmp_path):
+    s = load_system("""simblocks: 1
+name: rc export
+dim: 1d
+circuit:
+  parts:
+    src: {type: voltage_source, between: [a, gnd], V: 10 V, R: 1 ohm}
+    c: {type: capacitor, between: [a, gnd], C: 0.1 farad}
+outputs:
+  v: {part: c, quantity: voltage, reduce: final}
+exports:
+  - {name: rc, columns: [{part: c, quantity: voltage}, {part: src, quantity: current}], folder: %s}
+run: {t_end: 0.3 s}
+""" % tmp_path)
+    r, _, paths = s.run_with_exports(model_path=str(tmp_path / "m.yaml"))
+    assert r["v"] == pytest.approx(10 * (1 - math.exp(-3)), rel=2e-2)
+    rows = open(paths[0]).read().splitlines()
+    assert rows[0].startswith("Time [s],c voltage [V],src current [A]")
+    assert float(rows[-1].split(",")[1]) == pytest.approx(r["v"], rel=1e-3)

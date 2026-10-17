@@ -73,7 +73,11 @@ def file_name(pattern, model, name, run="nominal", when=None, force_run=False):
 
 def column(doc, H, c):
     """(series in the column's unit, header label, unit text) for one column spec."""
-    if "element" in c:
+    if "part" in c:
+        qn = c.get("quantity", "current"); key = f"{c['part']}.{qn}"
+        si = {"current": "A", "voltage": "V", "power": "W", "energy": "J", "torque": "N m", "temperature": "",
+              "heat": "J"}.get(qn, ""); default_label = f"{c['part']} {qn}"
+    elif "element" in c:
         qn = c.get("quantity", "force"); key = f"{c['element']}.{qn}"; si = SI_UNIT.get(qn, "")
         default_label = f"{c['element']} {qn}"
     else:

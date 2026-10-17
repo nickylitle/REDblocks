@@ -14,7 +14,7 @@ import traceback
 
 import yaml
 
-ORDER = ["simblocks", "name", "question", "dim", "units", "gravity", "params", "derived", "bodies", "elements", "outputs", "failure",
+ORDER = ["simblocks", "name", "question", "dim", "units", "gravity", "params", "derived", "bodies", "elements", "circuit", "outputs", "failure",
          "uncertain", "study", "exports", "limits", "knockouts", "run", "report", "assumptions", "sources", "notes", "editor"]
 HOME = os.path.join(os.path.expanduser("~"), ".simblocks")
 SETTINGS = os.path.join(HOME, "app.json")
@@ -150,6 +150,7 @@ class Api:
         (builders and analytic answers, with parameters), material names."""
         if self._catalog is None:
             from ..compiler import loader as L
+            from ..compiler import circuit as CC
             from ..docs.library import entries, ELEMENTS, _el_fig
             from ..docs import figures as FG
             from ..materials import _ALL
@@ -164,7 +165,10 @@ class Api:
                                                      | ({"segments"} if t in ("spring", "dashpot", "kelvin_voigt") else set())
                                                      | ({"mass", "segments"} if t == "beam" else set())),
                                        required=sorted(L.REQUIRED_ELEMENT[t]))
-                               for t, f in L.ELEMENT_KEYS.items()},
+                               for t, f in L.ELEMENT_KEYS.items() if t != "emotor"},
+                circuit=dict(types={t: dict(fields=sorted(CC.FIELDS[t] - {"measure", "esc"}), required=sorted(CC.REQUIRED[t] - {"measure"}),
+                                            thermal=t in CC.HAS_THERMAL) for t in CC.TYPES},
+                             esc=sorted(CC.ESC_FIELDS), thermal=sorted(CC.THERMAL), quantities=sorted(CC.QUANTITIES)),
                 element_quantities=sorted(L.ELEMENT_QUANTITIES), body_quantities=sorted(L.BODY_QUANTITIES),
                 body_quantities_2d=["x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"],
                 body_quantities_3d=["x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
