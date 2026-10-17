@@ -2027,21 +2027,23 @@ function arrange(){
     if (el){ el.style.left = it.o.x + "px"; el.style.top = it.o.y + "px"; } });
   drawFrames(); drawWires();
 }
+// on when the user ticked it, or by default in a fun theme (Synthwave, Banana, Candy) until they untick it
+function confettiOn(){ if (SETTINGS.confetti !== undefined) return !!SETTINGS.confetti; const id = themeId(); return !isUserTheme(id) && !!(THEMES[id] || {}).fun; }
 // ---- confetti (Settings, off by default): bursts up from the bottom edge in the theme's own colours
 function confetti(force){
-  if (!force && !SETTINGS.confetti) return;
+  if (!force && !confettiOn()) return;
   const cv = document.createElement("canvas"); cv.id = "confetti"; cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
   cv.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:90"; document.body.appendChild(cv);
   const g = cv.getContext("2d"), dpr = devicePixelRatio, W = innerWidth, H = innerHeight;
   const cols = ["p1","p2","p3","p4","p5","acc","accf","pass","c-export","s-body"].map(tok).filter(Boolean);
-  const P = []; for (let i = 0; i < 170; i++){ const fromX = W * (0.08 + 0.84 * Math.random()), a = -Math.PI / 2 + (Math.random() - 0.5) * 0.9, v = H * (0.016 + 0.012 * Math.random());
-    P.push({x:fromX, y:H + 10, vx:Math.cos(a) * v, vy:Math.sin(a) * v, w:5 + Math.random() * 6, h:3 + Math.random() * 5, r:Math.random() * 6.3, vr:(Math.random() - 0.5) * 0.35,
-      c:cols[i % cols.length], wob:Math.random() * 6.3, delay:Math.floor(Math.random() * 18)}); }
+  const P = []; for (let i = 0; i < 240; i++){ const fromX = W * (0.08 + 0.84 * Math.random()), a = -Math.PI / 2 + (Math.random() - 0.5) * 0.9, v = H * (0.013 + 0.008 * Math.random());
+    P.push({x:fromX, y:H + 10, vx:Math.cos(a) * v, vy:Math.sin(a) * v, w:9 + Math.random() * 8, h:6 + Math.random() * 6, r:Math.random() * 6.3, vr:(Math.random() - 0.5) * 0.22,
+      c:cols[i % cols.length], wob:Math.random() * 6.3, delay:Math.floor(Math.random() * 30)}); }
   let f = 0;
   (function step(){ g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); let alive = 0; f++;
-    P.forEach(p => { if (f < p.delay) { alive++; return; } p.vy += H * 0.00042; p.vx *= 0.99; p.vy *= 0.992; p.x += p.vx + Math.sin(p.wob += 0.12) * 0.6; p.y += p.vy; p.r += p.vr;
+    P.forEach(p => { if (f < p.delay) { alive++; return; } p.vy += H * 0.00022; p.vx *= 0.99; p.vy *= (p.vy > 0 ? 0.975 : 0.993); p.x += p.vx + Math.sin(p.wob += 0.07) * 0.9; p.y += p.vy; p.r += p.vr;
       if (p.y < H + 40) alive++; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.scale(1, Math.cos(p.wob)); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); });
-    if (alive && f < 600) requestAnimationFrame(step); else cv.remove(); })();
+    if (alive && f < 1100) requestAnimationFrame(step); else cv.remove(); })();
 }
 // ---- Organize: tidy the canvas the way a desktop "Clean up" / "Sort by" does
 function orgUnits(){
@@ -3920,7 +3922,7 @@ const THEMES = {
     "c-value":"#ff9f1a", "c-builder":"#9d6bff", "c-body":"#2f9bff", "c-element":"#20d07a", "c-load":"#20d07a", "c-output":"#b0b0b0", "c-expr":"#19d3c5",
     "c-fail":"#ff4d6a", "c-sweep":"#ffd21f", "c-mc":"#f26bdc", "c-export":"#9be7ff", "c-group":"#8aa0d8", "c-note":"#8a8378",
     p1:"#3fa9ff", p2:"#ffb020", p3:"#20d07a", p4:"#b26bff", p5:"#ff4fa3"}},
-  synthwave: {name:"Synthwave", note:"Deep purple night with neon pink, cyan and orange wires.", scheme:"dark", t:{
+  synthwave: {name:"Synthwave", fun:true, note:"Deep purple night with neon pink, cyan and orange wires.", scheme:"dark", t:{
     bg:"#1a1033", grid:"#231543", panel:"#21153f", panel2:"#2a1b50", panel3:"#36235f", edge:"#55368c", hair:"#2e1d55", selbg:"#4a1f6e", "note-bg":"#261a48", "group-hd":"#2f1d5c", ink:"#f8ecff", ink2:"#d6c2f2", ink3:"#a68ccc", link:"#6fe3ff", acc:"#ff4fd8", accf:"#ffb347", pass:"#39ff9e", warn:"#ffd23f", fail:"#ff4f6d", shadow:"rgba(5,0,20,.6)", "s-val":"#ff9f1c", "s-body":"#ff3cac", "s-sig":"#2de2e6", "s-state":"#b98aff", "s-metric":"#ffffff", "c-value":"#ff9f1c", "c-builder":"#a970ff", "c-body":"#2de2e6", "c-element":"#39ff9e", "c-load":"#39ff9e", "c-output":"#b8a2e3", "c-expr":"#3ee7c9", "c-fail":"#ff4f6d", "c-sweep":"#ffd23f", "c-mc":"#ff3cac", "c-export":"#2de2e6", "c-group":"#8f6bff", "c-note":"#b8a2e3", p1:"#ff3cac", p2:"#2de2e6", p3:"#ff9f1c", p4:"#b98aff", p5:"#39ff9e"}},
   terminal: {name:"Terminal", note:"Green-on-black retro console, monospace everywhere.", scheme:"dark", font:"mono", t:{
     bg:"#030603", grid:"#0a140a", panel:"#070d07", panel2:"#0c170c", panel3:"#132313", edge:"#2a6e2a", hair:"#0f240f", selbg:"#0f3d16", "note-bg":"#081108", "group-hd":"#0e1f0e", ink:"#c6ffc9", ink2:"#7fe38a", ink3:"#4fae5a", link:"#7dfcff", acc:"#39ff6a", accf:"#ffb000", pass:"#39ff6a", warn:"#ffb000", fail:"#ff5555", shadow:"rgba(0,0,0,.6)", "s-val":"#ffb000", "s-body":"#39ff6a", "s-sig":"#7dfcff", "s-state":"#ff6ad5", "s-metric":"#ffffff", "c-value":"#ffb000", "c-builder":"#9cff57", "c-body":"#39ff6a", "c-element":"#00d26a", "c-load":"#00d26a", "c-output":"#6fdc7a", "c-expr":"#7dfcff", "c-fail":"#ff5555", "c-sweep":"#ffd500", "c-mc":"#ff6ad5", "c-export":"#7dfcff", "c-group":"#9cff57", "c-note":"#4fae5a", p1:"#39ff6a", p2:"#ffb000", p3:"#7dfcff", p4:"#ff6ad5", p5:"#ffffff"}},
@@ -3952,7 +3954,7 @@ const THEMES = {
     "s-val":"#bf5700", "s-body":"#333f48", "s-sig":"#00818c", "s-state":"#005f86", "s-metric":"#3f7f2c",
     "c-value":"#f8971f", "c-builder":"#005f86", "c-body":"#333f48", "c-element":"#579d42", "c-load":"#579d42", "c-output":"#9cadb7", "c-expr":"#2bb3a6", "c-fail":"#b3122e", "c-sweep":"#ffd600", "c-mc":"#a6cd57", "c-export":"#6a4c93", "c-group":"#c9c4b3", "c-note":"#a07850",
     p1:"#bf5700", p2:"#333f48", p3:"#005f86", p4:"#3f7f2c", p5:"#00818c"}},
-  banana: {name:"Banana", note:"Ripe banana yellow with a cream canvas, brown-speckle ink and leafy green trim, in the same round, playful font as Candy.", scheme:"light", ui:"fredoka", t:{
+  banana: {name:"Banana", fun:true, note:"Ripe banana yellow with a cream canvas, brown-speckle ink and leafy green trim, in the same round, playful font as Candy.", scheme:"light", ui:"fredoka", t:{
     bg:"#fff6c9", grid:"#f6e9a6", panel:"#fffadf", panel2:"#fff0b0", panel3:"#fbe48a", edge:"#d9b84a", hair:"#f2df95", selbg:"#ffe066", "note-bg":"#fff3bd", "group-hd":"#eef3c4",
     bar:"#ffd93b", "bar-ink":"#4a3410", "bar-ink2":"#5e4518", hd:"#ffe36e", "hd-ink":"#3d2b0c", "hd-ink2":"#6b4f1c",
     ink:"#3d2b0c", ink2:"#5a4317", ink3:"#6e5523", link:"#7a4a00", acc:"#5f8f1f", accf:"#8a4f14", pass:"#2f6e1d", warn:"#8a5200", fail:"#b3261e", shadow:"rgba(140,105,10,.2)",
@@ -3960,7 +3962,7 @@ const THEMES = {
     "c-value":"#f2a900", "c-builder":"#9a5bd1", "c-body":"#8a5a2b", "c-element":"#6aa52a", "c-load":"#6aa52a", "c-output":"#b0a27a", "c-expr":"#1d9a8a",
     "c-fail":"#d93f3f", "c-sweep":"#f07f1a", "c-mc":"#e05f9a", "c-export":"#3d8ee0", "c-group":"#c3cf6a", "c-note":"#a6763c",
     p1:"#6b3f12", p2:"#4f8a10", p3:"#1f6fbf", p4:"#d2570a", p5:"#b0306a"}},
-  candy: {name:"Candy", note:"Bubblegum pink with bold sweet-shop wires and a round, playful font.", scheme:"light", ui:"fredoka", t:{
+  candy: {name:"Candy", fun:true, note:"Bubblegum pink with bold sweet-shop wires and a round, playful font.", scheme:"light", ui:"fredoka", t:{
     bg:"#fbe0ee", grid:"#f4cfe2", panel:"#fff1f8", panel2:"#fbe1ee", panel3:"#f6cfe3", edge:"#d68db3", hair:"#efc2d8", selbg:"#f8c4de", "note-bg":"#fde9f3", "group-hd":"#efe2fb",
     bar:"#f5b8d5", "bar-ink":"#7a1450", "bar-ink2":"#5c2048", hd:"#f9cfe4", "hd-ink":"#3b1433", "hd-ink2":"#7a3d66",
     ink:"#3b1433", ink2:"#683259", ink3:"#8c587d", link:"#a0246c", acc:"#d0337f", accf:"#c2580f", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(160,60,110,.2)",
@@ -4114,7 +4116,7 @@ async function settingsShow(){
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
     list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
-  document.getElementById("setConfetti").checked = !!SETTINGS.confetti;
+  document.getElementById("setConfetti").checked = confettiOn();
   document.getElementById("setDash").checked = document.documentElement.classList.contains("dashwires");
   document.getElementById("setOwn").textContent = user ? `Changes save straight into your theme "${th.name}".`
     : (n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${th.name} theme.` : `All colours from the ${th.name} theme.`);
@@ -4158,6 +4160,9 @@ document.getElementById("setClose").onclick = () => document.getElementById("set
 document.getElementById("setDlg").addEventListener("click", async e => {
   const c = e.target.closest("[data-th]");
   if (c){ SETTINGS.theme = c.dataset.th; delete SETTINGS.dashes;
+    const fun = !!(THEMES[c.dataset.th] || {}).fun;                // fun themes switch confetti on; leaving one undoes only that
+    if (fun && !SETTINGS.confetti){ SETTINGS.confetti = true; SETTINGS.confettiAuto = true; }
+    else if (!fun && SETTINGS.confettiAuto){ SETTINGS.confetti = false; delete SETTINGS.confettiAuto; }
     if (Object.keys(SETTINGS.colors || {}).length && !document.getElementById("setKeep").checked) SETTINGS.colors = {};
     if (!document.getElementById("setKeep").checked) delete SETTINGS.look;
     applyColors(); settingsSave(); settingsShow(); return; }
@@ -4173,7 +4178,7 @@ document.getElementById("setDlg").addEventListener("change", async e => { if (!e
   const {id, user} = curLook(); applyColors();
   if (user) await saveUserTheme(id.slice(2)); else settingsSave();
   settingsShow(); });
-document.getElementById("setConfetti").onchange = e => { SETTINGS.confetti = e.target.checked; settingsSave(); if (e.target.checked) confetti(true); };
+document.getElementById("setConfetti").onchange = e => { SETTINGS.confetti = e.target.checked; delete SETTINGS.confettiAuto; settingsSave(); if (e.target.checked) confetti(true); };
 document.getElementById("setDash").onchange = e => { SETTINGS.dashes = e.target.checked; applyColors(); settingsSave(); };
 document.getElementById("setResetAll").onclick = () => { SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow(); };
 document.getElementById("lookUi").onchange = e => setLook("ui", e.target.value);

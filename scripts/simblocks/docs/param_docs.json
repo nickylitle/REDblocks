@@ -1287,10 +1287,13 @@
   "A_disk": "rotor or propeller disk area (m^2)"
  },
  "propeller_thrust": {
-  "CT": "propeller thrust coefficient (no unit)",
+  "CT": "static thrust coefficient, CT at zero airspeed (no unit)",
   "rho": "air density (kg/m^3)",
   "n_rps": "propeller speed (rev/s)",
-  "D": "propeller diameter (m)"
+  "D": "propeller diameter (m)",
+  "V": "axial airspeed into the propeller: flight speed plus headwind (m/s), 0 on a test stand",
+  "pitch": "geometric pitch, forward travel per turn (m), e.g. 10x4.5 prop: 4.5 in",
+  "J0": "advance ratio J = V/(nD) where thrust falls to zero (no unit), about pitch/D"
  },
  "terminal_velocity": {
   "m": "body mass (kg)",

@@ -247,3 +247,14 @@ outputs:
   x: {body: m, quantity: position}
 run: {t_end: 0.01 s}
 """)
+
+
+def test_propeller_thrust_falls_with_airspeed():
+    from simblocks.aero.basic import propeller_thrust
+    T0 = propeller_thrust(0.1, 1.2, 100, 0.25)
+    assert T0 == pytest.approx(0.1 * 1.2 * 100 ** 2 * 0.25 ** 4)
+    # J = 10/(100*0.25) = 0.4, J0 = 0.2/0.25 = 0.8: half the static thrust
+    assert propeller_thrust(0.1, 1.2, 100, 0.25, V=10, pitch=0.2) == pytest.approx(0.5 * T0)
+    assert propeller_thrust(0.1, 1.2, 100, 0.25, V=20, J0=0.8) == pytest.approx(0.0, abs=1e-12)
+    with pytest.raises(ValueError, match="pitch"):
+        propeller_thrust(0.1, 1.2, 100, 0.25, V=10)

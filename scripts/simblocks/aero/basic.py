@@ -112,10 +112,30 @@ def ideal_hover_power(T, rho, A_disk):
     return T ** 1.5 / math.sqrt(2 * rho * A_disk)
 
 
-@block("aero", "propulsion", "propeller", "thrust_coefficient", source="CT, CP definitions (n in rev/s)")
-def propeller_thrust(CT, rho, n_rps, D):
-    """Thrust from thrust coefficient: T = CT rho n^2 D^4."""
-    return CT * rho * n_rps ** 2 * D ** 4
+@block("aero", "propulsion", "propeller", "thrust_coefficient",
+       source="CT, CP definitions (n in rev/s); advance ratio J = V/(n D) with the linear CT(J) fit "
+              "(McCormick, Aerodynamics, Aeronautics and Flight Mechanics, ch. 6)",
+       tags=("propeller", "thrust", "advance ratio", "airspeed", "forward flight"))
+def propeller_thrust(CT, rho, n_rps, D, V=0.0, pitch=None, J0=None):
+    """Propeller thrust T = CT(J) rho n^2 D^4, falling off with the airspeed through the disk.
+
+    CT     static thrust coefficient (CT at J = 0, from the maker's data or a test stand)
+    V      axial airspeed into the propeller (m/s): flight speed plus any headwind, 0 on a test stand
+    pitch  geometric pitch (m), the distance one turn would screw forward; sets J0 = pitch/D if J0 is not given
+    J0     advance ratio at which thrust reaches zero (no unit), about pitch/D for most fixed-pitch props
+    CT(J) = CT (1 - J/J0) with J = V/(n D). Past J0 the propeller windmills and thrust turns negative (drag).
+    With V = 0 this is the static thrust and pitch/J0 are not needed."""
+    T0 = CT * rho * n_rps ** 2 * D ** 4
+    if not V:
+        return T0
+    if J0 is None:
+        if pitch is None:
+            raise ValueError("propeller_thrust with an airspeed V needs pitch (m) or J0 (thrust-zero advance ratio)")
+        J0 = pitch / D
+    if J0 <= 0 or n_rps <= 0:
+        raise ValueError("propeller_thrust needs J0 > 0 and n_rps > 0 when V is given")
+    J = V / (n_rps * D)
+    return T0 * (1.0 - J / J0)
 
 
 @block("aero", "drag", "bluff_body", "terminal_velocity", source="mg = q Cd A")
