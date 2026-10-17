@@ -176,7 +176,8 @@ outputs:
   the turn lock's reaction (N m); they are never mixed.
 - body quantities: `position`, `velocity`, `kinetic_energy` (final only).
 - reduce: `final`, `max`, `min`, `max_abs`, `first_time_above`, `first_time_below` (needs `value`; if never
-  crossed, the value is 10 x t_end and the report says "never reached").
+  crossed, the value is 10 x t_end and the report says "never reached"), `at` (the value at time `value`, read from
+  the run's log), `time_of_max`, `time_of_min` (when it peaks).
 - `unit` converts the SI result for display; failure limits are written in that same unit.
 - `expr` outputs read every other output in SI (rad, rad/s, m, N), whatever its `unit`: a display unit never changes
   an expression.
@@ -246,6 +247,28 @@ exports:
 Element quantities with a time history: force, measure, plus plastic_set and broken (elastoplastic), current,
 battery_current, bus_voltage, soc (drive), moment, torque, shear, hinge_set (beam) and impulse, dissipated,
 friction_impulse (impact). Otherwise absorbed_work and dissipated are end-of-run numbers.
+
+### Vehicles in flight (2d): rockets, staging, drag, steering, a planet
+
+`gravity: {planet: earth, radius: 6373 km, rotation: $site.omega_plane}` puts the planet's centre at the origin:
+inverse-square gravity (mu), the US Standard Atmosphere 1976 above its surface (pressure for engine thrust, density and
+temperature for drag), and the air turning with the planet at `rotation` (rad/s about the model's plane; the
+`launch_plane(latitude, azimuth)` block gives it, and the pad's speed `v_surface` for the body's v0). A vehicle is one
+body with `dof: [x, y]`; its elements take `measure: <body>`:
+
+| type | fields | law |
+|---|---|---|
+| `rocket` | **thrust_vac**, **mass_flow**, exit_area, start, stop, rise, tailoff, cutoff: guidance | F = level x (thrust_vac - p_amb exit_area) along the steering direction; the body loses level x mass_flow |
+| `jettison` | **at**, **mass** | the body's mass drops by mass at time at (a stage, an interstage, a tower) |
+| `aero_drag` | **area**, **Cd** (number or {mach: [...], cd: [...]}) | D = 1/2 rho v^2 Cd area against the air-relative velocity |
+| `steering` | pitch_start, pitch_rate, pitch_end, tilt_arrest, guidance_start, target_altitude, target_speed, tgo_freeze | vertical, pitch-over, gravity turn, hold, then explicit guidance; cutoff at target_speed |
+
+Engines come from `rocket_engine(fuel, OF, Pc, eps, mdot | F_vac, Isp_sl | Isp_vac | efficiency)`: equilibrium
+combustion and shifting-equilibrium nozzle expansion (NASA RP-1311 method) for RP1, LH2 or CH4 with liquid oxygen,
+returning F_vac, F_sl, A_e, mdot, delivered and ideal Isp, Tc, c*. Outputs: steering `altitude`, `speed_inertial`,
+`airspeed` (earth-fixed), `flight_path_angle`, `pitch` (deg), `downrange` (over the turning ground); aero_drag `drag`,
+`dynamic_pressure`, `mach`, `air_density`, `ambient_pressure`; rocket `thrust`, `mass_flow`, `vehicle_mass`, `throttle`.
+Example: examples/learn/2d_4_apollo11_ascent.yaml (Saturn V AS-506 against NASA's postflight trajectory).
 
 ### circuit (optional lumped electrical circuit)
 

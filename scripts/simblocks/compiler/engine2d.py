@@ -387,14 +387,109 @@ def _rate(mk, e, q, v, ba, bb, C, geo, which):
     return nx * (vbx - vax) + ny * (vby - vay)
 
 
+# ---- vehicles in flight: planet gravity, the US Standard Atmosphere 1976, rockets, staging, drag and steering
+TYP_ROCKET, TYP_JETTISON, TYP_AERO, TYP_STEER = 18, 19, 20, 21
+_US76_HB = (0.0, 11000.0, 20000.0, 32000.0, 47000.0, 51000.0, 71000.0, 84852.0)      # geopotential layer bases, m
+_US76_TB = (288.15, 216.65, 216.65, 228.65, 270.65, 270.65, 214.65, 186.946)
+_US76_PB = (101325.0, 22632.06, 5474.889, 868.0187, 110.9063, 66.93887, 3.956420, 0.3734)
+_US76_L = (-0.0065, 0.0, 0.001, 0.0028, 0.0, -0.0028, -0.002, 0.0)
+# above 86 km (geometric): tabulated US76 pressure and density, log-interpolated
+_HI_Z = (86000.0, 100000.0, 120000.0, 150000.0, 200000.0, 300000.0, 500000.0, 1000000.0)
+_HI_P = (0.3734, 3.201e-2, 2.538e-3, 4.542e-4, 8.474e-5, 8.770e-6, 3.019e-7, 7.514e-9)
+_HI_R = (6.958e-6, 5.604e-7, 2.222e-8, 2.076e-9, 2.541e-10, 1.916e-11, 5.215e-13, 3.561e-15)
+
+
+@njit(cache=True, nogil=True)
+def atmosphere(z):
+    """US Standard Atmosphere 1976 at geometric altitude z (m): pressure (Pa), density (kg/m^3), temperature (K)."""
+    if z < 0.0:
+        z = 0.0
+    if z >= 86000.0:
+        for i in range(7):
+            if z < _HI_Z[i + 1] or i == 6:
+                f = (z - _HI_Z[i]) / (_HI_Z[i + 1] - _HI_Z[i])
+                if f > 1.0:
+                    f = 1.0
+                p = math.exp(math.log(_HI_P[i]) + f * (math.log(_HI_P[i + 1]) - math.log(_HI_P[i])))
+                rho = math.exp(math.log(_HI_R[i]) + f * (math.log(_HI_R[i + 1]) - math.log(_HI_R[i])))
+                return p, rho, 186.87 if z < 91000.0 else 186.87 + (z - 91000.0) * 0.005
+    h = 6356766.0 * z / (6356766.0 + z)                  # geopotential altitude
+    k = 0
+    for i in range(7):
+        if h >= _US76_HB[i + 1]:
+            k = i + 1
+    T0 = _US76_TB[k]; P0 = _US76_PB[k]; L = _US76_L[k]; dh = h - _US76_HB[k]
+    if L == 0.0:
+        T = T0; p = P0 * math.exp(-9.80665 * 0.0289644 * dh / (8.3144598 * T0))
+    else:
+        T = T0 + L * dh; p = P0 * (T / T0) ** (-9.80665 * 0.0289644 / (8.3144598 * L))
+    return p, p * 0.0289644 / (8.3144598 * T), T
+
+
+@njit(cache=True, nogil=True, inline="always")
+def _local(q, v, b, planet):
+    """Body b's place over the planet: radius, radial and horizontal (prograde) unit vectors, radial and horizontal
+    speed, and the velocity relative to the turning air."""
+    x = q[3 * b]; y = q[3 * b + 1]; r = math.sqrt(x * x + y * y)
+    urx = x / r; ury = y / r; uhx = ury; uhy = -urx
+    vx = v[3 * b]; vy = v[3 * b + 1]
+    w = planet[2]
+    ax = vx - w * r * uhx; ay = vy - w * r * uhy            # the air turns with the planet
+    return r, urx, ury, uhx, uhy, vx * urx + vy * ury, vx * uhx + vy * uhy, ax, ay
+
+
+@njit(cache=True, nogil=True, inline="always")
+def _cd_at(M, tx, tF):
+    n = tx.shape[0]
+    if n == 0:
+        return 0.0
+    if M <= tx[0]:
+        return tF[0]
+    for i in range(1, n):
+        if M <= tx[i]:
+            return tF[i - 1] + (tF[i] - tF[i - 1]) * (M - tx[i - 1]) / (tx[i] - tx[i - 1])
+    return tF[n - 1]
+
+
+@njit(cache=True, nogil=True, inline="always")
+def _ramp(t, on, off, rise, tail):
+    """Thrust level 0-1: off before on, rises linearly over rise, full, then falls linearly over tail after off."""
+    if t < on:
+        return 0.0
+    f = 1.0 if rise <= 0.0 else min(1.0, (t - on) / rise)
+    if t >= off:
+        if tail <= 0.0:
+            return 0.0
+        g = 1.0 - (t - off) / tail
+        f = f * (g if g > 0.0 else 0.0)
+    return f
+
+
 @njit(cache=True, nogil=True)
 def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
-               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, planet, stop):
     """q0, v0, minv: flat [x, y, rz] per body. mass[b], com[b] = (cx, cy) body-frame centre of mass (for gravity).
     stop: int64[2] as in the 1D engine (timeout)."""
     nb = mass.shape[0]; nq = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
+    minv = minv.copy(); mass = mass.copy()          # rockets burn and stages drop: the masses change in flight
+    mu_p = planet[0]; Rp = planet[1]
+    nveh = 0
+    for e in range(ne):
+        if typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER:
+            nveh += 1
+    incr = mu_p > 0.0 or nveh > 0                      # gravity work booked step by step (mass and field vary)
+    gfx = np.zeros(nb); gfy = np.zeros(nb)
+    steer_of = -np.ones(nb, np.int64)
+    for e in range(ne):
+        if typ[e] == TYP_STEER and ba[e] >= 0:
+            steer_of[ba[e]] = e
+    Tb = np.zeros(nb); Mb = np.zeros(nb)               # this step's thrust and propellant flow on each body
+    frx = np.zeros(ne); fry = np.zeros(ne); dmv = np.zeros(ne); cut_t = np.full(ne, 1e300)
+    th0 = np.zeros(nb)
+    for b in range(nb):
+        th0[b] = math.atan2(q0[3 * b], q0[3 * b + 1])   # starting angle round the planet (for downrange)
     Q = np.zeros(nq)
     st = np.zeros((ne, 7))                     # beams: plastic rotations, accumulators, chord angle, damping state
     # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
@@ -480,15 +575,128 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 st[e, 0] = i * dt                # load tables against time read the clock from their state
         for k in range(nq):
             Q[k] = 0.0
-        # gravity at each centre of mass
+        # gravity at each centre of mass: uniform, or a planet's inverse-square pull toward the origin
         for b in range(nb):
-            if mass[b] > 0.0 and (grav[0] != 0.0 or grav[1] != 0.0):
+            gfx[b] = 0.0; gfy[b] = 0.0
+            if mass[b] > 0.0 and mu_p > 0.0 and minv[3 * b] + minv[3 * b + 1] > 0.0:
                 px, py = _pt(q, b, com[b, 0], com[b, 1])
-                _push(Q, q, b, px, py, mass[b] * grav[0], mass[b] * grav[1])
+                r2 = px * px + py * py; r_ = math.sqrt(r2)
+                gfx[b] = -mu_p * mass[b] * px / (r2 * r_); gfy[b] = -mu_p * mass[b] * py / (r2 * r_)
+                _push(Q, q, b, px, py, gfx[b], gfy[b])
+            elif mass[b] > 0.0 and (grav[0] != 0.0 or grav[1] != 0.0):
+                px, py = _pt(q, b, com[b, 0], com[b, 1])
+                gfx[b] = mass[b] * grav[0]; gfy[b] = mass[b] * grav[1]
+                _push(Q, q, b, px, py, gfx[b], gfy[b])
+        # vehicles: steering first (it sets each body's thrust direction), then engines, drag and staging
+        if nveh > 0:
+            t_ = i * dt
+            for b in range(nb):
+                Tb[b] = 0.0; Mb[b] = 0.0
+            for e in range(ne):
+                if typ[e] != TYP_STEER:
+                    continue
+                b = ba[e]
+                r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)
+                Pe = P[e]
+                if t_ < Pe[0]:                                   # vertical rise
+                    dx = urx; dy = ury
+                elif t_ < Pe[2]:                                 # pitch-over at a set rate from vertical
+                    a_ = Pe[1] * (t_ - Pe[0])
+                    dx = math.cos(a_) * urx + math.sin(a_) * uhx; dy = math.cos(a_) * ury + math.sin(a_) * uhy
+                elif t_ < Pe[3]:                                 # gravity turn: thrust along the air-relative velocity
+                    va = math.sqrt(ax * ax + ay * ay)
+                    dx = ax / va; dy = ay / va
+                elif t_ < Pe[4] or st[e, 2] > 0.5:               # tilt arrested: hold the attitude in space
+                    dx = st[e, 0]; dy = st[e, 1]
+                else:                                            # explicit guidance to the target orbit
+                    aT = st[e, 3]; c_ = st[e, 5]; md = st[e, 6]
+                    dv = Pe[6] - vh
+                    if aT <= 0.0 or dv <= 0.0:
+                        dx = st[e, 0]; dy = st[e, 1]
+                    else:
+                        if md > 0.0 and c_ > 0.0:
+                            tgo = mass[b] / md * (1.0 - math.exp(-dv / c_))
+                        else:
+                            tgo = dv / aT
+                        if tgo > Pe[7]:
+                            a0 = 6.0 * (Pe[5] - r) / (tgo * tgo) - 4.0 * vr / tgo
+                            ar = a0 + mu_p / (r * r) - vh * vh / r
+                            sn = ar / aT
+                            if sn > 0.95:
+                                sn = 0.95
+                            elif sn < -0.95:
+                                sn = -0.95
+                            st[e, 4] = sn
+                        sn = st[e, 4]
+                        cs = math.sqrt(1.0 - sn * sn)
+                        dx = sn * urx + cs * uhx; dy = sn * ury + cs * uhy
+                    if math.sqrt(v[3 * b] ** 2 + v[3 * b + 1] ** 2) >= Pe[6]:
+                        st[e, 2] = 1.0                           # target speed reached: guidance cutoff
+                        cut_t[e] = t_
+                st[e, 0] = dx; st[e, 1] = dy
+                Fe[e] = math.degrees(math.asin(max(-1.0, min(1.0, dx * urx + dy * ury))))   # pitch above horizontal
+                se[e] = Rp * (math.atan2(q[3 * b], q[3 * b + 1]) - th0[b] - planet[2] * t_)   # surface range over the turning ground
+                aux[e, 0] = r - Rp
+                aux[e, 1] = math.sqrt(v[3 * b] ** 2 + v[3 * b + 1] ** 2)
+                aux[e, 2] = math.degrees(math.atan2(vr, vh))
+                aux[e, 3] = math.sqrt(ax * ax + ay * ay)
+            for e in range(ne):
+                te = typ[e]
+                if te == TYP_ROCKET:
+                    b = ba[e]; Pe = P[e]
+                    off = Pe[4]
+                    se_ = steer_of[b]
+                    if Pe[7] > 0.5 and se_ >= 0 and st[se_, 2] > 0.5:
+                        off = min(off, cut_t[se_])               # guidance cutoff
+                    f = _ramp(t_, Pe[3], off, Pe[5], Pe[6]) if active[e] == 1 else 0.0
+                    r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)
+                    if mu_p > 0.0:
+                        pa, rho, Ta = atmosphere(r - Rp)
+                    else:
+                        pa = 0.0
+                    F = f * (Pe[0] - pa * Pe[1])
+                    if F < 0.0:
+                        F = 0.0
+                    if se_ >= 0:
+                        dx = st[se_, 0]; dy = st[se_, 1]
+                    else:
+                        dx = urx; dy = ury
+                    frx[e] = F * dx; fry[e] = F * dy
+                    Q[3 * b] += frx[e]; Q[3 * b + 1] += fry[e]
+                    dmv[e] = f * Pe[2] * dt
+                    Tb[b] += F; Mb[b] += f * Pe[2]
+                    Fe[e] = F; aux[e, 0] = f * Pe[2]; aux[e, 1] = pa; aux[e, 2] = mass[b]; aux[e, 3] = f
+                elif te == TYP_JETTISON:
+                    dmv[e] = 0.0
+                    if st[e, 0] < 0.5 and t_ >= P[e, 0] and active[e] == 1:
+                        st[e, 0] = 1.0; dmv[e] = P[e, 1]
+                    Fe[e] = st[e, 0] * P[e, 1]
+                elif te == TYP_AERO:
+                    b = ba[e]
+                    r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)
+                    pa, rho, Ta = atmosphere(r - Rp)
+                    va = math.sqrt(ax * ax + ay * ay)
+                    Mach = va / math.sqrt(1.4 * 287.053 * Ta)
+                    o = tab_off[e]; L = tab_len[e]
+                    qd = 0.5 * rho * va * va
+                    Dg = qd * P[e, 0] * _cd_at(Mach, tab_x[o:o + L], tab_F[o:o + L]) if active[e] == 1 else 0.0
+                    if va > 0.0:
+                        frx[e] = -Dg * ax / va; fry[e] = -Dg * ay / va
+                    else:
+                        frx[e] = 0.0; fry[e] = 0.0
+                    Q[3 * b] += frx[e]; Q[3 * b + 1] += fry[e]
+                    Fe[e] = Dg; se[e] = r - Rp; aux[e, 0] = qd; aux[e, 1] = Mach; aux[e, 2] = rho; aux[e, 3] = pa
+            for e in range(ne):                                 # what guidance reads next step
+                if typ[e] == TYP_STEER:
+                    b = ba[e]
+                    st[e, 3] = Tb[b] / mass[b] if mass[b] > 0.0 else 0.0
+                    st[e, 5] = Tb[b] / Mb[b] if Mb[b] > 0.0 else 0.0
+                    st[e, 6] = Mb[b]
         # elements: contacts and the rest first, then friction on contacts (needs this step's normal force)
         for sweep in range(2):
             for e in range(ne):
-                if (typ[e] == 10) != (sweep == 1) or typ[e] == 14 or typ[e] == 15:
+                if (typ[e] == 10) != (sweep == 1) or typ[e] == 14 or typ[e] == 15 or \
+                        (typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER):
                     continue
                 m_ = mk[e]
                 if m_ == MK_SLIP:
@@ -729,7 +937,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 aux[e, 1] = D[e]; inc[e] = 1 if jn[e] > 0.0 else 0                         # heat so far (J): every joule the impacts took
         # work this step for linear measures and friction (rate form, new velocities, this step's geometry)
         for e in range(ne):
-            if exact[e] == 1 or typ[e] == 9 or mk[e] == MK_BEAM or typ[e] == 14 or typ[e] == 15:
+            if exact[e] == 1 or typ[e] == 9 or mk[e] == MK_BEAM or typ[e] == 14 or typ[e] == 15 or \
+                    (typ[e] >= TYP_ROCKET and typ[e] <= TYP_STEER):
                 continue
             if Fe[e] == 0.0 and Fp[e] == 0.0:
                 Fp[e] = 0.0; dsp[e] = 0.0
@@ -750,6 +959,32 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             Jold[e, r, k] = Jr[r, k]
         for k in range(nq):
             q[k] += dt * v[k] + Dq[k]
+        if incr:
+            for b in range(nb):
+                Wg += (gfx[b] * v[3 * b] + gfy[b] * v[3 * b + 1]) * dt
+        if nveh > 0:
+            for e in range(ne):
+                te = typ[e]
+                if te == TYP_ROCKET or te == TYP_AERO:
+                    b = ba[e]
+                    w_ = (frx[e] * v[3 * b] + fry[e] * v[3 * b + 1]) * dt     # work the force did on the vehicle
+                    A[e] -= w_
+                    if te == TYP_AERO:
+                        D[e] -= w_
+                    else:
+                        IN[e] += w_
+                if (te == TYP_ROCKET or te == TYP_JETTISON) and dmv[e] > 0.0:
+                    b = ba[e]
+                    if dmv[e] > mass[b] * (1.0 - 1e-9):
+                        dmv[e] = mass[b] * (1.0 - 1e-9)
+                    ke = 0.5 * (v[3 * b] ** 2 + v[3 * b + 1] ** 2) * dmv[e]   # kinetic energy the lost mass carries off
+                    A[e] += ke; D[e] += ke
+                    mass[b] -= dmv[e]
+                    if minv[3 * b] > 0.0:
+                        minv[3 * b] = 1.0 / mass[b]
+                    if minv[3 * b + 1] > 0.0:
+                        minv[3 * b + 1] = 1.0 / mass[b]
+                    dmv[e] = 0.0
         if nrig > 0:                                 # rigid joints: Newton steps of the direct position solve
             for it in range(4):
                 if _jsolve2(1, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
@@ -896,7 +1131,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 jacc[e] = 0.0
     stop[1] = done
     for b in range(nb):
-        if mass[b] > 0.0:
+        if mass[b] > 0.0 and not incr:
             px, py = _pt(q, b, com[b, 0], com[b, 1])
             Wg += mass[b] * (grav[0] * (px - PC0[b, 0]) + grav[1] * (py - PC0[b, 1]))
     KE1 = 0.0

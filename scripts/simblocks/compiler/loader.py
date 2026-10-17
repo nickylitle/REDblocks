@@ -83,24 +83,35 @@ ELEMENT_KEYS = {
     "slider": {"k", "c", "k_rot", "c_rot", "axis", "friction", "v_eps", "rigid"},
     "beam": {"E", "A", "I", "Iy", "Iz", "J", "G", "EA", "EI", "EIy", "EIz", "GJ", "section", "material", "density",
              "hinge", "damping", "orient", "rotary_inertia", "end_mass"},
+    "rocket": {"thrust_vac", "exit_area", "mass_flow", "start", "stop", "rise", "tailoff", "cutoff"},
+    "jettison": {"at", "mass"},
+    "aero_drag": {"area", "Cd"},
+    "steering": {"pitch_start", "pitch_rate", "pitch_end", "tilt_arrest", "guidance_start", "target_altitude",
+                 "target_speed", "tgo_freeze"},
 }
-TYPES_2D_ONLY = {"pin", "contact_friction", "rope", "weld", "hinge", "slider", "beam"}
+TYPES_2D_ONLY = {"pin", "contact_friction", "rope", "weld", "hinge", "slider", "beam", "rocket", "jettison", "aero_drag",
+                 "steering"}
 ELEMENT_COMMON = {"type", "measure", "one_sided", "label", "source", "note", "knockout", "mass", "segments",
                   "__lump__", "__hidden__", "__rigid__"}
 REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table"},
                     "hertz": {"K"}, "friction": {"F_c", "v_eps"}, "drag": {"K"}, "force": set(),
                     "drive": {"kv", "R", "I_max", "cells", "R0", "capacity"}, "dc_motor": {"R", "V"}, "emotor": set(), "pin": {"k"},
                     "contact_friction": {"mu", "contact"}, "rope": {"k"}, "weld": {"k", "k_rot"}, "hinge": {"k"},
-                    "slider": {"k", "axis"}, "beam": set(), "impact": {"e"}}
+                    "slider": {"k", "axis"}, "beam": set(), "impact": {"e"},
+                    "rocket": {"thrust_vac", "mass_flow"}, "jettison": {"at", "mass"}, "aero_drag": {"area", "Cd"},
+                    "steering": set()}
 OUTPUT_KEYS = {"element", "body", "part", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
 ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
-                      "impulse", "friction_impulse", "drift"}
+                      "impulse", "friction_impulse", "drift",
+                      "pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed",
+                      "drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure",
+                      "thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "dropped"}
 BODY_QUANTITIES = {"position", "velocity", "kinetic_energy"}
 BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
                       "velocity", "kinetic_energy"}
 BODY_QUANTITIES_2D = {"x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"}
-REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_below"}
+REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_below", "at", "time_of_max", "time_of_min"}
 EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
 EXPORT_COLUMN_KEYS = {"element", "body", "part", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
@@ -108,7 +119,11 @@ STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current"
                  "dc_motor": {"current"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
                  "impact": {"impulse", "dissipated", "friction_impulse"},
-                 "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"}}
+                 "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"},
+                 "steering": {"pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed"},
+                 "aero_drag": {"drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure"},
+                 "rocket": {"thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle"},
+                 "jettison": {"dropped"}}
 EXPORT_HEADERS = {"units", "plain", "none"}
 EXPORT_ON = {"run", "study"}
 FAIL_KEYS = {"name", "metric", "limit", "fails_when", "demand", "capacity", "origin", "assumption", "reach_metric"}
@@ -290,6 +305,8 @@ def check(doc):
         red = o.get("reduce", "final")
         if red not in REDUCES:
             raise SpecError(f"reduce must be one of {', '.join(sorted(REDUCES))}", p, line_of(o, "reduce"), f)
+        if red == "at" and "value" not in o:
+            raise SpecError("reduce: at needs a 'value': the time to read the quantity at", p, line_of(o, "reduce"), f)
         if red.startswith("first_time") and "value" not in o:
             raise SpecError(f"{red} needs a 'value' threshold", p, line_of(o, "reduce"), f)
     for i, m in enumerate(doc.get("failure", []) or []):

@@ -604,7 +604,10 @@ const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"elem
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
-  pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"]};
+  pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"],
+  rocket:["thrust","mass_flow","back_pressure","vehicle_mass","throttle"], jettison:["dropped"],
+  aero_drag:["drag","dynamic_pressure","mach","air_density","ambient_pressure"],
+  steering:["altitude","speed_inertial","airspeed","flight_path_angle","pitch","downrange"]};
 const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", alpha:"damping factor", table:"yield table",
   break_at:"tears off at set", F_c:"friction force", v_eps:"slip speed scale", F_s:"static peak", v_s:"Stribeck speed",
   P:"constant push", kv:"motor Kv", R:"winding R", I_max:"ESC limit", gear:"motor:load", cells:"cells", R0:"pack R0",
@@ -694,14 +697,15 @@ function sockets(n){
   if (n.kind === "element"){
     const gk = isGeo() ? geoKind(d) : "coords";
     if (gk === "slip"){}
+    else if (gk === "vehicle") ins.push({key:"t0", label:"vehicle", type:"body", term:0, req:true});
     else if (gk !== "coords"){ ensure2(n); ["A","B"].forEach((lab, i) => ins.push({key:"t" + i, label:lab, type:"body", term:i})); }
     else if (!d.raw) d.terms.forEach((t, i) => ins.push({key:"t" + i, label:"body " + (i + 1), type:"body", term:i}));
     const et = CAT ? CAT.element_types[d.type] : {fields:[], required:[]};
     const rigid = String(d.fields && d.fields.rigid || "").trim() === "true";
-    et.fields.filter(f => f !== "contact" && !(isGeo() && d.type !== "beam" && (f === "mass" || f === "segments")) && !(!is3d() && d.type === "hinge" && f === "axis") && !(rigid && /^(k|c|k_rot|c_rot)$/.test(f)))
+    et.fields.filter(f => f !== "contact" && !(isGeo() && d.type !== "beam" && d.type !== "jettison" && (f === "mass" || f === "segments")) && !(!is3d() && d.type === "hinge" && f === "axis") && !(rigid && /^(k|c|k_rot|c_rot)$/.test(f)))
       .forEach(f => ins.push({key:"f." + f, label:f, type:"val", req: et.required.includes(f) && !(rigid && /^(k|k_rot)$/.test(f))}));
-    SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
-    (STATE_Q[d.type] || []).forEach(q => outs.push({key:"q." + q, label:q, type:"state"}));
+    if (!VEH_TYPES.includes(d.type)) SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
+    (STATE_Q[d.type] || []).forEach(q => outs.push({key:"q." + q, label:q, type: VEH_TYPES.includes(d.type) ? "sig" : "state"}));
   }
   if (n.kind === "output"){ ins.push({key:"src", label:"source", type:"any", req:true}); outs.push({key:"metric", label:"metric", type:"metric"}); }
   if (n.kind === "expr") outs.push({key:"metric", label:"metric", type:"metric"});
@@ -858,7 +862,9 @@ function featIn(b){ const out = [];
   return out; }
 // joints and beams join two points: [A.point, B.point] (the editor calls this the "pin" shape of measure)
 const PAIR_TYPES = ["pin","weld","hinge","slider","beam"];
-function geoKind(d){ return PAIR_TYPES.includes(d.type) ? "pin" : (d.type === "contact_friction" ? "slip" : (d.mk || "coords")); }
+// vehicle elements act on one body as a whole (a rocket's engines, staging, drag, steering)
+const VEH_TYPES = ["rocket","jettison","aero_drag","steering"];
+function geoKind(d){ return VEH_TYPES.includes(d.type) ? "vehicle" : (PAIR_TYPES.includes(d.type) ? "pin" : (d.type === "contact_friction" ? "slip" : (d.mk || "coords"))); }
 function vecRow3(d, key, dim, tip){
   const u = d[key + "u"] ?? defUnit(dim);
   return `<div class="row"><label title="${esc(tip)}">${key}</label><div class="uv vxyz">` + ["x","y","z"].map(c => `<input data-k="${key}${c}" value="${esc(d[key + c] ?? "")}" placeholder="${c} 0" title="${esc(tip)}: ${c}">`).join("") +
@@ -868,6 +874,7 @@ function ensure2(n){ const d = n.data; while (d.terms.length < 2) d.terms.push({
   S.links = S.links.filter(l => !(l.to.node === n.id && /^t\d+$/.test(l.to.key) && +l.to.key.slice(1) > 1)); } }
 function measure2(n){
   const d = n.data, gk = geoKind(d);
+  if (gk === "vehicle"){ const l = linkTo(n.id, "t0"); return l ? byId(l.from.node).data.name : ""; }
   if (gk === "pin" || ["distance","along","contact","twist"].includes(gk)){
     const ref = (i, f) => { const l = linkTo(n.id, "t" + i); if (!l) return null; const bn = byId(l.from.node).data.name; return f ? bn + "." + f : bn; };
     const a = ref(0, gk === "twist" ? "" : d.fa), b = ref(1, gk === "twist" ? "" : d.fb); if (!a || !b) return "";
@@ -1112,7 +1119,7 @@ function toDoc(){
       if (src.kind === "body"){ o.body = src.data.name; o.quantity = d.quantity; }
       else if (src.kind === "part"){ o.part = src.data.name; o.quantity = l.from.key.slice(2); }
       else { o.element = src.data.name; o.quantity = l.from.key.slice(2); } }
-    o.reduce = d.reduce; if (d.reduce.startsWith("first_time")) o.value = lit(d.value);
+    o.reduce = d.reduce; if (d.reduce.startsWith("first_time") || d.reduce === "at") o.value = lit(d.value);
     if (d.unit) o.unit = d.unit; if (d.abs) o.abs = true; if (d.label) o.label = d.label;
     if (o.quantity === "kinetic_energy") delete o.reduce;
     outputs[d.name] = o;
@@ -1310,7 +1317,8 @@ function fromDoc(doc){
       }
       const d = {name:k, type:e.type, one_sided:!!e.one_sided, label:e.label || "", source:e.source || "", fields:{}, extra:{}, terms:[], const:"", raw:null};
       const links = [];
-      if (e.type === "contact_friction") d.contact = e.contact || "";
+      if (VEH_TYPES.includes(e.type)){ d.terms = [{coef:"1"}]; if (typeof m === "string" && bodyNames.includes(m.trim())) links.push([m.trim(), 0]); else d.raw = str(m); }
+      else if (e.type === "contact_friction") d.contact = e.contact || "";
       else if (geo){ const kind = PAIR_TYPES.includes(e.type) ? "pin" : ["distance","along","contact","twist"].find(x => m[x] !== undefined);
         const refs = Array.isArray(m) ? m : (m.pin || m[kind] || []);
         if (kind !== "pin") d.mk = kind; d.dir = str(m.dir ?? m.axis ?? ""); d.mlen = str(m.length ?? ""); d.terms = [{coef:"1"},{coef:"-1"}];
@@ -1458,13 +1466,19 @@ const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force",
   e:"none", mu:"none", v_rest:"speed", k_rot:"rot_stiffness", c_rot:"rot_damping", k_twist:"rot_stiffness", c_twist:"rot_damping",
   friction:"force", length:"length", E:"stress", G:"stress", A:"area", I:"area_moment", Iy:"area_moment", Iz:"area_moment",
   J:"area_moment", EA:"force", density:"density", damping:"none", mass:"mass", segments:"none",
+  thrust_vac:"force", exit_area:"area", mass_flow:"none", start:"time", stop:"time", rise:"time", tailoff:"time", cutoff:"none",
+  at:"time", Cd:"none", pitch_start:"time", pitch_rate:"none", pitch_end:"time", tilt_arrest:"time", guidance_start:"time",
+  target_altitude:"length", target_speed:"speed", tgo_freeze:"time",
   EI:"none", EIy:"none", EIz:"none", GJ:"none", end_mass:"none", hinge:"none", material:"none", rotary_inertia:"none", orient:"none", section:"none", rigid:"none", one_sided:"none", contact:"none"};
 const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse",
   friction_impulse:"impulse", drift:"none",
   force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
   current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
   voltage:"voltage", power:"power", energy:"energy", state:"none", temperature:"none", heat:"energy",
-  position:"length", velocity:"speed", kinetic_energy:"energy"};
+  position:"length", velocity:"speed", kinetic_energy:"energy",
+  thrust:"force", mass_flow:"none", back_pressure:"stress", vehicle_mass:"mass", throttle:"none", dropped:"mass",
+  drag:"force", dynamic_pressure:"stress", mach:"none", air_density:"density", ambient_pressure:"stress",
+  altitude:"length", speed_inertial:"speed", airspeed:"speed", flight_path_angle:"none", pitch:"none", downrange:"length"};
 const NUMRE = /^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*(.*)$/;
 function splitQ(v){ const t = String(v ?? "").trim(); if (!t) return {num:"", unit:"", text:false};
   const m = t.match(NUMRE); if (m) return {num:m[1], unit:m[2].trim(), text:false}; return {num:t, unit:"", text:true}; }
@@ -1616,6 +1630,7 @@ function featsHTML(d){
 }
 function measure2HTML(n, ins){
   const d = n.data, gk = geoKind(d); let b = "";
+  if (gk === "vehicle") return sockRow(n, ins.find(s => s.key === "t0")) + `<div class="hint">acts on the whole vehicle body</div>`;
   if (gk !== "pin") b += `<div class="row"><label title="what the element measures">measures</label><select data-k="mk">${sel_([["coords","coordinates (A.x, B.rz…)"],["distance","distance between points"],["along","gap along a direction"],["contact","contact (penetration)"],["twist","twist: B's turn relative to A"]], gk)}</select></div>`;
   if (gk === "coords") return b + termsHTML(n, ins);
   if (gk === "twist"){
@@ -2109,8 +2124,9 @@ function nodeHTML(n){
     if (!(src && src.kind === "body" && d.quantity === "kinetic_energy"))
       b += `<div class="row"><label>reduce</label><select data-k="reduce">${sel_(src && src.kind === "part" ? PRED : CAT.reduces, d.reduce)}</select></div>`;
     if (d.reduce.startsWith("first_time")) b += `<div class="row req"><label title="the level to cross, in the quantity's own SI unit unless you type one (0, 25 mm, 3 kN)">value</label><input data-k="value" value="${esc(d.value)}" placeholder="level, e.g. 25 mm"></div>`;
+    if (d.reduce === "at") b += `<div class="row req"><label title="the time to read the quantity at">at time</label><input data-k="value" value="${esc(d.value)}" placeholder="e.g. 162 s"></div>`;
     const qn = src ? (src.kind === "body" ? d.quantity : l.from.key.slice(2)) : "force";
-    const od = d.reduce.startsWith("first_time") ? "time" : (src ? quantityDim(src, qn) : (OUT_DIM[qn] || null));
+    const od = (d.reduce.startsWith("first_time") || d.reduce.startsWith("time_of")) ? "time" : (src ? quantityDim(src, qn) : (OUT_DIM[qn] || null));
     if (od && od !== "none" && (!d.unit || !(UNITS[od] || []).includes(d.unit))) d.unit = defUnit(od);
     if (od === "none") d.unit = "";
     const uo = od === "none" ? null : unitOptions(od, d.unit || "");
@@ -3907,6 +3923,14 @@ const GUIDE = [
   <p>Outputs: x, y, z, vx, vy, vz, speed; angle and omega of a spinning body; wx, wy, wz of a freely rotating one. Example: <b>Examples → horizontal_spinner_wedge.yaml</b>.</p>`},
  {id:"loads", grp:"Building models", t:"Loads", h:`
   <p>A <b>Load</b> is a constant force on a body along its measure: gravity, a thrust, a push. Type the force, or plug a Range or Monte Carlo node into it to vary it. It is written to the file as a <code>force</code> element.</p>`},
+ {id:"rockets", grp:"Building models", t:"Rockets and launches", h:`
+  <p>A launch is a 2D model with a planet: set <b>gravity</b> (side panel) to <code>{planet: earth, radius: 6373 km, rotation: $site.omega_plane}</code>. The Earth's centre is the origin, gravity falls off with distance, and the US Standard Atmosphere sits above the surface. The <b>launch_plane</b> block gives the Earth's turn about your flight plane and the pad's speed (the vehicle's v0).</p>
+  <ul>
+   <li><b>rocket_engine</b> block: an engine from its propellants (RP-1, hydrogen or methane with liquid oxygen). Chemistry gives the ideal Isp and the nozzle exit area; one rating (sea-level or vacuum Isp, or vacuum thrust with flow) sets the real engine. Its F_vac, A_e and mdot feed a rocket element.</li>
+   <li><b>rocket</b> element: thrust F_vac − p_outside · A_e along the steering direction, burning mass_flow off the vehicle. start / stop with a rise and tail-off, or cutoff: guidance.</li>
+   <li><b>jettison</b>: a stage or part dropped at a time. <b>aero_drag</b>: drag from the air density and a Cd against Mach. <b>steering</b>: vertical, pitch-over, gravity turn, attitude hold, then guidance to a target orbit.</li>
+  </ul>
+  <p>Outputs read the flight: altitude, speeds, flight path angle, downrange, dynamic pressure, Mach, thrust, vehicle mass. <b>reduce: at</b> reads any quantity at a time (staging, insertion); <b>time_of_max</b> gives when it peaks (max q). Example: <b>2D-4 Apollo 11 Saturn V ascent</b>, checked against NASA's postflight trajectory.</p>`},
  {id:"circuit", grp:"Building models", t:"Electrical circuits", h:`
   <p>Two ways to power a motor:</p>
   <ul>

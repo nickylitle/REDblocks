@@ -251,6 +251,10 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
     for e, en in enumerate(enames):
         d = els[en]; where = f"elements.{en}"; t = d["type"]
         typ[e] = {"pin": 9, "contact_friction": 10, "rope": 2, "beam": 12}.get(t, TYPE_CODE.get(t, -1))
+        if t in VEHICLE_TYPES:                            # a vehicle element acts on one body as a whole
+            _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, act, tabs_x, tabs_F,
+                             overrides, f)
+            continue
         one[e] = 1 if (d.get("one_sided") or t == "rope") else 0
         meas = d.get("measure")
         if t == "rope" and not (isinstance(meas, dict) and "distance" in meas):
@@ -524,7 +528,7 @@ def measure_text(meas):
 def gravity(doc, ctx):
     from .model import resolve, num
     gv = doc.get("gravity")
-    if gv in (None, 0, "none", "off"):
+    if gv in (None, 0, "none", "off") or isinstance(gv, dict):
         return np.zeros(2)
     if isinstance(gv, list) or (isinstance(gv, str) and gv.strip().startswith("[")):
         return np.array(_vec(gv, ctx, "gravity"))
@@ -533,11 +537,13 @@ def gravity(doc, ctx):
 
 
 def compile2d(doc, ctx, M, overrides):
+    M.planet = planet_of(doc, ctx)
     B, feats = compile_bodies(doc, ctx, M)
     EL = compile_elements(doc, ctx, M, B, feats, overrides)
     M.dim = "2d"
     M.feats = feats
-    M.arrays = dict(**B, **EL, grav=gravity(doc, ctx))
+    M.arrays = dict(**B, **EL, grav=gravity(doc, ctx),
+                    planet=M.planet if M.planet is not None else np.zeros(4))
     for name, o in (doc.get("outputs") or {}).items():           # body outputs must name one coordinate
         if "body" in o and o.get("quantity") != "kinetic_energy":
             if doc["bodies"][o["body"]].get("ground"):
@@ -603,3 +609,98 @@ def body_slot(M, body, qn, where):
         return 8, i
     src, k = BODY_Q2[qn]
     return src, 3 * i + k
+
+
+# ---------------------------------------------------------------------------------------- vehicles in flight
+VEHICLE_TYPES = {"rocket": 18, "jettison": 19, "aero_drag": 20, "steering": 21}
+
+
+def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, act, tabs_x, tabs_F, overrides, f):
+    """rocket (engines on a body), jettison (a stage or part dropped at a time), aero_drag (drag from the
+    atmosphere with a Cd table against Mach), steering (the thrust direction: vertical rise, pitch-over, gravity
+    turn, tilt arrest, then guidance to a target orbit)."""
+    from .model import resolve, num, KNOCK
+    m = str(d.get("measure", "")).strip()
+    if m not in names:
+        raise SpecError(f"a {t} acts on one moving body: measure: <body name> (bodies: {', '.join(names)})", where,
+                        line_of(d, "measure"), f)
+    b = names.index(m)
+    if B["minv"][3 * b] <= 0 and B["minv"][3 * b + 1] <= 0:
+        raise SpecError(f"a {t} needs a body free to move in x and y", where, line_of(d, "measure"), f)
+    if t in ("rocket", "jettison") and B["minv"][3 * b + 2] > 0:
+        raise SpecError(f"a {t} changes its body's mass, so the body moves in x and y only (dof: [x, y]); "
+                        "point it with a steering element", where, line_of(d, "measure"), f)
+    g = lambda key, dflt=None: num(resolve(d[key], ctx, f"{where}.{key}"), f"{where}.{key}") if key in d else dflt
+    typ[e] = VEHICLE_TYPES[t]; mk[e] = 0; ba[e] = b
+    tx = np.zeros(0); tF = np.zeros(0)
+    if t == "rocket":
+        for k in ("thrust_vac", "mass_flow"):
+            if k not in d:
+                raise SpecError(f"a rocket needs {k} (from a rocket_engine block: $eng.F_vac, $eng.mdot)", where,
+                                line_of(d, "type"), f)
+        cut = d.get("cutoff")
+        if cut not in (None, "guidance", "time"):
+            raise SpecError("cutoff is guidance (the steering element's target speed stops it) or time (stop:)", where,
+                            line_of(d, "cutoff"), f)
+        P[e, :8] = [g("thrust_vac"), g("exit_area", 0.0), g("mass_flow"), g("start", 0.0), g("stop", 1e300),
+                    g("rise", 0.0), g("tailoff", 0.0), 1.0 if cut == "guidance" else 0.0]
+        if P[e, 0] <= 0 or P[e, 2] <= 0 or P[e, 1] < 0:
+            raise SpecError("thrust_vac and mass_flow must be positive, exit_area >= 0", where, line_of(d, "type"), f)
+    elif t == "jettison":
+        P[e, :2] = [g("at"), g("mass")]
+        if P[e, 1] is None or P[e, 0] is None or P[e, 1] <= 0:
+            raise SpecError("a jettison needs at (time) and mass (what is dropped)", where, line_of(d, "type"), f)
+    elif t == "aero_drag":
+        P[e, 0] = g("area")
+        cd = resolve(d.get("Cd"), ctx, where + ".Cd")
+        if isinstance(cd, (int, float)):
+            tx = np.array([0.0]); tF = np.array([float(cd)])
+        elif isinstance(cd, dict) and {"mach", "cd"} <= set(cd):
+            tx = np.ascontiguousarray([float(x) for x in cd["mach"]]); tF = np.ascontiguousarray([float(x) for x in cd["cd"]])
+            if len(tx) != len(tF) or len(tx) < 1 or np.any(np.diff(tx) <= 0):
+                raise SpecError("Cd: {mach: [...], cd: [...]} with rising Mach numbers, one Cd each", where,
+                                line_of(d, "Cd"), f)
+        else:
+            raise SpecError("Cd is a number or a table {mach: [...], cd: [...]}", where, line_of(d, "Cd"), f)
+        if not P[e, 0] or P[e, 0] <= 0:
+            raise SpecError("aero_drag needs area (the reference area its Cd is quoted on)", where, line_of(d, "area"), f)
+    else:                                                       # steering
+        R = M.planet[1] if getattr(M, "planet", None) is not None else 0.0
+        P[e, :8] = [g("pitch_start", 1e300), g("pitch_rate", 0.0), g("pitch_end", g("pitch_start", 1e300)),
+                    g("tilt_arrest", g("pitch_end", 1e300)), g("guidance_start", 1e300),
+                    R + g("target_altitude", 0.0), g("target_speed", 1e300), g("tgo_freeze", 10.0)]
+        if "guidance_start" in d and ("target_altitude" not in d or "target_speed" not in d):
+            raise SpecError("guidance needs target_altitude and target_speed (inertial, at cutoff)", where,
+                            line_of(d, "guidance_start"), f)
+        if "guidance_start" in d and R <= 0:
+            raise SpecError("guidance to an orbit needs a planet: gravity: {planet: earth}", where,
+                            line_of(d, "guidance_start"), f)
+    if t in ("aero_drag", "rocket") and getattr(M, "planet", None) is None and t == "aero_drag":
+        raise SpecError("aero_drag needs a planet and its atmosphere: gravity: {planet: earth}", where,
+                        line_of(d, "type"), f)
+    if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
+        act[e] = 0
+    tabs_x.append(tx); tabs_F.append(tF)
+    M.el_info[en] = dict(type=t, measure=m, params=P[e].copy(), k=None)
+
+
+PLANETS = {"earth": dict(mu=3.986004418e14, radius=6371000.0, rotation=7.2921159e-5)}
+
+
+def planet_of(doc, ctx):
+    """gravity: {planet: earth, radius: .., mu: .., rotation: ..} -> [mu, R, in-plane rotation, 1], else None."""
+    from .model import resolve, num
+    gv = doc.get("gravity")
+    if not isinstance(gv, dict):
+        return None
+    bad = set(gv) - {"planet", "radius", "mu", "rotation", "note"}
+    if bad or "planet" not in gv:
+        raise SpecError("gravity is a number, a vector, or {planet: earth, radius: ..., mu: ..., rotation: ...}",
+                        "gravity", line_of(doc, "gravity"))
+    base = PLANETS.get(str(gv["planet"]).lower())
+    if base is None and "mu" not in gv:
+        raise SpecError(f"unknown planet '{gv['planet']}' (known: {', '.join(PLANETS)}; or give mu and radius)",
+                        "gravity", line_of(doc, "gravity"))
+    base = base or {}
+    g = lambda k: num(resolve(gv[k], ctx, f"gravity.{k}"), f"gravity.{k}") if k in gv else base.get(k, 0.0)
+    return np.array([g("mu"), g("radius"), g("rotation"), 1.0])

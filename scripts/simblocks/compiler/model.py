@@ -17,7 +17,13 @@ from . import engine1d as E
 TYPE_CODE = {"spring": 0, "dashpot": 1, "kelvin_voigt": 2, "elastoplastic": 3, "hertz": 4, "friction": 5,
              "drag": 6, "force": 7, "drive": 8, "impact": 14, "emotor": 17}
 AUX = {"plastic_set": 0, "broken": 2, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
-       "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3}
+       "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3,
+       # vehicles in flight: steering (altitude, inertial speed, flight path angle, speed through the air),
+       # aero_drag (dynamic pressure, Mach, density, outside pressure), rocket (flow, back pressure, vehicle mass)
+       "altitude": 0, "speed_inertial": 1, "flight_path_angle": 2, "airspeed": 3,
+       "dynamic_pressure": 0, "mach": 1, "air_density": 2, "ambient_pressure": 3,
+       "mass_flow": 0, "back_pressure": 1, "vehicle_mass": 2, "throttle": 3}
+QALIAS = {"pitch": "force", "thrust": "force", "drag": "force", "dropped": "force", "downrange": "measure"}
 KNOCK = "__knock__"          # override prefix: element switched off
 ELASTIC = "__elastic__"      # override prefix: elastoplastic element made elastic
 
@@ -200,13 +206,36 @@ def build_context(doc, overrides=None):
         ctx[k] = val
     for k in [k for k in ov if not k.startswith("__")]:
         raise SpecError(f"override '{k}' is not a parameter of this file", "params", None, f)
-    for k, v in (doc.get("derived", {}) or {}).items():
+    for k, v in _derived_order(doc.get("derived", {}) or {}):
         try:
             ctx[k] = resolve(v, ctx, f"derived.{k}")
         except SpecError as exc:
             exc.args = (f"{f}:{line_of(doc['derived'], k)} {exc.args[0]}",)
             raise
     return ctx
+
+
+def _derived_order(der):
+    """Derived values in an order where each comes after the ones it uses ($name or $name.field), keeping the
+    file's order otherwise (the editor may write them grouped by kind)."""
+    import re as _re
+    names = list(der)
+    deps = {}
+    for k, v in der.items():
+        txt = str(v)
+        deps[k] = {m for m in _re.findall(r"\$([A-Za-z_]\w*)", txt) if m in der and m != k}
+    out, done, busy = [], set(), set()
+
+    def visit(k):
+        if k in done or k in busy:            # a cycle is left to the resolver to report
+            return
+        busy.add(k)
+        for d in sorted(deps[k], key=names.index):
+            visit(d)
+        busy.discard(k); done.add(k); out.append(k)
+    for k in names:
+        visit(k)
+    return [(k, der[k]) for k in out]
 
 
 def compile_model(doc, overrides=None):
@@ -385,6 +414,11 @@ def _run_settings(M, doc, ctx):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))
+    a2 = getattr(M, "arrays", None)
+    if a2 is not None and "typ" in a2 and np.any((a2["typ"] >= 18) & (a2["typ"] <= 21)):
+        # a vehicle in flight: resolve the engines' rise and tail-off, and never more than 50 ms a step
+        ts = [a2["P"][e, k] for e in range(len(a2["typ"])) if a2["typ"][e] == 18 for k in (5, 6) if a2["P"][e, k] > 0]
+        M.dt_auto = min(M.dt_auto, 0.05, *(x / 10.0 for x in ts))
     if getattr(M, "circ", None):                # the circuit's fastest transient, five steps a time constant
         from .circuit import circuit_tau
         M.dt_circ = circuit_tau(M.circ)
@@ -495,7 +529,7 @@ def _crossings(M):
             if s is None:
                 raise SpecError("first_time_* works on position or velocity of a body", where)
         else:
-            qn = o["quantity"]; i = el_index(M, o["element"], qn)
+            qn = QALIAS.get(o["quantity"], o["quantity"]); i = el_index(M, o["element"], qn)
             if qn == "force":
                 s = 2
             elif qn == "measure":
@@ -544,7 +578,10 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     a = M.arrays; dt = dt or M.dt
     n = int(round(M.t_end / dt)) if _n is None else _n
     cs, ci, ct, cd, ckeys = _crossings(M)
-    every = max(n // n_log, 1) if history else 0
+    wants_at = any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in (M.doc.get("outputs") or {}).values())
+    if wants_at:
+        n_log = max(n_log, 4000)
+    every = max(n // n_log, 1) if (history or wants_at) else 0
     limit = getattr(M, "timeout", "auto") if timeout == "model" else timeout
     if limit == "auto":
         limit = auto_timeout(M, dt)
@@ -578,7 +615,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC) = E2.run_engine2d(
                 n, dt, a["q0"], a["v0"], a["minv"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"],
                 a["active"], a["mk"], a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs,
+                a["planet"], stop)
         else:
             (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk, CP, CTR, LC) = E.run_engine(
                 n, dt, a["q0"], a["v0"], a["m"], a["typ"], a["one_sided"], a["active"], a["P"], a["C"], a["s0"],
@@ -616,6 +654,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
         R["_circuit_ledger_rel"] = float(abs(CP[:, 3].sum()) / tot) if tot > 0 else 0.0
     if dim2 or dim3:
         R["_gravity_work"] = float(Wg)
+    AT = _at_values(M, LT if every else LT[:0], LB, LE, dim2) if any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in M.doc["outputs"].values()) else {}
     if timed_out:
         R["_timed_out"] = 1.0
         R["_t_stopped"] = float(stop[1]) * dt
@@ -660,6 +699,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                     raise SpecError("kinetic_energy supports reduce: final only", f"outputs.{name}")
                 i = M.body_names.index(o["body"]); mi = a["minv"][3 * i:3 * i + 3]
                 val = sum(0.5 * v[3 * i + k] ** 2 / mi[k] for k in range(3) if mi[k] > 0)
+            elif red in ("at", "time_of_max", "time_of_min"):
+                val = AT[name]
             elif red.startswith("first_time"):
                 val = tc[name]
             else:
@@ -700,14 +741,16 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                                     f"outputs.{name}")
 
             def span(e):
-                k = {"force": 0, "measure": 1}.get(qn)
+                k = {"force": 0, "measure": 1}.get(QALIAS.get(qn, qn))
                 if k is not None:
                     lo, hi, fin = TR[e, 2 * k], TR[e, 2 * k + 1], (Fe[e] if k == 0 else se[e])
                 else:
                     j = AUX[qn]
                     lo, hi, fin = TR[e, 4 + 2 * j], TR[e, 5 + 2 * j], aux[e, j]
                 return (0.0, 0.0, 0.0) if lo > 1e299 else (lo, hi, fin)
-            if red.startswith("first_time"):
+            if red in ("at", "time_of_max", "time_of_min"):
+                val = AT[name]
+            elif red.startswith("first_time"):
                 val = tc[name]
             elif qn == "absorbed_work":
                 val = sum(A[e] for e in rows)
@@ -793,6 +836,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             H[f"{en}.force"] = LE[:, e * w]; H[f"{en}.measure"] = LE[:, e * w + 1]
             for qn, j in AUX.items():
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
+            for al, base in QALIAS.items():
+                H[f"{en}.{al}"] = H[f"{en}.{base}"]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
         _group_history(M, H); _circ_history(M, H, LC)
@@ -811,3 +856,39 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
         _group_history(M, H); _circ_history(M, H, LC)
         return R, H
     return R
+
+
+
+def _at_values(M, LT, LB, LE, dim2):
+    """Outputs read from the run's log: reduce: at (the value at a given time, interpolated), time_of_max and
+    time_of_min (when the quantity peaks)."""
+    out = {}
+    if len(LT) == 0:                       # a zero-step run (the engine's first compile): nothing logged
+        return {name: 0.0 for name, o in M.doc["outputs"].items() if o.get("reduce") in ("at", "time_of_max", "time_of_min")}
+    w = 2 + E.NAUX
+    for name, o in M.doc["outputs"].items():
+        red = o.get("reduce")
+        if red not in ("at", "time_of_max", "time_of_min"):
+            continue
+        qn = o.get("quantity")
+        if "element" in o:
+            e = M.el_names.index(o["element"]); base = QALIAS.get(qn, qn)
+            col = {"force": 0, "measure": 1}.get(base)
+            ser = LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]]
+        elif dim2:
+            i = M.body_names.index(o["body"]); nq = 3 * len(M.body_names)
+            if qn == "speed":
+                ser = np.hypot(LB[:, nq + 3 * i], LB[:, nq + 3 * i + 1])
+            else:
+                from .model2d import body_slot
+                src, k = body_slot(M, o["body"], qn, f"outputs.{name}")
+                ser = LB[:, k] if src == 0 else LB[:, nq + k]
+        else:
+            i = M.body_names.index(o["body"])
+            ser = LB[:, 2 * i] if qn == "position" else LB[:, 2 * i + 1]
+        if red == "at":
+            t = num(resolve(o["value"], M.ctx, f"outputs.{name}.value"), f"outputs.{name}.value")
+            out[name] = float(np.interp(t, LT, ser))
+        else:
+            out[name] = float(LT[int(np.argmax(ser) if red == "time_of_max" else np.argmin(ser))])
+    return out

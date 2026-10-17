@@ -100,6 +100,31 @@ ELEMENTS = [
          what="2D and 3D. Sliding friction on a contact element: rides on that contact's normal force and acts along "
               "its surface, so it stops when the contact separates. Rolling, skidding and scraping come out of it.",
          yaml="grip:\n  type: contact_friction\n  contact: tyre_on_floor\n  mu: 0.8\n  v_eps: 1 mm/s"),
+    dict(name="rocket", law="F = level (F_vac - p_amb A_e) along the steering direction; mass falls by level x mass_flow (2d)",
+         fields="thrust_vac, exit_area, mass_flow, start, stop, rise, tailoff, cutoff",
+         what="2D, with a planet (gravity: {planet: earth}). Engines on a vehicle body (dof [x, y]): thrust grows as the "
+              "outside pressure falls (US Standard Atmosphere at the body's altitude), and the body loses the propellant "
+              "it burns. start / stop with a linear rise and tail-off; cutoff: guidance stops it when the steering "
+              "element's target speed is reached. Take thrust_vac, exit_area and mass_flow from a rocket_engine block "
+              "(chemistry). Outputs: thrust, mass_flow, back_pressure, vehicle_mass, throttle.",
+         yaml="first_stage:\n  type: rocket\n  measure: vehicle\n  thrust_vac: $f1.F_vac\n  exit_area: $f1.A_e\n  mass_flow: $f1.mdot\n  stop: 150 s"),
+    dict(name="jettison", law="at time t the body's mass drops by mass", fields="at, mass",
+         what="2D. Drops part of a vehicle (a spent stage, an interstage, a fairing): the body's mass falls at once and "
+              "the kinetic energy the part carries away is booked in the ledger.",
+         yaml="staging:\n  type: jettison\n  measure: vehicle\n  at: 162 s\n  mass: 165000 kg"),
+    dict(name="aero_drag", law="D = 1/2 rho v^2 Cd(Mach) area, against the velocity through the turning air (2d)",
+         fields="area, Cd (a number or {mach: [...], cd: [...]})",
+         what="2D, with a planet. Drag from the US Standard Atmosphere 1976 at the body's altitude, with Cd read against "
+              "Mach. Outputs: drag, dynamic_pressure, mach, air_density, ambient_pressure.",
+         yaml="air:\n  type: aero_drag\n  measure: vehicle\n  area: 10.5 m^2\n  Cd: {mach: [0, 1, 2, 5], cd: [0.3, 0.6, 0.45, 0.3]}"),
+    dict(name="steering", law="vertical, pitch-over, gravity turn, attitude hold, then explicit guidance to an orbit (2d)",
+         fields="pitch_start, pitch_rate, pitch_end, tilt_arrest, guidance_start, target_altitude, target_speed, tgo_freeze",
+         what="2D, with a planet. Points the vehicle's thrust: straight up until pitch_start; turns over at pitch_rate "
+              "until pitch_end; then follows the air-relative velocity (gravity turn) until tilt_arrest; holds that "
+              "attitude; from guidance_start steers so the climb ends level at target_altitude, and signals cutoff "
+              "when the inertial speed reaches target_speed. Outputs: altitude, speed_inertial, airspeed (earth-fixed), "
+              "flight_path_angle and pitch (deg), downrange (over the turning ground).",
+         yaml="guidance:\n  type: steering\n  measure: vehicle\n  pitch_start: 12 s\n  pitch_rate: 0.15 deg/s\n  pitch_end: 22 s\n  tilt_arrest: 150 s\n  guidance_start: 190 s\n  target_altitude: 190 km\n  target_speed: 7790 m/s"),
 ]
 
 
@@ -155,7 +180,14 @@ def _el_fig_raw(name):
                     '<line x1="86" y1="45" x2="118" y2="45" stroke="currentColor" stroke-width="1.4"/>',
            "slider": '<line x1="42" y1="58" x2="118" y2="58" stroke="currentColor" stroke-width="2"/>' +
                      '<rect x="66" y="44" width="28" height="12" style="fill:var(--soft)" stroke="currentColor"/>',
-           "beam": '<path d="M42,45 C70,45 90,52 118,60" fill="none" stroke="currentColor" stroke-width="3"/>'}[name]
+           "beam": '<path d="M42,45 C70,45 90,52 118,60" fill="none" stroke="currentColor" stroke-width="3"/>'}.get(name)
+    if mid is None:                                   # vehicle elements act on one body: a body with its arrow
+        a = FG._box(60, 30, 40, 30, "body")
+        mid = {"rocket": '<path d="M80,62 L72,84 M80,62 L88,84" fill="none" stroke="currentColor" stroke-width="1.6"/>'
+                         '<line x1="80" y1="28" x2="80" y2="6" stroke="currentColor" stroke-width="2"/>',
+               "jettison": '<rect x="66" y="66" width="28" height="14" fill="none" stroke="currentColor" stroke-dasharray="3 2"/>',
+               "aero_drag": '<path d="M20,40 H52 M20,50 H52 M28,45 H52" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+               "steering": '<path d="M80,30 Q100,8 128,10" fill="none" stroke="currentColor" stroke-width="1.6"/>'}.get(name, "")
     if name == "impact":                         # ball dropping onto a surface, with a bounce arrow
         s = (FG._box(14, 58, 132, 15, "ground") + FG._circle(60, 38, 12) + FG._arrow(60, 8, 60, 24) +
              FG._arrow(96, 54, 112, 28) + FG._text(30, 88, "hit: speed out = e x speed in"))

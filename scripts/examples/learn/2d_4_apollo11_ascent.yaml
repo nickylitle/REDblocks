@@ -1,0 +1,444 @@
+simblocks: 1
+name: 2D-4 Apollo 11 Saturn V ascent to Earth orbit
+question: "From the propellant chemistry up: does the Saturn V reach Apollo 11's parking orbit the way the flight did, at the same times, heights and speeds?"
+dim: 2d
+units: SI
+
+# Sources: Saturn V Launch Vehicle Flight Evaluation Report AS-506 (MSFC MPR-SAT-FE-69-9, 1969): masses (table 20-9),
+# engine performance (sections 5-7), event times (table 2-2). Boeing D5-15560-6, Apollo/Saturn V Postflight
+# Trajectory AS-506 (1969): the trajectory the model is checked against (tables 3-I to 3-IV, 4-III).
+# The clock starts at first motion (range time 0.3 s): every event time below is range time - $t_fm.
+
+params:
+  t_fm: {value: 0.3 s, note: "first motion, range time 0.3 s (table 3-I): the model's t = 0"}
+  m_liftoff: {value: 2899008 kg, note: "vehicle mass at hold-down arm release (flight eval. table 20-9)"}
+  R_e: {value: 6373 km, note: "Earth's geocentric radius at 28-33 deg latitude (the flight's ground track): a spherical Earth"}
+  lat: {value: 28.608 deg, note: "LC-39A"}
+  azimuth: {value: 72.058 deg, note: "flight azimuth east of north after the roll (postflight trajectory 3.1)"}
+  # S-IC: five F-1 engines, RP-1 / LOX
+  # S-II: five J-2 engines, LH2 / LOX, high then low engine mixture ratio
+  S2_F: {value: 5141516 N, note: "S-II thrust, 5 engines, at ESC + 61 s (section 6.3)"}
+  S2_mdot: {value: 1239 kg/s, note: "S-II propellant flow, 5 engines, same time slice"}
+  S2_used: {value: 435499 kg, note: "S-II mainstage propellant used (and vented), flight eval. table 20-9"}
+  S2_F_low: {value: 3082769 N, note: "S-II thrust after the mixture ratio shift, 4 engines, EMR 4.34 (section 6.3, 6.5)"}
+  # S-IVB: one J-2
+  S4_F: {value: 901223 N, note: "S-IVB first burn thrust (table 7-1)"}
+  pitch_rate: {value: 0.1323 deg/s, note: "THE ONE TUNED NUMBER: pitch-over rate for 10 s after 13.2 s (1.3 deg in all), set so the flight path angle at S-IC staging matches NASA (19.0 deg). The real tilt program is not published; everything after the pitch-over is a gravity turn and guidance."}
+
+derived:
+  # kg/s per F-1: mainstage propellant 2,069,957 kg (table 20-9) over 5 engines to CECO and 4 to OECO
+  F1_mdot: "= 2069957 / (5 * (135.20 - 0.3) + 4 * (161.63 - 135.20))"
+  # consumed LOX / RP-1: loads at release less residuals at OECO (section 5.2, 5.5)
+  F1_OF: "= (1468594 - 18041) / (637830 - 13954)"
+  # S-IVB LOX + fuel flow, kg/s (table 7-1)
+  S4_mdot: "= 178.24 + 36.14"
+  # in-plane inertial speed at S-IVB cutoff (7,791.2 m/s with 274.3 m/s across the plane, flight eval. table 4-2)
+  v_target: "= sqrt(7791.2**2 - 274.3**2)"
+  site: {block: launch_plane, latitude: $lat, azimuth: $azimuth, R: $R_e}
+  F1: {block: rocket_engine, fuel: RP1, OF: $F1_OF, Pc: 7.0 MPa, eps: 16, mdot: $F1_mdot, Isp_sl: 263}
+  # S-II: thrust as measured; the exhaust speed set so the engines use the propellant the S-II actually used
+  # (mainstage, table 20-9) between start and cutoff, at both mixture ratios (the chemistry gives the ratio between them)
+  J2_hi0: {block: rocket_engine, fuel: LH2, OF: 5.5, Pc: 5.26 MPa, eps: 27.5, F_vac: "= $S2_F / 5", mdot: "= $S2_mdot / 5"}
+  J2_lo0: {block: rocket_engine, fuel: LH2, OF: 4.34, Pc: 5.26 MPa, eps: 27.5, F_vac: "= $S2_F_low / 4", efficiency: $J2_hi0.efficiency}
+  S2_c: "= ($S2_F / 5 * (460.62 - 165.1 + 0.15) + $S2_F * 4 / 5 * (496.5 - 165.1 + 1.5) + $S2_F_low * (548.22 - 498.0 + 0.21) * $J2_hi0.Isp_vac_ideal / $J2_lo0.Isp_vac_ideal) / $S2_used"
+  J2_hi: {block: rocket_engine, fuel: LH2, OF: 5.5, Pc: 5.26 MPa, eps: 27.5, F_vac: "= $S2_F / 5", Isp_vac: "= $S2_c / 9.80665"}
+  J2_lo: {block: rocket_engine, fuel: LH2, OF: 4.34, Pc: 5.26 MPa, eps: 27.5, F_vac: "= $S2_F_low / 4", efficiency: $J2_hi.efficiency}
+  J2_s4: {block: rocket_engine, fuel: LH2, OF: 4.932, Pc: 5.26 MPa, eps: 27.5, F_vac: $S4_F, mdot: $S4_mdot}
+
+gravity: {planet: earth, radius: $R_e, rotation: $site.omega_plane}
+
+bodies:
+  saturn:
+    dof: [x, y]
+    mass: $m_liftoff
+    at: [0, $R_e]
+    v0: [$site.v_surface, 0]
+    label: Apollo 11 Saturn V (AS-506)
+    note: "the origin is the Earth's centre; the pad is at the top and +x is downrange"
+
+elements:
+  # ---- S-IC
+  sic_center: {type: rocket, measure: saturn, thrust_vac: $F1.F_vac, exit_area: $F1.A_e, mass_flow: $F1.mdot,
+               start: 0, stop: "= 135.20 - $t_fm", tailoff: 0.67 s, label: S-IC centre F-1}
+  sic_outboard: {type: rocket, measure: saturn, thrust_vac: "= 4 * $F1.F_vac", exit_area: "= 4 * $F1.A_e",
+                 mass_flow: "= 4 * $F1.mdot", start: 0, stop: "= 161.63 - $t_fm", tailoff: 0.67 s, label: S-IC outboard F-1s,
+                 note: "OECO on LOX depletion at 161.63 s; the 0.67 s tail-off matches the measured cutoff impulse (10.6 MN s)"}
+  frost: {type: jettison, measure: saturn, at: 20 s, mass: 661 kg, note: "frost, purge gases (table 20-9)"}
+  sic_drop: {type: jettison, measure: saturn, at: "= 162.3 - $t_fm", mass: "= 164381 + 614 + 83", label: S-IC staging,
+             note: "S-IC stage, small interstage, ullage motor propellant (table 20-9)"}
+  # ---- S-II
+  s2_start: {type: jettison, measure: saturn, at: "= 164.0 - $t_fm", mass: "= 184 + 582 + 11 + 309", note: "S-II start transient and ullage motors"}
+  s2_center: {type: rocket, measure: saturn, thrust_vac: $J2_hi.F_vac, exit_area: $J2_hi.A_e, mass_flow: $J2_hi.mdot,
+              start: "= 164.0 - $t_fm", rise: 2.2 s, stop: "= 460.62 - $t_fm", tailoff: 0.3 s, label: S-II centre J-2}
+  s2_outboard: {type: rocket, measure: saturn, thrust_vac: "= 4 * $J2_hi.F_vac", exit_area: "= 4 * $J2_hi.A_e",
+                mass_flow: "= 4 * $J2_hi.mdot", start: "= 164.0 - $t_fm", rise: 2.2 s, stop: "= 496.5 - $t_fm", tailoff: 3 s,
+                label: S-II outboard J-2s (mixture ratio 5.5)}
+  s2_lowEMR: {type: rocket, measure: saturn, thrust_vac: "= 4 * $J2_lo.F_vac", exit_area: "= 4 * $J2_lo.A_e",
+              mass_flow: "= 4 * $J2_lo.mdot", start: "= 496.5 - $t_fm", rise: 3 s, stop: "= 548.22 - $t_fm", tailoff: 0.42 s,
+              label: S-II outboard J-2s (mixture ratio 4.34), note: "the PU valves shift about 335 s after S-II start (section 6.5)"}
+  interstage: {type: jettison, measure: saturn, at: "= 192.3 - $t_fm", mass: 3982 kg, label: S-II aft interstage}
+  les: {type: jettison, measure: saturn, at: "= 197.9 - $t_fm", mass: 4042 kg, label: launch escape tower}
+  sii_drop: {type: jettison, measure: saturn, at: "= 549.0 - $t_fm", mass: "= 43436 + 3180 + 484 + 227 + 2", label: S-II staging}
+  # ---- S-IVB first burn
+  s4: {type: rocket, measure: saturn, thrust_vac: $J2_s4.F_vac, exit_area: $J2_s4.A_e, mass_flow: $J2_s4.mdot,
+       start: "= 552.2 - $t_fm", rise: 2.5 s, tailoff: 0.42 s, cutoff: guidance, label: S-IVB J-2 (first burn)}
+  # ---- flight
+  air: {type: aero_drag, measure: saturn, area: 79.5 m^2,
+        Cd: {mach: [0, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 3.0, 4.0, 6.0], cd: [0.30, 0.30, 0.40, 0.65, 0.70, 0.62, 0.50, 0.36, 0.30, 0.25]},
+        label: aerodynamic drag, note: "10.06 m diameter; a generic slender-launcher Cd against Mach (estimate)"}
+  guidance:
+    type: steering
+    measure: saturn
+    pitch_start: "= 13.2 - $t_fm"
+    pitch_rate: $pitch_rate
+    pitch_end: "= 23.2 - $t_fm"
+    tilt_arrest: "= 160.0 - $t_fm"
+    guidance_start: "= 197.9 - $t_fm"
+    target_altitude: 191.1 km
+    target_speed: $v_target
+    label: tilt program, gravity turn and guidance
+    note: "vertical to 13.2 s, pitch over, gravity turn to tilt arrest (160.0 s), hold, then guidance to the insertion altitude"
+
+outputs:
+  # Mach 1 and maximum dynamic pressure (NASA: 66.3 s at 7.8 km; 83.0 s, 3.52 N/cm^2 at 13.6 km)
+  t_mach1:   {element: air, quantity: mach, reduce: first_time_above, value: 1, label: Mach 1 (model time)}
+  q_max:     {element: air, quantity: dynamic_pressure, reduce: max, unit: kPa, label: maximum dynamic pressure}
+  t_qmax:    {element: air, quantity: dynamic_pressure, reduce: time_of_max, label: time of max q (model time)}
+  h_qmax:    {element: guidance, quantity: altitude, reduce: at, value: "= 83.0 - $t_fm", unit: km}
+  # S-IC/S-II separation, range time 162.3 s (NASA: 66.7 km, 95.1 km, 2,773.9 m/s, 19.020 deg)
+  h_sep1:    {element: guidance, quantity: altitude, reduce: at, value: "= 162.3 - $t_fm", unit: km}
+  x_sep1:    {element: guidance, quantity: downrange, reduce: at, value: "= 162.3 - $t_fm", unit: km}
+  v_sep1:    {element: guidance, quantity: speed_inertial, reduce: at, value: "= 162.3 - $t_fm"}
+  fpa_sep1:  {element: guidance, quantity: flight_path_angle, reduce: at, value: "= 162.3 - $t_fm"}
+  vE_sep1:   {element: guidance, quantity: airspeed, reduce: at, value: "= 162.3 - $t_fm", label: earth-fixed speed}
+  # S-II/S-IVB separation, range time 549.0 s (NASA: 187.4 km, 1,623.4 km, 6,918.8 m/s, 0.611 deg)
+  h_sep2:    {element: guidance, quantity: altitude, reduce: at, value: "= 549.0 - $t_fm", unit: km}
+  x_sep2:    {element: guidance, quantity: downrange, reduce: at, value: "= 549.0 - $t_fm", unit: km}
+  v_sep2:    {element: guidance, quantity: speed_inertial, reduce: at, value: "= 549.0 - $t_fm"}
+  fpa_sep2:  {element: guidance, quantity: flight_path_angle, reduce: at, value: "= 549.0 - $t_fm"}
+  vE_sep2:   {element: guidance, quantity: airspeed, reduce: at, value: "= 549.0 - $t_fm", label: earth-fixed speed}
+  m_sep2:    {element: s2_lowEMR, quantity: vehicle_mass, reduce: at, value: "= 547.5 - $t_fm", label: mass just before S-II cutoff}
+  # S-IVB cutoff (NASA: 699.33 s) and parking orbit insertion, 709.33 s (191.1 km, 7,793.1 m/s, 0.012 deg)
+  t_eco:     {element: guidance, quantity: speed_inertial, reduce: first_time_above, value: $v_target, label: S-IVB guidance cutoff (model time)}
+  h_eco:     {element: guidance, quantity: altitude, reduce: at, value: "= 699.33 - $t_fm", unit: km}
+  v_eco:     {element: guidance, quantity: speed_inertial, reduce: at, value: "= 699.33 - $t_fm"}
+  vE_orbit:  {element: guidance, quantity: airspeed, reduce: at, value: "= 709.33 - $t_fm", label: earth-fixed speed}
+  h_orbit:   {element: guidance, quantity: altitude, reduce: at, value: "= 709.33 - $t_fm", unit: km}
+  x_eco:     {element: guidance, quantity: downrange, reduce: at, value: "= 699.33 - $t_fm", unit: km}
+  v_orbit:   {element: guidance, quantity: speed_inertial, reduce: at, value: "= 709.33 - $t_fm"}
+  fpa_orbit: {element: guidance, quantity: flight_path_angle, reduce: at, value: "= 709.33 - $t_fm"}
+  m_orbit:   {element: s4, quantity: vehicle_mass, reduce: at, value: "= 709.33 - $t_fm", label: mass in orbit}
+  # in range time, to read against NASA directly
+  T_mach1:   {expr: "= $t_mach1 + $t_fm", label: Mach 1 (range time)}
+  T_qmax:    {expr: "= $t_qmax + $t_fm", label: max q (range time)}
+  T_eco:     {expr: "= $t_eco + $t_fm", label: S-IVB cutoff (range time)}
+
+run:
+  t_end: 709.1 s
+  dt: 20 ms
+
+editor:
+  layout:
+    b:saturn:
+    - 602
+    - 30
+    e:air:
+    - 888
+    - 30
+    e:frost:
+    - 888
+    - 1080
+    e:guidance:
+    - 888
+    - 391
+    e:interstage:
+    - 888
+    - 3452
+    e:les:
+    - 888
+    - 3717
+    e:s2_center:
+    - 888
+    - 1874
+    e:s2_lowEMR:
+    - 888
+    - 2922
+    e:s2_outboard:
+    - 888
+    - 2392
+    e:s2_start:
+    - 888
+    - 1610
+    e:s4:
+    - 888
+    - 4246
+    e:sic_center:
+    - 888
+    - 30
+    e:sic_drop:
+    - 888
+    - 1346
+    e:sic_outboard:
+    - 888
+    - 549
+    e:sii_drop:
+    - 888
+    - 3982
+    o:T_eco:
+    - 1460
+    - 5560
+    o:T_mach1:
+    - 1460
+    - 5212
+    o:T_qmax:
+    - 1460
+    - 5386
+    o:fpa_orbit:
+    - 1460
+    - 4798
+    o:fpa_sep1:
+    - 1460
+    - 1528
+    o:fpa_sep2:
+    - 1460
+    - 2608
+    o:h_eco:
+    - 1460
+    - 3466
+    o:h_orbit:
+    - 1460
+    - 4132
+    o:h_qmax:
+    - 1460
+    - 640
+    o:h_sep1:
+    - 1460
+    - 862
+    o:h_sep2:
+    - 1460
+    - 1942
+    o:m_orbit:
+    - 1460
+    - 4990
+    o:m_sep2:
+    - 1460
+    - 3022
+    o:q_max:
+    - 1460
+    - 252
+    o:t_eco:
+    - 1460
+    - 3244
+    o:t_mach1:
+    - 1460
+    - 30
+    o:t_qmax:
+    - 1460
+    - 446
+    o:vE_orbit:
+    - 1460
+    - 3910
+    o:vE_sep1:
+    - 1460
+    - 1720
+    o:vE_sep2:
+    - 1460
+    - 2800
+    o:v_eco:
+    - 1460
+    - 3688
+    o:v_orbit:
+    - 1460
+    - 4576
+    o:v_sep1:
+    - 1460
+    - 1306
+    o:v_sep2:
+    - 1460
+    - 2386
+    o:x_eco:
+    - 1460
+    - 4354
+    o:x_sep1:
+    - 1460
+    - 1084
+    o:x_sep2:
+    - 1460
+    - 2164
+    p:F1:
+    - 316
+    - 359
+    p:F1_OF:
+    - 30
+    - 1841
+    p:F1_mdot:
+    - 30
+    - 1703
+    p:J2_hi:
+    - 316
+    - 2699
+    p:J2_hi0:
+    - 316
+    - 1135
+    p:J2_lo:
+    - 316
+    - 3483
+    p:J2_lo0:
+    - 316
+    - 1919
+    p:J2_s4:
+    - 316
+    - 4263
+    p:R_e:
+    - 30
+    - 324
+    p:S2_F:
+    - 30
+    - 765
+    p:S2_F_low:
+    - 30
+    - 1206
+    p:S2_c:
+    - 30
+    - 2255
+    p:S2_mdot:
+    - 30
+    - 912
+    p:S2_used:
+    - 30
+    - 1059
+    p:S4_F:
+    - 30
+    - 1353
+    p:S4_mdot:
+    - 30
+    - 1979
+    p:azimuth:
+    - 30
+    - 618
+    p:lat:
+    - 30
+    - 485
+    p:m_liftoff:
+    - 30
+    - 177
+    p:pitch_rate:
+    - 30
+    - 30
+    p:site:
+    - 316
+    - 30
+    p:t_fm:
+    - 30
+    - 30
+    p:v_target:
+    - 30
+    - 2117
+  groups:
+  - name: flight_report_data
+    collapsed: true
+    x: 30
+    y: 247
+    members:
+    - p:t_fm
+    - p:m_liftoff
+    - p:R_e
+    - p:lat
+    - p:azimuth
+    - p:S2_F
+    - p:S2_mdot
+    - p:S2_used
+    - p:S2_F_low
+    - p:S4_F
+    expose: {}
+  - name: engines_from_chemistry
+    collapsed: true
+    x: 316
+    y: 30
+    members:
+    - p:F1_mdot
+    - p:F1_OF
+    - p:S4_mdot
+    - p:v_target
+    - p:S2_c
+    - p:site
+    - p:F1
+    - p:J2_hi0
+    - p:J2_lo0
+    - p:J2_hi
+    - p:J2_lo
+    - p:J2_s4
+    expose: {}
+  - name: S_IC_stage
+    collapsed: true
+    x: 888
+    y: 937
+    members:
+    - e:sic_center
+    - e:sic_outboard
+    - e:frost
+    - e:sic_drop
+    expose: {}
+  - name: S_II_stage
+    collapsed: true
+    x: 888
+    y: 1221
+    members:
+    - e:s2_start
+    - e:s2_center
+    - e:s2_outboard
+    - e:s2_lowEMR
+    - e:interstage
+    - e:les
+    - e:sii_drop
+    expose: {}
+  - name: S_IVB_stage
+    collapsed: true
+    x: 888
+    y: 1601
+    members:
+    - e:s4
+    expose: {}
+  - name: checks_against_NASA
+    collapsed: true
+    x: 1460
+    y: 30
+    members:
+    - o:t_mach1
+    - o:q_max
+    - o:t_qmax
+    - o:h_qmax
+    - o:h_sep1
+    - o:x_sep1
+    - o:v_sep1
+    - o:fpa_sep1
+    - o:vE_sep1
+    - o:h_sep2
+    - o:x_sep2
+    - o:v_sep2
+    - o:fpa_sep2
+    - o:vE_sep2
+    - o:m_sep2
+    - o:t_eco
+    - o:h_eco
+    - o:v_eco
+    - o:vE_orbit
+    - o:h_orbit
+    - o:x_eco
+    - o:v_orbit
+    - o:fpa_orbit
+    - o:m_orbit
+    - o:T_mach1
+    - o:T_qmax
+    - o:T_eco
+    expose: {}
+  notes:
+  - text: '**2D-4 Apollo 11: Saturn V to Earth orbit, checked against NASA''s flight data.** The engines come from their propellant chemistry
+      (equilibrium combustion and nozzle expansion: the F-1 block predicts 304.8 s vacuum Isp, published 304 s). The flight is the physics: inverse-square
+      gravity round a turning Earth, the US Standard Atmosphere for thrust and drag, mass burnt and stages dropped. From the flight report: the
+      masses, the engines'' measured levels and the event times (staging, cutoffs). One number is tuned: the pitch-over rate just after the tower
+      is cleared. The *checks_against_NASA* group reads the flight at NASA''s event times: S-IC staging 66.7 km / 95.1 km / 2,774 m/s; S-II staging
+      1,623 km / 6,919 m/s; orbit 191.1 km, 7,793 m/s, cutoff at 699.3 s.'
+    x: 270
+    y: -170
+    width: 900
