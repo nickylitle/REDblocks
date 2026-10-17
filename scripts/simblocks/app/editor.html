@@ -2939,7 +2939,7 @@ function plot(){
     g.textAlign = "right"; g.fillText(fmt(v), L - 4, y + 3); }
   for (let i = 0; i <= 4; i++){ const v = t0 + (t1 - t0) * i / 4; g.textAlign = i === 4 ? "right" : (i === 0 ? "left" : "center"); g.fillText(fmt(v), X(v), H - 16); }
   g.textAlign = "center"; g.fillStyle = tok("ink2"); g.fillText("time (s)", (L + W - R) / 2, H - 3);
-  if (ks.length){ const ylab = us.length === 1 ? (us[0] ? "(" + us[0] + ")" : "(no unit)") : "mixed units: see the list";
+  if (ks.length){ const ylab = us.length === 1 ? (us[0] ? "(" + us[0] + ")" : "(no unit)") : "mixed units";
     g.save(); g.translate(11, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText(ylab, 0, 0); g.restore(); }
   g.fillStyle = tok("ink3");
   ks.forEach((k, j) => { g.strokeStyle = PCOL[j % PCOL.length]; g.lineWidth = 1.6; g.beginPath();
@@ -3627,21 +3627,27 @@ const GUIDE = [
  {id:"colours", grp:"Files", t:"Settings: colours and themes", h:`
   <p><b>Settings</b> in the top bar holds the colour options. Every colour in the editor (canvas, panels, text, wires, node bars, plots) is one named colour, so a theme simply sets all of them.</p>
   <table class="ht"><tr><th>Theme</th><th>Looks like</th></tr>
-  <tr><td>Blueprint</td><td>the original: deep navy with bright accents</td></tr>
-  <tr><td>Paper</td><td>white and plain: grey outlines, dark text, wires that read well on white</td></tr>
-  <tr><td>Graphite</td><td>dark greys with soft colours, like a photo editor</td></tr>
-  <tr><td>Graphite vivid</td><td>the same dark greys with bright connections that stand out</td></tr>
-  <tr><td>Colour-blind safe</td><td>Okabe-Ito colours that stay distinct with red-green colour blindness</td></tr>
-  <tr><td>Solarized dark / light</td><td>Ethan Schoonover's low-glare palette</td></tr>
-  <tr><td>Monochrome</td><td>greys only; wires differ by dash pattern and sockets by shape</td></tr>
-  <tr><td>Tritan safe</td><td>for blue-yellow colour blindness; wire patterns on</td></tr>
-  <tr><td>High contrast</td><td>pure black, white text, thick saturated wires</td></tr>
-  <tr><td>Synthwave</td><td>deep purple with neon wires</td></tr>
-  <tr><td>Terminal</td><td>green-on-black console, monospace everywhere</td></tr>
-  <tr><td>Mission control</td><td>near-black with amber readouts and cyan accents</td></tr>
-  <tr><td>Drafting</td><td>vellum paper, blue-black ink, red markups</td></tr>
-  <tr><td>Candy</td><td>a pink canvas with bold candy colours (teal, hot magenta, electric blue, grape, tangerine) for fun, but every wire and label meets the same contrast checks as the other themes</td></tr></table>
-  <p>Under <b>Colours</b> any single colour can be changed with a colour picker: wires by socket type, node bars by kind, the canvas, text, and plot series. Changed colours are marked with a dot and have a ↺ button to go back to the theme. Switching theme clears your changes unless <i>Keep my own colours</i> is ticked. <b>Wire patterns</b> draws each wire type with its own dash (values solid, bodies long dashes, signals dotted, states dash-dot, metrics short dashes) in any theme; Monochrome and Tritan safe turn it on by default. Wire types also differ by shape (round values and signals, square bodies, diamond states), so they stay distinguishable in any palette.</p>
+  <tr><td>Blueprint</td><td>the original: deep navy, bright accents.</td></tr>
+  <tr><td>Graphite</td><td>dark greys like a photo editor, with bright connections that stand out.</td></tr>
+  <tr><td>Synthwave</td><td>deep purple night with neon pink, cyan and orange wires.</td></tr>
+  <tr><td>Terminal</td><td>green-on-black retro console, monospace everywhere.</td></tr>
+  <tr><td>Mission control</td><td>near-black console with amber readouts and cyan accents.</td></tr>
+  <tr><td>Ember</td><td>warm charcoal with red, amber and rose wires. Red without the glare.</td></tr>
+  <tr><td>Helena</td><td>a funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and a serif face. Dramatic.</td></tr>
+  <tr><td>Solarized dark</td><td>ethan Schoonover&#x27;s low-glare palette, dark.</td></tr>
+  <tr><td>Drafting</td><td>vellum paper, blue-black ink, red markups: a printed schematic.</td></tr>
+  <tr><td>Sage</td><td>matcha and moss greens on cream, with blush pink and a little sunflower and mushroom red. Soft and outdoorsy.</td></tr>
+  <tr><td>Texas</td><td>burnt orange bars and node headers over a white canvas, with charcoal text and limestone trim.</td></tr>
+  <tr><td>Banana</td><td>ripe banana yellow with a cream canvas, brown-speckle ink and leafy green trim, in the same round, playful font as Candy.</td></tr>
+  <tr><td>Candy</td><td>bubblegum pink with bold sweet-shop wires and a round, playful font.</td></tr>
+  <tr><td>Clean</td><td>plain white with grey borders and crisp blue, green, purple and orange, in the style of GitHub&#x27;s light code view. The neutral light theme.</td></tr>
+  <tr><td>Arctic</td><td>cool slate blue with frosty pastel wires, after the Nord palette. Soft and easy on the eyes for long sessions.</td></tr>
+  <tr><td>Protanopia</td><td>for red-blind vision (protanopia and protanomaly). Colours differ along blue and yellow and in lightness, never by red alone. Wire patterns on by default.</td></tr>
+  <tr><td>Deuteranopia</td><td>for green-blind vision (deuteranopia and deuteranomaly), the most common type. A light theme where colours differ along blue and yellow and in lightness. Wire patterns on by default.</td></tr>
+  <tr><td>Tritanopia</td><td>for blue-blind vision (tritanopia and tritanomaly). Colours differ along red and cyan and in lightness, never by blue or yellow alone. Wire patterns on by default.</td></tr>
+  <tr><td>Monochrome</td><td>greys only. Wires differ by dash pattern, sockets by shape. For no colour vision (achromatopsia), greyscale printing or e-ink.</td></tr>
+  <tr><td>Monochrome dark</td><td>greys only on near-black. Wires differ by dash pattern, sockets by shape. The dark twin of Monochrome.</td></tr></table>
+  <p>Under <b>Colours</b> any single colour can be changed with a colour picker: wires by socket type, node bars by kind, the canvas, text, and plot series. Changed colours are marked with a dot and have a ↺ button to go back to the theme. Switching theme clears your changes unless <i>Keep my own colours</i> is ticked. <b>Wire patterns</b> draws each wire type with its own dash (values solid, bodies long dashes, signals dotted, states dash-dot, metrics short dashes) in any theme; Monochrome, Monochrome dark and the three colour-vision themes turn it on by default. Wire types also differ by shape (round values and signals, square bodies, diamond states), so they stay distinguishable in any palette.</p>
   <p>Colours are saved for you on this computer (<code>~/.simblocks/app.json</code>), never in model files.</p>`},
  {id:"files", grp:"Files", t:"Files, YAML and the command line", h:`
   <p>A model is one plain YAML file you can read, diff and keep in version control. The YAML tab shows it live. Sections: <code>params</code> (values), <code>derived</code> (expressions and builders), <code>bodies</code>, <code>elements</code>, <code>outputs</code>, <code>failure</code>, <code>uncertain</code>, <code>study</code>, <code>exports</code>, <code>run</code>, and <code>editor</code> (layout, groups and notes; the solver ignores it). Keys the editor does not use are kept and written back unchanged.</p>
@@ -3800,15 +3806,16 @@ const THEMES = {
     bg:"#07090d", grid:"#121925", panel:"#0c1016", panel2:"#121820", panel3:"#1a222d", edge:"#2c3746", hair:"#161d27", selbg:"#3b2a08", "note-bg":"#10141a", "group-hd":"#141b26", ink:"#f4e9d2", ink2:"#d2bf96", ink3:"#998b6e", link:"#4fd2ff", acc:"#ffb02e", accf:"#4fd2ff", pass:"#3ddc97", warn:"#ffb02e", fail:"#ff5a4f", shadow:"rgba(0,0,0,.6)", "s-val":"#ffb02e", "s-body":"#4fd2ff", "s-sig":"#a5b4c8", "s-state":"#c792ea", "s-metric":"#f4e9d2", "c-value":"#ffb02e", "c-builder":"#c792ea", "c-body":"#4fd2ff", "c-element":"#3ddc97", "c-load":"#3ddc97", "c-output":"#8a96a8", "c-expr":"#5ed6c8", "c-fail":"#ff5a4f", "c-sweep":"#ffd166", "c-mc":"#ff7eb6", "c-export":"#4fd2ff", "c-group":"#9d8cff", "c-note":"#998b6e", p1:"#4fd2ff", p2:"#ffb02e", p3:"#3ddc97", p4:"#c792ea", p5:"#ff7eb6"}},
   ember: {name:"Ember", note:"Warm charcoal with red, amber and rose wires. Red without the glare.", scheme:"dark", t:{
     bg:"#170e0e", grid:"#211414", panel:"#201313", panel2:"#2a1919", panel3:"#362020", edge:"#573232", hair:"#2e1c1c", selbg:"#5a1d1d", "note-bg":"#241716", "group-hd":"#2f1a20", ink:"#f8ebe6", ink2:"#dcc4bc", ink3:"#b0948b", link:"#ff9a85", acc:"#ff5a4a", accf:"#f6b53c", pass:"#7fd1a8", warn:"#f6b53c", fail:"#ff6b5e", shadow:"rgba(0,0,0,.55)", "s-val":"#f6b53c", "s-body":"#f54f45", "s-sig":"#958d8a", "s-state":"#f6a0d1", "s-metric":"#fff1ea", "c-value":"#d39315", "c-builder":"#e18bcf", "c-body":"#fe987d", "c-element":"#459571", "c-load":"#459571", "c-output":"#af9a94", "c-expr":"#75c4d1", "c-fail":"#fd5745", "c-sweep":"#eed28f", "c-mc":"#cf2a5e", "c-export":"#6191b8", "c-group":"#9168a2", "c-note":"#74665c", p1:"#e84533", p2:"#f0b64b", p3:"#f8f1e9", p4:"#e892c3", p5:"#60a892"}},
+  helena: {name:"Helena", note:"A funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and a serif face. Dramatic.", scheme:"dark", ui:"sourceserif", t:{
+    bg:"#0b0a0b", grid:"#161315", panel:"#141113", panel2:"#1d181b", panel3:"#272024", edge:"#4a3a40", hair:"#221c20", selbg:"#4a0f1c", "note-bg":"#171214", "group-hd":"#1f1619",
+    bar:"#0a0809", "bar-ink":"#f3ece4", "bar-ink2":"#c9bdb4", hd:"#1a1215", "hd-ink":"#f3ece4", "hd-ink2":"#c4a9ad",
+    ink:"#f3ece4", ink2:"#d6cbc2", ink3:"#a8999b", link:"#ff8095", acc:"#c8102e", accf:"#e7d7b8", pass:"#8fc7a0", warn:"#e0b25a", fail:"#ff5c6c", shadow:"rgba(0,0,0,.6)",
+    "s-val":"#e01e3c", "s-body":"#f3ece4", "s-sig":"#8d97a3", "s-state":"#b56bd6", "s-metric":"#e8c26a",
+    "c-value":"#c8102e", "c-builder":"#9b6bd1", "c-body":"#e9e1d6", "c-element":"#7f9c88", "c-load":"#7f9c88", "c-output":"#8a7e80", "c-expr":"#c78a9a",
+    "c-fail":"#ff4d5e", "c-sweep":"#e0b25a", "c-mc":"#d2457a", "c-export":"#6f8fb8", "c-group":"#6f5a8e", "c-note":"#6d5a5e",
+    p1:"#e01e3c", p2:"#f3ece4", p3:"#e8c26a", p4:"#b56bd6", p5:"#7fb0d6"}},
   solarized_dark: {name:"Solarized dark", note:"Ethan Schoonover's low-glare palette, dark.", scheme:"dark", t:{
     bg:"#002b36", grid:"#04313d", panel:"#073642", panel2:"#0b3d4a", panel3:"#104654", edge:"#2f5a66", hair:"#0c3c48", selbg:"#11506a", "note-bg":"#0a3a46", "group-hd":"#123f52", ink:"#eee8d5", ink2:"#b3b9b3", ink3:"#8a9ca0", link:"#5fb3f0", acc:"#268bd2", accf:"#cb4b16", pass:"#859900", warn:"#b58900", fail:"#ef5350", shadow:"rgba(0,0,0,.45)", "s-val":"#b58900", "s-body":"#e0488f", "s-sig":"#2aa198", "s-state":"#8b8fdc", "s-metric":"#eee8d5", "c-value":"#b58900", "c-builder":"#6c71c4", "c-body":"#268bd2", "c-element":"#859900", "c-load":"#859900", "c-output":"#839496", "c-expr":"#2aa198", "c-fail":"#dc322f", "c-sweep":"#cb4b16", "c-mc":"#d33682", "c-export":"#2aa198", "c-group":"#6c71c4", "c-note":"#839496", p1:"#3a9ee6", p2:"#b58900", p3:"#859900", p4:"#e0488f", p5:"#2aa198"}},
-  paper: {name:"Paper", note:"White and plain: grey outlines, dark text, easy-to-read wires.", scheme:"light", t:{
-    bg:"#ffffff", grid:"#eef1f5", panel:"#fbfbfc", panel2:"#f1f3f6", panel3:"#e6eaf0", edge:"#c3cad4", hair:"#e1e5eb", selbg:"#dbe7fb", "note-bg":"#fffcf0", "group-hd":"#eef0fb",
-    ink:"#14181f", ink2:"#3d4654", ink3:"#6b7482", link:"#1d4fd8", acc:"#2563eb", accf:"#c2410c", pass:"#047857", warn:"#b45309", fail:"#dc2626", shadow:"rgba(20,30,45,.14)",
-    "s-val":"#d97706", "s-body":"#db2777", "s-sig":"#4b5563", "s-state":"#7c3aed", "s-metric":"#111827",
-    "c-value":"#d97706", "c-builder":"#7c3aed", "c-body":"#2563eb", "c-element":"#059669", "c-load":"#059669", "c-output":"#6b7280", "c-expr":"#0d9488",
-    "c-fail":"#dc2626", "c-sweep":"#ca8a04", "c-mc":"#db2777", "c-export":"#0891b2", "c-group":"#4f46e5", "c-note":"#9ca3af",
-    p1:"#2563eb", p2:"#d97706", p3:"#059669", p4:"#7c3aed", p5:"#db2777"}},
   drafting: {name:"Drafting", note:"Vellum paper, blue-black ink, red markups: a printed schematic.", scheme:"light", t:{
     bg:"#f3efe2", grid:"#e2e6e2", panel:"#fbf9f2", panel2:"#efeadb", panel3:"#e6e0cd", edge:"#8f9aa6", hair:"#ddd6c2", selbg:"#d6e2ef", "note-bg":"#fffdf5", "group-hd":"#e8eaf2", ink:"#1b2a3a", ink2:"#3d4d5f", ink3:"#5e6a78", link:"#1f4f9a", acc:"#1f4f9a", accf:"#c0392b", pass:"#2e6b3a", warn:"#9a5c00", fail:"#c0392b", shadow:"rgba(40,50,70,.15)", "s-val":"#1f4f9a", "s-body":"#c0392b", "s-sig":"#4b5563", "s-state":"#6b3fa0", "s-metric":"#1b2a3a", "c-value":"#b07a1f", "c-builder":"#6b3fa0", "c-body":"#1f4f9a", "c-element":"#2e6b3a", "c-load":"#2e6b3a", "c-output":"#6b7684", "c-expr":"#2f6f6a", "c-fail":"#c0392b", "c-sweep":"#a46200", "c-mc":"#b03a6a", "c-export":"#2f6f8a", "c-group":"#4b4f9a", "c-note":"#8f9aa6", p1:"#1f4f9a", p2:"#c0392b", p3:"#2e6b3a", p4:"#6b3fa0", p5:"#9a5c00"}},
   sage: {name:"Sage", note:"Matcha and moss greens on cream, with blush pink and a little sunflower and mushroom red. Soft and outdoorsy.", scheme:"light", t:{
@@ -3869,7 +3876,7 @@ const THEMES = {
 // (<config>/simblocks/themes/<slug>/theme.json and an optional background image), and carry every setting a
 // built-in has plus a font choice, grid on/off and a background picture.
 const OLD_THEME = {graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
-  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana"};
+  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana", paper:"clean"};
 // fonts: font-size-adjust holds every face to Inter's x-height, so swapping fonts never changes line heights or wraps
 const UI_FONTS = {
   inter:{n:"Inter (default)", css:'"Inter",system-ui,"Segoe UI",sans-serif'},
