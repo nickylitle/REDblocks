@@ -65,6 +65,9 @@ INTERNAL = {
     "quat_to_matrix", "quat_step", "gyrostat_accel", "gyrostat_energy", "point_box_penetration", "obb_gap",
     "point_line_signed_distance", "point_segment_closest", "tip_on_circle", "tip_face_penetration",
     "circle_plane_overlap",
+    # geometry studies and outline builders: bodies carry their own shapes now (not library blocks)
+    "first_contact_delta", "first_contact_stats", "sample_first_contact", "outline_from_image", "outline_from_dxf",
+    "outline_rounded_bar",
     # integrators and the verification / report tooling
     "euler_step", "semi_implicit_step", "velocity_verlet_step", "rk4_step", "run_fixed", "adaptive_dt", "stable_step",
     "glyph_sheet", "results_report", "check_figure", "qa_summary", "EnergyLedger", "dt_convergence", "richardson",

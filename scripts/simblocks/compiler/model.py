@@ -856,6 +856,10 @@ def adaptive_args(M, dt=None):
     if fits is not None and len(fits) == na:
         adf[:] = fits
         adf[:, 0] *= sc; adf[:, 2] *= sc
+    if M.dt_free <= M.dt_contact * (1.0 + 1e-9) and not (adf[:, [0, 2]] > 0).any():
+        # nothing for it to change: the contacts do not set the step (a motor, a beam or the end-time cap does) and
+        # no driven field moves it. Run the plain fixed step, which is the same answer without the per-step checks
+        return fixed_adaptive(ne, na)
     return adp, adf, np.asarray(M.contact_el, np.int64)
 
 

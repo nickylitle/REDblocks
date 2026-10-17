@@ -16,6 +16,63 @@ def _arrow(x1, y1, x2, y2):
             f'<polygon points="{x2:.1f},{y2:.1f} {p1[0]:.1f},{p1[1]:.1f} {p2[0]:.1f},{p2[1]:.1f}" {ACCF}/>')
 
 
+SHAFT_BACK = 4.0      # a load arrow's shaft stops this far behind the tip, inside the head (never past its point)
+
+
+def _clear_points(inner):
+    """A load arrow that ends on a connection point stops just short of the dot, so its head stays visible."""
+    import re
+    pts = [(float(m.group(1)), float(m.group(2))) for m in
+           re.finditer(r'<circle cx="([-\d.]+)" cy="([-\d.]+)" r="3.2" style="fill:var\(--pt\)', inner)]
+    if not pts:
+        return inner
+    pat = re.compile(r'(<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)" ' + re.escape(ACC)
+                     + r' stroke-width="1.6"/>)<polygon points="([^"]*)" ' + re.escape(ACCF) + r'/>')
+    CLEAR = 3.2 + 1.6
+
+    def sub(m):
+        x1, y1, x2, y2 = (float(m.group(k)) for k in range(2, 6))
+        P = [tuple(map(float, q.split(","))) for q in m.group(6).split()]
+        tx, ty = P[0]
+        L = math.hypot(tx - x1, ty - y1)
+        if L == 0:
+            return m.group(0)
+        ux, uy = (tx - x1) / L, (ty - y1) / L
+        back = 0.0
+        for cx, cy in pts:
+            # the furthest point along the arrow that is CLEAR from the dot centre: tip - t u, t >= 0
+            dx, dy = tx - cx, ty - cy
+            if math.hypot(dx, dy) >= CLEAR:
+                continue
+            b_ = dx * ux + dy * uy; c_ = dx * dx + dy * dy - CLEAR * CLEAR
+            t = b_ + math.sqrt(max(b_ * b_ - c_, 0.0))
+            back = max(back, t)
+        if back <= 0.0 or back >= L - 3:
+            return m.group(0)
+        sx, sy = -back * ux, -back * uy
+        ln = (f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2 + sx:.1f}" y2="{y2 + sy:.1f}" {ACC} stroke-width="1.6"/>')
+        poly = " ".join(f"{a + sx:.1f},{b + sy:.1f}" for a, b in P)
+        return ln + f'<polygon points="{poly}" {ACCF}/>'
+    return pat.sub(sub, inner)
+
+
+def _trim_shafts(inner):
+    """End every arrow shaft inside its head: the line's square end would otherwise show beside the narrow tip."""
+    import re
+    pat = re.compile(r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)" ' + re.escape(ACC)
+                     + r' stroke-width="1.6"/>(?=<polygon points="([-\d.]+),([-\d.]+) )')
+
+    def sub(m):
+        x1, y1, x2, y2 = (float(m.group(k)) for k in range(1, 5))
+        tx, ty = float(m.group(5)), float(m.group(6))
+        L = math.hypot(tx - x1, ty - y1)
+        if L <= SHAFT_BACK:
+            return m.group(0)
+        ex, ey = tx - SHAFT_BACK * (tx - x1) / L, ty - SHAFT_BACK * (ty - y1) / L
+        return f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" {ACC} stroke-width="1.6"/>'
+    return pat.sub(sub, inner)
+
+
 def _pt(x, y, lab=""):
     s = f'<circle cx="{x}" cy="{y}" r="3.2" style="fill:var(--pt);stroke:var(--bg)" stroke-width="1"/>'
     if lab:
@@ -25,14 +82,14 @@ def _pt(x, y, lab=""):
 
 def _wall(x, y0, y1, side=-1):
     s = f'<line x1="{x}" y1="{y0}" x2="{x}" y2="{y1}" stroke="currentColor" stroke-width="1.6"/>'
-    for y in range(int(y0), int(y1), 6):
+    for y in range(int(y0), int(y1) - 5, 6):          # every hatch starts and ends on the wall's own length
         s += f'<line x1="{x}" y1="{y + 6}" x2="{x + 6 * side}" y2="{y}" stroke="currentColor" stroke-width="0.8"/>'
     return s
 
 
 def _ground(x0, x1, y):
     s = f'<line x1="{x0}" y1="{y}" x2="{x1}" y2="{y}" stroke="currentColor" stroke-width="1.6"/>'
-    for x in range(int(x0), int(x1), 7):
+    for x in range(int(x0), int(x1) - 5, 7):          # hatches stay under the ground line
         s += f'<line x1="{x}" y1="{y + 6}" x2="{x + 6}" y2="{y}" stroke="currentColor" stroke-width="0.8"/>'
     return s
 
@@ -73,10 +130,12 @@ def _circle(cx, cy, r, soft=True):
 
 def _spin(cx, cy, r):
     a0, a1 = -0.3, 1.2
-    x0, y0 = cx + r * math.cos(a0), cy - r * math.sin(a0)
-    x1, y1 = cx + r * math.cos(a1), cy - r * math.sin(a1)
-    s = f'<path d="M{x0:.1f},{y0:.1f} A{r},{r} 0 0 0 {x1:.1f},{y1:.1f}" {ACC} stroke-width="1.6"/>'
-    s += _arrow(x1 + 4, y1 + 1, x1 - 0.5, y1 - 0.5)
+    d = 5.5 / r                                       # the head's length, as an angle along the arc
+    P = lambda a: (cx + r * math.cos(a), cy - r * math.sin(a))
+    x0, y0 = P(a0); xb, yb = P(a1 - d); xt, yt = P(a1)
+    # the arc stops where the head starts, and the head points along the arc (its chord to the tip)
+    s = f'<path d="M{x0:.1f},{y0:.1f} A{r},{r} 0 0 0 {xb:.1f},{yb:.1f}" {ACC} stroke-width="1.6"/>'
+    s += _arrow(xb, yb, xt, yt)
     return s
 
 
@@ -691,9 +750,9 @@ def _():
 @fig("micromech")
 def _():
     s = '<rect x="35" y="15" width="90" height="60" style="fill:var(--soft)" stroke="currentColor"/>'
-    for x in range(45, 125, 16):
-        for y in range(25, 75, 16):
-            s += f'<circle cx="{x}" cy="{y}" r="5" fill="none" stroke="currentColor"/>'
+    for x in (48, 64, 80, 96, 112):                   # fibres in the matrix, every one inside the frame
+        for y in (29, 45, 61):
+            s += f'<circle cx="{x}" cy="{y}" r="5.5" fill="none" stroke="currentColor"/>'
     return s
 
 
@@ -725,7 +784,16 @@ def _():
     return _arrow(10, 45, 40, 45) + _box(42, 25, 76, 40, "f(x)") + _arrow(120, 45, 150, 45)
 
 
+NO_FIGURE = {"formula", "lookup", "groups", "check", "report"}     # generic stand-ins: better no picture than these
+
+
 def figure_for(b):
+    """A figure for a registry block from its taxonomy path, or None when no drawing says anything about it."""
+    f = _figure_for(b)
+    return None if f in NO_FIGURE else f
+
+
+def _figure_for(b):
     """Pick a figure for a registry block from its taxonomy path."""
     d, c, g, l, n = b.domain, b.category, b.geometry, b.load, b.name
     if d == "structures":
@@ -930,5 +998,5 @@ def place_labels(sym_id, inner):
 def symbols():
     out = []
     for k, fn in F.items():
-        out.append(f'<symbol id="fig-{k}" viewBox="0 0 160 90">{place_labels("fig-" + k, fn())}</symbol>')
+        out.append(f'<symbol id="fig-{k}" viewBox="0 0 160 90">{_trim_shafts(_clear_points(place_labels("fig-" + k, fn())))}</symbol>')
     return "\n".join(out)

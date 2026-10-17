@@ -158,7 +158,7 @@ def _param_docs():
 
 
 def _el_fig(name):
-    return FG.place_labels("el-" + name, _el_fig_raw(name))
+    return FG._trim_shafts(FG._clear_points(FG.place_labels("el-" + name, _el_fig_raw(name))))
 
 
 def _el_fig_raw(name):
@@ -477,7 +477,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 function card(b){
   const ins = b.params.length ? b.params.map(p => esc(p.name) + (p.default !== null ? ' = ' + esc(p.default) : '')).join(', ') : 'none';
   return `<article class="card" data-d="${b.domain}">
-  <div class="top"><div class="fig" aria-hidden="true"><svg viewBox="0 0 160 90"><use href="#fig-${b.fig}"/></svg></div>
+  <div class="top">${b.fig ? '<div class="fig" aria-hidden="true"><svg viewBox="0 0 160 90"><use href="#fig-' + b.fig + '"/></svg></div>' : ''}
   <div class="meta"><div class="name">${esc(b.name)}</div><div class="path">${esc(b.path)}</div>
   <div class="tags"><span class="tag k-${b.kind}">${b.kind}</span>${b.element ? '<span class="tag">element: ' + b.element + '</span>' : ''}${b.legacy ? '<span class="tag legacy">LEGACY</span>' : ''}</div></div></div>
   <p class="sum">${esc(b.summary)}</p>

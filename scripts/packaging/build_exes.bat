@@ -18,6 +18,7 @@ if not exist simblocks\app\examples\data mkdir simblocks\app\examples\data
 copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul
 if not exist simblocks\app\examples\showcase mkdir simblocks\app\examples\showcase
 copy /y examples\showcase\apollo11\*.yaml simblocks\app\examples\showcase\ >nul
+copy /y examples\showcase\apollo11\apollo11.html simblocks\app\examples\showcase\ >nul
 python -m pip install ".[app]" pyinstaller || goto :err
 REM Help shows every block's Python source; the one-file exe has no .py files, so save the sources first
 python -c "from simblocks.app.api import write_block_sources; print(write_block_sources('simblocks/app/block_sources.json'))" || goto :err

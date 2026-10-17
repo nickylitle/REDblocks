@@ -1963,10 +1963,19 @@ function pulsePts(d){   // preview only: the solver builds the real table
   else { for (let i = 0; i <= n; i++){ const t = 8 * v.tau * i / n; add(t, v.peak * Math.exp(-t / v.tau)); } }
   if (t0 > 0){ const pre = kind === "ramp" || kind === "step" ? v.from : (["sine","square_wave","sweep"].includes(kind) ? (v.offset || 0) : 0); out.unshift([t0, pre]); out.unshift([0, pre]); }
   return out.map((p_, i) => [p_[0], p_[1], i]); }
+// the unit kind of each standard-shape field: a number box and a unit list, like every other field
+function pulseDim(n, k){
+  if (["peak","to","from","amplitude","offset"].includes(k)) return rotOnly(n) ? "torque" : "force";
+  if (["duration","start","rise","fall","tau","stop"].includes(k)) return "time";
+  if (["frequency","f_start","f_end"].includes(k)) return "frequency";
+  if (k === "phase") return "angle";
+  return null; }
 function pulseHTML(n){ const d = n.data; d.pulse = d.pulse || {kind:"half_sine", peak:"1 kN", duration:"5 ms", start:"0 ms"}; const p = d.pulse;
   let b = `<div class="row"><label title="the shape of the load against time">shape</label><select data-k="pl.kind">${sel_(Object.entries(PULSES).map(([k, x]) => [k, x[0]]), p.kind || "half_sine")}</select></div>`;
   (PULSES[p.kind] || PULSES.half_sine)[1].forEach(([k, def]) => {
-    b += `<div class="row${["peak","duration","to","amplitude","frequency","f_start","f_end","tau"].includes(k) ? " req" : ""}"><label title="${esc(PULSE_TIP[k] || k)}">${esc(k.replace("_", " "))}</label><input data-k="pl.${k}" value="${esc(p[k] ?? "")}" placeholder="${esc(def ? "e.g. " + def : "blank = default")}"></div>`; });
+    const dim = pulseDim(n, k), ph = def ? "e.g. " + splitQ(def).num : "blank = default";
+    const ctl = dim ? uvControl("pl." + k, p[k] ?? "", dim, ph) : `<input data-k="pl.${k}" value="${esc(p[k] ?? "")}" placeholder="${esc(def ? "e.g. " + def : "blank = default")}">`;
+    b += `<div class="row${["peak","duration","to","amplitude","frequency","f_start","f_end","tau"].includes(k) ? " req" : ""}"><label title="${esc(PULSE_TIP[k] || k)}">${esc(k.replace("_", " "))}</label>${ctl}</div>`; });
   const pts = pulsePts(d);
   b += pts ? `<div class="csvmini" title="the load against time (preview)"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${csvSVG({csvInterp: p.kind === "step" ? "linear" : "linear"}, pts, 220, 56, true)}</svg></div>`
            : `<div class="hint">the preview needs plain numbers (values wired in by name show after a run)</div>`;
@@ -2294,7 +2303,7 @@ function render(){
     el.dataset.id = g.id; el.style.left = g.x + "px"; el.style.top = g.y + "px";
     el.innerHTML = groupHTML(g); world.appendChild(el);
   }
-  drawFrames(); paintSel(); syncMeta(); renderYaml(); renderGroupPanel();
+  drawFrames(); paintSel(); syncMeta(); renderYaml(); renderGroupPanel(); watchSizes();
 }
 function countValues(v){ const t = String(v || "").trim(); if (!t) return 0;
   if (t.includes(":") && !t.includes(",")) return parseInt(t.split(":")[2]) || 0; return t.split(",").filter(x => x.trim()).length; }
@@ -2306,15 +2315,45 @@ function arrange(){
   S.nodes.forEach(n => { if (!groupOf(n.id) && n.kind !== "note") items.push({o:n, c:KIND_COL[n.kind] ?? 0, id:n.id}); });
   (S.groups || []).forEach(g => { const cs = g.members.map(id => byId(id)).filter(Boolean).map(n => KIND_COL[n.kind] ?? 0);
     items.push({o:g, c:Math.round(cs.reduce((a, b) => a + b, 0) / Math.max(cs.length, 1)), id:g.id, g}); });
+  S.nodes.forEach(n => { if (!groupOf(n.id) && n.kind === "note") items.push({o:n, c:99, id:n.id}); });   // notes: a last column
+  // each column as wide as its widest node (a value table or an open group can be much wider than a block)
+  const wOf = it => { if (it.g && !it.g.collapsed){ const p = bbox(it.g.members); return p.w || 270; }
+    const el = world.querySelector(`.node[data-id="${it.id}"]`); return el ? el.offsetWidth : 270; };
+  const cw = {}; items.forEach(it => { cw[it.c] = Math.max(cw[it.c] || 0, wOf(it)); });
+  const colX = {}; let xx = 30; Object.keys(cw).map(Number).sort((a, b) => a - b).forEach(c => { colX[c] = xx; xx += gsnap(cw[c] + 24); });
   items.forEach(it => { const el = world.querySelector(`.node[data-id="${it.id}"]`); y[it.c] = y[it.c] ?? 30;
-    if (it.g && !it.g.collapsed){ const p = bbox(it.g.members), dx = 30 + it.c * 286 - p.x, dy = y[it.c] + 34 - p.y; let bottom = 0;
+    if (it.g && !it.g.collapsed){ const p = bbox(it.g.members), dx = colX[it.c] - p.x, dy = y[it.c] + 34 - p.y; let bottom = 0;
       it.g.members.forEach(id => { const n = byId(id), ne = world.querySelector(`.node[data-id="${id}"]`); n.x += dx; n.y += dy;
         if (ne){ ne.style.left = n.x + "px"; ne.style.top = n.y + "px"; } bottom = Math.max(bottom, n.y + (ne ? ne.offsetHeight : 120)); });
       y[it.c] = bottom + 40; return; }
-    it.o.x = 30 + it.c * 286; it.o.y = y[it.c]; y[it.c] += (el ? el.offsetHeight : 120) + 16;
+    it.o.x = colX[it.c]; it.o.y = y[it.c]; y[it.c] += (el ? el.offsetHeight : 120) + 16;
     if (el){ el.style.left = it.o.x + "px"; el.style.top = it.o.y + "px"; } });
-  drawFrames(); drawWires();
+  drawFrames(); drawWires(); unOverlap();
 }
+// ---- no two nodes on top of each other: anything that overlaps the one above it moves straight down, below it.
+// Runs after every Organize, after a file opens, and when a node grows (a result arrives, a plot appears).
+function unOverlap(){
+  const {units} = orgUnits(true); if (units.length < 2) return 0;
+  const GAP = 16, placed = []; let moved = 0;
+  units.sort((a, b) => a.y - b.y || a.x - b.x);
+  units.forEach(u => {
+    let y = u.y, again = true;
+    for (let k = 0; again && k < units.length; k++){ again = false;
+      for (const p of placed){
+        if (u.x < p.x + p.w - 2 && p.x < u.x + u.w - 2 && y < p.y + p.h + GAP - 2 && p.y < y + u.h - 2){ y = p.y + p.h + GAP; again = true; } } }
+    if (y !== u.y){ u.move(u.x, y); u.y = y; moved++; }
+    placed.push(u); });
+  if (moved){ render(); }
+  return moved;
+}
+let _ovT = null; const _ovSize = new Map();
+// only a real change of size counts (observing a node reports its size once: that is not a change)
+const _ovObs = typeof ResizeObserver !== "undefined" ? new ResizeObserver(ents => {
+  let grew = false;
+  ents.forEach(en => { const id = en.target.dataset.id, w = Math.round(en.contentRect.width), h = Math.round(en.contentRect.height), was = _ovSize.get(id);
+    if (was && (was[0] !== w || was[1] !== h)) grew = true; _ovSize.set(id, [w, h]); });
+  if (grew){ clearTimeout(_ovT); _ovT = setTimeout(() => { if (!drag) unOverlap(); }, 250); } }) : null;
+function watchSizes(){ if (!_ovObs) return; _ovObs.disconnect(); world.querySelectorAll(".node").forEach(el => _ovObs.observe(el)); }
 // on when the user ticked it, or by default in a fun theme (Synthwave, Banana, Candy) until they untick it
 function confettiOn(){ if (SETTINGS.confetti !== undefined) return !!SETTINGS.confetti; const id = themeId(); return !isUserTheme(id) && !!(THEMES[id] || {}).fun; }
 // ---- confetti (Settings, off by default): bursts up from the bottom edge in the theme's own colours
@@ -2324,18 +2363,20 @@ function confetti(force){
   cv.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:90"; document.body.appendChild(cv);
   const g = cv.getContext("2d"), dpr = devicePixelRatio, W = innerWidth, H = innerHeight;
   const cols = ["p1","p2","p3","p4","p5","acc","accf","pass","c-export","s-body"].map(tok).filter(Boolean);
+  const T = 0.5;                                   // playback speed: half the original (the same paths, twice as long)
   const P = []; for (let i = 0; i < 240; i++){ const fromX = W * (0.08 + 0.84 * Math.random()), a = -Math.PI / 2 + (Math.random() - 0.5) * 0.9, v = H * (0.013 + 0.008 * Math.random());
-    P.push({x:fromX, y:H + 10, vx:Math.cos(a) * v, vy:Math.sin(a) * v, w:9 + Math.random() * 8, h:6 + Math.random() * 6, r:Math.random() * 6.3, vr:(Math.random() - 0.5) * 0.22,
-      c:cols[i % cols.length], wob:Math.random() * 6.3, delay:Math.floor(Math.random() * 30)}); }
+    P.push({x:fromX, y:H + 10, vx:Math.cos(a) * v * T, vy:Math.sin(a) * v * T, w:9 + Math.random() * 8, h:6 + Math.random() * 6, r:Math.random() * 6.3, vr:(Math.random() - 0.5) * 0.22 * T,
+      c:cols[i % cols.length], wob:Math.random() * 6.3, delay:Math.floor(Math.random() * 30 / T)}); }
   let f = 0;
+  const dx = Math.pow(0.99, T), dyd = Math.pow(0.975, T), dyu = Math.pow(0.993, T);
   (function step(){ g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); let alive = 0; f++;
-    P.forEach(p => { if (f < p.delay) { alive++; return; } p.vy += H * 0.00022; p.vx *= 0.99; p.vy *= (p.vy > 0 ? 0.975 : 0.993); p.x += p.vx + Math.sin(p.wob += 0.07) * 0.9; p.y += p.vy; p.r += p.vr;
+    P.forEach(p => { if (f < p.delay) { alive++; return; } p.vy += H * 0.00022 * T * T; p.vx *= dx; p.vy *= (p.vy > 0 ? dyd : dyu); p.x += p.vx + Math.sin(p.wob += 0.07 * T) * 0.9 * T; p.y += p.vy; p.r += p.vr;
       if (p.y < H + 40) alive++; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.scale(1, Math.cos(p.wob)); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); });
-    if (alive && f < 1100) requestAnimationFrame(step); else cv.remove(); })();
+    if (alive && f < 1100 / T) requestAnimationFrame(step); else cv.remove(); })();
 }
 // ---- Organize: tidy the canvas the way a desktop "Clean up" / "Sort by" does
-function orgUnits(){
-  const scoped = selSet.size >= 2, inSel = id => selSet.has(id), units = [];
+function orgUnits(all){
+  const scoped = !all && selSet.size >= 2, inSel = id => selSet.has(id), units = [];
   const dom = id => world.querySelector(`.node[data-id="${id}"]`);
   S.nodes.forEach(n => { if (groupOf(n.id)) return; if (scoped && !inSel(n.id)) return; const el = dom(n.id);
     units.push({id:n.id, kind:n.kind, name:n.data.name || n.data.title || "", x:n.x, y:n.y, w:el ? el.offsetWidth : 270, h:el ? el.offsetHeight : 120, nodes:[n.id],
@@ -2405,7 +2446,7 @@ function organize(mode){
     const cw = {}; ds.forEach(d => cw[d] = Math.max(...cols[d].map(u => u.w)));
     let x = ox; ds.forEach(d => { let y = oy; cols[d].forEach(u => { u.move(x, y); y += gsnap(u.h + 20, 20); }); x += gsnap(cw[d] + 60); });
   }
-  render(); if (!scoped) fitView(); changed(false);
+  render(); unOverlap(); if (!scoped) fitView(); changed(false);
   status("ok", {clean:"Cleaned up onto the grid.", kind:"Sorted by kind.", name:"Sorted by name.", flow:"Laid out left to right by data flow."}[mode] + " Ctrl+Z undoes it.");
 }
 function fitView(){
@@ -2677,6 +2718,8 @@ world.addEventListener("input", e => {
   if (k === "inForm"){ d.inForm = el.value; changed(true); return; }
   if (k === "srcSel"){ d.csvOn = el.value === "1"; d.pulseOn = el.value === "pulse"; if (d.pulseOn && !d.pulse) d.pulse = {kind:"half_sine", peak:"1 kN", duration:"5 ms", start:"0 ms"}; changed(true); return; }
   if (k && k.startsWith("pl.")){ d.pulse = d.pulse || {}; const kk = k.slice(3); d.pulse[kk] = el.value;
+    if (el.dataset.part){ const box = el.closest(".uv"), ni = box.querySelector('[data-part="num"]'), us = box.querySelector('[data-part="unit"]');
+      d.pulse[kk] = splitQ(ni.value).text || !us ? ni.value : joinQ(ni.value, us.value); }
     if (kk === "kind"){ const keep = d.pulse; d.pulse = {kind:el.value}; (PULSES[el.value] || [0, []])[1].forEach(([f, def]) => { d.pulse[f] = keep[f] ?? (["stop","fall"].includes(f) ? "" : def); }); changed(true); return; }
     changed(false); const box = world.querySelector(`.node[data-id="${n.id}"] .csvmini svg`), pts = pulsePts(d);
     if (box && pts) box.innerHTML = csvSVG({csvInterp:"linear"}, pts, 220, 56, true); return; }
@@ -3225,7 +3268,8 @@ function syncTimeBar(){
   const ton = tm === "limit", tbox = tv.closest(".uv"); tbox.classList.toggle("off", !ton);
   tbox.querySelectorAll("input,select").forEach(x => { x.disabled = !ton; x.title = ton ? "" : (tm === "auto" ? `AUTO: 5 x the estimated run time (about ${lastDt && lastDt.est_run_s ? (lastDt.est_run_s < 1 ? "under 1 s" : dur(lastDt.est_run_s)) : "?"} here), at least 10 s. A Study stops after 5 x (runs x time per run / cores). Pick Limit to set your own.` : "No timeout: runs always finish."); });
   document.getElementById("dtInfo").textContent = !lastDt ? "" : (mode === "adaptive" && lastDt.dt_free
-    ? `contact ${niceTime(lastDt.dt).join(" ")} · free ${niceTime(lastDt.dt_free).join(" ")}`
+    ? (lastDt.dt_free > lastDt.dt * 1.000001 ? `contact ${niceTime(lastDt.dt).join(" ")} · free ${niceTime(lastDt.dt_free).join(" ")}`
+       : `${niceTime(lastDt.dt).join(" ")} · same as AUTO here (contacts do not set the step)`)
     : `critical ${niceTime(lastDt.dt_crit).join(" ")} · ${lastDt.steps.toLocaleString()} steps`);
 }
 TB.forEach(([a, b, k]) => [a, b].forEach(id => document.getElementById(id).addEventListener(id === b ? "change" : "input", () => {
@@ -3624,7 +3668,7 @@ async function loadText(text, path, dataDir){
   // relative files (CSV loads, pictures) are read from the model's folder; an example's from where it ships
   MATP = new Set(r.mats || []); fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
-  render(); if (!S.meta.hasLayout) arrange(); fitView(); histReset();
+  render(); if (!S.meta.hasLayout) arrange(); else unOverlap(); fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();
 }
 async function openFile(){
@@ -3756,12 +3800,13 @@ const GUIDE = [
    <li><b>Save</b> (${K("Ctrl+S")}) writes a plain YAML file. The same file runs from the command line with <code>simblocks run model.yaml</code>.</li>
   </ol>
   <p>Every node has a small <b>i</b> button. It shows a short description, and its <b>Full entry in Help</b> link brings you to the matching page here.</p>`},
- {id:"ex-overview", grp:"Examples", t:"The nine examples", h:`
-  <p>Nine small models show how blocks connect, from one spring to a motor-driven robot arm. They are in the <b>Examples</b> menu (top bar). Each one opens with a note at the top saying what it models and a textbook number to compare against. Run it, then change one thing at a time.</p>
-  <table class="ht"><tr><th></th><th>Simple</th><th>Medium</th><th>Advanced</th></tr>
-  <tr><td><b>1D</b></td><td><a data-h="guide:ex-1d1">Mass on a spring and damper</a></td><td><a data-h="guide:ex-1d2">Shock isolation (CSV load)</a></td><td><a data-h="guide:ex-1d3">Motor, gearbox and flywheel</a></td></tr>
-  <tr><td><b>2D</b></td><td><a data-h="guide:ex-2d1">Pendulum on a hinge</a></td><td><a data-h="guide:ex-2d2">Ball bouncing down a ramp</a></td><td><a data-h="guide:ex-2d3">Four-bar linkage</a></td></tr>
-  <tr><td><b>3D</b></td><td><a data-h="guide:ex-3d1">Spinning top</a></td><td><a data-h="guide:ex-3d2">Drone arm (beam)</a></td><td><a data-h="guide:ex-3d3">Robot arm</a></td></tr></table>
+ {id:"ex-overview", grp:"Examples", t:"The examples", h:`
+  <p>Eleven small teaching models show how blocks connect, from one spring to a motor-driven robot arm. The <b>Apollo 11 showcase</b> puts whole missions together: the Saturn V climb to orbit and the lunar landing, checked against NASA's records. All of them are in the <b>Examples</b> menu (top bar); the two Apollo canvases are at the end of the list. Each one opens with a note at the top saying what it models and a number to compare against. Run it, then change one thing at a time.</p>
+  <table class="ht"><tr><th></th><th>Simple</th><th>Medium</th><th>Advanced</th><th>More</th></tr>
+  <tr><td><b>1D</b></td><td><a data-h="guide:ex-1d1">Mass on a spring and damper</a></td><td><a data-h="guide:ex-1d2">Shock isolation (CSV load)</a></td><td><a data-h="guide:ex-1d3">Motor, gearbox and flywheel</a></td><td><a data-h="guide:ex-1d4">Battery, ESCs and two motors (circuit)</a><br><a data-h="guide:ex-1d5">Cruise control (PID)</a></td></tr>
+  <tr><td><b>2D</b></td><td><a data-h="guide:ex-2d1">Pendulum on a hinge</a></td><td><a data-h="guide:ex-2d2">Ball bouncing down a ramp</a></td><td><a data-h="guide:ex-2d3">Four-bar linkage</a></td><td></td></tr>
+  <tr><td><b>3D</b></td><td><a data-h="guide:ex-3d1">Spinning top</a></td><td><a data-h="guide:ex-3d2">Drone arm (beam)</a></td><td><a data-h="guide:ex-3d3">Robot arm</a></td><td></td></tr>
+  <tr><td><b>Showcase</b></td><td colspan="4"><a data-h="guide:ex-apollo">Apollo 11: Saturn V ascent and lunar landing</a></td></tr></table>
   <h3>How every model is built</h3>
   <p><b>Bodies</b> are the things that move: they have mass (and inertia if they turn). <b>Elements</b> connect bodies and push on them: springs, dampers, contacts, joints, motors. An element always acts along a <b>measure</b>, a number worked out from the bodies' positions (a stretch, a gap, an angle). <b>Outputs</b> pick one number out of the run (the largest force, the time something happened). <b>Values</b> feed numbers with units into all of these.</p>
   <p>Wires carry these things: value wires (numbers), body wires (which body an element acts on), signal wires (a history out of a run) and metric wires (a result). The <b>Canvas key</b> in the top right of the canvas shows the colours.</p>`},
@@ -3817,6 +3862,38 @@ const GUIDE = [
   <ul><li>Change gear to 3 or 8 and compare the spin-up time and top speed (a classic gearing trade-off).</li>
   <li>Lower k_shaft to 20 N m/rad: the shaft now winds up and rings visibly in the shaft torque history.</li>
   <li>Set throttle on the drive to 0.5.</li></ul>`},
+ {id:"ex-1d4", grp:"Examples", t:"1D-4 Battery, ESCs and two motors (circuit)", h:`
+  <p class="exopen"><button data-ex="1D-4 Battery, ESCs and two motors spinning a flywheel">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A 6S LiPo pack feeds two brushless motors through a fuse, the leads and the ESCs' input capacitors. Both motors turn one flywheel through a 2:1 belt. The questions: how fast it spins up, how hard it pulls on the pack and the fuse, and how hot the motors get.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>One rotation body</b>, the flywheel, with a <b>friction element</b> for bearing drag.</li>
+  <li><b>A circuit</b> drawn as parts between nets: the <b>battery</b> (cells, capacity, R0 and an R1 C1 branch for the voltage sag), a <b>fuse</b> (rating and blow time), a <b>resistor</b> for the leads, a <b>capacitor</b> for the ESC caps, and two <b>motor</b> parts, each behind an ESC with an 80 A current limit and a <b>thermal</b> mass.</li>
+  <li>Each motor part names the body it turns (<code>measure: flywheel</code>) and its <b>gear</b> (the belt). The circuit sets each motor's torque from its current; the flywheel's speed sets each motor's back-EMF.</li></ul>
+  <h3>What to look at</h3>
+  <p><i>I_pack_peak</i> (about 540 A) is the inrush into the empty ESC capacitors in the first 50 microseconds: the spark you see when plugging in. The motors then draw their 80 A limits while the flywheel is slow, and the current falls as the back-EMF rises. <i>T_motor_max</i> is the hottest winding temperature.</p>
+  <h3>Check it against the textbook</h3>
+  <p>Top speed is about $kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 = 13{,}900$ rpm; the model ends at 13,480 rpm (sag and drag take the rest). While both ESCs hold 80 A the flywheel torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$ N m ($K_t = 1/kv$), so it gains about 690 rad/s every second.</p>
+  <h3>Things to try</h3>
+  <ul><li>Set the caps' v0 to 25 V (pre-charged): the inrush disappears and the pack peak drops to the motors alone (about 160 A).</li>
+  <li>Lower I_esc to 40 A: a gentler pull on the pack, and the spin-up to 12,000 rpm takes 3.9 s instead of 2.0 s.</li>
+  <li>Lower the fuse's I_rating to 100 A: it blows during the spin-up (<i>fuse_blown</i> = 1) and the flywheel stops short at about 12,100 rpm.</li></ul>`},
+ {id:"ex-1d5", grp:"Examples", t:"1D-5 Cruise control (PID)", h:`
+  <p class="exopen"><button data-ex="1D-5 Cruise control up a hill">Open this example</button></p>
+  <h3>What it models</h3>
+  <p>A 1,500 kg car cruises at 25 m/s. At 40 s the road tips up a 5 % grade. A PID loop reads the speed every step and sets the engine force to hold it. The questions: how far the speed sags and how hard the engine has to push on the hill.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>One body</b>, the car, with <b>drag</b> (air) and a <b>dashpot</b> (rolling resistance) against the road.</li>
+  <li><b>Two force elements</b> whose force is a control signal: the engine (<i>drive</i>) and gravity along the hill (<i>slope</i>).</li>
+  <li><b>Control nodes</b>: <i>push</i> is the PID on the car's speed, limited to what the engine can do and started from the push that holds the speed on the flat (its bias). <i>drive</i> limits how fast the push can change, like a real throttle. <i>on_hill</i> is an if / else that latches on at 40 s; <i>slope</i> turns it into gravity's pull down the grade.</li></ul>
+  <h3>What to look at</h3>
+  <p>The speed sags to about 24.4 m/s a few seconds after the hill starts (<i>v_sag</i>, <i>t_sag</i>), then the integral term pulls it back to 25 m/s. <i>push_hill</i> is where the engine settles.</p>
+  <h3>Check it against the textbook</h3>
+  <p>On the hill the engine must carry drag, rolling and gravity: $0.42 v^2 + 18 v + m g \sin\theta = 1{,}447$ N (<i>push_check</i>). The PID finds 1,447.33 N by itself.</p>
+  <h3>Things to try</h3>
+  <ul><li>Set ki to 0: with only the proportional term the car settles at 24.2 m/s (the classic steady-state error).</li>
+  <li>Raise kp to 5,000: the sag shrinks to 24.86 m/s, but with the same ki the last of the speed comes back more slowly.</li>
+  <li>Lower F_max to 1,200 N: the engine can no longer hold the speed on the hill.</li></ul>`},
  {id:"ex-2d1", grp:"Examples", t:"2D-1 Pendulum on a hinge", h:`
   <p class="exopen"><button data-ex="2D-1 Pendulum on a hinge">Open this example</button></p>
   <h3>What it models</h3>
@@ -3920,6 +3997,19 @@ const GUIDE = [
   <ul><li>Swap the rubber stop for an <b>impact</b> element (rigid, with restitution) and compare the peak force.</li>
   <li>Double the payload: the arm rises more slowly and the elbow sags further.</li>
   <li>Lower k_elbow to 10 N m/rad and watch the forearm swing.</li></ul>`},
+ {id:"ex-apollo", grp:"Examples", t:"Apollo 11: Saturn V ascent and lunar landing", h:`
+  <p class="exopen"><button data-ex="Apollo 11 Saturn V ascent to Earth orbit">Open the ascent</button> <button data-ex="Apollo 11 lunar landing, powered descent to touchdown">Open the landing</button> <button data-showcase="apollo11">Open the results page</button></p>
+  <h3>What it models</h3>
+  <p>The two powered flights of Apollo 11, each one canvas. <b>Part 1</b>: the Saturn V (AS-506) from first motion to Earth parking orbit, with the F-1 and J-2 engines, staging, drag, the tilt program, a gravity turn and guidance to orbit. <b>Part 2</b>: the lunar module Eagle from powered descent initiation to touchdown, flown by Apollo's own quadratic guidance law in P63 and P64, and then by the crew's callouts in P66.</p>
+  <h3>The blocks and why they connect that way</h3>
+  <ul><li><b>Rocket engines from their propellant chemistry</b>: equilibrium combustion and nozzle expansion give each engine's chamber temperature and Isp (the F-1 block predicts 304.8 s vacuum Isp; published 304 s).</li>
+  <li><b>The flight is the physics</b>: inverse-square gravity round a turning planet, the US Standard Atmosphere for thrust and drag (Earth), no air on the Moon, mass burnt and stages dropped.</li>
+  <li><b>Guidance groups</b>: the ascent's steering, and the landing's <i>guidance_phases</i> (P63 braking, P64 approach, P66). Set <i>crew</i> to 0 on the landing for the automatic landing NASA planned.</li>
+  <li><b>checks_against_NASA</b> groups read the flight at NASA's event times, next to the published values.</li></ul>
+  <h3>What to look at</h3>
+  <p>The <b>results page</b> plots every curve against NASA's records (each dot is NASA's) and lists every miss. On the landing, the speed is within 0.4 % through 258 s, high gate comes at 500 s (flight 507 s) and the crew's landing takes 49 s longer than the automatic one (NASA: 52 to 62 s).</p>
+  <h3>What is given and what is simulated</h3>
+  <p>Given: masses, engine ratings, thrust levels and event times from the flight reports; NASA's state at descent ignition and its published high gate; the descent rates the crew called out below 400 ft. One number is tuned: the Saturn V pitch-over rate. Everything else is simulated, every 20 ms.</p>`},
  {id:"contactmethods", grp:"Building models", t:"Contact and joint methods", h:`
   <p>Two things touch, or two parts are joined: there are several ways to model it, and they answer different questions. This page compares them so you can pick on purpose.</p>
   <h3>Contacts</h3>
@@ -4280,6 +4370,8 @@ document.getElementById("hQ").addEventListener("input", e => helpNav(e.target.va
 document.getElementById("hQ").addEventListener("keydown", e => { if (e.key === "Enter"){ const a = document.querySelector("#hNav a[data-h]"); if (a) helpShow(a.dataset.h); } });
 document.getElementById("helpView").addEventListener("click", async e => {
   const a = e.target.closest("[data-h]"); if (a){ e.preventDefault(); helpShow(a.dataset.h); return; }
+  const sc = e.target.closest("[data-showcase]");
+  if (sc){ API.call("open_showcase", sc.dataset.showcase).then(r => { if (r && r.ok === false) status("warn", r.error); }); return; }
   const ex = e.target.closest("[data-ex]"); if (ex){ const x = (window.__examples || []).find(z => z.name === ex.dataset.ex);
     if (x){ helpClose(); await loadText(x.text, null, x.dir); viewFit(); } return; }
   const c = e.target.closest("[data-copy]"); if (c){ const t = document.getElementById(c.dataset.copy).textContent;

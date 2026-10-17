@@ -35,20 +35,20 @@ run:
 """
 
 CIRCUIT = """simblocks: 1
-name: 1D-4 Battery, ESCs and two motors spinning a weapon
-question: "How fast do two belt-driven motors on a 6S pack spin a drum up, how hard do they pull on the pack and the fuse, and how hot do the motors get?"
+name: 1D-4 Battery, ESCs and two motors spinning a flywheel
+question: "How fast do two belt-driven motors on a 6S pack spin a flywheel up, how hard do they pull on the pack and the fuse, and how hot do the motors get?"
 dim: 1d
 
 params:
-  kv: {value: 1100 rpm/V, note: "both weapon motors"}
-  belt: {value: 2, note: "each motor turns twice per drum turn"}
+  kv: {value: 1100 rpm/V, note: "both motors"}
+  belt: {value: 2, note: "each motor turns twice per flywheel turn"}
   I_esc: {value: 80 A, note: "each ESC's current limit"}
 
 bodies:
-  drum: {dof: rotation, inertia: 2e-8 kg m^2, label: weapon drum}
+  flywheel: {dof: rotation, inertia: 2e-8 kg m^2, label: flywheel}
 
 elements:
-  bearings: {type: friction, measure: drum, F_c: 0.02, v_eps: 1, label: bearing drag (N m)}
+  bearings: {type: friction, measure: flywheel, F_c: 0.02, v_eps: 1, label: bearing drag (N m)}
 
 circuit:
   ground: gnd
@@ -64,7 +64,7 @@ circuit:
       R: 32 mohm
       L: 10 uH
       gear: $belt
-      measure: drum
+      measure: flywheel
       esc: {throttle: 1, I_max: $I_esc}
       thermal: {C_th: 45 J/K, R_th: 3 K/W, T_max_C: 150}
       label: left motor
@@ -75,14 +75,14 @@ circuit:
       R: 32 mohm
       L: 10 uH
       gear: $belt
-      measure: drum
+      measure: flywheel
       esc: {throttle: 1, I_max: $I_esc}
       thermal: {C_th: 45 J/K, R_th: 3 K/W, T_max_C: 150}
       label: right motor
 
 outputs:
-  t_90_s:       {body: drum, quantity: velocity, reduce: first_time_above, value: 20000 rpm, label: time to 12000 rpm}
-  rpm_end:      {body: drum, quantity: velocity, unit: rpm, label: drum speed at the end}
+  t_90_s:       {body: flywheel, quantity: velocity, reduce: first_time_above, value: 20000 rpm, label: time to 12000 rpm}
+  rpm_end:      {body: flywheel, quantity: velocity, unit: rpm, label: flywheel speed at the end}
   I_pack_peak:  {part: pack, quantity: current, reduce: min, label: peak pack current (negative = discharging; the first microseconds charge the ESC caps)}
   V_bus_min:    {part: caps, quantity: voltage, reduce: min, label: lowest ESC input voltage}
   fuse_blown:   {part: fuse, quantity: state, reduce: final, label: fuse blown (1) or intact (0)}

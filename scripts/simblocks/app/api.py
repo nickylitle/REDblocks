@@ -446,6 +446,16 @@ class Api:
         except Exception as exc:
             return _err(exc)
 
+    def open_showcase(self, name="apollo11"):
+        """Open a showcase's results page (Apollo 11: the canvases against NASA's records) in the browser."""
+        here = os.path.join(os.path.dirname(__file__), "examples", "showcase", f"{name}.html")      # packaged app
+        dev = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "showcase", name,
+                                           f"{name}.html"))
+        path = here if os.path.isfile(here) else dev
+        if not os.path.isfile(path):
+            return dict(ok=False, error=f"the {name} results page is not in this install")
+        return self.open_path(path)
+
     def open_path(self, path):
         """Open a report or folder with the system's default app."""
         try:

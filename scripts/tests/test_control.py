@@ -214,13 +214,13 @@ def test_max_sizes_the_time_step_and_a_missing_max_is_flagged():
 def test_circuit_esc_throttle_on_a_speed_loop():
     import os, yaml
     here = os.path.join(os.path.dirname(__file__), "..", "examples", "learn")
-    d = yaml.safe_load(open(os.path.join(here, "1d_4_weapon_circuit.yaml")))
+    d = yaml.safe_load(open(os.path.join(here, "1d_4_flywheel_circuit.yaml")))
     for p in d["circuit"]["parts"].values():
         if p["type"] == "motor":
             p["esc"]["throttle"] = {"control": "thr", "init": 0}
-    d["control"] = {"thr": {"pid": {"measure": "drum.velocity", "setpoint": "8000 rpm", "kp": 0.01, "ki": 0.05,
+    d["control"] = {"thr": {"pid": {"measure": "flywheel.velocity", "setpoint": "8000 rpm", "kp": 0.01, "ki": 0.05,
                                     "min": 0, "max": 1}}}
-    d["outputs"] = {"w": {"body": "drum", "quantity": "velocity", "unit": "rpm"}, "thr": {"control": "thr"}}
+    d["outputs"] = {"w": {"body": "flywheel", "quantity": "velocity", "unit": "rpm"}, "thr": {"control": "thr"}}
     d.pop("editor", None)
     o = load_system(yaml.safe_dump(d)).run()
     assert o["w"] == pytest.approx(8000, rel=1e-3)

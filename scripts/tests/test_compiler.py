@@ -132,7 +132,7 @@ def test_block_library_covers_every_block(tmp_path):
     E = entries()
     assert {e["name"] for e in E} == {n for n in REGISTRY if is_public(n)}
     assert {e["name"] for e in entries(include_internal=True)} == set(REGISTRY)
-    assert all(e["fig"] in F for e in E)
+    assert all(e["fig"] is None or e["fig"] in F for e in E)        # None: no drawing says anything useful
     assert all(e["usage"] and e["outputs"] for e in E)
     p = write(str(tmp_path / "lib.html"))
     txt = open(p).read()
