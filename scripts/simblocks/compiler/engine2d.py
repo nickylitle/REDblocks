@@ -28,7 +28,7 @@ from numba import njit
 
 from .circuit import circuit_step
 
-from .engine1d import _force, NP, NAUX
+from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 from .control import control_step
 from .adaptive import pick_dt
 
@@ -988,6 +988,23 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         for k in range(nq):
             vst[k] = v[k]
             v[k] += dt * Q[k] * minv[k]
+        # motors: the exact step of a shaft held by back-EMF (stable at any step; see engine1d motor_scale)
+        for e in range(ne):
+            if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
+                kk = motor_k(typ[e], P[e], st[e], dt)
+                if kk > 1e-9:
+                    du = 0.0
+                    for k in range(nq):
+                        du += C[e, k] * (v[k] - vst[k])
+                    J_ = du * (motor_scale(kk) - 1.0) / P[e, 10]
+                    for k in range(nq):
+                        if C[e, k] != 0.0:
+                            v[k] += C[e, k] * minv[k] * J_
+                    F0 = Fe[e]; Fe[e] = F0 - J_ / dt
+                    if typ[e] == 8:
+                        drive_books(P[e], st[e], aux[e], F0, Fe[e], kk, dt, D, IN, A, dsp, e)
+                    else:
+                        A[e] += 0.5 * (Fe[e] - F0) * dsp[e]
         # rigid impacts: sequential impulses on this step's velocities (restitution e, Coulomb mu)
         for k in range(nq):
             Dq[k] = 0.0
@@ -1296,6 +1313,12 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
+            for e in range(ne):
+                if typ[e] == 17:                 # the circuit reads each motor's speed at the end of the step
+                    u_ = 0.0
+                    for k in range(nq):
+                        u_ += C[e, k] * v[k]
+                    st[e, 2] = u_
             circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):

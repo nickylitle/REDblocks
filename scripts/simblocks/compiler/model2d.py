@@ -553,7 +553,7 @@ def compile2d(doc, ctx, M, overrides):
 
 
 def critical_dt2d(M, skip=None):
-    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names)
+    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names); M.dt_motor = math.inf
     mi = a["minv"]
     for e in range(len(M.el_names)):
         if skip is not None and skip[e]:
@@ -565,7 +565,12 @@ def critical_dt2d(M, skip=None):
                         (a["P"][e, 2], a["P"][e, 3], a["P"][e, 0]))
             inv = sum(a["C"][e, j] ** 2 * mi[j] for j in range(3 * nb))
             if inv > 0:
-                best = min(best, 2.0 * R / (inv * (G * Kt) ** 2))
+                lim = 2.0 * R / (inv * (G * Kt) ** 2)
+                # a drive steps itself exactly (engine1d _force) and a circuit motor is solved with its shaft
+                # (circuit_step): neither is a stability limit. Its time constant only sets the accuracy cap, and the
+                # engine needs its inertia (P[e, 10] = 1 / inertia along the measure)
+                a["P"][e, 10] = inv
+                M.dt_motor = min(M.dt_motor, 0.5 * lim)
             continue
         if t == 12:                                       # beam: axial, transverse and end-rotation modes
             L0 = a["P"][e, 4]; kax = a["P"][e, 0]; kb = a["P"][e, 1]

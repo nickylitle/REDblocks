@@ -584,7 +584,7 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             G = gg("gear", 1.0)
             if t == "drive":
                 kv = gg("kv")
-                P[e, :] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
+                P[e, :10] = [1.0 / kv, gg("R"), gg("I_max"), G, gg("cells"), gg("R0"), gg("R1", 0.0), gg("C1", 0.0),
                            gg("capacity"), gg("throttle", 1.0)]
             else:                                 # a circuit motor: torque from the circuit, speed back to it
                 P[e, :4] = [G, gg("__idx__"), gg("__kt__"), gg("__R__")]
@@ -673,7 +673,7 @@ def rotation_dt3d(M):
 
 
 def critical_dt3d(M, skip=None):
-    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names)
+    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names); M.dt_motor = math.inf
     rot_inv = np.zeros(nb)
     for b in range(nb):
         if a["rmode"][b] == E3.R_SPIN:
@@ -726,7 +726,12 @@ def critical_dt3d(M, skip=None):
             if a["mk"][e] == E3.MK_TWIST:
                 inv = twist_inv(e)
             if inv > 0:
-                best = min(best, 2.0 * R_ / (inv * (G * Kt) ** 2))
+                lim = 2.0 * R_ / (inv * (G * Kt) ** 2)
+                # a drive steps itself exactly (engine1d _force) and a circuit motor is solved with its shaft
+                # (circuit_step): neither is a stability limit. Its time constant only sets the accuracy cap, and the
+                # engine needs its inertia (P[e, 10] = 1 / inertia along the measure)
+                a["P"][e, 10] = inv
+                M.dt_motor = min(M.dt_motor, 0.5 * lim)
             continue
         if k <= 0:
             continue

@@ -27,7 +27,7 @@ from .control import control_step
 from .adaptive import pick_dt
 
 from .engine2d import _book_hits
-from .engine1d import _force, NP, NAUX
+from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 
 MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 
@@ -519,6 +519,19 @@ def _turn_dir(R, rmode, Iinv, axis, Iax, b, jx, jy, jz):
 
 
 @njit(cache=True, nogil=True)
+def _motor_rate(e, m_, V, W, wsp, C, ba, bb, geo, nb):
+    """Rate of a motor's measure now: a twist (relative spin about the axis fixed in A) or a coordinate sum."""
+    if m_ == MK_TWIST:
+        u = 0.0
+        if bb[e] >= 0:
+            u += W[bb[e], 0] * geo[e, 6] + W[bb[e], 1] * geo[e, 7] + W[bb[e], 2] * geo[e, 8]
+        if ba[e] >= 0:
+            u -= W[ba[e], 0] * geo[e, 6] + W[ba[e], 1] * geo[e, 7] + W[ba[e], 2] * geo[e, 8]
+        return u
+    return _lin_rate(e, V, wsp, C, nb)
+
+
+@njit(cache=True, nogil=True)
 def _lin_rate(e, V, wsp, C, nb):
     sd = 0.0
     for b in range(nb):
@@ -1005,6 +1018,36 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             elif rmode[b] == R_FREE:
                 Lw[b, 0] += dt * T[b, 0]; Lw[b, 1] += dt * T[b, 1]; Lw[b, 2] += dt * T[b, 2]
         _omega(R, rmode, Iinv, axis, Lw, wsp, W, nb)
+        # motors: the exact step of a shaft held by back-EMF (stable at any step; see engine1d motor_scale)
+        for e in range(ne):
+            if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
+                kk = motor_k(typ[e], P[e], st[e], dt)
+                if kk <= 1e-9:
+                    continue
+                u1 = _motor_rate(e, mk[e], V, W, wsp, C, ba, bb, geo, nb)
+                J_ = (u1 - st[e, 2]) * (motor_scale(kk) - 1.0) / P[e, 10]
+                if mk[e] == MK_TWIST:
+                    for b, sg in ((bb[e], 1.0), (ba[e], -1.0)):
+                        if b < 0:
+                            continue
+                        jx = sg * J_ * geo[e, 6]; jy = sg * J_ * geo[e, 7]; jz = sg * J_ * geo[e, 8]
+                        if rmode[b] == R_SPIN:
+                            wsp[b] += (jx * axis[b, 0] + jy * axis[b, 1] + jz * axis[b, 2]) * Iax[b]
+                        elif rmode[b] == R_FREE:
+                            Lw[b, 0] += jx; Lw[b, 1] += jy; Lw[b, 2] += jz
+                        _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
+                else:
+                    for b in range(nb):
+                        for k in range(3):
+                            V[b, k] += C[e, 4 * b + k] * minv[b, k] * J_
+                        if C[e, 4 * b + 3] != 0.0:
+                            wsp[b] += C[e, 4 * b + 3] * Iax[b] * J_
+                            _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
+                F0 = Fe[e]; Fe[e] = F0 - J_ / dt
+                if typ[e] == 8:
+                    drive_books(P[e], st[e], aux[e], F0, Fe[e], kk, dt, D, IN, A, dsp, e)
+                else:
+                    A[e] += 0.5 * (Fe[e] - F0) * dsp[e]
         # rigid impacts: sequential impulses on this step's velocities (restitution e, Coulomb mu)
         for b in range(nb):
             DX[b, 0] = 0.0; DX[b, 1] = 0.0; DX[b, 2] = 0.0; DW[b, 0] = 0.0; DW[b, 1] = 0.0; DW[b, 2] = 0.0
@@ -1398,6 +1441,9 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
+            for e in range(ne):
+                if typ[e] == 17:                 # the circuit reads each motor's speed at the end of the step
+                    st[e, 2] = _motor_rate(e, mk[e], V, W, wsp, C, ba, bb, geo, nb)
             circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):

@@ -538,7 +538,7 @@ def _compile_model(doc, overrides=None):
             m[nz[0]] += g("J_rotor", 0.0) * G * G
         elif t == "drive":
             kv = g("kv"); G = g("gear", 1.0)
-            P[e, :] = [1.0 / kv, g("R"), g("I_max"), G, g("cells"), g("R0"), g("R1", 0.0), g("C1", 0.0),
+            P[e, :10] = [1.0 / kv, g("R"), g("I_max"), G, g("cells"), g("R0"), g("R1", 0.0), g("C1", 0.0),
                        g("capacity"), g("throttle", 1.0)]
             if not 0.0 <= P[e, 9] <= 1.0:
                 raise SpecError("throttle is a fraction of full duty, 0 to 1", where, line_of(d, "throttle"), f)
@@ -633,6 +633,10 @@ def _step_share(M, crit, cb, other):
                min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
 
 
+MOTOR_SHARE = 1.0           # a step per drive time constant: its own response is exact at any step, and one tau
+                            # keeps what it couples to (loads, friction) within about 0.2 %
+
+
 def _step_caps(M, dt_auto):
     """The automatic step's other limits: load features, free rotation, vehicles, circuit transients."""
     M.dt_auto = dt_auto
@@ -644,6 +648,8 @@ def _step_caps(M, dt_auto):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))
+    if math.isfinite(getattr(M, "dt_motor", math.inf)):    # a drive's time constant: resolved, not just stable
+        M.dt_auto = min(M.dt_auto, MOTOR_SHARE * M.dt_motor)
     a2 = getattr(M, "arrays", None)
     if a2 is not None and "typ" in a2 and np.any((a2["typ"] >= 18) & (a2["typ"] <= 22)):
         # a vehicle in flight: resolve the engines' rise and tail-off, and never more than 50 ms a step
@@ -687,7 +693,7 @@ def critical_dt(M, skip=None):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import critical_dt3d
         return critical_dt3d(M, skip)
-    a = M.arrays; best = math.inf
+    a = M.arrays; best = math.inf; M.dt_motor = math.inf
     for e in range(len(M.el_names)):
         if skip is not None and skip[e]:
             continue
@@ -699,7 +705,12 @@ def critical_dt(M, skip=None):
             Kt, R, G = ((a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]) if t == 8 else
                         (a["P"][e, 2], a["P"][e, 3], a["P"][e, 0]))
             if inv > 0:
-                best = min(best, 2.0 * R / (inv * (G * Kt) ** 2))
+                lim = 2.0 * R / (inv * (G * Kt) ** 2)
+                # a drive steps itself exactly (engine1d _force) and a circuit motor is solved with its shaft
+                # (circuit_step): neither is a stability limit. Its time constant only sets the accuracy cap, and the
+                # engine needs its inertia (P[e, 10] = 1 / inertia along the measure)
+                a["P"][e, 10] = inv
+                M.dt_motor = min(M.dt_motor, 0.5 * lim)
             continue
         if k > 0 and inv > 0:
             best = min(best, 2.0 / math.sqrt(k * inv))

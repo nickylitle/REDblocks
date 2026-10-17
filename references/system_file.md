@@ -212,6 +212,10 @@ is also made elastic ("<element> elastic only"). A knockout that changes nothing
 ```yaml
 run: {t_end: 0.4 ms, dt: 20 ns, mc_n: 150, bounds: {shaft_set_mm: [0, 15]}}   # dt: auto = 0.02 x critical
 # automatic step held inside bounds instead of a fixed one:  run: {t_end: 0.4 ms, dt_min: 5 ns, dt_max: 50 ns}
+# motors (drive, circuit motor) do not limit the step for stability: their back-EMF damping on the shaft is stepped
+#   exactly (the shaft's speed change over a step is the plain step's x (1 - e^-k)/k, k = c dt / J, with the other
+#   loads held over the step). The auto step takes at most one motor time constant J R / (G Kt)^2 a step.
+#   With rigid joints the shaft's own inertia is used for k: steady speeds stay exact, transients run slightly slow.
 # adaptive step (changes as it runs):  run: {t_end: 2 s, dt: adaptive}   (dt_min / dt_max still bound it)
 #   free motion: the automatic step with the contact elements left out (one-sided, hertz, contact measures),
 #     and at most t_end / 20000 when the model has contacts (free flight is first order in the step)

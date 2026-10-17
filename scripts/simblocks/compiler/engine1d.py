@@ -31,7 +31,7 @@ from .adaptive import pick_dt
 from ..constitutive.plasticity import tabular_return
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
 
-NP = 10      # floats per element
+NP = 12      # floats per element
 NAUX = 4
 
 
@@ -121,6 +121,15 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         I, Ib, v, duty = esc_supply_thr(Veff, R0, Kt * wm, Rm, Imax, thr)
         if Ib < 0.0:
             Ib = 0.0
+        # below the current limit the drive is a damper on its shaft (current falls as the speed rises): st[0] = its
+        # c dt / J for the exact step (motor_step), st[2] = the shaft rate this step started from
+        st[0] = 0.0; st[2] = sd
+        if p[10] > 0.0 and I > 0.0:
+            h = 1e-6 * (abs(wm) + Veff / Kt)
+            I2, Ib2, v2, d2 = esc_supply_thr(Veff, R0, Kt * (wm + h), Rm, Imax, thr)
+            dIdw = (I - I2) / h
+            if dIdw > 0.0:
+                st[0] = p[10] * G * G * Kt * dIdw * dt
         Ech = ocv * Ib * dt
         diss = (R0 * Ib * Ib + R1 * iR1 * iR1 + Rm * I * I) * dt
         a = math.exp(-dt / (R1 * C1)) if R1 > 0.0 and C1 > 0.0 else 0.0
@@ -134,6 +143,55 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         aux[0] = st[1]; aux[1] = st[3]
         return -st[0], 0.0, -1.0, 0.0
     return 0.0, 0.0, 0.0, 0.0
+
+
+@njit(cache=True, nogil=True)
+def motor_k(typ, p, st, dt):
+    """k = c dt / J of a motor's back-EMF damping on its shaft this step (0: none). A drive works it out in _force; a
+    circuit motor's damping comes from the circuit solve (how its current falls with its back-EMF)."""
+    if typ == 8:
+        return st[0]
+    if typ == 17:                                    # st[4]: its back-EMF damping, from the circuit (circuit_step)
+        return p[10] * st[4] * dt
+    return 0.0
+
+
+@njit(cache=True, nogil=True)
+def motor_scale(k):
+    """The exact step of a shaft held by a damper: over a step of k = c dt / J its speed change is the plain step's
+    times (1 - e^-k) / k, whatever else pushes on it (held steady over the step). Never overshoots, at any step."""
+    if k < 1e-9:
+        return 1.0
+    return (1.0 - math.exp(-k)) / k
+
+
+@njit(cache=True, nogil=True)
+def drive_books(p, st, aux, F0, F1, k, dt, D, IN, A, dsp, e):
+    """A drive's books after the exact step changed its force from F0 to F1 (the step's average): the currents
+    scale with the force, the heat is the average of I^2 over the exponential decay, the pack charge and the
+    R1 branch follow the average battery current."""
+    A[e] += 0.5 * (F1 - F0) * dsp[e]
+    if F0 == 0.0:
+        return
+    r = F1 / F0
+    I0 = aux[0]; Ib0 = aux[1]
+    R0 = p[5]; Rm = p[1]; R1 = p[6]; C1 = p[7]; Q = p[8]
+    phi = motor_scale(k)
+    phi2 = (1.0 - math.exp(-2.0 * k)) / (2.0 * k) if k > 1e-9 else 1.0
+    Ia = I0 * r
+    Iinf = (Ia - I0 * phi) / (1.0 - phi) if phi < 1.0 else Ia
+    sq = Iinf * Iinf + 2.0 * Iinf * (I0 - Iinf) * phi + (I0 - Iinf) * (I0 - Iinf) * phi2
+    if sq < 0.0:
+        sq = Ia * Ia
+    beta = Ib0 / I0 if I0 != 0.0 else 0.0
+    D[e] += (R0 * beta * beta + Rm) * (sq - I0 * I0) * dt
+    dIb = Ib0 * (r - 1.0)
+    ocv = lipo_ocv_k(st[3] + Ib0 * dt / Q, p[4])
+    IN[e] += ocv * dIb * dt
+    st[3] -= dIb * dt / Q
+    a = math.exp(-dt / (R1 * C1)) if R1 > 0.0 and C1 > 0.0 else 0.0
+    st[4] += (1.0 - a) * dIb
+    aux[3] = st[3]                             # (current outputs stay the step's starting values: the peak is real)
 
 
 @njit(cache=True, nogil=True)
@@ -249,6 +307,23 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         for b in range(nb):
             vst[b] = v[b]
             v[b] += dt * Q[b] / m[b]
+        # motors: the exact step of a shaft held by back-EMF (stable at any step; see motor_scale)
+        for e in range(ne):
+            if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
+                kk = motor_k(typ[e], P[e], st[e], dt)
+                if kk > 1e-9:
+                    du = 0.0
+                    for b in range(nb):
+                        du += C[e, b] * (v[b] - vst[b])
+                    J_ = du * (motor_scale(kk) - 1.0) / P[e, 10]
+                    for b in range(nb):
+                        if C[e, b] != 0.0:
+                            v[b] += C[e, b] * J_ / m[b]
+                    F0 = Fe[e]; Fe[e] = F0 - J_ / dt
+                    if typ[e] == 8:
+                        drive_books(P[e], st[e], aux[e], F0, Fe[e], kk, dt, D, IN, A, dsp, e)
+                    else:
+                        A[e] += 0.5 * (Fe[e] - F0) * dsp[e]
         # rigid impacts (sequential impulses; see engine2d)
         for b in range(nb):
             Dq[b] = 0.0
@@ -385,6 +460,12 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
+            for e in range(ne):
+                if typ[e] == 17:                 # the circuit reads each motor's speed at the end of the step
+                    u_ = 0.0
+                    for b in range(nb):
+                        u_ += C[e, b] * v[b]
+                    st[e, 2] = u_
             circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):

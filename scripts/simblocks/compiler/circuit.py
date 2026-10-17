@@ -377,6 +377,14 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
 
 
 @njit(cache=True, nogil=True)
+def _motor_i(k, ptype, prm, pst, th, flg, dt, emf, v):
+    """Winding current of motor part k for terminal (or bus, behind an ESC) voltage v."""
+    Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 2] / dt
+    d = 1.0 if ptype[k] == 10 else flg[k]
+    return (d * v - emf + (prm[k, 2] / dt) * pst[k, 0]) / Z
+
+
+@njit(cache=True, nogil=True)
 def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, Gm, Iv, vnet):
     """Advance the circuit one step. st holds the mechanical side: st[e, 2] = the motor element's measure rate
     (ds/dt) from the previous step; on return st[e, 0] = torque on the measure (gear x Kt x i), st[e, 1] = winding
@@ -387,7 +395,8 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
     for k in range(npart):
         if ptype[k] == 10 or ptype[k] == 11:
             e = mot_el[int(prm[k, 7])]
-            emf[k] = _kt(k, prm, th, pst) * prm[k, 3] * st[e, 2]     # Kt G ds/dt
+            emf[k] = _kt(k, prm, th, pst) * prm[k, 3] * st[e, 2]     # Kt G ds/dt (the engines set it to the
+                                                                     # step's end rate before this call)
         if ptype[k] == 11:
             flg[k] = prm[k, 4] if pst[k, 5] < 0.5 else 0.0          # each step starts at the set throttle
     for it in range(8):
@@ -434,6 +443,39 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                     flg[k] = 0.0; changed = True                # no regen: the ESC stops driving (freewheels)
         if not changed:
             break
+    # each motor's back-EMF damping on its shaft, from the circuit as it is this step: how much its current drops per
+    # volt of extra back-EMF (one more solve with that motor's EMF nudged; the circuit is linear once the switches
+    # are set). The engines' exact motor step reads it (engine1d motor_k): kg^2 x this, in N m s / rad.
+    cdamp = np.zeros(npart); vtmp = np.zeros(nn + 1)
+    for km in range(npart):
+        tm = ptype[km]
+        if (tm != 10 and tm != 11) or pst[km, 5] > 0.5:
+            continue
+        if tm == 11 and not (flg[km] > 0.0 and flg[km] >= prm[km, 4] * (1.0 - 1e-6)):
+            continue                                            # at the current limit or freewheeling: no damping
+        de = 1e-3 * (abs(emf[km]) + 1.0)
+        i0 = _motor_i(km, ptype, prm, pst, th, flg, dt, emf[km], vnet[na[km]] - vnet[nb[km]])
+        emf[km] += de
+        for r in range(nn):
+            Iv[r] = 0.0
+            for c in range(nn):
+                Gm[r, c] = 0.0
+        for k in range(npart):
+            G, J = _companion(k, ptype, prm, pst, th, flg, t, dt, emf[k])
+            a = na[k] - 1; b = nb[k] - 1
+            if a >= 0:
+                Gm[a, a] += G; Iv[a] += J
+            if b >= 0:
+                Gm[b, b] += G; Iv[b] -= J
+            if a >= 0 and b >= 0:
+                Gm[a, b] -= G; Gm[b, a] -= G
+        for r in range(nn):
+            Gm[r, r] += 1e-12
+        _gauss(Gm, Iv, nn, vtmp)
+        vtmp[0] = 0.0
+        i1 = _motor_i(km, ptype, prm, pst, th, flg, dt, emf[km], vtmp[na[km]] - vtmp[nb[km]])
+        emf[km] -= de
+        cdamp[km] = (i0 - i1) / de if i0 > i1 else 0.0
     # currents, energy, heat, states
     for k in range(npart):
         tp = ptype[k]
@@ -484,6 +526,8 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             e = mot_el[int(prm[k, 7])]
             st[e, 0] = prm[k, 3] * kt * im                            # torque on the measured coordinate
             st[e, 1] = im; st[e, 3] = vm
+            kg = prm[k, 3] * kt
+            st[e, 4] = kg * kg * cdamp[k] if (pst[k, 5] < 0.5 and im != 0.0) else 0.0   # back-EMF damping, N m s
             heat = prm[k, 1] * rf * im * im
             pout[k, 4] = (flg[k] if tp == 11 else 1.0) if pst[k, 5] < 0.5 else 0.0
             pout[k, 5] = kt * im                                 # torque on the motor shaft
