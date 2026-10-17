@@ -315,7 +315,7 @@ label.gx span{color:var(--ink3);font-size:10px}
 .banner.bad{border-color:color-mix(in srgb,var(--fail) 50%,transparent);background:color-mix(in srgb,var(--fail) 9%,transparent)}
 .livechip{font:700 9px var(--mono);letter-spacing:.1em;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:1px;background:color-mix(in srgb,var(--acc) 10%,transparent)}
 #top .live{display:flex;align-items:center;gap:4px;font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
-#liveNote{font:10px var(--mono);color:var(--ink3);text-transform:none;letter-spacing:0;display:inline-block;width:10ch;margin-right:8px;
+#liveNote{font:10px var(--mono);color:var(--bar-ink2,var(--ink3));text-transform:none;letter-spacing:0;display:inline-block;width:10ch;margin-right:8px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .ht .mcb{font-size:11px;padding:2px 8px}
 .dlg{position:fixed;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;z-index:50}
@@ -3831,7 +3831,7 @@ const GUIDE = [
   <tr><td>Sage</td><td>Matcha and moss greens on cream, with blush pink, sunflower yellow and a mushroom red. A picnic in the woods.</td></tr>
   <tr><td>Texas</td><td>Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim.</td></tr>
   <tr><td>Banana</td><td>Ripe banana yellow on a cream canvas, with brown-speckle ink, leafy green trim and a round, bouncy font. Peak potassium.</td></tr>
-  <tr><td>Pink lemonade</td><td>Strawberry pink with a squeeze of lemon: blush panels, lemon-yellow highlights, berry wires and a round, bouncy font. Ice cold.</td></tr>
+  <tr><td>Pink lemonade</td><td>Strawberry pink with a squeeze of lemon: pink headers over lemon-cream blocks, berry wires and a round, bouncy font. Ice cold.</td></tr>
   <tr><td>Clean</td><td>Plain white with grey borders and crisp blue, green, purple and orange, in the style of GitHub&#x27;s light code view. A neutral light theme for bright rooms and daytime work.</td></tr>
   <tr><td>Arctic</td><td>Cool slate blue with frosty pastel wires, after the Nord palette. Soft contrast that stays easy on the eyes through long sessions.</td></tr>
   <tr><td>Protanopia</td><td>For red-blind vision (protanopia and protanomaly). Colours differ along blue and yellow and in lightness, never by red alone. Wire patterns on by default.</td></tr>
@@ -4037,8 +4037,8 @@ const THEMES = {
     "c-value":"#f2a900", "c-builder":"#9a5bd1", "c-body":"#8a5a2b", "c-element":"#6aa52a", "c-load":"#6aa52a", "c-output":"#b0a27a", "c-expr":"#1d9a8a",
     "c-fail":"#d93f3f", "c-sweep":"#f07f1a", "c-mc":"#e05f9a", "c-export":"#3d8ee0", "c-group":"#c3cf6a", "c-note":"#a6763c",
     p1:"#6b3f12", p2:"#4f8a10", p3:"#1f6fbf", p4:"#d2570a", p5:"#b0306a"}},
-  pink_lemonade: {name:"Pink lemonade", fun:true, note:"Strawberry pink with a squeeze of lemon: blush panels, lemon-yellow highlights, berry wires and a round, bouncy font. Ice cold.", scheme:"light", ui:"fredoka", t:{
-    bg:"#fde4ec", grid:"#f6d1de", panel:"#fff6f9", panel2:"#fde6ee", panel3:"#f8d3e1", edge:"#de8fae", hair:"#f2c6d6", selbg:"#fbc4d9", "note-bg":"#fdecf2", "group-hd":"#fde6ee",
+  pink_lemonade: {name:"Pink lemonade", fun:true, note:"Strawberry pink with a squeeze of lemon: pink headers over lemon-cream blocks, berry wires and a round, bouncy font. Ice cold.", scheme:"light", ui:"fredoka", t:{
+    bg:"#fde4ec", grid:"#f6d1de", panel:"#fff6d4", panel2:"#fdedc4", panel3:"#f9dfae", edge:"#de8fae", hair:"#efd7b0", selbg:"#fbc4d9", "note-bg":"#fff3cc", "group-hd":"#fde6ee",
     bar:"#f6b3cb", "bar-ink":"#4a1234", "bar-ink2":"#6e2f52", hd:"#f9c9dc", "hd-ink":"#3d1230", "hd-ink2":"#7a3d63",
     ink:"#3d1230", ink2:"#6a3058", ink3:"#8e587b", link:"#940c4f", acc:"#e0457b", accf:"#a87a00", pass:"#1d7a5e", warn:"#9a6200", fail:"#c22d4a", shadow:"rgba(170,60,110,.2)",
     "s-val":"#b36d00", "s-body":"#d6006e", "s-sig":"#2f5bff", "s-state":"#8a2be2", "s-metric":"#00897b",
