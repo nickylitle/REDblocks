@@ -302,7 +302,9 @@ def check(doc):
             continue
         if "part" in o:
             from .circuit import QUANTITIES as CQ
-            if o["part"] not in circ_parts:
+            pn_ = str(o["part"])                   # a battery's or a supply's I_load runs as its own part, <name>__load
+            if pn_ not in circ_parts and not (pn_.endswith("__load") and isinstance(circ_parts.get(pn_[:-6]), dict)
+                                              and circ_parts[pn_[:-6]].get("I_load") not in (None, "")):
                 raise SpecError(f"no circuit part named '{o['part']}'", p, line_of(o, "part"), f)
             if o.get("quantity") not in CQ:
                 raise SpecError(f"a part's quantity is one of {', '.join(sorted(CQ))}", p, line_of(o, "quantity"), f)

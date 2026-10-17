@@ -542,6 +542,8 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="setKeep">Keep my own colours when I switch theme</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Body wires long dashes, signals dotted, states dash-dot, metrics short dashes, values solid"><input type="checkbox" id="setDash">Wire patterns by type (dashes)</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Plays with the confetti. The party horn is made by the app itself (no file, nothing to credit). Or pick your own sound: MP3, WAV, OGG or M4A, up to 2 MB.">Confetti sound <select id="setCSound"><option value="horn">Party horn</option><option value="custom">My sound</option><option value="off">Off</option></select><button id="setCSoundPick">Choose sound…</button><button id="setCSoundTest">Play</button><span class="sub" id="setCSoundNow"></span></label>
+    <input type="file" id="setCSoundFile" accept="audio/*" hidden></div>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small GIF (or PNG / WebP) that plays next to the progress bar while something runs. Up to 2 MB.">Loading animation <button id="setLoader">Choose GIF…</button><button id="setLoaderOff">Remove</button><span class="sub" id="setLoaderNow"></span></label>
     <input type="file" id="setLoaderFile" accept="image/gif,image/png,image/webp,image/apng" hidden></div>
   <h3 class="dsub">Colours</h3><div class="sub" id="setOwn"></div><div id="setColors"></div>
@@ -972,32 +974,33 @@ function measureOf(n){
 // ------------------------------------------------------------------------------------------------ electrical circuit
 // A part is a two-terminal law (+ / -); each terminal wires into a net block, and one net is ground (0 V).
 // Motors also take a shaft body: the circuit drives it, and its speed makes the back-EMF.
-const PART_NAME = {resistor:"resistor", capacitor:"capacitor", inductor:"inductor", voltage_source:"voltage source", current_source:"current source",
+const PART_NAME = {resistor:"resistor", capacitor:"capacitor", inductor:"inductor", voltage_source:"voltage source", current_source:"current source", current_load:"current load",
   battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor"};
 const PART_INFO = {
   resistor:["v = R i", "An ideal resistor."],
   capacitor:["i = C dv/dt", "A capacitor with optional series ESR (equivalent series resistance, default 0) and leakage resistance R_leak (0 = none). v0 is its starting voltage."],
   inductor:["v = L di/dt + R i", "An inductor with optional winding resistance R. i0 is its starting current."],
   voltage_source:["v = V - R i", "A DC voltage source; + is the first terminal. R is its internal resistance (default 0.1 mohm)."],
-  current_source:["i = I", "Pushes current I from + to − through itself (out of + into the circuit is negative i by the passive sign)."],
+  current_source:["i = I", "Drives current I out of its + terminal into the circuit and back in at − (a source: its current reads negative by the passive sign)."],
+  current_load:["i = I", "Draws a fixed current I: in at its + terminal (the supply side), out at − (the return). Its current reads positive."],
   battery:["v = OCV(soc) - R0 i - v1", "A LiPo pack: open-circuit voltage from charge (V_full to V_empty per cell), series R0, and an R1 || C1 branch for the voltage sag that recovers. Charge drains with the current; capacity in mAh."],
   diode:["on: v = Vf + R_on i", "Conducts from + (anode) to − (cathode) once forward biased past Vf; off it leaks through R_off."],
   switch:["R_on or R_off", "Closed (R_on) from on_at to off_at. With pwm_freq it chops at duty (0 to 1)."],
   fuse:["blows when ∫(i/I_rating)² dt > t_blow", "Heats with (i/I_rating)²; opens once that has gone on for t_blow at the rating, or at once above I_trip."],
   motor:["v = R i + L di/dt + Kt ω, τ = Kt i", "A DC (or lumped brushless) motor. Give kv or Kt, not both. Its shaft is the body plugged in; gear is motor turns per shaft turn. ESC (optional) chops the supply at throttle and limits current to I_max; regen lets it push current back."]};
-const PART_PH = {R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
+const PART_PH = {I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
   cells:"e.g. 6", capacity:"e.g. 1300", R0:"pack R", R1:"sag R", C1:"sag C", soc0:"1 = full", V_full:"4.2 /cell", V_empty:"3.3 /cell",
   Vf:"0.7 V", R_on:"default 1 mohm", R_off:"open", on_at:"0 s", off_at:"never", pwm_freq:"0 = no PWM", duty:"1", phase:"0",
   I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
   throttle:"1 = full", I_max:"no limit", C_th:"heat cap.", R_th:"to ambient", T_amb_C:"25 °C", T0_C:"= ambient", alpha:"0 (Cu 0.00393)",
   T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002"};
 // fields in the order a datasheet gives them
-const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty"],
-  capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R"], current_source:["I"], resistor:["R"],
+const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty","I_load"],
+  capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R","I_load"], current_source:["I"], current_load:["I"], resistor:["R"],
   diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
   esc:["throttle","I_max"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
 const byOrder = (list, ord) => list.slice().sort((a, b) => ((ord || []).indexOf(a) + 1 || 99) - ((ord || []).indexOf(b) + 1 || 99));
-const PART_DIM = {R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
+const PART_DIM = {I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
   cells:"none", capacity:"capacity", R0:"resistance", R1:"resistance", C1:"capacitance", soc0:"none", V_full:"voltage", V_empty:"voltage",
   Vf:"voltage", R_on:"resistance", R_off:"resistance", on_at:"time", off_at:"time", pwm_freq:"frequency", duty:"none", phase:"none",
   I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia"};
@@ -2358,8 +2361,41 @@ function watchSizes(){ if (!_ovObs) return; _ovObs.disconnect(); world.querySele
 // on when the user ticked it, or by default in a fun theme (Synthwave, Banana, Candy) until they untick it
 function confettiOn(){ if (SETTINGS.confetti !== undefined) return !!SETTINGS.confetti; const id = themeId(); return !isUserTheme(id) && !!(THEMES[id] || {}).fun; }
 // ---- confetti (Settings, off by default): bursts up from the bottom edge in the theme's own colours
+// ---- the confetti's sound: a party horn synthesised here (a buzzy reed blown up in pitch, a squeak at the end),
+// or the user's own file. Nothing is downloaded, so there is nothing to license or credit
+let _actx = null;
+function partyHorn(){
+  try {
+    _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
+    const a = _actx, t0 = a.currentTime + 0.02, T = 0.9;
+    if (a.state === "suspended") a.resume();
+    const out = a.createGain(); out.gain.value = 0.22; out.connect(a.destination);
+    const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.2; bp.connect(out);
+    bp.frequency.setValueAtTime(900, t0); bp.frequency.linearRampToValueAtTime(1700, t0 + T);
+    const env = a.createGain(); env.connect(bp);
+    env.gain.setValueAtTime(0.0001, t0); env.gain.exponentialRampToValueAtTime(1, t0 + 0.05);
+    env.gain.setValueAtTime(1, t0 + T - 0.25); env.gain.exponentialRampToValueAtTime(0.0001, t0 + T);
+    [1, 1.007].forEach(det => {                       // two reeds a hair apart: the honky beat of a paper horn
+      const o = a.createOscillator(); o.type = "sawtooth";
+      o.frequency.setValueAtTime(330 * det, t0); o.frequency.exponentialRampToValueAtTime(520 * det, t0 + 0.35);
+      o.frequency.setValueAtTime(520 * det, t0 + T - 0.22); o.frequency.exponentialRampToValueAtTime(700 * det, t0 + T);
+      const vib = a.createOscillator(), vg = a.createGain(); vib.frequency.value = 9; vg.gain.value = 9 * det;
+      vib.connect(vg); vg.connect(o.frequency); vib.start(t0); vib.stop(t0 + T);
+      o.connect(env); o.start(t0); o.stop(t0 + T + 0.05); });
+    const n = a.createBufferSource(), buf = a.createBuffer(1, a.sampleRate * 0.12, a.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+    const ng = a.createGain(); ng.gain.value = 0.25; n.buffer = buf; n.connect(ng); ng.connect(bp); n.start(t0);   // the puff
+  } catch (e) { /* no audio here: confetti stays silent */ }
+}
+function confettiSound(){
+  const m = SETTINGS.confettiSound || "horn";
+  if (m === "off") return;
+  if (m === "custom" && SETTINGS.confettiSoundData){ try { const au = new Audio(SETTINGS.confettiSoundData); au.volume = 0.8; au.play().catch(() => {}); } catch (e) {} return; }
+  partyHorn();
+}
 function confetti(force){
   if (!force && !confettiOn()) return;
+  confettiSound();
   const cv = document.createElement("canvas"); cv.id = "confetti"; cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
   cv.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:90"; document.body.appendChild(cv);
   const g = cv.getContext("2d"), dpr = devicePixelRatio, W = innerWidth, H = innerHeight;
@@ -3118,7 +3154,7 @@ function menuAll(){
   add("Results", "Failure mode", "your limit on a metric, with its origin", COL.fail, () => ["failure", {name:"fails"}], {words:"limit criterion"});
   add("Results", "CSV export", "write time histories to a CSV file (time vs value tables)", COL.export, () => ["export", {name:"csv"}], {words:"table file save history tabular"});
   if (CAT.circuit){
-    const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current",
+    const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current", current_load:"load sink draw amps constant current",
       battery:"lipo pack cells mah", diode:"rectifier flyback freewheel", switch:"relay contactor pwm mosfet", fuse:"breaker protection", motor:"dc brushless bldc kv esc spinner weapon"};
     Object.keys(CAT.circuit.types).forEach(t => add("Electrical", "Part · " + PART_NAME[t], (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "")}));
     add("Electrical", "Part · motor with ESC", "a motor behind a speed controller: throttle and current limit", "var(--s-elec)", () => ["part", {name:"motor", ptype:"motor", escOn:true, esc:{throttle:"1"}}], {words:"circuit electrical esc speed controller weapon drive bldc"});
@@ -3126,6 +3162,9 @@ function menuAll(){
     add("Electrical", "Ground net", "the 0 V reference (one per circuit)", "var(--s-elec)", () => ["net", {name:"gnd", ground:true}], {words:"circuit ground zero earth reference"});
   }
   add("Loads", "Load", "a force on a body: type it, or plug in a Range or Monte Carlo node", COL.load, () => ["load", {name:"load"}], {words:"force gravity push"});
+  if (CAT.circuit && CAT.circuit.types && CAT.circuit.types.current_load)
+    add("Loads", "Load · current (circuit)", "a fixed current drawn from a circuit: wire + to the supply net, − to the return (amps)", "var(--s-elec)",
+        () => ["part", {name:"load_I", ptype:"current_load", fields:{I:"1 A"}}], {words:"current draw sink amps amp electrical load circuit constant"});
   [["expr","Expression signal","= a formula of the running model: clip(…), min, max, a if c else b","formula feedback math"],
    ["if","If / else","switch between two values when a condition holds (latch, hold time)","logic condition switch threshold staging trigger"],
    ["pid","PID loop","drive a field so a measure follows a setpoint (limits, anti-windup)","controller feedback regulate hold cruise altitude speed"],
@@ -4615,7 +4654,7 @@ async function settingsShow(){
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
     list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
-  document.getElementById("setConfetti").checked = confettiOn(); applyLoader();
+  document.getElementById("setConfetti").checked = confettiOn(); applyLoader(); syncCSound();
   document.getElementById("setDash").checked = document.documentElement.classList.contains("dashwires");
   document.getElementById("setOwn").textContent = user ? `Changes save straight into your theme "${th.name}".`
     : (n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${th.name} theme.` : `All colours from the ${th.name} theme.`);
@@ -4683,6 +4722,18 @@ document.getElementById("setLoaderFile").addEventListener("change", e => { const
   if (f.size > 2 * 1024 * 1024){ status("bad", "That picture is over 2 MB: pick a smaller GIF."); return; }
   const rd = new FileReader(); rd.onload = () => { SETTINGS.loader = rd.result; applyLoader(); settingsSave();
     status("ok", "Loading animation set. It plays next to the progress bar while a run, study or verify works."); }; rd.readAsDataURL(f); });
+function syncCSound(){ const sel = document.getElementById("setCSound"); if (!sel) return;
+  sel.value = SETTINGS.confettiSound || "horn";
+  document.getElementById("setCSoundNow").textContent = SETTINGS.confettiSoundName ? "mine: " + SETTINGS.confettiSoundName : "";
+  document.getElementById("setCSoundPick").style.display = sel.value === "custom" ? "" : "none"; }
+document.getElementById("setCSound").onchange = e => { SETTINGS.confettiSound = e.target.value; settingsSave(); syncCSound();
+  if (e.target.value === "custom" && !SETTINGS.confettiSoundData) document.getElementById("setCSoundFile").click(); else confettiSound(); };
+document.getElementById("setCSoundPick").onclick = () => document.getElementById("setCSoundFile").click();
+document.getElementById("setCSoundTest").onclick = () => confettiSound();
+document.getElementById("setCSoundFile").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (f.size > 2 * 1024 * 1024){ status("bad", "That sound is over 2 MB: pick a shorter clip."); return; }
+  const rd = new FileReader(); rd.onload = () => { SETTINGS.confettiSoundData = rd.result; SETTINGS.confettiSoundName = f.name; SETTINGS.confettiSound = "custom";
+    settingsSave(); syncCSound(); confettiSound(); status("ok", "Confetti sound set: " + f.name + "."); }; rd.readAsDataURL(f); });
 document.getElementById("setConfetti").onchange = e => { SETTINGS.confetti = e.target.checked; delete SETTINGS.confettiAuto; settingsSave(); if (e.target.checked) confetti(true); };
 document.getElementById("setDash").onchange = e => { SETTINGS.dashes = e.target.checked; applyColors(); settingsSave(); };
 document.getElementById("setResetAll").onclick = () => { SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow(); };

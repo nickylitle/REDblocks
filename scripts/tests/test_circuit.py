@@ -160,3 +160,50 @@ run: {t_end: 0.3 s}
     rows = open(paths[0]).read().splitlines()
     assert rows[0].startswith("Time [s],c voltage [V],src current [A]")
     assert float(rows[-1].split(",")[1]) == pytest.approx(r["v"], rel=1e-3)
+
+
+def test_current_load_draws_a_fixed_current_from_the_pack():
+    o = load_system("""simblocks: 1
+name: t
+dim: 1d
+bodies:
+  m: {dof: translation, mass: 1 kg}
+elements:
+  s: {type: spring, measure: m, k: 1}
+circuit:
+  ground: gnd
+  parts:
+    pack: {type: battery, between: [bus, gnd], cells: 4, capacity: 1000 mAh, R0: 20 mohm}
+    load_I: {type: current_load, between: [bus, gnd], I: 10 A}
+outputs:
+  ip: {part: pack, quantity: current}
+  il: {part: load_I, quantity: current}
+  soc: {part: pack, quantity: soc}
+run: {t_end: 36 s}
+""").run()
+    assert o["il"] == pytest.approx(10.0) and o["ip"] == pytest.approx(-10.0)      # drawn in at +, out of the pack
+    assert o["soc"] == pytest.approx(0.9, rel=1e-6)                                  # 10 A for 36 s = 100 mAh
+
+
+def test_battery_and_supply_carry_a_fixed_current_load():
+    o = load_system("""simblocks: 1
+name: t
+dim: 1d
+bodies:
+  m: {dof: translation, mass: 1 kg}
+elements:
+  s: {type: spring, measure: m, k: 1}
+circuit:
+  ground: gnd
+  parts:
+    pack: {type: battery, between: [bus, gnd], cells: 4, capacity: 1000 mAh, R0: 20 mohm, I_load: 10 A}
+    supply: {type: voltage_source, between: [b2, gnd], V: 12 V, I_load: 2 A}
+outputs:
+  ip: {part: pack, quantity: current}
+  il: {part: pack__load, quantity: current}
+  soc: {part: pack, quantity: soc}
+  isup: {part: supply, quantity: current}
+run: {t_end: 36 s}
+""").run()
+    assert o["ip"] == pytest.approx(-10.0) and o["il"] == pytest.approx(10.0) and o["isup"] == pytest.approx(-2.0)
+    assert o["soc"] == pytest.approx(0.9, rel=1e-6)

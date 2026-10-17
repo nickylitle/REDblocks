@@ -368,9 +368,10 @@ circuit:
 | `resistor` | **R** | v = R i |
 | `capacitor` | **C**, ESR (0), R_leak (0 = none), v0 | i = C dv/dt behind ESR |
 | `inductor` | **L**, R, i0 | v = L di/dt + R i |
-| `voltage_source` | **V**, R (0.1 mohm) | v = V - R i, + is the first net |
-| `current_source` | **I** | i = I |
-| `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
+| `voltage_source` | **V**, R (0.1 mohm), I_load (a fixed draw, A) | v = V - R i, + is the first net |
+| `current_source` | **I** | drives I out of + into the circuit (its current reads negative) |
+| `current_load` | **I** | draws a fixed I in at + (supply side), out at − (its current reads positive) |
+| `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3), I_load (a fixed draw across it, A; its part is `<name>__load`) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
 | `diode` | Vf (0.7 V), R_on (10 mohm), R_off (10 Mohm) | conducts first net to second past Vf |
 | `switch` | R_on, R_off, on_at, off_at, pwm_freq, duty, phase | closed from on_at to off_at, chopped at duty with pwm_freq |
 | `fuse` | **I_rating**, t_blow (1 s), I_trip, R | opens once integral (i/I_rating)^2 dt > t_blow, or at once above I_trip |

@@ -34,19 +34,19 @@ from .loader import SpecError, line_of
 
 # part types
 R_, C_, L_, VS, IS, BAT, DIODE, SW, FUSE, MOT, ESC = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-TYPES = {"resistor": R_, "capacitor": C_, "inductor": L_, "voltage_source": VS, "current_source": IS,
+TYPES = {"resistor": R_, "capacitor": C_, "inductor": L_, "voltage_source": VS, "current_source": IS, "current_load": IS,
          "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT}
 FIELDS = {
     "resistor": {"R"}, "capacitor": {"C", "v0", "R_leak", "ESR"}, "inductor": {"L", "R", "i0"},
-    "voltage_source": {"V", "R"}, "current_source": {"I"},
-    "battery": {"cells", "capacity", "R0", "R1", "C1", "soc0", "V_full", "V_empty"},
+    "voltage_source": {"V", "R", "I_load"}, "current_source": {"I"}, "current_load": {"I"},
+    "battery": {"cells", "capacity", "R0", "R1", "C1", "soc0", "V_full", "V_empty", "I_load"},
     "diode": {"Vf", "R_on", "R_off"},
     "switch": {"R_on", "R_off", "on_at", "off_at", "pwm_freq", "duty", "phase"},
     "fuse": {"R", "I_rating", "t_blow", "I_trip"},
     "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor"},
 }
 REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": {"V"},
-            "current_source": {"I"}, "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
+            "current_source": {"I"}, "current_load": {"I"}, "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
             "fuse": {"I_rating"}, "motor": {"R", "measure"}}
 ESC_FIELDS = {"throttle", "I_max", "regen"}
 COMMON = {"type", "between", "label", "note", "source", "thermal"}
@@ -78,6 +78,19 @@ def compile_circuit(doc, ctx):
     parts = c["parts"] or {}
     if not isinstance(parts, dict) or not parts:
         raise SpecError("circuit.parts needs at least one part", "circuit.parts", None, f)
+    # a battery's or a supply's I_load: a fixed current drawn straight across its terminals (avionics, a receiver, a
+    # constant bench load). It runs as its own current_load part, <name>__load, which its outputs can name
+    if any(isinstance(d, dict) and d.get("I_load") not in (None, "") for d in parts.values()):
+        p2 = {}
+        for pn, d in parts.items():
+            if isinstance(d, dict) and d.get("I_load") not in (None, ""):
+                d = dict(d); il = d.pop("I_load")
+                p2[pn] = d
+                p2[f"{pn}__load"] = {"type": "current_load", "between": d.get("between"), "I": il,
+                                     "label": f"{pn}'s fixed load"}
+            else:
+                p2[pn] = d
+        parts = p2
     nets = {gnd: 0}
     names = list(parts)
     npart = len(names)
@@ -131,6 +144,8 @@ def compile_circuit(doc, ctx):
                                 line_of(d, "R"), f)
         elif t == "current_source":
             P[0] = g("I")
+        elif t == "current_load":                      # a fixed current drawn in at + and out at - (a sink)
+            P[0] = -g("I")
         elif t == "battery":
             P[0] = g("cells"); P[1] = g("capacity"); P[2] = g("R0", 0.0); P[3] = g("R1", 0.0); P[4] = g("C1", 0.0)
             P[5] = g("V_full", 4.2); P[6] = g("V_empty", 3.3)
