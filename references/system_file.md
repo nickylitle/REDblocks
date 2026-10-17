@@ -152,7 +152,8 @@ step resolves the shape (a pulse gets at least 50 steps, a wave 40 per cycle). T
 
 Common element fields: `label`, `source` (shown in the schematic table), `note`, and
 `knockout: {expect: {metric: "+"|"-"}, expect_elastic: {...}}` to give the expected direction of change
-when the element is removed (or made elastic) in the knockout check.
+when the element is removed (or made elastic) in the knockout check. `knockout: {skip: "why"}` leaves an element out of the check
+(one that only acts in another setting of the model) and the report shows it as skipped with that reason.
 
 Tables for `elastoplastic` come from builder blocks:
 `beam_plastic_spring` (whole beam from its section and the material curve), `plastic_indentation_table`

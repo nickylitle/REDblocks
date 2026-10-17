@@ -1089,7 +1089,7 @@ function toDoc(){
       [["at","length"],["com","length"],["v0","speed"]].forEach(([k, dim]) => { if (["x","y","z"].some(c => !blank(d[k + c]))) o[k] = vecOutN([d[k + "x"], d[k + "y"], d[k + "z"]], d[k + "u"] ?? defUnit(dim)); });
       if (d.orient0 && !blank(String(d.orient0.angle ?? "").trim())){ const ax = vecParts(d.orient0.axis, 3);
         o.orient0 = {axis: ax.every(x => !x) ? [0, 0, 1] : ax.map(x => x === "" ? 0 : lit(x)), angle: lit(String(d.orient0.angle).trim())}; }
-      Object.assign(o, featOut(d)); if (d.label) o.label = d.label; bodies[d.name] = o; return;
+      Object.assign(o, featOut(d)); if (d.label) o.label = d.label; if (d.bnote) o.note = d.bnote; bodies[d.name] = o; return;
     }
     if (is2d()){
       if (d.dof === "ground"){ bodies[d.name] = Object.assign({ground:true}, featOut(d)); return; }
@@ -1097,13 +1097,13 @@ function toDoc(){
       sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
       if (hasShape(d)) o.shape = shapeOut(d);
       [["at","length"],["com","length"],["v0","speed"]].forEach(([k, dim]) => { if (!blank(d[k + "x"]) || !blank(d[k + "y"])) o[k] = vecOut(d[k + "x"], d[k + "y"], d[k + "u"] ?? defUnit(dim)); });
-      Object.assign(o, featOut(d)); if (d.label) o.label = d.label; bodies[d.name] = o; return;
+      Object.assign(o, featOut(d)); if (d.label) o.label = d.label; if (d.bnote) o.note = d.bnote; bodies[d.name] = o; return;
     }
     if (d.dof === "ground"){ bodies[d.name] = {ground:true}; return; }
     const o = {dof:d.dof};
     sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
     if (hasShape(d)) o.shape = shapeOut(d);
-    if (d.label) o.label = d.label; bodies[d.name] = o;
+    if (d.label) o.label = d.label; if (d.bnote) o.note = d.bnote; bodies[d.name] = o;
   });
   S.nodes.filter(n => n.kind === "element").forEach(n => {
     const d = n.data, o = {type:d.type};
@@ -1274,7 +1274,7 @@ function fromDoc(doc){
   const bodyNames = Object.keys(doc.bodies || {});
   Object.entries(doc.bodies || {}).forEach(([k, b]) => {
     if ((doc.dim || "1d") === "3d"){
-      const d = {name:k, dof: b.ground ? "ground" : "free", label:b.label || "", feats:featIn3(b)};
+      const d = {name:k, dof: b.ground ? "ground" : "free", label:b.label || "", bnote:b.note || "", feats:featIn3(b)};
       if (!b.ground){ const raw = b.dof ?? "free";
         const dl = raw === "free" ? ["x","y","z","rotate"] : (raw === "translation" ? ["x","y","z"] : (raw === "spin" || raw === "rotation" ? ["spin"] : (Array.isArray(raw) ? raw : [raw])));
         d.free3 = {x:dl.includes("x"), y:dl.includes("y"), z:dl.includes("z")}; d.rot3 = dl.includes("spin") ? "spin" : (dl.includes("rotate") ? "free" : "none");
@@ -1289,7 +1289,7 @@ function fromDoc(doc){
       put(2, n); return;
     }
     if ((doc.dim || "1d") === "2d"){
-      const d = {name:k, dof: b.ground ? "ground" : "free", label:b.label || "", feats:featIn(b)};
+      const d = {name:k, dof: b.ground ? "ground" : "free", label:b.label || "", bnote:b.note || "", feats:featIn(b)};
       if (!b.ground){ const raw = b.dof ?? "planar";
         const dl = raw === "planar" ? ["x","y","rz"] : (raw === "translation" ? ["x","y"] : (raw === "rotation" || raw === "spin" ? ["rz"] : (Array.isArray(raw) ? raw : [raw])));
         d.free = {x:dl.includes("x"), y:dl.includes("y"), rz:dl.includes("rz")};
@@ -1299,7 +1299,7 @@ function fromDoc(doc){
       const n = addNode("body", d); ["mass","inertia","angle0","omega0"].forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });
       put(2, n); return;
     }
-    const d = {name:k, dof: b.ground ? "ground" : b.dof, label:b.label || "", axis:Array.isArray(b.axis) ? b.axis.map(String) : (b.axis || "x")};
+    const d = {name:k, dof: b.ground ? "ground" : b.dof, label:b.label || "", bnote:b.note || "", axis:Array.isArray(b.axis) ? b.axis.map(String) : (b.axis || "x")};
     ["mass","inertia","x0","v0"].forEach(f => { d[f] = str(b[f] ?? ""); });
     if (b.shape) d.shape = shapeIn(b.shape);
     const n = addNode("body", d); ["mass","inertia","x0","v0"].forEach(f => { if (b[f] !== undefined) pend.push([n.id, f, b[f]]); });

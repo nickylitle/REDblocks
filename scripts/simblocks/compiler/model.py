@@ -703,7 +703,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 i = M.body_names.index(o["body"]); mi = a["minv"][3 * i:3 * i + 3]
                 val = sum(0.5 * v[3 * i + k] ** 2 / mi[k] for k in range(3) if mi[k] > 0)
             elif red in ("at", "time_of_max", "time_of_min"):
-                val = AT[name]
+                val = AT[name]; pk = AT.get("__range__" + name)
             elif red.startswith("first_time"):
                 val = tc[name]
             else:
@@ -752,7 +752,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                     lo, hi, fin = TR[e, 4 + 2 * j], TR[e, 5 + 2 * j], aux[e, j]
                 return (0.0, 0.0, 0.0) if lo > 1e299 else (lo, hi, fin)
             if red in ("at", "time_of_max", "time_of_min"):
-                val = AT[name]
+                val = AT[name]; pk = AT.get("__range__" + name)
             elif red.startswith("first_time"):
                 val = tc[name]
             elif qn == "absorbed_work":
@@ -788,7 +788,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             if pk is not None:
                 pk = pk / unit_factor(o["unit"])
         R[name] = val
-        if red == "final" and pk:           # a final value is judged against the quantity's own range in Verify
+        if red in ("final", "at") and pk:   # a final or at value is judged against the quantity's own range in Verify
             R[f"_{name}_scale"] = float(pk)
         elif red.startswith("first_time"):  # a crossing time against the run's length (a crossing at t = 0+ is one step)
             R[f"_{name}_scale"] = float(M.t_end) / (unit_factor(o["unit"]) if "unit" in o else 1.0)
@@ -894,6 +894,7 @@ def _at_values(M, LT, LB, LE, dim2):
         if red == "at":
             t = num(resolve(o["value"], M.ctx, f"outputs.{name}.value"), f"outputs.{name}.value")
             out[name] = float(np.interp(t, LT, ser))
+            out["__range__" + name] = float(np.max(np.abs(ser))) if len(ser) else 0.0   # the scale it moved through
         else:
             out[name] = float(LT[int(np.argmax(ser) if red == "time_of_max" else np.argmin(ser))])
     return out

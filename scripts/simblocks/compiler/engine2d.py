@@ -483,7 +483,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     gfx = np.zeros(nb); gfy = np.zeros(nb)
     steer_of = -np.ones(nb, np.int64)
     for e in range(ne):
-        if typ[e] == TYP_STEER and ba[e] >= 0:
+        if typ[e] == TYP_STEER and ba[e] >= 0 and active[e] == 1:   # a knocked-out steering leaves thrust radial
             steer_of[ba[e]] = e
     Tb = np.zeros(nb); Mb = np.zeros(nb)               # this step's thrust and propellant flow on each body
     frx = np.zeros(ne); fry = np.zeros(ne); dmv = np.zeros(ne); cut_t = np.full(ne, 1e300)
@@ -714,7 +714,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 stop[2] = 1
                 break
             for e in range(ne):
-                if typ[e] != TYP_STEER:
+                if typ[e] != TYP_STEER or active[e] == 0:
                     continue
                 b = ba[e]
                 r, urx, ury, uhx, uhy, vr, vh, ax, ay = _local(q, v, b, planet)

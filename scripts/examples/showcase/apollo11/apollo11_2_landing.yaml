@@ -129,6 +129,7 @@ elements:
     tau: 1.5 s
     contact_altitude: $probe
     throttle: {start_level: 0.10, start_hold: 0, full: 0.925, recovery: 0.57, min: 0.10, max: 0.60}
+    knockout: {skip: "flies only in the automatic landing (crew: 0); the flown landing never reaches it"}
     label: P65 / P66 automatic vertical descent
     note: "the planned landing: straight down at 3 ft/s [TM]. Flies only with crew: 0"
 outputs:

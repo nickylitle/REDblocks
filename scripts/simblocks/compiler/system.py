@@ -99,6 +99,10 @@ class System:
             exp = (e.get("knockout") or {}).get("expect", {}) if isinstance(e.get("knockout"), dict) else {}
             if e["type"] in ("force",) and not exp:
                 continue
+            kd_ = e.get("knockout") if isinstance(e.get("knockout"), dict) else {}
+            if kd_.get("skip"):                     # an element that only acts in another setting of the model
+                knock[f"no {en}"] = "SKIP: " + str(kd_["skip"])
+                continue
             knock[f"no {en}"] = ({KNOCK + en: True}, dict(exp))
             if e["type"] == "elastoplastic":
                 ex2 = (e.get("knockout") or {}).get("expect_elastic", {}) if isinstance(e.get("knockout"), dict) else {}

@@ -246,6 +246,9 @@ def verify_all(spec, skip=()):
     # 9 knockouts
     _stage(9)
     for kname, spec_k in spec.knockouts.items():
+        if isinstance(spec_k, str) and spec_k.startswith("SKIP: "):
+            rep.add(f"knockout:{kname}", SKIP, spec_k[6:])
+            continue
         ov, signs = (spec_k if isinstance(spec_k, tuple) else (spec_k, {}))
         r = _call(spec, rep, {**p0, **ov}, dt0)
         ch = {m: (r[m] - base[m]) / max(abs(base[m]), 1e-12) for m in names}
