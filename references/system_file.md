@@ -214,7 +214,7 @@ run: {t_end: 0.4 ms, dt: 20 ns, mc_n: 150, bounds: {shaft_set_mm: [0, 15]}}   # 
 # automatic step held inside bounds instead of a fixed one:  run: {t_end: 0.4 ms, dt_min: 5 ns, dt_max: 50 ns}
 # motors (drive, circuit motor) do not limit the step for stability: their back-EMF damping on the shaft is stepped
 #   exactly (the shaft's speed change over a step is the plain step's x (1 - e^-k)/k, k = c dt / J, with the other
-#   loads held over the step). The auto step takes at most one motor time constant J R / (G Kt)^2 a step.
+#   loads held over the step). The auto step takes five steps per motor time constant J R / (G Kt)^2.
 #   J is the inertia the shaft has with the rigid joints held (worked out each step from the joint rows), so a motor
 #   driving a jointed linkage spins up on the whole linkage's inertia.
 # adaptive step (changes as it runs):  run: {t_end: 2 s, dt: adaptive}   (dt_min / dt_max still bound it)

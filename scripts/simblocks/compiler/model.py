@@ -633,8 +633,8 @@ def _step_share(M, crit, cb, other):
                min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
 
 
-MOTOR_SHARE = 1.0           # a step per drive time constant: its own response is exact at any step, and one tau
-                            # keeps what it couples to (loads, friction) within about 0.2 %
+MOTOR_SHARE = 0.2           # five steps per motor time constant (the circuit's rule for its own transients): the
+                            # motor's own response is exact at any step; this resolves the spin-up curve itself
 
 
 def _step_caps(M, dt_auto):

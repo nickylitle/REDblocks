@@ -98,14 +98,14 @@ run:
 
 def test_a_stiff_gearmotor_runs_at_its_time_constant_not_a_fiftieth_of_it():
     s = load_system(GEARMOTOR); M = s.nominal
-    # the old rule: 2 % of the stability limit 2 tau. Now: one tau a step
-    assert M.dt == pytest.approx(M.dt_motor, rel=1e-9)
-    assert M.dt > 20 * 0.02 * 2 * M.dt_motor
+    # the old rule: 2 % of the stability limit 2 tau. Now: five steps a tau
+    assert M.dt == pytest.approx(0.2 * M.dt_motor, rel=1e-9)
+    assert M.dt > 4 * 0.02 * 2 * M.dt_motor
 
 
 def test_steady_speed_and_current_do_not_depend_on_the_step():
     s = load_system(GEARMOTOR); M = s.nominal
-    a = s.run(); b = s.run(dt=M.dt / 25); c = s.run(dt=M.dt * 10)     # c: 10 tau a step, unstable before
+    a = s.run(); b = s.run(dt=M.dt / 25); c = s.run(dt=M.dt * 50)     # c: 10 tau a step, unstable before
     for k in ("w_end", "i_end", "soc_end"):
         assert a[k] == pytest.approx(b[k], rel=1e-5)
         assert c[k] == pytest.approx(b[k], rel=1e-5)
