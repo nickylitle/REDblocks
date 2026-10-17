@@ -26,6 +26,7 @@ from numba import njit
 
 from .circuit import circuit_step
 from .control import control_step
+from .adaptive import pick_dt
 
 from ..constitutive.plasticity import tabular_return
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
@@ -139,9 +140,10 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
 def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_len, tab_k, tab_x, tab_F,
                log_every, cross_src, cross_idx, cross_thr, cross_dir,
                cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
-               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, stop):
-    """stop: int64[2]. Another thread sets stop[0] = 1 to end the run early (timeout); stop[1] returns steps done.
-    ckind..cctlD: the control signals (see control.py) and the element fields they drive."""
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, adp, adf, adc, stop):
+    """stop: int64[3]. Another thread sets stop[0] = 1 to end the run early (timeout); stop[1] returns steps done.
+    ckind..cctlD: the control signals (see control.py) and the element fields they drive.
+    adp, adf, adc: the adaptive step (see adaptive.py); adp[0] = 0 runs n steps of dt."""
     nb = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
     P = P.copy(); cprm = cprm.copy()
@@ -177,7 +179,12 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         BT[b, 0] = q[b]; BT[b, 1] = q[b]; BT[b, 2] = v[b]; BT[b, 3] = v[b]
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
+    adapt = adp[0] > 0.5
+    t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
+    adsp = np.zeros(ne); inc1 = np.zeros(ne, np.int64)
     nlog = n // log_every + 2 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
+    if adapt and log_every > 0:
+        nlog = int(adp[5] / adp[7]) + 3
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nb)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
@@ -198,9 +205,17 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
             break
+        if adapt:
+            if t >= t_stop:
+                done = i; stop[2] = 2               # reached t_end
+                break
+            dt = pick_dt(i, t, dt, adp, adf, adc, active, se, adsp, inc1, False, sig, casig)
+            tn = t + dt
+        else:
+            t = i * dt; tn = (i + 1) * dt
         for e in range(ne):
             if typ[e] == 13:
-                st[e, 0] = i * dt                # load tables against time read the clock from their state
+                st[e, 0] = t                # load tables against time read the clock from their state
         for b in range(nb):
             Q[b] = 0.0
         for e in range(ne):
@@ -316,7 +331,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     sens[k] = s_
                 else:
                     sens[k] = aux[kk, src - 4]
-            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            control_step(tn, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
             for a_ in range(cae.shape[0]):
                 x_ = sig[casig[a_]]
                 if caarr[a_] >= 2:                   # the field is stored as its inverse (a motor's kv as 1/kv)
@@ -358,7 +373,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
-                    t_cross[c] = (i + 1) * dt
+                    t_cross[c] = tn
         if i % 4 == 0:
             ke_ = 0.0
             for b in range(nb):
@@ -370,17 +385,24 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
-            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
-        if log_every > 0 and i % log_every == 0 and j < nlog:
+        if adapt:
+            logit = log_every > 0 and t >= tlog and j < nlog
+            if logit:
+                while tlog <= t:
+                    tlog += adp[7]
+        else:
+            logit = log_every > 0 and i % log_every == 0 and j < nlog
+        if logit:
             if npart > 0:
                 for k in range(npart):
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
-            LOGT[j] = i * dt
+            LOGT[j] = t
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for b in range(nb):
@@ -393,7 +415,10 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             jcnt = 0
             for e in range(ne):
                 jacc[e] = 0.0
+        if adapt:
+            t = tn
     stop[1] = done
+    adp[14] = t if adapt else done * dt
     for e in range(min(ne, cctlD.shape[0])):
         if cctlD[e] == 1:
             D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law

@@ -672,7 +672,7 @@ def rotation_dt3d(M):
     return best
 
 
-def critical_dt3d(M):
+def critical_dt3d(M, skip=None):
     a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names)
     rot_inv = np.zeros(nb)
     for b in range(nb):
@@ -695,6 +695,8 @@ def critical_dt3d(M):
                 tot += a["Iax"][b] * float(aw @ a["axis"][b]) ** 2
         return tot
     for e in range(len(M.el_names)):
+        if skip is not None and skip[e]:
+            continue
         t = a["typ"][e]
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9, 11) else 0.0)
         if t == 12:                              # beam: axial, transverse, bending and torsion modes

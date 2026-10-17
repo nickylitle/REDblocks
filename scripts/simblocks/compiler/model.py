@@ -310,6 +310,9 @@ def compile_model(doc, overrides=None):
                 except SpecError:
                     pass
         M.ctl_fields = [dict(fd, init_v=inits[i], max_v=maxes[i], sensitive=i in probes) for i, fd in enumerate(fields)]
+        if getattr(M, "adaptive", False):
+            fits = [_field_fit(doc, overrides, fields, inits, maxes, i, M) for i in range(len(fields))]
+            M.dt_fits = np.array([fits[a[4]] for a in acts], float).reshape(len(acts), 4)
     else:
         M = _compile_model(doc, overrides)
         M.ctl_fields = []
@@ -329,11 +332,43 @@ def compile_model(doc, overrides=None):
     return M
 
 
+def _field_fit(doc, overrides, fields, inits, maxes, i, M):
+    """How the step a driven field needs follows the signal: dt = C |x|^-p, one power law for values above the first
+    one and one below, each fitted from the model compiled at two values. Returns [C_up, p_up, C_down, p_down]."""
+    from .control import with_values
+    x0 = inits[i]; sg = -1.0 if x0 < 0 else 1.0; b0 = abs(x0) if x0 else 1.0
+
+    def dt_at(x):
+        v = list(inits); v[i] = sg * x
+        try:
+            Mp = _compile_model(with_values(doc, fields, v), overrides)
+        except SpecError:
+            return None
+        return Mp.dt_auto
+
+    def fit(x1, x2, up):
+        d1, d2 = dt_at(x1), dt_at(x2)
+        if not d1 or not d2 or x1 <= 0 or x2 <= x1:
+            return 0.0, 0.0
+        p = math.log(d1 / d2) / math.log(x2 / x1)
+        if (up and p < 0.05) or (not up and p > -0.05):
+            return 0.0, 0.0                          # this way the field does not set the step
+        p = max(-2.0, min(2.0, p))
+        return d2 * x2 ** p, p
+    mx = abs(maxes[i]) if maxes[i] is not None else None
+    if mx is not None:
+        cu, pu = fit(mx / 4.0, mx, True) if mx > b0 else (0.0, 0.0)
+    else:
+        cu, pu = fit(16.0 * b0, 256.0 * b0, True)
+    cd, pd = fit(b0 / 16.0, b0, False) if x0 else (0.0, 0.0)
+    return [cu, pu, cd, pd]
+
+
 def _control_notes(M, R, SGT):
     """After a run: driven fields that went past their max, or that move the stability limit and have no max."""
     c = getattr(M, "ctl", None)
-    if not c or not getattr(M, "ctl_fields", None):
-        return
+    if not c or not getattr(M, "ctl_fields", None) or getattr(M, "adaptive", False):
+        return                                       # (an adaptive step follows the field: nothing to flag)
     for a, fi in enumerate(c["act_field"]):
         fd = M.ctl_fields[fi]; j = int(c["asig"][a])
         hi = float(SGT[j, 1]) if SGT.shape[0] > j and SGT[j, 1] > -1e299 else fd["init_v"]
@@ -549,12 +584,58 @@ def _run_settings(M, doc, ctx):
     if getattr(M, "circ", None):                # each circuit motor's element, by motor number
         M.circ["mot_el"] = np.array([M.el_names.index(f"__circ_{pn}") for pn in M.circ["motors"]] or [0], np.int64)
     dt = run.get("dt", "auto")
-    # explicit-step share: 2% of the stability limit for contacts and springs (impact accuracy); beams are smooth
-    # structural elements and run at 20% of theirs (their high modes need stability, not resolution)
-    cb = getattr(M, "dt_crit_beam", math.inf)
-    other = getattr(M, "dt_crit_other", None)
-    M.dt_auto = min(0.02 * M.dt_crit if not math.isfinite(cb) or M.dt_crit < cb else
-                    min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
+    adaptive = isinstance(dt, str) and dt.strip().lower() == "adaptive"
+    if adaptive:                                 # the free-motion limit: every element but the contacts
+        keep = (getattr(M, "dt_crit_beam", None), getattr(M, "dt_crit_other", None))
+        M.contact_el = contact_mask(M)
+        crit_free = critical_dt(M, M.contact_el) if M.contact_el.any() else M.dt_crit
+        free_bo = (getattr(M, "dt_crit_beam", math.inf), getattr(M, "dt_crit_other", None))
+        M.dt_crit_beam, M.dt_crit_other = keep
+    base = _step_share(M, M.dt_crit, getattr(M, "dt_crit_beam", math.inf), getattr(M, "dt_crit_other", None))
+    if adaptive:
+        # free flight under steady forces is first order in the step (semi-implicit Euler): a finer share of t_end
+        # than the fixed automatic step uses keeps positions after a long flight within about 1 %
+        M.dt_auto_free = _step_caps(M, _step_share(M, crit_free, *free_bo))
+        if M.contact_el.any():
+            M.dt_auto_free = min(M.dt_auto_free, M.t_end / 20000.0)
+    M.dt_auto = _step_caps(M, base)
+    if adaptive:
+        M.dt_auto_free = max(M.dt_auto_free, M.dt_auto)
+    M.timeout = parse_timeout(run.get("timeout", "auto"), ctx)
+    M.adaptive = adaptive
+    lo = num(resolve(run["dt_min"], ctx, "run.dt_min"), "run.dt_min") if run.get("dt_min") not in (None, "") else None
+    hi = num(resolve(run["dt_max"], ctx, "run.dt_max"), "run.dt_max") if run.get("dt_max") not in (None, "") else None
+    if adaptive:
+        # steps between dt_contact (contacts touching or about to) and dt_free (free motion), inside the run bounds
+        def clamp(x):
+            x = min(x, hi) if hi is not None else x
+            return max(x, lo) if lo is not None else x
+        M.dt_contact = clamp(M.dt_auto); M.dt_free = max(clamp(M.dt_auto_free), M.dt_contact)
+        M.dt_floor = lo if lo is not None else M.dt_contact * 1e-4
+        M.dt = M.dt_contact
+    elif dt == "auto":
+        # automatic step, optionally held inside user bounds (run.dt_min / run.dt_max)
+        M.dt = M.dt_auto
+        if hi is not None:
+            M.dt = min(M.dt, hi)
+        if lo is not None:
+            M.dt = max(M.dt, lo)
+    else:
+        M.dt = num(resolve(dt, ctx, "run.dt"), "run.dt")
+    return M
+
+
+def _step_share(M, crit, cb, other):
+    """explicit-step share: 2% of the stability limit for contacts and springs (impact accuracy); beams are smooth
+    structural elements and run at 20% of theirs (their high modes need stability, not resolution)"""
+    cb = math.inf if cb is None else cb
+    return min(0.02 * crit if not math.isfinite(cb) or crit < cb else
+               min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
+
+
+def _step_caps(M, dt_auto):
+    """The automatic step's other limits: load features, free rotation, vehicles, circuit transients."""
+    M.dt_auto = dt_auto
     a_ = getattr(M, "arrays", None)       # loads against time (CSV tables, standard shapes) must be resolved too
     if a_ is not None and "typ" in a_:
         feats = [a_["P"][e, 3] for e in range(len(a_["typ"])) if a_["typ"][e] == 13 and a_["P"][e, 1] == 0.0 and a_["P"][e, 3] > 0]
@@ -573,28 +654,43 @@ def _run_settings(M, doc, ctx):
         M.dt_circ = circuit_tau(M.circ)
         if math.isfinite(M.dt_circ):
             M.dt_auto = min(M.dt_auto, 0.2 * M.dt_circ)
-    M.timeout = parse_timeout(run.get("timeout", "auto"), ctx)
-    if dt == "auto":
-        # automatic step, optionally held inside user bounds (run.dt_min / run.dt_max)
-        M.dt = M.dt_auto
-        if run.get("dt_max") not in (None, ""):
-            M.dt = min(M.dt, num(resolve(run["dt_max"], ctx, "run.dt_max"), "run.dt_max"))
-        if run.get("dt_min") not in (None, ""):
-            M.dt = max(M.dt, num(resolve(run["dt_min"], ctx, "run.dt_min"), "run.dt_min"))
-    else:
-        M.dt = num(resolve(dt, ctx, "run.dt"), "run.dt")
-    return M
+    return M.dt_auto
 
 
-def critical_dt(M):
+def contact_mask(M):
+    """1 for each contact element: one-sided (touches only when pressed), hertz, or a geometric contact measure.
+    These are the elements the adaptive step leaves out in free motion."""
+    a = M.arrays; ne = len(M.el_names)
+    out = np.zeros(ne, np.int64)
+    dim = getattr(M, "dim", "1d")
+    geo = ()
+    if dim == "2d":
+        from . import engine2d as _E
+        geo = (_E.MK_EDGE, _E.MK_CIRC)
+    elif dim == "3d":
+        from . import engine3d as _E
+        geo = (_E.MK_PLANE, _E.MK_SPH)
+    for e in range(ne):
+        t = int(a["typ"][e])
+        if t in (10, 14, 15):                      # friction, rigid impacts, breakaways: no step of their own
+            continue
+        if a["one_sided"][e] == 1 or t == 4 or ("mk" in a and int(a["mk"][e]) in geo):
+            out[e] = 1
+    return out
+
+
+def critical_dt(M, skip=None):
+    """Stability limit of the explicit step. skip: elements to leave out (1 = skip), for the adaptive free step."""
     if getattr(M, "dim", "1d") == "2d":
         from .model2d import critical_dt2d
-        return critical_dt2d(M)
+        return critical_dt2d(M, skip)
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import critical_dt3d
-        return critical_dt3d(M)
+        return critical_dt3d(M, skip)
     a = M.arrays; best = math.inf
     for e in range(len(M.el_names)):
+        if skip is not None and skip[e]:
+            continue
         t = a["typ"][e]
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2) else 0.0)
         c = a["C"][e]
@@ -730,16 +826,45 @@ def parse_timeout(v, ctx=None):
     return float(t)
 
 
+def adaptive_args(M, dt=None):
+    """The engines' adaptive-step arrays (see adaptive.py). dt: a step asked for instead of the model's own (the
+    dt-convergence check halves it); every adaptive step is scaled by dt / M.dt."""
+    from .adaptive import fixed_adaptive, NADP
+    na = len(M.ctl["ae"]) if getattr(M, "ctl", None) else 0
+    ne = len(M.el_names)
+    if not getattr(M, "adaptive", False):
+        return fixed_adaptive(ne, na)
+    sc = dt / M.dt if dt else 1.0
+    adp = np.zeros(NADP)
+    adp[0] = 1.0; adp[1] = M.dt_free * sc; adp[2] = M.dt_contact * sc
+    adp[3] = 4.0 * adp[1]                         # look-ahead: a contact closing within four free steps
+    adp[4] = 1.25; adp[5] = M.t_end; adp[6] = min(M.dt_floor * sc, adp[2]); adp[7] = M.t_end / 800.0
+    adp[11] = 1e300
+    adf = np.zeros((na, 4))
+    fits = getattr(M, "dt_fits", None)
+    if fits is not None and len(fits) == na:
+        adf[:] = fits
+        adf[:, 0] *= sc; adf[:, 2] *= sc
+    return adp, adf, np.asarray(M.contact_el, np.int64)
+
+
 def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     """timeout: 'model' uses run.timeout; None runs to the end; a number is seconds of wall-clock time."""
     import threading
-    a = M.arrays; dt = dt or M.dt
+    a = M.arrays
+    adp, adf, adc = adaptive_args(M, dt)
+    dt = dt or M.dt
     n = int(round(M.t_end / dt)) if _n is None else _n
+    if adp[0] > 0 and _n is None:
+        n = int(M.t_end / adp[6]) + 10           # the most steps it could take (every step at the floor)
     cs, ci, ct, cd, ckeys = _crossings(M)
     wants_at = any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in (M.doc.get("outputs") or {}).values())
     if wants_at:
         n_log = max(n_log, 4000)
     every = max(n // n_log, 1) if (history or wants_at) else 0
+    if adp[0] > 0:
+        every = 1 if (history or wants_at) else 0
+        adp[7] = M.t_end / n_log                 # log by time: the steps are not all the same length
     limit = getattr(M, "timeout", "auto") if timeout == "model" else timeout
     if limit == "auto":
         limit = auto_timeout(M, dt)
@@ -769,18 +894,20 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
                 a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
+                adp, adf, adc, stop)
         elif dim2:
             from . import engine2d as E2
             (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC, SGF, SGT, LS) = E2.run_engine2d(
                 n, dt, a["q0"], a["v0"], a["minv"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"],
                 a["active"], a["mk"], a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
                 a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
-                a["planet"], stop)
+                a["planet"], adp, adf, adc, stop)
         else:
             (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk, CP, CTR, LC, SGF, SGT, LS) = E.run_engine(
                 n, dt, a["q0"], a["v0"], a["m"], a["typ"], a["one_sided"], a["active"], a["P"], a["C"], a["s0"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
+                adp, adf, adc, stop)
     finally:
         if timer is not None:
             timer.cancel()
@@ -809,6 +936,9 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     scale = max(KE0, KE1, KEpk, inputs, abs(Wg), np.abs(A).sum(), float(np.abs(S1).sum()), hits, gfloor, 1e-30)
     led = (abs(glob) + internal) / scale
     R = dict(_ledger_rel=float(led))
+    if adp[0] > 0:                                # what the adaptive step did
+        R.update(_steps=float(adp[10]), _dt_smallest=float(adp[11]) if adp[11] < 1e299 else float(adp[2]),
+                 _dt_largest=float(adp[12]), _contact_steps=float(adp[13]))
     if getattr(M, "circ", None) and CP.shape[0]:        # the circuit's own books: part energies sum to zero
         tot = float(np.abs(CP[:, 3]).sum())
         R["_circuit_ledger_rel"] = float(abs(CP[:, 3].sum()) / tot) if tot > 0 else 0.0
@@ -817,7 +947,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     AT = _at_values(M, LT if every else LT[:0], LB, LE, dim2, LS) if any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in M.doc["outputs"].values()) else {}
     if timed_out:
         R["_timed_out"] = 1.0
-        R["_t_stopped"] = float(stop[1]) * dt
+        R["_t_stopped"] = float(adp[14])
         R["_timeout_s"] = float(limit)
     outs = M.doc["outputs"]
     tc = dict(zip(ckeys, tcr))

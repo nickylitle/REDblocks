@@ -213,6 +213,7 @@ class Api:
                         est_run_s=estimate_run_s(M),
                         bodies=[b for b in M.body_names if '__' not in b], elements=list(M.doc['elements']), dt=M.dt, dt_crit=M.dt_crit,
                         dt_auto=getattr(M, "dt_auto", M.dt),
+                        dt_free=(M.dt_free if getattr(M, "adaptive", False) else None),
                         t_end=M.t_end, steps=int(round(M.t_end / M.dt)))
         except Exception as exc:
             return _err(exc)

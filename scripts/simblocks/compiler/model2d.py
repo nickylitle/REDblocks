@@ -552,10 +552,12 @@ def compile2d(doc, ctx, M, overrides):
     return M
 
 
-def critical_dt2d(M):
+def critical_dt2d(M, skip=None):
     a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names)
     mi = a["minv"]
     for e in range(len(M.el_names)):
+        if skip is not None and skip[e]:
+            continue
         t = a["typ"][e]
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9) else 0.0)
         if t == 8 or t == 17:

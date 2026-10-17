@@ -30,6 +30,7 @@ from .circuit import circuit_step
 
 from .engine1d import _force, NP, NAUX
 from .control import control_step
+from .adaptive import pick_dt
 
 MK_LIN, MK_DIST, MK_ALONG, MK_EDGE, MK_CIRC, MK_PIN, MK_SLIP, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7
 
@@ -470,7 +471,7 @@ def _ramp(t, on, off, rise, tail):
 def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
                cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
-               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, planet, stop):
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, planet, adp, adf, adc, stop):
     """q0, v0, minv: flat [x, y, rz] per body. mass[b], com[b] = (cx, cy) body-frame centre of mass (for gravity).
     stop: int64[2] as in the 1D engine (timeout)."""
     nb = mass.shape[0]; nq = q0.shape[0]; ne = typ.shape[0]
@@ -565,7 +566,12 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         sp = math.sqrt(v[3 * b] ** 2 + v[3 * b + 1] ** 2); SP[b, 0] = sp; SP[b, 1] = sp
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
+    adapt = adp[0] > 0.5
+    t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
+    adsp = np.zeros(ne)
     nlog = n // log_every + 2 if log_every > 0 else 1
+    if adapt and log_every > 0:
+        nlog = int(adp[5] / adp[7]) + 3
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nq)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
@@ -585,9 +591,17 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
             break
+        if adapt:
+            if t >= t_stop:
+                done = i; stop[2] = 2               # reached t_end
+                break
+            dt = pick_dt(i, t, dt, adp, adf, adc, active, se, adsp, inc, True, sig, casig)
+            tn = t + dt
+        else:
+            t = i * dt; tn = (i + 1) * dt
         for e in range(ne):
             if typ[e] == 13:
-                st[e, 0] = i * dt                # load tables against time read the clock from their state
+                st[e, 0] = t                # load tables against time read the clock from their state
         for k in range(nq):
             Q[k] = 0.0
         # gravity at each centre of mass: uniform, or a planet's inverse-square pull toward the origin
@@ -604,7 +618,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 _push(Q, q, b, px, py, gfx[b], gfy[b])
         # vehicles: steering first (it sets each body's thrust direction), then engines, drag and staging
         if nveh > 0:
-            t_ = i * dt
+            t_ = t
             for b in range(nb):
                 Tb[b] = 0.0; Mb[b] = 0.0; gon[b] = 0
             for b in range(nb):
@@ -1220,7 +1234,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     sens[k] = math.sqrt(v[3 * kk] ** 2 + v[3 * kk + 1] ** 2)
                 else:
                     sens[k] = aux[kk, src - 4]
-            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            control_step(tn, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
             for a_ in range(cae.shape[0]):
                 x_ = sig[casig[a_]]
                 if caarr[a_] >= 2:                   # the field is stored as its inverse (a motor's kv as 1/kv)
@@ -1269,7 +1283,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
-                    t_cross[c] = (i + 1) * dt
+                    t_cross[c] = tn
         if i % 4 == 0:
             ke_ = 0.0
             for k in range(nq):
@@ -1282,17 +1296,24 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
-            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
-        if log_every > 0 and i % log_every == 0 and j < nlog:
+        if adapt:
+            logit = log_every > 0 and t >= tlog and j < nlog
+            if logit:
+                while tlog <= t:
+                    tlog += adp[7]
+        else:
+            logit = log_every > 0 and i % log_every == 0 and j < nlog
+        if logit:
             if npart > 0:
                 for k in range(npart):
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
-            LOGT[j] = i * dt
+            LOGT[j] = t
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for k in range(nq):
@@ -1305,7 +1326,10 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             jcnt = 0
             for e in range(ne):
                 jacc[e] = 0.0
+        if adapt:
+            t = tn
     stop[1] = done
+    adp[14] = t if adapt else done * dt
     for b in range(nb):
         if mass[b] > 0.0 and not incr:
             px, py = _pt(q, b, com[b, 0], com[b, 1])

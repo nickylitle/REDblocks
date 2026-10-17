@@ -454,8 +454,8 @@ label.cpick button{padding:0 6px;font-size:12px}
     <div class="grp"><label for="bCores">cores</label><select id="bCores" title="Processor cores for studies (detected on this computer)"></select></div>
     <div class="grp"><label for="tEnd">end time</label><div class="uv"><input id="tEnd" class="tb" placeholder="e.g. 3"><select id="tEndU"></select></div></div>
     <div class="grp" id="dtGrp"><label for="dtMode">time step</label>
-      <select id="dtMode" title="AUTO picks the step from the stiffest element (0.02 x critical). Fixed uses your step. Bounded keeps the automatic step between a minimum and a maximum.">
-        <option value="auto">AUTO</option><option value="fixed">Fixed</option><option value="bounded">Bounded</option></select>
+      <select id="dtMode" title="AUTO picks the step from the stiffest element (0.02 x critical). Fixed uses your step. Bounded keeps the automatic step between a minimum and a maximum. Adaptive changes the step as it runs: large in free motion, the contact-sized step while a contact touches or is about to, smaller as a driven stiffness rises (min and max still bound it).">
+        <option value="auto">AUTO</option><option value="fixed">Fixed</option><option value="bounded">Bounded</option><option value="adaptive">Adaptive</option></select>
       <label for="dtFix">fixed</label><div class="uv"><input id="dtFix" class="tb"><select id="dtFixU"></select></div>
       <label for="dtMin">min</label><div class="uv"><input id="dtMin" class="tb"><select id="dtMinU"></select></div>
       <label for="dtMax">max</label><div class="uv"><input id="dtMax" class="tb"><select id="dtMaxU"></select></div>
@@ -1221,7 +1221,8 @@ function toDoc(){
   const run = Object.assign({}, S.meta.run_extra || {});
   run.t_end = lit(S.meta.run.t_end || "1 s");
   if ((S.meta.dtMode || "auto") === "fixed" && !blank(S.meta.run.dt)) run.dt = lit(S.meta.run.dt);
-  if (S.meta.dtMode === "bounded"){ if (!blank(S.meta.run.dt_min)) run.dt_min = lit(S.meta.run.dt_min); if (!blank(S.meta.run.dt_max)) run.dt_max = lit(S.meta.run.dt_max); }
+  if (S.meta.dtMode === "adaptive") run.dt = "adaptive";
+  if (S.meta.dtMode === "bounded" || S.meta.dtMode === "adaptive"){ if (!blank(S.meta.run.dt_min)) run.dt_min = lit(S.meta.run.dt_min); if (!blank(S.meta.run.dt_max)) run.dt_max = lit(S.meta.run.dt_max); }
   if (!blank(S.meta.run.mc_n)) run.mc_n = lit(S.meta.run.mc_n);
   if (S.meta.toMode === "off") run.timeout = "none";
   else if (S.meta.toMode === "limit" && !blank(S.meta.run.timeout)) run.timeout = lit(S.meta.run.timeout);
@@ -1282,9 +1283,10 @@ function fromDoc(doc){
   S = newState();
   S.meta.name = doc.name || "model"; S.meta.question = doc.question || "";
   const run = Object.assign({}, doc.run || {});
-  const dtv = run.dt === "auto" ? "" : str(run.dt ?? "");
+  const adaptive = String(run.dt ?? "").trim().toLowerCase() === "adaptive";
+  const dtv = (run.dt === "auto" || adaptive) ? "" : str(run.dt ?? "");
   S.meta.run = {t_end:str(run.t_end), dt:dtv, dt_min:str(run.dt_min ?? ""), dt_max:str(run.dt_max ?? ""), mc_n:str(run.mc_n ?? "")};
-  S.meta.dtMode = dtv ? "fixed" : ((run.dt_min !== undefined || run.dt_max !== undefined) ? "bounded" : "auto");
+  S.meta.dtMode = adaptive ? "adaptive" : dtv ? "fixed" : ((run.dt_min !== undefined || run.dt_max !== undefined) ? "bounded" : "auto");
   const to = run.timeout; S.meta.toMode = (to === undefined || String(to).toLowerCase() === "auto") ? "auto" : (["none","off","never"].includes(String(to).toLowerCase()) ? "off" : "limit");
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
   ["t_end","dt","dt_min","dt_max","mc_n","timeout"].forEach(k => delete run[k]); S.meta.run_extra = run;
@@ -3205,10 +3207,11 @@ function syncTimeBar(){
   document.getElementById("dtMode").value = mode;
   TB.forEach(([a, b, k]) => { const q = splitQ(r[k] || ""); const inp = document.getElementById(a), sel = document.getElementById(b);
     inp.value = q.num; sel.innerHTML = unitOptions("time", q.num ? (q.unit || "s") : (k === "t_end" ? "s" : "us")); });
-  const on = {dtFix: mode === "fixed", dtMin: mode === "bounded", dtMax: mode === "bounded"};
+  const bnd = mode === "bounded" || mode === "adaptive";
+  const on = {dtFix: mode === "fixed", dtMin: bnd, dtMax: bnd};
   Object.entries(on).forEach(([id, en]) => { const box = document.getElementById(id).closest(".uv"), lab = document.querySelector(`label[for="${id}"]`);
     box.classList.toggle("off", !en); lab.classList.toggle("off", !en);
-    box.querySelectorAll("input,select").forEach(x => { x.disabled = !en; x.title = en ? "" : "Set the time step to " + (id === "dtFix" ? "Fixed" : "Bounded") + " to type here"; }); });
+    box.querySelectorAll("input,select").forEach(x => { x.disabled = !en; x.title = en ? "" : "Set the time step to " + (id === "dtFix" ? "Fixed" : "Bounded or Adaptive") + " to type here"; }); });
   // show what the program picked, greyed, when the box is not in use
   if (mode !== "fixed" && lastDt){ const [nv, nu] = niceTime(lastDt.dt); document.getElementById("dtFix").value = nv; document.getElementById("dtFixU").innerHTML = unitOptions("time", nu); }
   if (mode === "auto" && lastDt){ document.getElementById("dtMin").placeholder = "—"; document.getElementById("dtMax").placeholder = "—"; }
@@ -3221,7 +3224,9 @@ function syncTimeBar(){
   tu.innerHTML = unitOptions("time", tm === "limit" ? (tq.unit || "s") : ta[1]);
   const ton = tm === "limit", tbox = tv.closest(".uv"); tbox.classList.toggle("off", !ton);
   tbox.querySelectorAll("input,select").forEach(x => { x.disabled = !ton; x.title = ton ? "" : (tm === "auto" ? `AUTO: 5 x the estimated run time (about ${lastDt && lastDt.est_run_s ? (lastDt.est_run_s < 1 ? "under 1 s" : dur(lastDt.est_run_s)) : "?"} here), at least 10 s. A Study stops after 5 x (runs x time per run / cores). Pick Limit to set your own.` : "No timeout: runs always finish."); });
-  document.getElementById("dtInfo").textContent = lastDt ? `critical ${niceTime(lastDt.dt_crit).join(" ")} · ${lastDt.steps.toLocaleString()} steps` : "";
+  document.getElementById("dtInfo").textContent = !lastDt ? "" : (mode === "adaptive" && lastDt.dt_free
+    ? `contact ${niceTime(lastDt.dt).join(" ")} · free ${niceTime(lastDt.dt_free).join(" ")}`
+    : `critical ${niceTime(lastDt.dt_crit).join(" ")} · ${lastDt.steps.toLocaleString()} steps`);
 }
 TB.forEach(([a, b, k]) => [a, b].forEach(id => document.getElementById(id).addEventListener(id === b ? "change" : "input", () => {
   if (document.getElementById(a).disabled) return;
@@ -3234,7 +3239,7 @@ document.getElementById("toMode").addEventListener("change", e => { S.meta.toMod
   syncTimeBar(); changed(false); });
 document.getElementById("dtMode").addEventListener("change", e => {
   const mode = e.target.value; S.meta.dtMode = mode; const r = S.meta.run;
-  if (mode !== "fixed") r.dt = ""; if (mode !== "bounded"){ r.dt_min = ""; r.dt_max = ""; }
+  if (mode !== "fixed") r.dt = ""; if (mode !== "bounded" && mode !== "adaptive"){ r.dt_min = ""; r.dt_max = ""; }
   if (mode === "fixed" && lastDt){ const [nv, nu] = niceTime(lastDt.dt); r.dt = joinQ(nv, nu); }     // start from the automatic step
   syncTimeBar(); changed(false); });
 document.getElementById("mMc").addEventListener("input", e => { S.meta.run.mc_n = e.target.value; changed(false); });
@@ -3271,7 +3276,7 @@ async function check(){
   const r = await API.call("check", yamlText);
   const prev = errNode; errNode = null;
   if (r.ok){ lastDt = r; syncTimeBar();
-    status("ok", `OK · ${r.bodies.length} ${r.bodies.length === 1 ? "body" : "bodies"}, ${r.elements.length} element${r.elements.length === 1 ? "" : "s"} · time step ${niceTime(r.dt).join(" ")} (${S.meta.dtMode || "auto"}) · ${r.steps.toLocaleString()} steps`);
+    status("ok", `OK · ${r.bodies.length} ${r.bodies.length === 1 ? "body" : "bodies"}, ${r.elements.length} element${r.elements.length === 1 ? "" : "s"} · time step ${niceTime(r.dt).join(" ")} (${S.meta.dtMode || "auto"}) · ${S.meta.dtMode === "adaptive" ? "up to " : ""}${r.steps.toLocaleString()} steps`);
     liveRun(); }
   else {
     const m = String(r.path || "").match(/^(params|derived|bodies|elements|outputs)\.([A-Za-z_]\w*)/);

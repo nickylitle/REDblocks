@@ -109,8 +109,13 @@ def main(argv=None):
             print(f"OK  {sysm.name}")
             print(f"    bodies: {', '.join(b for b in M.body_names if '__' not in b)}")
             print(f"    elements: {', '.join(f'{n} ({e['type']}' + (f', {e['segments']} segments' if e.get('segments') else '') + ')' for n, e in M.doc['elements'].items())}")
-            print(f"    dt = {M.dt:.3g} s (critical {M.dt_crit:.3g} s), t_end = {M.t_end:.3g} s, "
-                  f"{int(round(M.t_end / M.dt))} steps")
+            if getattr(M, "adaptive", False):
+                print(f"    dt adaptive: {M.dt_contact:.3g} s at contacts, {M.dt_free:.3g} s in free motion "
+                      f"(critical {M.dt_crit:.3g} s), t_end = {M.t_end:.3g} s, "
+                      f"{int(round(M.t_end / M.dt_free))} to {int(round(M.t_end / M.dt_contact))} steps")
+            else:
+                print(f"    dt = {M.dt:.3g} s (critical {M.dt_crit:.3g} s), t_end = {M.t_end:.3g} s, "
+                      f"{int(round(M.t_end / M.dt))} steps")
             paths = sysm.schematic(os.path.join(out_dir, "schematic"))
             print(f"    schematic: {paths[0]}")
             return 0
@@ -118,6 +123,9 @@ def main(argv=None):
             print(f"{sysm.name}: nominal run")
             out, _, paths = sysm.run_with_exports(model_path=os.path.abspath(a.file))
             _print_outputs(out, sysm)
+            if "_steps" in out:
+                print(f"  adaptive step: {out['_steps']:.0f} steps, {out['_dt_smallest']:.3g} s to "
+                      f"{out['_dt_largest']:.3g} s, {out['_contact_steps']:.0f} at the contact step")
             if out.get("_timed_out"):
                 print(f"  STOPPED BY THE TIMEOUT after {out['_timeout_s']:.0f} s at t = {out['_t_stopped']:.4g} s: "
                       f"outputs cover only that part (raise run.timeout, or timeout: none)")

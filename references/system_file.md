@@ -212,6 +212,14 @@ is also made elastic ("<element> elastic only"). A knockout that changes nothing
 ```yaml
 run: {t_end: 0.4 ms, dt: 20 ns, mc_n: 150, bounds: {shaft_set_mm: [0, 15]}}   # dt: auto = 0.02 x critical
 # automatic step held inside bounds instead of a fixed one:  run: {t_end: 0.4 ms, dt_min: 5 ns, dt_max: 50 ns}
+# adaptive step (changes as it runs):  run: {t_end: 2 s, dt: adaptive}   (dt_min / dt_max still bound it)
+#   free motion: the automatic step with the contact elements left out (one-sided, hertz, contact measures),
+#     and at most t_end / 20000 when the model has contacts (free flight is first order in the step)
+#   contacts: the full automatic step while a contact touches, or would close within 4 free steps at its speed
+#   driven fields: a {control: ...} stiffness or damping sets its own step from the signal's value as it runs
+#     (fitted from the model compiled at two values), so it needs no max:
+#   the step shrinks at once and grows at most x1.25 a step; outputs add _steps, _dt_smallest, _dt_largest,
+#   _contact_steps. Verify's dt-convergence halves every step it would take.
 # timeout (wall-clock, per run): auto (default) = 5 x estimated run time, at least 10 s | none | a time:  run: {t_end: 3 s, timeout: 5 min}
 #   a stopped run returns what it computed so far, with _timed_out = 1 and _t_stopped = the simulated time reached
 report:

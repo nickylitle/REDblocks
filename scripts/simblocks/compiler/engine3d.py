@@ -24,6 +24,7 @@ from numba import njit
 
 from .circuit import circuit_step
 from .control import control_step
+from .adaptive import pick_dt
 
 from .engine2d import _book_hits
 from .engine1d import _force, NP, NAUX
@@ -569,7 +570,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                  typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
                cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
-               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, stop):
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, adp, adf, adc, stop):
     """Iax: INVERSE inertia about the spin axis for spin bodies. Iinv: body-frame inverse inertia for free bodies.
     com: body-frame centre of mass (non-zero only for spin bodies turning about a pivot off their centre of mass)."""
     nb = X0.shape[0]; ne = typ.shape[0]
@@ -644,7 +645,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             BT[b * NBQ + k, 0] = BQ[k]; BT[b * NBQ + k, 1] = BQ[k]
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
+    adapt = adp[0] > 0.5
+    t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
+    adsp = np.zeros(ne)
     nlog = n // log_every + 2 if log_every > 0 else 1
+    if adapt and log_every > 0:
+        nlog = int(adp[5] / adp[7]) + 3
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, nb * NBQ)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
@@ -662,9 +668,17 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
             break
+        if adapt:
+            if t >= t_stop:
+                done = i; stop[2] = 2               # reached t_end
+                break
+            dt = pick_dt(i, t, dt, adp, adf, adc, active, se, adsp, inc, True, sig, casig)
+            tn = t + dt
+        else:
+            t = i * dt; tn = (i + 1) * dt
         for e in range(ne):
             if typ[e] == 13:
-                st[e, 0] = i * dt                # load tables against time read the clock from their state
+                st[e, 0] = t                # load tables against time read the clock from their state
         for b in range(nb):
             for k in range(3):
                 F[b, k] = 0.0; T[b, k] = 0.0
@@ -1347,7 +1361,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     sens[k] = se[kk]
                 else:
                     sens[k] = aux[kk, src - 4]
-            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            control_step(tn, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
             for a_ in range(cae.shape[0]):
                 x_ = sig[casig[a_]]
                 if caarr[a_] >= 2:                   # the field is stored as its inverse (a motor's kv as 1/kv)
@@ -1374,7 +1388,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
-                    t_cross[c] = (i + 1) * dt
+                    t_cross[c] = tn
         if i % 4 == 0:
             ke_ = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
             if ke_ > KEpk: KEpk = ke_
@@ -1384,17 +1398,24 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 if typ[e] == 14:
                     jacc[e] += Fe[e]
         if npart > 0:
-            circuit_step((i + 1) * dt, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
+            circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
                 for c in range(8):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
-        if log_every > 0 and i % log_every == 0 and j < nlog:
+        if adapt:
+            logit = log_every > 0 and t >= tlog and j < nlog
+            if logit:
+                while tlog <= t:
+                    tlog += adp[7]
+        else:
+            logit = log_every > 0 and i % log_every == 0 and j < nlog
+        if logit:
             if npart > 0:
                 for k in range(npart):
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
-            LOGT[j] = i * dt
+            LOGT[j] = t
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for b in range(nb):
@@ -1409,7 +1430,10 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             jcnt = 0
             for e in range(ne):
                 jacc[e] = 0.0
+        if adapt:
+            t = tn
     stop[1] = done
+    adp[14] = t if adapt else done * dt
     for b in range(nb):
         if mass[b] > 0.0:
             px, py, pz = _pt(X, R, b, com[b, 0], com[b, 1], com[b, 2])
