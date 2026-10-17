@@ -1290,7 +1290,7 @@ function unitOptions(dim, cur){
   let h = "";
   if (dim === "none") return null;
   if (dim){ const list = UNITS[dim].slice(); if (cur && !list.includes(cur)) list.push(cur); const du = defUnit(dim);
-    return list.map(u => `<option value="${esc(u)}"${u === cur ? " selected" : ""}>${esc(u)}${u === du ? " ·" : ""}</option>`).join(""); }
+    return list.map(u => `<option value="${esc(u)}"${u === cur ? " selected" : ""}>${esc(u)}</option>`).join(""); }
   h = `<option value=""${!cur ? " selected" : ""}>SI / none</option>`; let found = !cur;
   DIM_ORDER.forEach(d => { h += `<optgroup label="${d}">` + UNITS[d].map(u => { const on = u === cur && !found; if (on) found = true;
     return `<option value="${esc(u)}"${on ? " selected" : ""}>${esc(u)}</option>`; }).join("") + `</optgroup>`; });
@@ -1456,7 +1456,8 @@ function shapeHTML(n){
   if (!sh.kind) return b;
   (SHAPE_DIMS[sh.kind] || []).forEach(([k, t]) => { if (isGeo() && !is3d() && sh.kind === "rod" && k === "L") t = "length (along x)";
     b += `<div class="row"><label title="${esc(t)}">${k}</label><input data-k="sh.${k}" value="${esc(sh[k] || "")}" placeholder="${esc(t)}, e.g. 40 mm"></div>`; });
-  b += `<div class="row"><label title="where the mass comes from">from</label><div class="vxy" style="grid-template-columns:auto minmax(0,1fr)"><select data-k="sh.src">${sel_([["material","material"],["density","density"],["mass","mass"]], sh.src || "material")}</select><input data-k="sh.val" value="${esc(sh.val || "")}" placeholder="${{material:"6061_t6", density:"2700 kg/m^3", mass:"0.25 kg"}[sh.src || "material"]}" ${ (sh.src || "material") === "material" ? 'list="matlist"' : ""}></div></div>`;
+  b += `<div class="row"><label title="where the mass comes from">mass from</label><select data-k="sh.src">${sel_([["material","material"],["density","density"],["mass","mass"]], sh.src || "material")}</select></div>`;
+  b += `<div class="row"><label title="${{material:"material name (type to search the library)", density:"density", mass:"total mass"}[sh.src || "material"]}">${sh.src || "material"}</label><input data-k="sh.val" value="${esc(sh.val || "")}" placeholder="${{material:"6061_t6", density:"2700 kg/m^3", mass:"0.25 kg"}[sh.src || "material"]}" ${ (sh.src || "material") === "material" ? 'list="matlist"' : ""}></div>`;
   b += `<div class="row"><label title="where the shape's centre sits in the body's own frame (blank = its origin)">centre</label><input data-k="sh.at" value="${esc(sh.at || "")}" placeholder="${is3d() ? "x, y, z" : "x, y"} (blank = origin)"></div>`;
   if (is3d()) b += `<div class="row"><label title="world direction of the shape's own z axis at the start (a cylinder's axis, a plate's normal)">axis</label><input data-k="sh.axis" value="${esc(sh.axis || "")}" placeholder="z"></div>`;
   if ((is2d() && ["disc","ring"].includes(sh.kind)) || (is3d() && sh.kind === "sphere")) b += `<div class="hint">adds a feature named <b>outline</b> for contacts</div>`;
@@ -1570,13 +1571,23 @@ function imageHTML(n){
     `<div class="im">${body}</div>` + (d.caption ? `<div class="cap" style="width:${w}px">${esc(d.caption)}</div>` : "") +
     `<div class="imbar"><button class="mini" data-act="imgpick" title="Pick a picture">Picture…</button><input data-k="w" value="${esc(String(d.w || 360))}" title="width on the canvas" style="width:56px"><input data-k="caption" value="${esc(d.caption || "")}" placeholder="caption" style="flex:1"></div>`;
 }
+
+// a value used as $name inside another block's text (a shape centre, a start vector, an expression) has no wire:
+// say where it is used, so it does not look disconnected
+function textUseHint(n){
+  const nm = nodeName(n); if (!nm || linksFrom(n.id).length) return "";
+  const re = new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
+  const hit = (v, depth) => depth < 6 && (typeof v === "string" ? re.test(v) : (v && typeof v === "object" ? Object.values(v).some(x => hit(x, depth + 1)) : false));
+  const users = S.nodes.filter(m => m.id !== n.id && m.data && hit(m.data, 0)).map(m => nodeName(m) || m.kind);
+  return users.length ? `<div class="hint" title="used by name in these blocks' fields, so there is no wire">used as $${esc(nm)} in ${esc(users.join(", "))}</div>`
+    : `<div class="hint">not used yet: wire it in, or type $${esc(nm)} in a field</div>`; }
 function nodeHTML(n){
   if (n.kind === "note") return noteHTML(n);
   if (n.kind === "image") return imageHTML(n);
   const d = n.data, {ins, outs} = sockets(n); let b = "";
   if (["value","sweep","mc"].includes(n.kind) && d.note) b += `<div class="hint pnote" title="note from the file (kept on save)">${esc(d.note)}</div>`;
   if (n.kind === "value"){
-    b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 4140 prehard · = 2 * $x", ' list="matlist"')}</div>` + expandHint(splitQ(d.value).num);
+    b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 4140 prehard · = 2 * $x", /^\s*[A-Za-z]/.test(String(d.value || "")) ? ' data-mat="1" list="matlist"' : ' data-mat="1"')}</div>` + expandHint(splitQ(d.value).num) + textUseHint(n);
   } else if (n.kind === "builder"){
     const blk = CAT.blocks.find(x => x.name === d.block);
     b += `<div class="hint" title="${esc(blk ? blk.summary + "\n" + blk.source : "")}">${esc(d.block)}${blk ? " · " + esc(blk.kind) : " (not in catalog)"}</div>`;
@@ -1648,9 +1659,9 @@ function nodeHTML(n){
       b += `<div class="row"><label>quantity</label><select data-k="quantity">${sel_(ql, d.quantity)}</select></div>`; }
     if (!(src && src.kind === "body" && d.quantity === "kinetic_energy"))
       b += `<div class="row"><label>reduce</label><select data-k="reduce">${sel_(CAT.reduces, d.reduce)}</select></div>`;
-    if (d.reduce.startsWith("first_time")) b += `<div class="row req"><label>value</label><input data-k="value" value="${esc(d.value)}"></div>`;
+    if (d.reduce.startsWith("first_time")) b += `<div class="row req"><label title="the level to cross, in the quantity's own SI unit unless you type one (0, 25 mm, 3 kN)">value</label><input data-k="value" value="${esc(d.value)}" placeholder="level, e.g. 25 mm"></div>`;
     const qn = src ? (src.kind === "body" ? d.quantity : l.from.key.slice(2)) : "force";
-    const od = src ? quantityDim(src, qn) : (OUT_DIM[qn] || null);
+    const od = d.reduce.startsWith("first_time") ? "time" : (src ? quantityDim(src, qn) : (OUT_DIM[qn] || null));
     if (od && od !== "none" && (!d.unit || !(UNITS[od] || []).includes(d.unit))) d.unit = defUnit(od);
     if (od === "none") d.unit = "";
     const uo = od === "none" ? null : unitOptions(od, d.unit || "");
@@ -1857,11 +1868,16 @@ function drawWires(temp){
   let h = "", top = "";
   const wt = document.getElementById("wiresTop"); if (wt && wt !== world.lastElementChild) world.appendChild(wt);
   const F = focus();
+  // an input socket takes the colour and shape of the wire plugged into it (its own type when empty)
+  const recolor = (el, t) => { if (!el) return; el.classList.forEach(c => { if (c.startsWith("t-")) el.classList.remove(c); }); el.classList.add("t-" + t); };
+  world.querySelectorAll(".sock.in").forEach(el => { if (!el.classList.contains("t-" + el.dataset.t)) recolor(el, el.dataset.t); });
   S.links.forEach((l, i) => {
     const ga = hiddenIn(l.from.node), gb = hiddenIn(l.to.node); if (ga && ga === gb) return;     // inside a closed group
     const a = sockPos(l.from.node, l.from.key, "out"), b = sockPos(l.to.node, l.to.key, "in"); if (!a || !b) return;
     const src = byId(l.from.node), st = sockets(src).outs.find(s => s.key === l.from.key);
-    const wt_ = st ? st.type : "val", col = TYPE_COL[wt_], d = curve(a, b), lab = l.field ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 5}" text-anchor="middle">.${esc(l.field)}</text>` : "";
+    const wt_ = st ? st.type : "val", col = TYPE_COL[wt_], d = curve(a, b),
+      _r = recolor(world.querySelector(`.node[data-id="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`) ||
+                   world.querySelector(`[data-m="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`), wt_), lab = l.field ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 5}" text-anchor="middle">.${esc(l.field)}</text>` : "";
     if (wireSel.has(l)) top += `<path class="halo" d="${d}"></path><path class="wsel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>${esc(byId(l.from.node).data.name || "")} → ${esc((byId(l.to.node) || {data:{}}).data.name || "")} · Delete removes</title></path>` + lab;
     else if (F && F.links.has(l)) top += `<path class="wrel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds</title></path>` + lab;
     else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
@@ -1991,6 +2007,7 @@ canvas.addEventListener("wheel", e => {
   view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; applyView();
 }, {passive:false});
 world.addEventListener("input", e => {
+  if (e.target.dataset && e.target.dataset.mat) { if (/^\s*[A-Za-z]/.test(e.target.value)) e.target.setAttribute("list", "matlist"); else e.target.removeAttribute("list"); }
   const el = e.target, nodeEl = el.closest(".node"); if (!nodeEl) return;
   if (el.dataset.gk === "name"){ const g = byGid(nodeEl.dataset.id); if (g){ g.name = el.value; const gn = document.getElementById("gName"); if (gn) gn.value = g.name; changed(false); } return; }
   const holder = el.closest("[data-m]"), n = byId(holder ? holder.dataset.m : nodeEl.dataset.id); if (!n) return;
@@ -3075,7 +3092,7 @@ const GUIDE = [
   <p>A steel disc on a stem spins fast, tilted 20 degrees, with its tip on a ball joint. Gravity tries to tip it over; because it spins, it swings slowly round in a circle instead. This is gyroscopic precession, and it only appears in 3D.</p>
   <h3>The blocks and why they connect that way</h3>
   <ul><li><b>The floor</b> is ground with one point where the tip sits.</li>
-  <li><b>The top</b> is a free body (it slides and tumbles in every direction). Its <b>shape</b> is a disc whose centre is 50 mm up the stem (<code>at: [0, 0, $l]</code>), so its centre of mass and inertia are placed for you. <code>orient0</code> tilts it 20 degrees; <code>omega0</code> gives it its spin (plus the slow precession, so it starts smoothly).</li>
+  <li><b>The top</b> is a free body (it slides and tumbles in every direction). Its <b>shape</b> is a disc whose centre is 50 mm up the stem (<code>at: [0, 0, $stem]</code>), so its centre of mass and inertia are placed for you. <code>orient0</code> tilts it by <i>tilt</i>; <code>omega0</code> gives it its spin (plus the slow <i>precession</i>, so it starts smoothly). These three values feed the body as text (<code>$stem</code>, <code>$tilt</code>, <code>$spin</code>) inside its shape and start fields, so they show no wire: each value block lists where it is used.</li>
   <li><b>A pin with rigid: true</b> is a ball joint: it holds the tip on its point but lets it turn every way.</li></ul>
   <h3>What to look at</h3>
   <p>The disc's x and y trace a circle; its height barely changes (<i>lowest_z_mm</i>). <i>quarter_turn_s</i> is the time to go a quarter of the way round.</p>
@@ -3083,7 +3100,7 @@ const GUIDE = [
   <p>The simple gyroscope rule gives $\\Omega \\approx m g l / (I_s \\omega_s) = 3.07$ rad/s. The full steady-precession equation, $I_t \\Omega^2 \\cos\\theta - I_s \\omega_s \\Omega + m g l = 0$ (with $I_t$ about the tip), gives 3.25 rad/s, so a quarter turn takes 0.484 s. The model gives 0.484 s.</p>
   <h3>Things to try</h3>
   <ul><li>Halve the spin: it precesses twice as fast and wobbles more.</li>
-  <li>Start it with only the spin (delete the precession part of omega0): it nods up and down as it goes round (nutation).</li>
+  <li>Set <i>precession</i> to 0 so it starts with only the spin: it nods up and down as it goes round (nutation).</li>
   <li>Set the spin to zero: it simply falls over.</li></ul>`},
  {id:"ex-3d2", grp:"Examples", t:"3D-2 Drone arm (beam)", h:`
   <p class="exopen"><button data-ex="3D-2 Drone arm under a thrust punch">Open this example</button></p>
