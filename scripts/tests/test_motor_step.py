@@ -119,3 +119,48 @@ def test_circuit_motor_on_a_light_shaft():
     assert a["rpm_end"] == pytest.approx(b["rpm_end"], rel=2e-3)
     assert a["E_heat_J"] == pytest.approx(b["E_heat_J"], rel=1e-2)
     assert a["_circuit_ledger_rel"] < 1e-9
+
+
+CRANK_2D = """simblocks: 1
+name: gearmotor spins a crank on a rigid end pivot
+dim: 2d
+gravity: 0
+bodies:
+  frame: {ground: true, points: {O: [0, 0]}}
+  crank:
+    dof: planar
+    shape: {kind: rod, L: 200 mm, A: 200 mm^2, material: 6061-T6}
+    at: [0.1, 0]
+    points: {a: [-0.1, 0]}
+elements:
+  pivot: {type: hinge, rigid: true, measure: [frame.O, crank.a]}
+  motor:
+    type: drive
+    measure: crank.rz
+    kv: 300 rpm/V
+    R: 0.2 ohm
+    I_max: 500 A
+    gear: 50
+    cells: 3
+    R0: 0.03 ohm
+    capacity: 50000 mAh
+outputs:
+  w_end: {body: crank, quantity: omega}
+  t63: {body: crank, quantity: omega, reduce: first_time_above, value: 5.0}
+  i_end: {element: motor, quantity: current}
+run:
+  t_end: 2 ms
+"""
+
+
+def test_motor_through_a_rigid_joint_spins_up_on_the_whole_inertia():
+    # a rod on a rigid end pivot: the motor sees m L^2 / 3, four times the rod's own m L^2 / 12. Spin-up follows
+    # w = w_inf (1 - e^-t/tau), tau = J (R + R0) / (G Kt)^2
+    import math
+    s = load_system(CRANK_2D); M = s.nominal
+    m = 2700 * 0.2 * 200e-6; J = m * 0.2 ** 2 / 3; Kt = 1 / (300 * 2 * math.pi / 60)
+    tau = J * 0.23 / (50 * Kt) ** 2
+    for o, tol in ((s.run(), M.dt), (s.run(dt=M.dt / 20), M.dt / 20)):
+        t63 = -tau * math.log(1 - 5.0 / o["w_end"])
+        assert abs(o["t63"] - t63) <= tol                 # within one step of the exact curve
+        assert o["w_end"] == pytest.approx(12.6 / (50 * Kt), rel=0.01)

@@ -301,6 +301,50 @@ def _rows2(e, mk_, q, ba, bb, C, s0, GA, GB, GX, ref, J, cpos):
 
 
 @njit(cache=True, nogil=True)
+def _motor_eff2(em, ne, nq, typ, active, mk, q, v, vst, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, JA):
+    """A motor's shaft as the rigid joints leave it free to move: (1 / inertia along its measure, the measure's
+    rate change this step), both with the joints held (g M^-1 g' - b' K^-1 b, b = J M^-1 g', K = J M^-1 J'). The
+    joints are solved after this, so the free change is projected the same way."""
+    gg = 0.0; du = 0.0
+    for k in range(nq):
+        if C[em, k] != 0.0:
+            gg += C[em, k] * C[em, k] * minv[k]; du += C[em, k] * (v[k] - vst[k])
+    n = 0
+    for e in range(ne):
+        if typ[e] != 15 or active[e] == 0:
+            continue
+        nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
+        for r in range(nr):
+            for k in range(nq):
+                JA[n, k] = Jr[r, k]
+            n += 1
+    if n == 0:
+        return gg, du
+    K = np.zeros((n, n)); bv = np.zeros(n); jd = np.zeros(n); tr = 0.0
+    for i in range(n):
+        for k in range(nq):
+            if JA[i, k] != 0.0:
+                bv[i] += JA[i, k] * minv[k] * C[em, k]; jd[i] += JA[i, k] * (v[k] - vst[k])
+        for j in range(n):
+            s_ = 0.0
+            for k in range(nq):
+                if JA[i, k] != 0.0 and JA[j, k] != 0.0:
+                    s_ += JA[i, k] * JA[j, k] * minv[k]
+            K[i, j] = s_
+        tr += K[i, i]
+    if tr <= 0.0:
+        return gg, du
+    for i in range(n):
+        K[i, i] += 1e-12 * tr / n
+    y = np.linalg.solve(K, bv)
+    for i in range(n):
+        if not np.isfinite(y[i]):
+            return gg, du
+        gg -= bv[i] * y[i]; du -= y[i] * jd[i]
+    return gg, du
+
+
+@njit(cache=True, nogil=True)
 def _jsolve2(mode, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam, aux,
              JA, JO, rhs, re, rr, dt, first_pass):
     """Every rigid-joint row at once: K x = rhs with K = J M^-1 J^T (a direct solve, so long levers and light
@@ -993,10 +1037,12 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
                 kk = motor_k(typ[e], P[e], st[e], dt)
                 if kk > 1e-9:
-                    du = 0.0
-                    for k in range(nq):
-                        du += C[e, k] * (v[k] - vst[k])
-                    J_ = du * (motor_scale(kk) - 1.0) / P[e, 10]
+                    ie, du = _motor_eff2(e, ne, nq, typ, active, mk, q, v, vst, minv, ba, bb, C, s0, GA, GB, GX, refc,
+                                         Jr, cps, JA)
+                    if ie <= 0.0:
+                        continue
+                    kk *= ie / P[e, 10]                   # the damping on the inertia the joints leave it
+                    J_ = du * (motor_scale(kk) - 1.0) / ie
                     for k in range(nq):
                         if C[e, k] != 0.0:
                             v[k] += C[e, k] * minv[k] * J_

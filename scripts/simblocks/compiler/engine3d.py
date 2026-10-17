@@ -519,6 +519,88 @@ def _turn_dir(R, rmode, Iinv, axis, Iax, b, jx, jy, jz):
 
 
 @njit(cache=True, nogil=True)
+def _motor_row(e, m_, C, ba, bb, geo, axis, rmode, nb, g):
+    """A motor's measure as a velocity row per body [v(3), w(3)] (like a joint row)."""
+    for b in range(nb):
+        for k in range(6):
+            g[b, k] = 0.0
+    if m_ == MK_TWIST:
+        if bb[e] >= 0:
+            g[bb[e], 3] += geo[e, 6]; g[bb[e], 4] += geo[e, 7]; g[bb[e], 5] += geo[e, 8]
+        if ba[e] >= 0:
+            g[ba[e], 3] -= geo[e, 6]; g[ba[e], 4] -= geo[e, 7]; g[ba[e], 5] -= geo[e, 8]
+        return
+    for b in range(nb):
+        for k in range(3):
+            g[b, k] = C[e, 4 * b + k]
+        c = C[e, 4 * b + 3]
+        if c != 0.0 and rmode[b] == R_SPIN:
+            for k in range(3):
+                g[b, 3 + k] = c * axis[b, k]
+
+
+@njit(cache=True, nogil=True)
+def _motor_eff3(em, ne, nb, typ, active, mk, X, V, W, Vst, Wst, R, th, minv, rmode, Iinv, axis, Iax, ba, bb, C, s0,
+                GA, GB, GX, refc, J3, cps, JA, g, geo):
+    """A motor's shaft as the rigid joints leave it free to move: (1 / inertia along its measure, the measure's
+    rate change this step), both with the joints held (g M^-1 g' - b' K^-1 b, b = J M^-1 g', K = J M^-1 J')."""
+    _motor_row(em, mk[em], C, ba, bb, geo, axis, rmode, nb, g)
+    Mg = np.zeros((nb, 6))
+    gg = 0.0; du = 0.0
+    for b in range(nb):
+        for k in range(3):
+            Mg[b, k] = minv[b, k] * g[b, k]
+        tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, g[b, 3], g[b, 4], g[b, 5])
+        Mg[b, 3] = tx; Mg[b, 4] = ty; Mg[b, 5] = tz
+        for k in range(3):
+            gg += g[b, k] * Mg[b, k] + g[b, 3 + k] * Mg[b, 3 + k]
+            du += g[b, k] * (V[b, k] - Vst[b, k]) + g[b, 3 + k] * (W[b, k] - Wst[b, k])
+    n = 0
+    for e in range(ne):
+        if typ[e] != 15 or active[e] == 0:
+            continue
+        nr = _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
+        for r in range(nr):
+            for b in range(nb):
+                for k in range(6):
+                    JA[n, b, k] = J3[r, b, k]
+            n += 1
+    if n == 0:
+        return gg, du
+    MJ = np.zeros((n, nb, 6))
+    for j in range(n):
+        for b in range(nb):
+            for k in range(3):
+                MJ[j, b, k] = minv[b, k] * JA[j, b, k]
+            tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, JA[j, b, 3], JA[j, b, 4], JA[j, b, 5])
+            MJ[j, b, 3] = tx; MJ[j, b, 4] = ty; MJ[j, b, 5] = tz
+    K = np.zeros((n, n)); bv = np.zeros(n); jd = np.zeros(n); tr = 0.0
+    for i in range(n):
+        for b in range(nb):
+            for k in range(6):
+                bv[i] += JA[i, b, k] * Mg[b, k]
+            for k in range(3):
+                jd[i] += JA[i, b, k] * (V[b, k] - Vst[b, k]) + JA[i, b, 3 + k] * (W[b, k] - Wst[b, k])
+        for j in range(n):
+            s_ = 0.0
+            for b in range(nb):
+                for k in range(6):
+                    s_ += JA[i, b, k] * MJ[j, b, k]
+            K[i, j] = s_
+        tr += K[i, i]
+    if tr <= 0.0:
+        return gg, du
+    for i in range(n):
+        K[i, i] += 1e-12 * tr / n
+    y = np.linalg.solve(K, bv)
+    for i in range(n):
+        if not np.isfinite(y[i]):
+            return gg, du
+        gg -= bv[i] * y[i]; du -= y[i] * jd[i]
+    return gg, du
+
+
+@njit(cache=True, nogil=True)
 def _motor_rate(e, m_, V, W, wsp, C, ba, bb, geo, nb):
     """Rate of a motor's measure now: a twist (relative spin about the axis fixed in A) or a coordinate sum."""
     if m_ == MK_TWIST:
@@ -637,7 +719,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         if typ[e] == 15:
             nrig += 1; exact[e] = 0
     J3 = np.zeros((3, nb, 6)); cps = np.zeros(3); lam = np.zeros((ne, 3)); refc = np.zeros(ne)
-    Vst = np.zeros((nb, 3)); Wst = np.zeros((nb, 3))
+    Vst = np.zeros((nb, 3)); Wst = np.zeros((nb, 3)); gmot = np.zeros((nb, 6))
     J3o = np.zeros((ne if nrig > 0 else 1, 3, nb, 6)); nrow3 = np.zeros(ne, np.int64)   # SHAKE directions
     nja = 3 * nrig if nrig > 0 else 1
     JA3 = np.zeros((nja, nb, 6)); JO3 = np.zeros((nja, nb, 6)); rhs3 = np.zeros(nja)
@@ -1024,8 +1106,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 kk = motor_k(typ[e], P[e], st[e], dt)
                 if kk <= 1e-9:
                     continue
-                u1 = _motor_rate(e, mk[e], V, W, wsp, C, ba, bb, geo, nb)
-                J_ = (u1 - st[e, 2]) * (motor_scale(kk) - 1.0) / P[e, 10]
+                ie, du = _motor_eff3(e, ne, nb, typ, active, mk, X, V, W, Vst, Wst, R, th, minv, rmode, Iinv, axis,
+                                     Iax, ba, bb, C, s0, GA, GB, GX, refc, J3, cps, JA3, gmot, geo)
+                if ie <= 0.0:
+                    continue
+                kk *= ie / P[e, 10]                       # the damping on the inertia the joints leave it
+                J_ = du * (motor_scale(kk) - 1.0) / ie
                 if mk[e] == MK_TWIST:
                     for b, sg in ((bb[e], 1.0), (ba[e], -1.0)):
                         if b < 0:
