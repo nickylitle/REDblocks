@@ -19,6 +19,7 @@
 @font-face{font-family:"Source Serif 4";src:url("fonts/source-serif-4-latin-400-normal.woff2");font-weight:400}
 @font-face{font-family:"Fredoka";src:url("fonts/fredoka-latin-400-normal.woff2");font-weight:400}
 @font-face{font-family:"Fredoka";src:url("fonts/fredoka-latin-600-normal.woff2");font-weight:600 700}
+@font-face{font-family:"IM Fell English";src:url("fonts/im-fell-english-latin-400-normal.woff2") format("woff2");font-weight:400 700;font-display:swap}
 @font-face{font-family:"Source Serif 4";src:url("fonts/source-serif-4-latin-600-normal.woff2");font-weight:600 700}
 :root{
   /* every colour the editor uses lives here; Settings > Colours swaps these tokens (themes + your own overrides) */
@@ -3633,7 +3634,7 @@ const GUIDE = [
   <tr><td>Terminal</td><td>green-on-black retro console, monospace everywhere.</td></tr>
   <tr><td>Mission control</td><td>near-black console with amber readouts and cyan accents.</td></tr>
   <tr><td>Ember</td><td>warm charcoal with red, amber and rose wires. Red without the glare.</td></tr>
-  <tr><td>Helena</td><td>a funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and a serif face. Dramatic.</td></tr>
+  <tr><td>Burning On</td><td>a funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and an old-print face. Dramatic.</td></tr>
   <tr><td>Solarized dark</td><td>ethan Schoonover&#x27;s low-glare palette, dark.</td></tr>
   <tr><td>Drafting</td><td>vellum paper, blue-black ink, red markups: a printed schematic.</td></tr>
   <tr><td>Sage</td><td>matcha and moss greens on cream, with blush pink and a little sunflower and mushroom red. Soft and outdoorsy.</td></tr>
@@ -3806,7 +3807,7 @@ const THEMES = {
     bg:"#07090d", grid:"#121925", panel:"#0c1016", panel2:"#121820", panel3:"#1a222d", edge:"#2c3746", hair:"#161d27", selbg:"#3b2a08", "note-bg":"#10141a", "group-hd":"#141b26", ink:"#f4e9d2", ink2:"#d2bf96", ink3:"#998b6e", link:"#4fd2ff", acc:"#ffb02e", accf:"#4fd2ff", pass:"#3ddc97", warn:"#ffb02e", fail:"#ff5a4f", shadow:"rgba(0,0,0,.6)", "s-val":"#ffb02e", "s-body":"#4fd2ff", "s-sig":"#a5b4c8", "s-state":"#c792ea", "s-metric":"#f4e9d2", "c-value":"#ffb02e", "c-builder":"#c792ea", "c-body":"#4fd2ff", "c-element":"#3ddc97", "c-load":"#3ddc97", "c-output":"#8a96a8", "c-expr":"#5ed6c8", "c-fail":"#ff5a4f", "c-sweep":"#ffd166", "c-mc":"#ff7eb6", "c-export":"#4fd2ff", "c-group":"#9d8cff", "c-note":"#998b6e", p1:"#4fd2ff", p2:"#ffb02e", p3:"#3ddc97", p4:"#c792ea", p5:"#ff7eb6"}},
   ember: {name:"Ember", note:"Warm charcoal with red, amber and rose wires. Red without the glare.", scheme:"dark", t:{
     bg:"#170e0e", grid:"#211414", panel:"#201313", panel2:"#2a1919", panel3:"#362020", edge:"#573232", hair:"#2e1c1c", selbg:"#5a1d1d", "note-bg":"#241716", "group-hd":"#2f1a20", ink:"#f8ebe6", ink2:"#dcc4bc", ink3:"#b0948b", link:"#ff9a85", acc:"#ff5a4a", accf:"#f6b53c", pass:"#7fd1a8", warn:"#f6b53c", fail:"#ff6b5e", shadow:"rgba(0,0,0,.55)", "s-val":"#f6b53c", "s-body":"#f54f45", "s-sig":"#958d8a", "s-state":"#f6a0d1", "s-metric":"#fff1ea", "c-value":"#d39315", "c-builder":"#e18bcf", "c-body":"#fe987d", "c-element":"#459571", "c-load":"#459571", "c-output":"#af9a94", "c-expr":"#75c4d1", "c-fail":"#fd5745", "c-sweep":"#eed28f", "c-mc":"#cf2a5e", "c-export":"#6191b8", "c-group":"#9168a2", "c-note":"#74665c", p1:"#e84533", p2:"#f0b64b", p3:"#f8f1e9", p4:"#e892c3", p5:"#60a892"}},
-  helena: {name:"Helena", note:"A funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and a serif face. Dramatic.", scheme:"dark", ui:"sourceserif", t:{
+  burning_on: {name:"Burning On", note:"A funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and an old-print face. Dramatic.", scheme:"dark", ui:"fell", t:{
     bg:"#0b0a0b", grid:"#161315", panel:"#141113", panel2:"#1d181b", panel3:"#272024", edge:"#4a3a40", hair:"#221c20", selbg:"#4a0f1c", "note-bg":"#171214", "group-hd":"#1f1619",
     bar:"#0a0809", "bar-ink":"#f3ece4", "bar-ink2":"#c9bdb4", hd:"#1a1215", "hd-ink":"#f3ece4", "hd-ink2":"#c4a9ad",
     ink:"#f3ece4", ink2:"#d6cbc2", ink3:"#a8999b", link:"#ff8095", acc:"#c8102e", accf:"#e7d7b8", pass:"#8fc7a0", warn:"#e0b25a", fail:"#ff5c6c", shadow:"rgba(0,0,0,.6)",
@@ -3876,7 +3877,7 @@ const THEMES = {
 // (<config>/simblocks/themes/<slug>/theme.json and an optional background image), and carry every setting a
 // built-in has plus a font choice, grid on/off and a background picture.
 const OLD_THEME = {graphite_vivid:"graphite", solarized_light:"drafting", high_contrast:"graphite", tritan:"tritanopia",
-  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana", paper:"clean"};
+  colourblind:"deuteranopia", colorblind:"deuteranopia", okabe:"deuteranopia", goldenrod:"banana", paper:"clean", helena:"burning_on"};
 // fonts: font-size-adjust holds every face to Inter's x-height, so swapping fonts never changes line heights or wraps
 const UI_FONTS = {
   inter:{n:"Inter (default)", css:'"Inter",system-ui,"Segoe UI",sans-serif'},
@@ -3884,6 +3885,7 @@ const UI_FONTS = {
   plexsans:{n:"IBM Plex Sans", css:'"IBM Plex Sans","Inter",system-ui,sans-serif'},
   sourceserif:{n:"Source Serif (serif)", css:'"Source Serif 4",Georgia,serif'},
   fredoka:{n:"Fredoka (round and playful)", css:'"Fredoka","Inter",system-ui,sans-serif'},
+  fell:{n:"IM Fell English (old print)", css:'"IM Fell English","Source Serif 4",Georgia,serif'},
   system:{n:"System UI", css:'system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif'},
   mono:{n:"Monospace (the mono font)", css:'var(--mono)'}};
 const MONO_FONTS = {
