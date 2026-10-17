@@ -1,4 +1,4 @@
-"""The nine teaching examples run, close their energy ledger and match their textbook checks."""
+"""The teaching examples run, close their energy ledger and match their textbook checks."""
 import math
 import os
 
@@ -101,3 +101,11 @@ def test_rocket_engine_block_against_published_engines():
     assert r["Tc"] == pytest.approx(3676, rel=0.005) and r["Isp_sl"] == pytest.approx(300, rel=0.01)
     h = ideal_performance("LH2", 4.13, 1000 * 6894.757, 8.26)
     assert h["Isp_sl"] == pytest.approx(389.6, rel=0.01)
+
+
+def test_1d_5_cruise_control():
+    o = run("1d_5_cruise_control.yaml")
+    assert o["push_hill"] == pytest.approx(o["push_check"], rel=1e-4)    # the PID settles on the force balance
+    assert o["v_end"] == pytest.approx(25, rel=1e-4)
+    assert 24.0 < o["v_sag"] < 25.0                                       # a brief sag when the hill starts
+    assert o["t_on_hill"] == pytest.approx(40, abs=0.01)

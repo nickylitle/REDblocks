@@ -14,7 +14,7 @@ import traceback
 
 import yaml
 
-ORDER = ["simblocks", "name", "question", "dim", "units", "gravity", "params", "derived", "bodies", "elements", "circuit", "outputs", "failure",
+ORDER = ["simblocks", "name", "question", "dim", "units", "gravity", "params", "derived", "bodies", "elements", "circuit", "control", "outputs", "failure",
          "uncertain", "study", "exports", "limits", "knockouts", "run", "report", "assumptions", "sources", "notes", "editor"]
 HOME = os.path.join(os.path.expanduser("~"), ".simblocks")
 SETTINGS = os.path.join(HOME, "app.json")
@@ -860,7 +860,7 @@ class Api:
 
     def examples(self):
         """Bundled example models, so a new user has something to open."""
-        # the nine teaching examples (1D, 2D, 3D, simple to advanced); their CSV tables sit in data/ beside them
+        # the teaching examples (1D, 2D, 3D, simple to advanced); their CSV tables sit in data/ beside them
         here = os.path.join(os.path.dirname(__file__), "examples")            # packaged app (copied at build time)
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "learn"))
         d = here if os.path.isdir(here) else root

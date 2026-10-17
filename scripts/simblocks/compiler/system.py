@@ -165,8 +165,13 @@ class System:
             t = e["type"]
             members = [b for b in doc["bodies"] if b in str(e["measure"]).replace("-", " ").replace("+", " ")
                        .replace("*", " ").split()]
+            used_ground.update(b for b in members if b in grounds)
             if t == "force":
-                s.note(f"{e.get('label', en)}: constant force {info(en)['params'][0]:.4g} N along +({e['measure']})")
+                ctl = (self.doc["elements"][en].get("P") or {}) if isinstance(self.doc["elements"][en].get("P"), dict) else {}
+                if ctl.get("control"):
+                    s.note(f"{e.get('label', en)}: force set by the control signal '{ctl['control']}' along +({e['measure']})")
+                else:
+                    s.note(f"{e.get('label', en)}: constant force {info(en)['params'][0]:.4g} N along +({e['measure']})")
                 continue
             if t in ("drive", "dc_motor"):
                 mk = f"__motor_{en}"

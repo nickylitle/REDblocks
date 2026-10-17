@@ -640,9 +640,13 @@ def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, 
                 raise SpecError(f"a rocket needs {k} (from a rocket_engine block: $eng.F_vac, $eng.mdot)", where,
                                 line_of(d, "type"), f)
         thr = d.get("throttle")
+        lvl = None
         if thr not in (None, "guidance"):
-            raise SpecError("throttle: guidance (a landing_guidance element sets the level), or leave it out", where,
-                            line_of(d, "throttle"), f)
+            try:
+                lvl = num(resolve(thr, ctx, f"{where}.throttle"), f"{where}.throttle")
+            except Exception:
+                raise SpecError("throttle: guidance (a landing_guidance element sets it), a level 0-1, or "
+                                "{control: <signal>}", where, line_of(d, "throttle"), f)
         cut = d.get("cutoff")
         if cut not in (None, "guidance", "time"):
             raise SpecError("cutoff is guidance (the steering element's target speed stops it) or time (stop:)", where,
@@ -650,6 +654,8 @@ def _vehicle_element(e, en, d, where, t, doc, ctx, M, B, names, typ, mk, ba, P, 
         P[e, :8] = [g("thrust_vac"), g("exit_area", 0.0), g("mass_flow"), g("start", 0.0), g("stop", 1e300),
                     g("rise", 0.0), g("tailoff", 0.0), 1.0 if cut == "guidance" else 0.0]
         P[e, 8] = 1.0 if thr == "guidance" else 0.0
+        if lvl is not None:
+            P[e, 10] = lvl; P[e, 11] = 1.0             # a throttle level, set or driven by a control signal
         P[e, 9] = g("propellant", 0.0)
         if P[e, 0] <= 0 or P[e, 2] <= 0 or P[e, 1] < 0:
             raise SpecError("thrust_vac and mass_flow must be positive, exit_area >= 0", where, line_of(d, "type"), f)

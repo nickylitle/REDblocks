@@ -288,6 +288,42 @@ returning F_vac, F_sl, A_e, mdot, delivered and ideal Isp, Tc, c*. Outputs: stee
 Examples: examples/showcase/apollo11/ (the Saturn V ascent against NASA's postflight trajectory, and the lunar
 module's powered descent to touchdown).
 
+### control (optional): live signals, logic and feedback
+
+Named signals worked out every time step from the running model. An element field written `{control: <signal>}`
+follows that signal as the model runs (a load's `P`, a drive's or rocket's `throttle`, a spring's `k`, a damper's
+`c`); `init:` is its value on the first step (default 0). Outputs and CSV columns read a signal with `control: <name>`
+(any reduce, including at, time_of_max and first_time_*).
+
+```yaml
+control:
+  err:     "= $v_set - car.velocity"                                   # an expression
+  push:    {pid: {measure: car.velocity, setpoint: $v_set, kp: 800, ki: 120, kd: 0, min: 0, max: 4000, d_filter: 0.02}}
+  staged:  {if: "air.ambient_pressure < 2000", then: 1, else: 0, latch: true, for: 0.5 s}
+  smooth:  {lag: push, tau: 0.3 s}
+  ramp:    {rate_limit: smooth, rate: 500}
+  dist:    {integrate: car.velocity, init: 0}
+elements:
+  engine: {type: force, measure: car - road, P: {control: ramp}}
+outputs:
+  push_max: {control: push, reduce: max}
+```
+
+| kind | fields | law |
+|---|---|---|
+| expression | a string `= ...`, or `{expr: ...}` | names: other signals, `body.quantity` / `element.quantity` (anything an output reads), `t`, `$params`; min, max, abs, sqrt, exp, log, sin, cos, tan, atan2, clip(x, lo, hi), sign, floor; comparisons give 1 / 0; and, or, not; `a if c else b` |
+| `if` | **if** (condition), then, else, latch, for | then while the condition holds (after holding `for` seconds), else otherwise; `latch` keeps it on once true |
+| `pid` | **measure**, **setpoint**, kp, ki, kd, min, max, d_filter, bias | u = bias + kp e + ki ∫e dt - kd d(measure)/dt, e = setpoint - measure; clipped to [min, max]; the integral holds while the output is pinned (anti-windup) |
+| `lag` | **lag** (input), tau, init | first-order: y += (u - y)(1 - e^(-dt/tau)) |
+| `rate_limit` | **rate_limit** (input), **rate**, init | y moves toward u by at most rate x dt per step |
+| `integrate` | **integrate** (input), init | y = init + ∫u dt |
+
+Timing: at the end of each step the signals read the state that step ended in (positions, speeds, forces and element
+states) and set the fields the next step uses. Signals are worked out in the order written; one that reads a signal
+written below it gets that one's value from the step before. A field the compiler transforms (a drive's kv) cannot be
+driven and is refused. A driven spring-like element (spring, kelvin_voigt, hertz, elastoplastic, pin, beam) does
+work that is not its own law: its element check is skipped, the global ledger still closes.
+
 ### circuit (optional lumped electrical circuit)
 
 Parts wired between named nets; `ground` is the 0 V net (default `gnd`). Solved every step by nodal analysis

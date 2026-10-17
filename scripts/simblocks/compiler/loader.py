@@ -62,7 +62,7 @@ def line_of(d, key):
 # ---------------------------------------------------------------------------------------------- schema
 TOP = {"simblocks", "name", "question", "dim", "units", "params", "derived", "bodies", "elements", "outputs",
        "failure", "uncertain", "limits", "knockouts", "run", "report", "notes", "assumptions", "sources",
-       "directions", "angles", "study", "exports", "editor", "gravity", "circuit"}
+       "directions", "angles", "study", "exports", "editor", "gravity", "circuit", "control"}
 REQUIRED_TOP = {"simblocks", "name", "dim", "bodies", "elements", "outputs", "run"}
 BODY_KEYS = {"dof", "mass", "inertia", "shape", "x0", "v0", "ground", "label", "note", "__hidden__"}
 BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0", "angle0", "v0", "omega0", "points", "spheres",
@@ -103,7 +103,7 @@ REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"
                     "slider": {"k", "axis"}, "beam": set(), "impact": {"e"},
                     "rocket": {"thrust_vac", "mass_flow"}, "jettison": {"at", "mass"}, "aero_drag": {"area", "Cd"},
                     "steering": set(), "landing_guidance": {"site_range"}}
-OUTPUT_KEYS = {"element", "body", "part", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
+OUTPUT_KEYS = {"element", "body", "part", "control", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
 ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
                       "impulse", "friction_impulse", "drift",
@@ -117,7 +117,7 @@ BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega"
 BODY_QUANTITIES_2D = {"x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"}
 REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_below", "at", "time_of_max", "time_of_min"}
 EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
-EXPORT_COLUMN_KEYS = {"element", "body", "part", "quantity", "unit", "label"}
+EXPORT_COLUMN_KEYS = {"element", "body", "part", "control", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "dc_motor": {"current"},
@@ -288,9 +288,18 @@ def check(doc):
             raise SpecError(f"unknown output key '{k}'", p, line_of(o, k), f)
         if "expr" in o:
             continue
-        if sum(k in o for k in ("element", "body", "part")) != 1:
-            raise SpecError("an output names exactly one 'element', 'body' or circuit 'part' (or gives an 'expr')", p,
-                            line_of(outs, name), f)
+        if sum(k in o for k in ("element", "body", "part", "control")) != 1:
+            raise SpecError("an output names exactly one 'element', 'body', circuit 'part' or 'control' signal (or "
+                            "gives an 'expr')", p, line_of(outs, name), f)
+        if "control" in o:
+            if o["control"] not in (doc.get("control") or {}):
+                raise SpecError(f"no control signal named '{o['control']}'", p, line_of(o, "control"), f)
+            red = o.get("reduce", "final")
+            if red not in REDUCES:
+                raise SpecError(f"reduce must be one of {', '.join(sorted(REDUCES))}", p, line_of(o, "reduce"), f)
+            if red in ("at",) and "value" not in o or red.startswith("first_time") and "value" not in o:
+                raise SpecError(f"{red} needs a 'value'", p, line_of(o, "reduce"), f)
+            continue
         if "part" in o:
             from .circuit import QUANTITIES as CQ
             if o["part"] not in circ_parts:
@@ -373,9 +382,12 @@ def check_exports(doc):
                 raise SpecError("a column is {element: name, quantity: force} or {body: name, quantity: velocity}", q, None, f)
             for k in set(c) - EXPORT_COLUMN_KEYS:
                 raise SpecError(f"unknown column key '{k}'", q, line_of(c, k), f)
-            if sum(k in c for k in ("element", "body", "part")) != 1:
-                raise SpecError("a column names one element, body or circuit part", q, line_of(c, "__self__"), f)
-            if "part" in c:
+            if sum(k in c for k in ("element", "body", "part", "control")) != 1:
+                raise SpecError("a column names one element, body, circuit part or control signal", q, line_of(c, "__self__"), f)
+            if "control" in c:
+                if c["control"] not in (doc.get("control") or {}):
+                    raise SpecError(f"no control signal named '{c['control']}'", q, line_of(c, "control"), f)
+            elif "part" in c:
                 from .circuit import QUANTITIES as CQ
                 if c["part"] not in ((doc.get("circuit") or {}).get("parts") or {}):
                     raise SpecError(f"no circuit part named '{c['part']}'", q, line_of(c, "part"), f)

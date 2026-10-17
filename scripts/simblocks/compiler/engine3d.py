@@ -23,6 +23,7 @@ import numpy as np
 from numba import njit
 
 from .circuit import circuit_step
+from .control import control_step
 
 from .engine2d import _book_hits
 from .engine1d import _force, NP, NAUX
@@ -567,11 +568,18 @@ def _ke(V, W, Lw, wsp, minv, rmode, Iax, nb):
 def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, Iax, mass, com, grav,
                  typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
-               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, stop):
     """Iax: INVERSE inertia about the spin axis for spin bodies. Iinv: body-frame inverse inertia for free bodies.
     com: body-frame centre of mass (non-zero only for spin bodies turning about a pivot off their centre of mass)."""
     nb = X0.shape[0]; ne = typ.shape[0]
     X = X0.copy(); V = V0.copy(); quat = quat0.copy(); Lw = Lw0.copy(); wsp = wsp0.copy()
+    P = P.copy(); cprm = cprm.copy()                # control signals may set element fields as it runs
+    nsig = ckind.shape[0]; nsen = cssrc.shape[0]
+    sig = np.zeros(nsig); cst = np.zeros((nsig, 4)); sens = np.zeros(nsen); cstack = np.zeros(64)
+    SG = np.empty((nsig, 2))
+    for k in range(nsig):
+        SG[k, 0] = 1e300; SG[k, 1] = -1e300
     th = th0.copy()
     R = np.zeros((nb, 3, 3)); W = np.zeros((nb, 3)); Rh = np.zeros((3, 3))
     for b in range(nb):
@@ -639,6 +647,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     nlog = n // log_every + 2 if log_every > 0 else 1
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, nb * NBQ)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
+    LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
     KE0 = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
     Wg = 0.0
     hasg = grav[0] != 0.0 or grav[1] != 0.0 or grav[2] != 0.0
@@ -1325,6 +1334,28 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 x = BQ[k]
                 if x < BT[b * NBQ + k, 0]: BT[b * NBQ + k, 0] = x
                 if x > BT[b * NBQ + k, 1]: BT[b * NBQ + k, 1] = x
+        if nsig > 0:                             # control: read the state this step ended in, work out the signals,
+                                                 # set the fields the next step uses
+            for k in range(nsen):
+                src = cssrc[k]; kk = csidx[k]
+                if src == 0:
+                    _body_q(X, V, W, th, wsp, rmode, kk // NBQ, BQ)
+                    sens[k] = BQ[kk % NBQ]
+                elif src == 2:
+                    sens[k] = Fe[kk]
+                elif src == 3:
+                    sens[k] = se[kk]
+                else:
+                    sens[k] = aux[kk, src - 4]
+            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            for a_ in range(cae.shape[0]):
+                if caarr[a_] == 0:
+                    P[cae[a_], caslot[a_]] = sig[casig[a_]]
+                else:
+                    cprm[cae[a_], caslot[a_]] = sig[casig[a_]]
+            for k in range(nsig):
+                if sig[k] < SG[k, 0]: SG[k, 0] = sig[k]
+                if sig[k] > SG[k, 1]: SG[k, 1] = sig[k]
         for c in range(ncr):
             if t_cross[c] < 0.0:
                 src = cross_src[c]; k = cross_idx[c]
@@ -1335,6 +1366,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     x = Fe[k]
                 elif src == 3:
                     x = se[k]
+                elif src == 50:
+                    x = sig[k]
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
@@ -1359,6 +1392,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
+            for k in range(nsig):
+                LOGS[j, k] = sig[k]
             for b in range(nb):
                 _body_q(X, V, W, th, wsp, rmode, b, BQ)
                 for k in range(NBQ):
@@ -1382,4 +1417,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         _body_q(X, V, W, th, wsp, rmode, b, BQ)
         for k in range(NBQ):
             FB[b * NBQ + k] = BQ[k]
-    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw, KEpk, cpout, CTR, LOGC[:j])
+    for e in range(min(ne, cctlD.shape[0])):
+        if cctlD[e] == 1:
+            D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law
+    return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw,
+            KEpk, cpout, CTR, LOGC[:j], sig, SG, LOGS[:j])

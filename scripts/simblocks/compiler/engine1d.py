@@ -25,6 +25,7 @@ import numpy as np
 from numba import njit
 
 from .circuit import circuit_step
+from .control import control_step
 
 from ..constitutive.plasticity import tabular_return
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
@@ -137,10 +138,18 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
 @njit(cache=True, nogil=True)
 def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_len, tab_k, tab_x, tab_F,
                log_every, cross_src, cross_idx, cross_thr, cross_dir,
-               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, stop):
-    """stop: int64[2]. Another thread sets stop[0] = 1 to end the run early (timeout); stop[1] returns steps done."""
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, stop):
+    """stop: int64[2]. Another thread sets stop[0] = 1 to end the run early (timeout); stop[1] returns steps done.
+    ckind..cctlD: the control signals (see control.py) and the element fields they drive."""
     nb = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
+    P = P.copy(); cprm = cprm.copy()
+    nsig = ckind.shape[0]; nsen = cssrc.shape[0]
+    sig = np.zeros(nsig); cst = np.zeros((nsig, 4)); sens = np.zeros(nsen); cstack = np.zeros(64)
+    SG = np.empty((nsig, 2))
+    for k in range(nsig):
+        SG[k, 0] = 1e300; SG[k, 1] = -1e300
     Q = np.zeros(nb)
     st = np.zeros((ne, 5))
     # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
@@ -171,6 +180,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     nlog = n // log_every + 2 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nb)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
+    LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
     KE0 = 0.0
     for b in range(nb):
         KE0 += 0.5 * m[b] * v[b] * v[b]
@@ -289,6 +299,32 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             Fp[e] = Fe[e]; dsp[e] = ds
         for b in range(nb):
             q[b] += dt * v[b] + Dq[b]
+        if nsig > 0:                             # control: read the state this step ended in, work out the signals,
+                                                 # set the fields the next step uses
+            for k in range(nsen):
+                src = cssrc[k]; kk = csidx[k]
+                if src == 0:
+                    sens[k] = q[kk]
+                elif src == 1:
+                    sens[k] = v[kk]
+                elif src == 2:
+                    sens[k] = Fe[kk]
+                elif src == 3:
+                    s_ = s0[kk]
+                    for b in range(nb):
+                        s_ += C[kk, b] * q[b]
+                    sens[k] = s_
+                else:
+                    sens[k] = aux[kk, src - 4]
+            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            for a_ in range(cae.shape[0]):
+                if caarr[a_] == 0:
+                    P[cae[a_], caslot[a_]] = sig[casig[a_]]
+                else:
+                    cprm[cae[a_], caslot[a_]] = sig[casig[a_]]
+            for k in range(nsig):
+                if sig[k] < SG[k, 0]: SG[k, 0] = sig[k]
+                if sig[k] > SG[k, 1]: SG[k, 1] = sig[k]
         # trackers
         for e in range(ne):
             if Fe[e] < TR[e, 0]: TR[e, 0] = Fe[e]
@@ -314,6 +350,8 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     x = Fe[k]
                 elif src == 3:
                     x = se[k]
+                elif src == 50:
+                    x = sig[k]
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
@@ -340,6 +378,8 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
+            for k in range(nsig):
+                LOGS[j, k] = sig[k]
             for b in range(nb):
                 LOGB[j, 2 * b] = q[b]; LOGB[j, 2 * b + 1] = v[b]
             for e in range(ne):
@@ -351,7 +391,11 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for e in range(ne):
                 jacc[e] = 0.0
     stop[1] = done
+    for e in range(min(ne, cctlD.shape[0])):
+        if cctlD[e] == 1:
+            D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law
     KE1 = 0.0
     for b in range(nb):
         KE1 += 0.5 * m[b] * v[b] * v[b]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, KEpk, cpout, CTR, LOGC[:j]
+    return (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, KEpk, cpout,
+            CTR, LOGC[:j], sig, SG, LOGS[:j])

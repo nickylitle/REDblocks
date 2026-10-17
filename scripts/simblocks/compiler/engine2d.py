@@ -29,6 +29,7 @@ from numba import njit
 from .circuit import circuit_step
 
 from .engine1d import _force, NP, NAUX
+from .control import control_step
 
 MK_LIN, MK_DIST, MK_ALONG, MK_EDGE, MK_CIRC, MK_PIN, MK_SLIP, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7
 
@@ -468,12 +469,19 @@ def _ramp(t, on, off, rise, tail):
 @njit(cache=True, nogil=True)
 def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
-               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot, planet, stop):
+               cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, planet, stop):
     """q0, v0, minv: flat [x, y, rz] per body. mass[b], com[b] = (cx, cy) body-frame centre of mass (for gravity).
     stop: int64[2] as in the 1D engine (timeout)."""
     nb = mass.shape[0]; nq = q0.shape[0]; ne = typ.shape[0]
     q = q0.copy(); v = v0.copy()
     minv = minv.copy(); mass = mass.copy()          # rockets burn and stages drop: the masses change in flight
+    P = P.copy(); cprm = cprm.copy()                # control signals may set element fields as it runs
+    nsig = ckind.shape[0]; nsen = cssrc.shape[0]
+    sig = np.zeros(nsig); cst = np.zeros((nsig, 4)); sens = np.zeros(nsen); cstack = np.zeros(64)
+    SG = np.empty((nsig, 2))
+    for k in range(nsig):
+        SG[k, 0] = 1e300; SG[k, 1] = -1e300
     mu_p = planet[0]; Rp = planet[1]
     nveh = 0
     for e in range(ne):
@@ -560,6 +568,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     nlog = n // log_every + 2 if log_every > 0 else 1
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nq)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
+    LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
     KE0 = 0.0
     for k in range(nq):
         if minv[k] > 0.0:
@@ -772,6 +781,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     f = _ramp(t_, Pe[3], off, Pe[5], Pe[6]) if active[e] == 1 else 0.0
                     if Pe[8] > 0.5:                                  # throttled by landing guidance
                         f = f * gthr[b] if gon[b] == 1 else 0.0
+                    elif Pe[11] > 0.5:                               # a set (or controlled) throttle level
+                        f = f * min(max(Pe[10], 0.0), 1.0)
                     if Pe[9] > 0.0:                                  # a propellant load: the engine stops when it is gone
                         left = Pe[9] - st[e, 0]
                         if left <= 0.0:
@@ -1193,6 +1204,31 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     else:
                         Fe[e] = -lam[e, 0] / dt          # same sign as a spring: pulls the measure back
                     aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = D[e]
+        if nsig > 0:                             # control: read the state this step ended in, work out the signals,
+                                                 # set the fields the next step uses
+            for k in range(nsen):
+                src = cssrc[k]; kk = csidx[k]
+                if src == 0:
+                    sens[k] = q[kk]
+                elif src == 1:
+                    sens[k] = v[kk]
+                elif src == 2:
+                    sens[k] = Fe[kk]
+                elif src == 3:
+                    sens[k] = se[kk]
+                elif src == 8:
+                    sens[k] = math.sqrt(v[3 * kk] ** 2 + v[3 * kk + 1] ** 2)
+                else:
+                    sens[k] = aux[kk, src - 4]
+            control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
+            for a_ in range(cae.shape[0]):
+                if caarr[a_] == 0:
+                    P[cae[a_], caslot[a_]] = sig[casig[a_]]
+                else:
+                    cprm[cae[a_], caslot[a_]] = sig[casig[a_]]
+            for k in range(nsig):
+                if sig[k] < SG[k, 0]: SG[k, 0] = sig[k]
+                if sig[k] > SG[k, 1]: SG[k, 1] = sig[k]
         # trackers
         for e in range(ne):
             if Fe[e] < TR[e, 0]: TR[e, 0] = Fe[e]
@@ -1225,6 +1261,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     x = se[k]
                 elif src == 8:
                     x = math.sqrt(v[3 * k] ** 2 + v[3 * k + 1] ** 2)
+                elif src == 50:
+                    x = sig[k]
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
@@ -1252,6 +1290,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     for c in range(8):
                         LOGC[j, k * 8 + c] = cpout[k, c]
             LOGT[j] = i * dt
+            for k in range(nsig):
+                LOGS[j, k] = sig[k]
             for k in range(nq):
                 LOGB[j, k] = q[k]; LOGB[j, nq + k] = v[k]
             for e in range(ne):
@@ -1271,4 +1311,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     for k in range(nq):
         if minv[k] > 0.0:
             KE1 += 0.5 * v[k] * v[k] / minv[k]
-    return q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, KEpk, cpout, CTR, LOGC[:j]
+    for e in range(min(ne, cctlD.shape[0])):
+        if cctlD[e] == 1:
+            D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law
+    return (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, KEpk,
+            cpout, CTR, LOGC[:j], sig, SG, LOGS[:j])

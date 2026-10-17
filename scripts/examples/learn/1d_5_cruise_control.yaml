@@ -1,0 +1,145 @@
+simblocks: 1
+name: 1D-5 Cruise control up a hill
+question: "A PID loop holds a car at 25 m/s. When the road tips up a 5 % grade, how far does the speed sag and how hard does the engine push?"
+dim: 1d
+units: SI
+
+params:
+  m: {value: 1500 kg, note: "car and driver"}
+  v_set: {value: 25, note: "cruise speed, m/s (90 km/h)"}
+  grade: {value: 0.05, note: "the hill: 5 % (rise over run)"}
+  t_hill: {value: 40 s, note: "when the hill starts"}
+  F_max: {value: 5000, note: "most the engine can push at the wheels, N"}
+  kp: {value: 900, note: "proportional gain, N per m/s"}
+  ki: {value: 150, note: "integral gain, N per m"}
+
+bodies:
+  car: {dof: translation, mass: $m, v0: $v_set, label: car, note: already cruising at the set speed}
+  road: {ground: true}
+
+elements:
+  air: {type: drag, measure: car - road, K: 0.42, label: air drag, note: "1/2 rho Cd A = 0.5 x 1.2 x 0.30 x 2.3 m^2"}
+  tyres: {type: dashpot, measure: car - road, c: 18, label: rolling resistance (linearised)}
+  engine: {type: force, measure: car - road, P: {control: drive, init: "= 0.42 * $v_set**2 + 18 * $v_set"}, label: engine at the wheels}
+  hill: {type: force, measure: car - road, P: {control: slope}, label: gravity along the hill}
+
+control:
+  # the hill: gravity's pull back down the slope once the road tips up
+  on_hill: {if: "t >= $t_hill", then: 1, else: 0, latch: true}
+  slope: "= -$m * 9.81 * $grade / sqrt(1 + $grade**2) * on_hill"
+  # the cruise controller: PID on speed, limited to what the engine can do, and smoothed like a real throttle
+  # bias: the push that holds the set speed on the flat (drag + rolling), so it starts in balance
+  push: {pid: {measure: car.velocity, setpoint: $v_set, kp: $kp, ki: $ki, kd: 0, min: 0, max: $F_max, bias: "= 0.42 * $v_set**2 + 18 * $v_set"}}
+  drive: {rate_limit: push, rate: 2000}
+
+outputs:
+  v_sag: {body: car, quantity: velocity, reduce: min, label: slowest on the hill}
+  v_end: {body: car, quantity: velocity, reduce: final, label: speed at the end}
+  push_hill: {control: drive, reduce: final, unit: N, label: engine push on the hill}
+  push_max: {control: drive, reduce: max, unit: N}
+  t_sag: {body: car, quantity: velocity, reduce: time_of_min, label: when it is slowest}
+  # checks: on the flat the push is drag + rolling = 712.5 N; on the hill add m g sin = 734.9 N: 1,447.4 N
+  push_check: {expr: "= 0.42 * $v_set**2 + 18 * $v_set + $m * 9.81 * $grade / sqrt(1 + $grade**2)", unit: N}
+  t_on_hill: {control: on_hill, reduce: first_time_above, value: 0.5, label: hill starts}
+
+run:
+  t_end: 90 s
+  dt: 1 ms
+
+editor:
+  layout:
+    b:car:
+    - 602
+    - 30
+    b:road:
+    - 602
+    - 281
+    e:air:
+    - 888
+    - 30
+    e:engine:
+    - 888
+    - 898
+    e:hill:
+    - 888
+    - 1284
+    e:tyres:
+    - 888
+    - 450
+    k:drive:
+    - 30
+    - 958
+    k:on_hill:
+    - 30
+    - 30
+    k:push:
+    - 30
+    - 546
+    k:slope:
+    - 30
+    - 342
+    o:push_check:
+    - 1460
+    - 1090
+    o:push_hill:
+    - 1460
+    - 478
+    o:push_max:
+    - 1460
+    - 672
+    o:t_on_hill:
+    - 1460
+    - 1264
+    o:t_sag:
+    - 1460
+    - 866
+    o:v_end:
+    - 1460
+    - 254
+    o:v_sag:
+    - 1460
+    - 30
+    p:F_max:
+    - 30
+    - 562
+    p:grade:
+    - 30
+    - 296
+    p:ki:
+    - 30
+    - 828
+    p:kp:
+    - 30
+    - 695
+    p:m:
+    - 30
+    - 30
+    p:t_hill:
+    - 30
+    - 429
+    p:v_set:
+    - 30
+    - 163
+  groups:
+  - name: car_and_road
+    collapsed: true
+    x: 30
+    y: 1214
+    members:
+    - p:m
+    - p:v_set
+    - p:grade
+    - p:t_hill
+    - p:F_max
+    - p:kp
+    - p:ki
+    expose: {}
+  notes:
+  - text: '**1D-5 Cruise control up a hill: control signals feeding back into the model.** The *push* node is a PID loop:
+      it reads the car''s speed every step and sets the engine''s force so the speed holds 25 m/s. *drive* limits how fast
+      the push can change, like a real throttle. *on_hill* is an if / else that latches on at 40 s and *slope* turns it
+      into gravity''s pull down a 5 % grade. Check: on the hill the push must be drag + rolling + m g sin(slope) = 1,447
+      N (*push_check*); the PID finds it by itself.'
+    x: 30
+    y: -140
+    width: 860

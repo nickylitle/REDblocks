@@ -241,7 +241,92 @@ def _derived_order(der):
     return [(k, der[k]) for k in out]
 
 
+CTL_D_TYPES = {0, 2, 3, 4, 9, 12}            # spring-like: a controlled one has no stored-energy law of its own
+
+
 def compile_model(doc, overrides=None):
+    """Compile a system file. Element fields written {control: signal} are found by compiling once with marker
+    values (which slot of the element's parameters each one lands in), then the model compiles with their initial
+    values and the control section is attached."""
+    from .control import controlled_fields, with_values, compile_control, SENTINEL, empty_control
+    fields = controlled_fields(doc)
+    if not doc.get("control") and not fields:
+        return _compile_model(doc, overrides)
+    sec = doc.get("control") or {}
+    where0 = doc.get("__file__", "")
+    acts = []
+    if fields:
+        marks = [SENTINEL * (i + 1) for i in range(len(fields))]
+        Ms = _compile_model(with_values(doc, fields, marks), overrides)
+        ctx0 = Ms.ctx
+        for i, (en, k, sg, init) in enumerate(fields):
+            where = f"elements.{en}.{k}"
+            if sg not in sec:
+                raise SpecError(f"no control signal named '{sg}' (signals: {', '.join(sec) or 'none'})", where, None, where0)
+            if en not in Ms.el_names:
+                raise SpecError("a split element (segments) cannot be driven by a control signal", where, None, where0)
+            e = Ms.el_names.index(en)
+            hits = list(np.where(Ms.arrays["P"][e] == marks[i])[0])
+            arr = 0
+            if not hits and getattr(Ms, "circ", None):
+                cp = Ms.circ["arrays"]["prm"]
+                rows = np.where(cp == marks[i])
+                if len(rows[0]) == 1:
+                    hits = [int(rows[1][0])]; arr = 1; e = int(rows[0][0])
+            if len(hits) != 1:
+                raise SpecError(f"'{k}' cannot be driven by a control signal (the model does not use it as one number "
+                                "as it runs)", where, None, where0)
+            acts.append((e, int(hits[0]), list(sec).index(sg), arr))
+        inits = [num(resolve(init, ctx0, f"elements.{en}.{k}.init"), f"elements.{en}.{k}.init") for en, k, _s, init in fields]
+        M = _compile_model(with_values(doc, fields, inits), overrides)
+    else:
+        M = _compile_model(doc, overrides)
+    c = compile_control(M.doc, M.ctx, M, lambda n, q, w: sensor_slot(M, n, q, w))
+    base = empty_control()
+    if c is None:
+        c = dict(names=[], sensors=[], **{k: v for k, v in base.items() if k not in ("ae", "aslot", "asig", "aarr", "ctlD")})
+    ne = len(M.el_names)
+    ctlD = np.zeros(max(ne, 1), np.int64)
+    for e, slot, sg, arr in acts:
+        if arr == 0 and int(M.arrays["typ"][e]) in CTL_D_TYPES:
+            ctlD[e] = 1
+    c.update(ae=np.array([a[0] for a in acts], np.int64), aslot=np.array([a[1] for a in acts], np.int64),
+             asig=np.array([a[2] for a in acts], np.int64), aarr=np.array([a[3] for a in acts], np.int64), ctlD=ctlD)
+    M.ctl = c
+    M.ctl_fields = fields
+    return M
+
+
+def sensor_slot(M, name, qty, where):
+    """(source, index) the engine reads a body or element quantity from: the same slots outputs use."""
+    dim = getattr(M, "dim", "1d")
+    if name in M.body_names:
+        if dim == "3d":
+            from .model3d import body_slot3
+            return body_slot3(M, name, qty, where)
+        if dim == "2d":
+            from .model2d import body_slot
+            return body_slot(M, name, qty, where)
+        s = {"position": 0, "velocity": 1}.get(qty)
+        if s is None:
+            raise SpecError(f"a 1d body gives position or velocity, not '{qty}'", where)
+        return s, M.body_names.index(name)
+    known = set(M.el_names) | set((getattr(M, "groups", None) or {}))
+    if name not in known:
+        raise SpecError(f"'{name}' is not a body or an element", where)
+    qn = QALIAS.get(qty, qty)
+    i = el_index(M, name, qn)
+    if qn == "force":
+        return 2, i
+    if qn == "measure":
+        return 3, i
+    if qn in AUX:
+        return 4 + AUX[qn], i
+    raise SpecError(f"'{qty}' cannot be read while the model runs (use force, measure or a state such as "
+                    "altitude, current, throttle)", where)
+
+
+def _compile_model(doc, overrides=None):
     f = doc.get("__file__", "")
     overrides = dict(overrides or {})
     try:
@@ -479,6 +564,13 @@ def circuit_args(M):
     return (a["ptype"], a["na"], a["nb"], a["prm"], a["pst0"], a["th"], int(a["nn"]), c["mot_el"])
 
 
+def _ctl_history(M, H, LS):
+    c = getattr(M, "ctl", None)
+    if c:
+        for j, nm in enumerate(c["names"]):
+            H[f"control.{nm}"] = LS[:, j] if LS.shape[1] > j else np.zeros(LS.shape[0])
+
+
 def _circ_history(M, H, LC):
     c = getattr(M, "circ", None)
     if not c or LC.shape[1] < 8:
@@ -516,7 +608,9 @@ def _crossings(M):
             continue
         where = f"outputs.{name}"
         val = num(resolve(o["value"], M.ctx, where + ".value"), where + ".value")
-        if "body" in o and getattr(M, "dim", "1d") == "3d":
+        if "control" in o:
+            s, i = 50, list(M.ctl["names"]).index(o["control"])
+        elif "body" in o and getattr(M, "dim", "1d") == "3d":
             from .model3d import body_slot3
             if o["quantity"] == "kinetic_energy":
                 raise SpecError("first_time_* does not work on kinetic_energy", where)
@@ -605,25 +699,27 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     t_run = _time.perf_counter()
     Wg = 0.0; SP = None
     cargs = circuit_args(M)
+    from .control import control_args
+    kargs = control_args(M)
     try:
         if dim3:
             from . import engine3d as E3
-            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC) = E3.run_engine3d(
+            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC, SGF, SGT, LS) = E3.run_engine3d(
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
                 a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs, stop)
         elif dim2:
             from . import engine2d as E2
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC) = E2.run_engine2d(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC, SGF, SGT, LS) = E2.run_engine2d(
                 n, dt, a["q0"], a["v0"], a["minv"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"],
                 a["active"], a["mk"], a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs,
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
                 a["planet"], stop)
         else:
-            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk, CP, CTR, LC) = E.run_engine(
+            (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, KEpk, CP, CTR, LC, SGF, SGT, LS) = E.run_engine(
                 n, dt, a["q0"], a["v0"], a["m"], a["typ"], a["one_sided"], a["active"], a["P"], a["C"], a["s0"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, stop)
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs, stop)
     finally:
         if timer is not None:
             timer.cancel()
@@ -657,7 +753,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
         R["_circuit_ledger_rel"] = float(abs(CP[:, 3].sum()) / tot) if tot > 0 else 0.0
     if dim2 or dim3:
         R["_gravity_work"] = float(Wg)
-    AT = _at_values(M, LT if every else LT[:0], LB, LE, dim2) if any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in M.doc["outputs"].values()) else {}
+    AT = _at_values(M, LT if every else LT[:0], LB, LE, dim2, LS) if any(o.get("reduce") in ("at", "time_of_max", "time_of_min") for o in M.doc["outputs"].values()) else {}
     if timed_out:
         R["_timed_out"] = 1.0
         R["_t_stopped"] = float(stop[1]) * dt
@@ -670,7 +766,19 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             continue
         red = o.get("reduce", "final")
         pk = None
-        if "part" in o:
+        if "control" in o:
+            jn = list(M.ctl["names"]).index(o["control"])
+            if red in ("at", "time_of_max", "time_of_min"):
+                val = AT[name]
+            elif red.startswith("first_time"):
+                val = tc[name]
+            else:
+                lo, hi, fin = SGT[jn, 0], SGT[jn, 1], SGF[jn]
+                if lo > 1e299:
+                    lo = hi = fin
+                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                pk = max(abs(lo), abs(hi))
+        elif "part" in o:
             k_ = M.circ["names"].index(o["part"]); col = CIRC_COL[o["quantity"]]
             lo, hi, fin = CTR[k_, 2 * col], CTR[k_, 2 * col + 1], CP[k_, col]
             if lo > 1e299:
@@ -722,6 +830,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 if red != "final":
                     raise SpecError("kinetic_energy supports reduce: final only", f"outputs.{name}")
                 val = 0.5 * a["m"][i] * v[i] ** 2
+            elif red in ("at", "time_of_max", "time_of_min"):
+                val = AT[name]; pk = AT.get("__range__" + name)
             elif red.startswith("first_time"):
                 val = tc[name]
             else:
@@ -825,7 +935,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H); _circ_history(M, H, LC)
+        _group_history(M, H); _circ_history(M, H, LC); _ctl_history(M, H, LS)
         return R, H
     if history and dim2:
         H = dict(t=LT); nq = 3 * len(M.body_names)
@@ -845,7 +955,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{al}"] = H[f"{en}.{base}"]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H); _circ_history(M, H, LC)
+        _group_history(M, H); _circ_history(M, H, LC); _ctl_history(M, H, LS)
         return R, H
     if history:
         H = dict(t=LT)
@@ -858,13 +968,13 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 H[f"{en}.{qn}"] = LE[:, e * w + 2 + j]
             if M.arrays["typ"][e] == 14:             # rigid impact: running total of the energy it dissipated
                 H[f"{en}.dissipated"] = LE[:, e * w + 3]
-        _group_history(M, H); _circ_history(M, H, LC)
+        _group_history(M, H); _circ_history(M, H, LC); _ctl_history(M, H, LS)
         return R, H
     return R
 
 
 
-def _at_values(M, LT, LB, LE, dim2):
+def _at_values(M, LT, LB, LE, dim2, LS=None):
     """Outputs read from the run's log: reduce: at (the value at a given time, interpolated), time_of_max and
     time_of_min (when the quantity peaks)."""
     out = {}
@@ -876,7 +986,9 @@ def _at_values(M, LT, LB, LE, dim2):
         if red not in ("at", "time_of_max", "time_of_min"):
             continue
         qn = o.get("quantity")
-        if "element" in o:
+        if "control" in o:
+            ser = LS[:, list(M.ctl["names"]).index(o["control"])]
+        elif "element" in o:
             e = M.el_names.index(o["element"]); base = QALIAS.get(qn, qn)
             col = {"force": 0, "measure": 1}.get(base)
             ser = LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]]
