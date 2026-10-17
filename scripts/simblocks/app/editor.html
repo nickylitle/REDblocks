@@ -183,6 +183,7 @@ textarea{width:100%;resize:vertical}
 @keyframes needflash{from{background:transparent}to{background:color-mix(in srgb,var(--warn) 30%,transparent)}}
 .sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair;z-index:6}   /* above a selected wire (wiresTop is z 5), so its end never cuts the socket */
 .sock.in{left:-7px}.sock.out{right:-7px}
+.sock.fsock{width:9px;height:9px;margin-top:0;border-width:1.5px;opacity:.6}.sock.fsock:hover,.sock.fsock.on{opacity:1}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
 .sock.t-sig{background:var(--s-sig)}.sock.t-state{background:var(--s-state);border-radius:2px;transform:rotate(45deg)}
 .sock.t-metric{background:var(--s-metric)}.sock.t-any{background:linear-gradient(135deg,var(--s-sig),var(--s-state))}
@@ -483,7 +484,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <div class="hint" style="padding:0;line-height:1.5">Value nodes become <b>params</b> (or <b>derived</b> when they start with =).
         Builder nodes call catalog blocks in <b>derived</b>. An element's body sockets and their factors write its <b>measure</b>.
         Load nodes are <b>force</b> elements. Range and Monte Carlo nodes fill <b>study</b> and <b>uncertain</b>. Output and Failure nodes fill <b>outputs</b> and <b>failure</b>.
-        The units dropdown (top bar) is saved as <b>units</b>; a unit marked · is the current default. The file stays plain YAML that
+        The units dropdown (top bar) is saved as <b>units</b>. The file stays plain YAML that
         <code>simblocks run</code> reads.</div>
     </div>
     <div class="pane" id="pRes"><div class="empty">Press Run to see outputs and time histories.</div></div>
@@ -886,10 +887,11 @@ function toDoc(){
       const o = {dof: dl.length === 4 && r === "free" ? "free" : dl};
       if (r === "spin") o.axis = axisOut(d);
       sockets(n).ins.forEach(s => { const v = inVal(n, s.key, d[s.key]); if (!blank(v)) o[s.key] = v; });
-      if (r === "free" && String(d.omega3 || "").trim()) o.omega0 = lit(d.omega3);
+      if (r === "free" && String(d.omega3 || "").trim()) o.omega0 = vecParts(d.omega3, 3).map(x => x === "" ? 0 : lit(x));
       if (hasShape(d)) o.shape = shapeOut(d); else if (r !== "none" && (d.inForm || "number") !== "number") o.inertia = inertiaOut(d);
       [["at","length"],["com","length"],["v0","speed"]].forEach(([k, dim]) => { if (["x","y","z"].some(c => !blank(d[k + c]))) o[k] = vecOutN([d[k + "x"], d[k + "y"], d[k + "z"]], d[k + "u"] ?? defUnit(dim)); });
-      if (d.orient0) o.orient0 = d.orient0;
+      if (d.orient0 && !blank(String(d.orient0.angle ?? "").trim())){ const ax = vecParts(d.orient0.axis, 3);
+        o.orient0 = {axis: ax.every(x => !x) ? [0, 0, 1] : ax.map(x => x === "" ? 0 : lit(x)), angle: lit(String(d.orient0.angle).trim())}; }
       Object.assign(o, featOut(d)); if (d.label) o.label = d.label; bodies[d.name] = o; return;
     }
     if (is2d()){
@@ -1058,7 +1060,7 @@ function fromDoc(doc){
       const unit = a.unit === b.unit ? a.unit : "";
       put(1, addNode("mc", {name:k, lo: unit || !a.unit ? a.num : str(mcr[k][0]), hi: unit || !b.unit ? b.num : str(mcr[k][1]), unit,
         nominal: nq.unit === unit ? nq.num : str(v), n: (st.monte_carlo || {}).ranges && (st.monte_carlo.ranges[k] !== undefined) ? mcN : ""})); }
-    else put(0, addNode("value", {name:k, value:str(v)}));
+    else put(0, addNode("value", Object.assign({name:k, value:str(v)}, MATP.has(k) ? {mat:true} : {})));
   });
   Object.entries(pnotes).forEach(([k, t]) => { const n = byName(k, "p"); if (n) n.data.note = t; });
   Object.entries(doc.derived || {}).forEach(([k, v]) => {
@@ -1077,8 +1079,8 @@ function fromDoc(doc){
         d.free3 = {x:dl.includes("x"), y:dl.includes("y"), z:dl.includes("z")}; d.rot3 = dl.includes("spin") ? "spin" : (dl.includes("rotate") ? "free" : "none");
         if (d.rot3 === "spin"){ const ax = b.axis ?? "z"; d.axis = Array.isArray(ax) ? ax.map(String) : String(ax); }
         ["mass","inertia","angle0"].forEach(f => { d[f] = str(b[f] ?? ""); });
-        if (d.rot3 === "free") d.omega3 = str(b.omega0 ?? ""); else d.omega0 = str(b.omega0 ?? "");
-        if (b.orient0) d.orient0 = b.orient0;
+        if (d.rot3 === "free") d.omega3 = Array.isArray(b.omega0) ? b.omega0.map(str).join(", ") : str(b.omega0 ?? ""); else d.omega0 = str(b.omega0 ?? "");
+        if (b.orient0) d.orient0 = {axis: vecParts(b.orient0.axis ?? [0, 0, 1], 3).join(", "), angle: str(b.orient0.angle ?? "")};
         if (b.shape) d.shape = shapeIn(b.shape);
         if (typeof b.inertia === "object" && b.inertia !== null && inertiaIn(d, b.inertia)) d.inertia = "";
         [["at","length"],["com","length"],["v0","speed"]].forEach(([kk, dim]) => { if (b[kk] !== undefined) Object.assign(d, vecIn(kk, b[kk], dim)); }); }
@@ -1308,6 +1310,28 @@ function uvControl(key, value, dim, ph, extra){
   return `<div class="uv"><input data-k="${esc(key)}" data-part="num" class="${bad ? "bad" : ""}" value="${esc(q.num)}" placeholder="${esc(ph || "")}"${extra || ""}>` +
     (opts !== null ? `<select data-k="${esc(key)}" data-part="unit" title="unit">${opts}</select>` : "") + `</div>`;
 }
+// ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
+// Plugging a value in writes $name into the field; the text stays the single source of truth.
+const NO_FIELD_SOCK = new Set(["name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","csvAgainst","reduce","quantity","unit"]);
+function fieldKey(inp){
+  if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
+  const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
+  return "@" + k + (inp.dataset.i !== undefined ? "#" + inp.dataset.i : ""); }
+function fieldSockets(el, n){
+  if (!el || ["value","sweep","mc","note","image","group"].includes(n.kind)) return;
+  const nr = el.getBoundingClientRect(), k = view.k || 1;
+  el.querySelectorAll("input:not([type=checkbox]):not(.nm)").forEach(inp => {
+    const row = inp.closest(".row"); if (row && row.querySelector(":scope > .sock.in")) return;     // already a socket row
+    if (inp.disabled || inp.offsetParent === null) return;
+    const key = fieldKey(inp); if (!key) return;
+    const r = inp.getBoundingClientRect(), sk = document.createElement("span");
+    sk.className = "sock in t-val fsock"; sk.dataset.s = key; sk.dataset.t = "val"; sk.title = "plug a value in (writes $name here)";
+    sk.style.left = ((r.left - nr.left) / k - 6) + "px"; sk.style.top = ((r.top - nr.top + r.height / 2) / k - 5.5) + "px";
+    inp.dataset.fs = key; el.appendChild(sk); }); }
+function fieldInput(nid, key){ const el = world.querySelector(`.node[data-id="${nid}"]`); return el && el.querySelector(`[data-fs="${CSS.escape(key)}"]`); }
+function setFieldText(nid, key, text){ const inp = fieldInput(nid, key); if (!inp) return false;
+  inp.value = text; inp.dispatchEvent(new Event("input", {bubbles:true})); render(); changed(false); return true; }
+const exactRef = v => { const m = String(v || "").trim().match(/^\$([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?$/); return m ? {name:m[1], field:m[2] || ""} : null; };
 function fieldRow(n, s, value, ph){
   const l = linkTo(n.id, s.key);
   const src = l ? byId(l.from.node) : null;
@@ -1443,6 +1467,15 @@ const SHAPE_DIMS = {rod:[["L","length"],["A","section area (for mass from densit
 const SHAPES_2D = ["rod","disc","ring","plate"];
 function shapeKinds(){ return is3d() || !isGeo() ? Object.keys(SHAPE_DIMS) : SHAPES_2D; }
 function hasShape(d){ return !!(d.shape && d.shape.kind); }
+// a vector typed as one text ("0, 0, $stem") shown as one box per component, so each can take its own wire
+function vecParts(v, n){ const t = Array.isArray(v) ? v.map(String) : String(v ?? "").trim().replace(/^\[|\]$/g, "").split(",");
+  const p = t.map(x => String(x).trim()); while (p.length < n) p.push(""); return p.slice(0, n); }
+function vecBoxes(key, v, n, ph){ const p = vecParts(v, n);
+  return `<div class="vxyz" style="grid-template-columns:repeat(${n},minmax(0,1fr))">` + p.map((x, i) =>
+    `<input data-k="${key}" data-i="${i}" data-vec="${n}" value="${esc(x)}" placeholder="${esc(Array.isArray(ph) ? ph[i] : ph)}">`).join("") + `</div>`; }
+function vecGet(d, k){ return k === "sh.at" ? (d.shape || {}).at : k === "omega3" ? d.omega3 : k === "or_axis" ? (d.orient0 || {}).axis : ""; }
+function vecSet(d, k, v){ if (k === "sh.at"){ d.shape = d.shape || {}; d.shape.at = v; } else if (k === "omega3") d.omega3 = v;
+  else if (k === "or_axis"){ d.orient0 = d.orient0 || {}; d.orient0.axis = v; } }
 function shapeIn(sh){ if (!sh || typeof sh !== "object") return null; const o = {kind:sh.kind};
   Object.keys(sh).forEach(k => { if (k === "kind") return; o[k] = Array.isArray(sh[k]) ? sh[k].map(String).join(", ") : str(sh[k]); });
   o.src = sh.material !== undefined ? "material" : (sh.density !== undefined ? "density" : "mass"); o.val = o[o.src] || ""; return o; }
@@ -1460,7 +1493,7 @@ function shapeHTML(n){
     b += `<div class="row"><label title="${esc(t)}">${k}</label><input data-k="sh.${k}" value="${esc(sh[k] || "")}" placeholder="${esc(t)}, e.g. 40 mm"></div>`; });
   b += `<div class="row"><label title="where the mass comes from">mass from</label><select data-k="sh.src">${sel_([["material","material"],["density","density"],["mass","mass"]], sh.src || "material")}</select></div>`;
   b += `<div class="row"><label title="${{material:"material name (type to search the library)", density:"density", mass:"total mass"}[sh.src || "material"]}">${sh.src || "material"}</label><input data-k="sh.val" value="${esc(sh.val || "")}" placeholder="${{material:"6061_t6", density:"2700 kg/m^3", mass:"0.25 kg"}[sh.src || "material"]}" ${ (sh.src || "material") === "material" ? 'list="matlist"' : ""}></div>`;
-  b += `<div class="row"><label title="where the shape's centre sits in the body's own frame (blank = its origin)">centre</label><input data-k="sh.at" value="${esc(sh.at || "")}" placeholder="${is3d() ? "x, y, z" : "x, y"} (blank = origin)"></div>`;
+  b += `<div class="row"><label title="where the shape's centre sits in the body's own frame (blank = its origin)">centre</label>${vecBoxes("sh.at", sh.at, is3d() ? 3 : 2, "0")}</div>`;
   if (is3d()) b += `<div class="row"><label title="world direction of the shape's own z axis at the start (a cylinder's axis, a plate's normal)">axis</label><input data-k="sh.axis" value="${esc(sh.axis || "")}" placeholder="z"></div>`;
   if ((is2d() && ["disc","ring"].includes(sh.kind)) || (is3d() && sh.kind === "sphere")) b += `<div class="hint">adds a feature named <b>outline</b> for contacts</div>`;
   return b; }
@@ -1576,6 +1609,20 @@ function imageHTML(n){
 
 // a value used as $name inside another block's text (a shape centre, a start vector, an expression) has no wire:
 // say where it is used, so it does not look disconnected
+let MATP = new Set();
+function isMatText(v){ const t = String(v || "").trim(); if (!t || t.startsWith("=") || t.includes("$")) return false;
+  if (!splitQ(t).text || /^(auto|none|off|never|true|false)$/i.test(t)) return false; const lo = t.toLowerCase().replace(/[\s-]+/g, "_");
+  return CAT.materials.some(([k, nm]) => k.toLowerCase() === lo || String(nm).toLowerCase() === t.toLowerCase()) || /^[A-Za-z0-9]/.test(t); }
+// an expression (= ...) shows one input socket per value it uses, plus one to add another
+function exprRefs(v){ const t = String(v || ""); if (!t.trim().startsWith("=")) return [];
+  return [...new Set([...t.matchAll(/\$([A-Za-z_]\w*)/g)].map(m => m[1]))]; }
+function exprInputs(d){ const t = String(d.value || ""); if (!t.trim().startsWith("=")) return "";
+  return exprRefs(t).map(r => `<div class="row"><span class="sock in t-val" data-s="@ref:${esc(r)}" data-t="val"></span><label title="the expression uses $${esc(r)}: drag another value onto it to use that one instead">${esc(r)}</label><span class="hint" style="padding:0">input</span></div>`).join("") +
+    `<div class="row"><span class="sock in t-val" data-s="@ref:+" data-t="val"></span><label title="plug a value in to add $name to the end of the expression">add input</label></div>`; }
+function setExprRef(nid, key, name){ const n = byId(nid); if (!n) return;
+  const old = key.slice(5), t = String(n.data.value || "");
+  n.data.value = old === "+" ? t.replace(/\s+$/, "") + " $" + name : t.replace(new RegExp("\\$" + old + "(?![A-Za-z0-9_])", "g"), "$" + name);
+  render(); changed(false); }
 function textUseHint(n){
   const nm = nodeName(n); if (!nm || linksFrom(n.id).length) return "";
   const re = new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
@@ -1587,8 +1634,15 @@ function nodeHTML(n){
   if (n.kind === "image") return imageHTML(n);
   const d = n.data, {ins, outs} = sockets(n); let b = "";
   if (["value","sweep","mc"].includes(n.kind) && d.note) b += `<div class="hint pnote" title="note from the file (kept on save)">${esc(d.note)}</div>`;
-  if (n.kind === "value"){
-    b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 4140 prehard · = 2 * $x", /^\s*[A-Za-z]/.test(String(d.value || "")) ? ' data-mat="1" list="matlist"' : ' data-mat="1"')}</div>` + expandHint(splitQ(d.value).num) + textUseHint(n);
+  if (n.kind === "value" && d.mat){                // a material block: always a material from the library
+    const cur = String(d.value || ""), known = CAT.materials.some(([k]) => k === cur);
+    b += `<div class="row wide"><select data-k="value" title="a material from the library (Materials adds your own)">` +
+      (known ? "" : `<option value="${esc(cur)}" selected>${esc(cur || "pick a material")}</option>`) +
+      CAT.materials.map(([k, nm]) => `<option value="${esc(k)}"${k === cur ? " selected" : ""}>${esc(nm)}</option>`).join("") + `</select></div>` + textUseHint(n);
+  } else if (n.kind === "value"){
+    const q = splitQ(d.value), word = q.text && !/^\s*=/.test(String(d.value || ""));
+    b += `<div class="row wide">${uvControl("value", d.value, null, "1.1e5 · 25 mm · = 2 * $x", "")}</div>` + expandHint(q.num) + exprInputs(d) +
+      (word ? `<div class="hint" style="color:var(--warn)">a value is a number or an = expression. For a material, add a Material block.</div>` : "") + textUseHint(n);
   } else if (n.kind === "builder"){
     const blk = CAT.blocks.find(x => x.name === d.block);
     b += `<div class="hint" title="${esc(blk ? blk.summary + "\n" + blk.source : "")}">${esc(d.block)}${blk ? " · " + esc(blk.kind) : " (not in catalog)"}</div>`;
@@ -1603,7 +1657,11 @@ function nodeHTML(n){
       b += shapeHTML(n);
       if (!hasShape(d) && d.rot3 === "free") b += inertiaFormHTML(d);
       ins.forEach(s => b += fieldRow(n, s, d[s.key], {inertia: d.rot3 === "free" ? "kg m^2" : "about the axis", mass: f.x || f.y || f.z ? "kg" : "only for an off-axis centre of mass", angle0:"0", omega0:"0"}[s.key] || ""));
-      if (d.rot3 === "free") b += `<div class="row"><label title="starting angular velocity, world axes">spin0</label><input data-k="omega3" value="${esc(d.omega3 || "")}" placeholder="[wx, wy, wz] rad/s"></div>`;
+      if (d.rot3 === "free"){
+        b += `<div class="row"><label title="starting angular velocity (rad/s), world axes: wx, wy, wz">spin0</label>${vecBoxes("omega3", d.omega3, 3, "0")}</div>`;
+        const o0 = d.orient0 || {};
+        b += `<div class="row"><label title="turn the body this far at the start (its drawing as typed is angle 0)">tilt0</label><input data-k="or_angle" value="${esc(o0.angle ?? "")}" placeholder="angle, e.g. 20 deg"></div>`;
+        b += `<div class="row"><label title="the world axis that start turn is about">tilt axis</label>${vecBoxes("or_axis", o0.axis, 3, ["x","y","z"])}</div>`; }
       b += vecRow3(d, "at", "length", isRotBody(d) ? "the pivot it spins about (its drawing origin)" : "where its drawing origin starts");
       b += vecRow3(d, "com", "length", "centre of mass in its own drawing frame (blank = the origin)");
       if (f.x || f.y || f.z) b += vecRow3(d, "v0", "speed", "starting velocity");
@@ -1707,7 +1765,7 @@ function nodeHTML(n){
   outs.forEach(s => b += outRow(s));
   const title = `<input class="nm" data-k="name" value="${esc(d.name)}" spellcheck="false">`;
   const color = COL[n.kind];
-  const kl = KIND_LABEL[n.kind] + (n.kind === "element" ? " · " + esc(d.type) : "");
+  const kl = (n.kind === "value" && d.mat ? "material" : KIND_LABEL[n.kind]) + (n.kind === "element" ? " · " + esc(d.type) : "");
   return `<div class="hd"><span class="bar" style="background:${color}"></span><span class="kind">${kl}</span>${title}<button class="ib" data-act="info" title="What this node does" aria-label="Info"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7" fill="currentColor"/><rect x="6.5" y="6.4" width="3" height="7.6" rx="1.3" fill="currentColor"/></svg></button><button class="x" data-act="del" title="Delete node" aria-label="Delete"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div><div class="bd">${b}</div>`;
 }
 function render(){
@@ -1719,7 +1777,7 @@ function render(){
     el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
     el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
     if (n.kind === "note" && +n.data.w > 0) el.style.width = Math.max(160, Math.min(1600, +n.data.w)) + "px";
-    el.innerHTML = nodeHTML(n); world.appendChild(el);
+    el.innerHTML = nodeHTML(n); world.appendChild(el); fieldSockets(el, n);
   }
   for (const g of S.groups){
     if (!g.collapsed){ const f = document.createElement("div"); f.className = "gframe" + (isSel(g.id) ? " sel" : ""); f.dataset.g = g.id;
@@ -1882,6 +1940,12 @@ function refWires(){
     const re = new RegExp("\\$" + nodeName(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
     fields.forEach(([m, el, inp]) => {
       if (m.id === n.id || !re.test(inp.value)) return;
+      if (m.kind === "value" && exprRefs(m.data.value).includes(nodeName(n))){ const b = sockPos(m.id, "@ref:" + nodeName(n), "in");
+        if (b){ h += `<path d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" style="pointer-events:none"></path>`; return; } }
+      const ex = exactRef(inp.value);
+      if (ex && ex.name === nodeName(n) && inp.dataset.fs){ const b = sockPos(m.id, inp.dataset.fs, "in"); if (!b) return;
+        const sk = el.querySelector(`.fsock[data-s="${CSS.escape(inp.dataset.fs)}"]`); if (sk) sk.classList.add("on");
+        h += `<path d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" style="pointer-events:none"><title>${esc(nodeName(n))} feeds ${esc(nodeName(m) || m.kind)}</title></path>`; return; }
       const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
       const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
       h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nodeName(n))} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
@@ -1923,6 +1987,11 @@ canvas.addEventListener("mousedown", e => {
   if (sock){
     e.preventDefault();
     const nid = sockOwner(sock), key = sock.dataset.s, dir = sock.classList.contains("out") ? "out" : "in";
+    if (dir === "in" && key.startsWith("@ref:")){ drag = {type:"wire", toFirst:{node:nid, key}, ftype:"val"}; return; }
+    if (dir === "in" && key.startsWith("@")){   // a field socket: pull its $name off, or start a wire from it
+      const inp = fieldInput(nid, key), r = inp && exactRef(inp.value), src = r && byName(r.name, "p");
+      if (src){ setFieldText(nid, key, ""); drag = {type:"wire", from:{node:src.id, key:"out"}, field:r.field, ftype:"val"}; return; }
+      drag = {type:"wire", toFirst:{node:nid, key}, ftype:"val"}; return; }
     if (dir === "in"){        // pull an existing wire off an input
       const l = linkTo(nid, key);
       if (l){ S.links = S.links.filter(x => x !== l); drag = {type:"wire", from:l.from, field:l.field, ftype:sock.dataset.t, pulled:l}; changed(false); return; }
@@ -2003,6 +2072,19 @@ window.addEventListener("mouseup", e => {
     const sock = e.target.closest && e.target.closest(".sock");
     if (sock){
       const nid = sockOwner(sock), key = sock.dataset.s, t = sock.dataset.t;
+      if (d.from && sock.classList.contains("in") && key.startsWith("@ref:") && nid !== d.from.node){
+        const src = byId(d.from.node);
+        if (!["value","sweep","mc","builder"].includes(src.kind)){ status("bad", "Only a value can feed an expression."); render(); return; }
+        setExprRef(nid, key, nodeName(src) + (d.field ? "." + d.field : "")); return; }
+      if (d.toFirst && d.toFirst.key.startsWith("@ref:") && sock.classList.contains("out") && nid !== d.toFirst.node){
+        const src = byId(nid); if (["value","sweep","mc","builder"].includes(src.kind)){ setExprRef(d.toFirst.node, d.toFirst.key, nodeName(src)); return; } }
+      if (d.from && sock.classList.contains("in") && key.startsWith("@") && nid !== d.from.node){
+        const src = byId(d.from.node), fromT = sockets(src).outs.find(s => s.key === d.from.key).type;
+        if (fromT !== "val"){ const m = `Only a value can feed a typed field (this is a ${fromT} output).`; status("bad", m); toast(m, e.clientX, e.clientY); render(); return; }
+        setFieldText(nid, key, "$" + nodeName(src) + (d.field ? "." + d.field : "")); return; }
+      if (d.toFirst && d.toFirst.key.startsWith("@") && sock.classList.contains("out") && nid !== d.toFirst.node){
+        const src = byId(nid), t_ = (sockets(src).outs.find(s => s.key === key) || {}).type;
+        if (t_ === "val"){ setFieldText(d.toFirst.node, d.toFirst.key, "$" + nodeName(src)); return; } }
       if (d.from && sock.classList.contains("in") && nid !== d.from.node){
         const fromT = sockets(byId(d.from.node)).outs.find(s => s.key === d.from.key).type;
         if (compatible(fromT, t)){ const why = unitClash(d.from, {node:nid, key}, d.pulled);
@@ -2046,6 +2128,9 @@ world.addEventListener("input", e => {
   if (k === "rot3"){ free3(d); d.rot3 = el.value; const f = d.free3; if (el.value === "none" && !f.x && !f.y && !f.z) f.z = true; changed(true); return; }
   if (k && k.startsWith("free_")){ const f = free2(d); f[k.slice(5)] = el.checked; if (!f.x && !f.y && !f.rz){ f[k.slice(5)] = true; el.checked = true; status("bad", "A moving body needs at least one coordinate (or make it ground)."); return; }
     changed(true); return; }
+  if (el.dataset.vec){ const nn = +el.dataset.vec, p = vecParts(vecGet(d, k), nn); p[+el.dataset.i] = el.value.trim();
+    vecSet(d, k, p.every(x => !x) ? "" : p.join(", ")); changed(false); return; }
+  if (k === "or_angle"){ d.orient0 = d.orient0 || {}; d.orient0.angle = el.value; changed(false); return; }
   if (k && k.startsWith("sh.")){ d.shape = d.shape || {}; const kk = k.slice(3); d.shape[kk] = el.value;
     if (kk === "kind" && el.value && !d.shape.src) d.shape.src = "material";
     changed(kk === "kind" || kk === "src"); return; }
@@ -2358,7 +2443,7 @@ function menuAll(){
   const it = [];
   const add = (grp, name, sub, color, make, extra) => it.push(Object.assign({grp, name, sub, color, make, kind:"node", words:""}, extra || {}));
   add("Inputs", "Value", "a named number with units, a material name, or = expression", COL.value, () => ["value", {name:"p"}]);
-  add("Inputs", "Material", "a catalog material name as a value", COL.value, () => ["value", {name:"mat", value:(CAT.materials[0] || [""])[0]}], {words:"steel aluminium titanium polymer"});
+  add("Inputs", "Material", "a catalog material name as a value", COL.value, () => ["value", {name:"mat", mat:true, value:(CAT.materials[0] || [""])[0]}], {words:"steel aluminium titanium polymer"});
   if (is3d()){
     add("Bodies", "Body · moving (3D)", "slides in x, y, z and tumbles freely; mass, inertia, points, spheres, plane patches", COL.body, () => ["body", {name:"body", dof:"free", free3:{x:true, y:true, z:true}, rot3:"free"}], {words:"mass inertia rigid 3d tumble gyroscope"});
     add("Bodies", "Body · spinning on an axis", "only spins, about an axis you choose (a weapon on its shaft)", COL.body, () => ["body", {name:"rotor", dof:"free", free3:{x:false, y:false, z:false}, rot3:"spin", axis:"z"}], {words:"rotation weapon disc flywheel spin axis 3d"});
@@ -2891,7 +2976,7 @@ async function loadText(text, path, dataDir){
   const r = await API.call("import_yaml", text);
   if (!r.ok){ status("bad", "Could not read that file: " + r.error); return; }
   // relative files (CSV loads, pictures) are read from the model's folder; an example's from where it ships
-  fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
+  MATP = new Set(r.mats || []); fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
   render(); if (!S.meta.hasLayout) arrange(); fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();

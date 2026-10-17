@@ -10,6 +10,10 @@ params:
   precession: {value: 3.25 rad/s, note: "the steady precession rate (the equation in the note); 0 starts it with spin only"}
   stem: {value: 50 mm, note: "from the tip to the centre of the disc"}
 
+derived:
+  w_x: "= $spin * sin($tilt)"                 # start spin, world x part
+  w_z: "= $spin * cos($tilt) + $precession"   # start spin, world z part: its own spin plus the precession
+
 bodies:
   floor:
     ground: true
@@ -19,7 +23,7 @@ bodies:
     dof: free                   # slides and tumbles freely: only the joint holds the tip
     shape: {kind: disc, R: 40 mm, t: 8 mm, material: 1018_CD, at: [0, 0, $stem]}   # disc centre 50 mm up its own axis
     orient0: {axis: [0, 1, 0], angle: $tilt}   # tilted (its own z axis leans toward +x)
-    omega0: ["= $spin * sin($tilt)", 0, "= $spin * cos($tilt) + $precession"]   # spin about its tilted axis plus the steady precession (so it does not wobble)
+    omega0: [$w_x, 0, $w_z]       # spin about its tilted axis plus the steady precession (so it does not wobble)
     points: {tip: [0, 0, 0]}
     note: "the body's own frame: z along the stem, origin at the tip"
 
@@ -62,6 +66,12 @@ editor:
     p:precession:
     - -280
     - 330
+    p:w_x:
+    - -280
+    - 480
+    p:w_z:
+    - -280
+    - 690
     p:spin:
     - -280
     - 30

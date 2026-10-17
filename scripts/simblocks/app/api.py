@@ -178,7 +178,8 @@ class Api:
     def import_yaml(self, text):
         try:
             from ..compiler.loader import load
-            return dict(ok=True, doc=_clean(load(text)))
+            doc = _clean(load(text))
+            return dict(ok=True, doc=doc, mats=_material_params(doc))
         except Exception as exc:
             return _err(exc)
 
@@ -1156,3 +1157,22 @@ def _worker_run(ov, i=0):
         return dict(ok=True, inputs=_clean(ov), outputs=_clean(out))
     except Exception as exc:
         return dict(ok=False, inputs=_clean(ov), error=str(exc))
+
+
+def _material_params(doc):
+    """Names of params whose value is a material (a library key or an alias such as '4140 prehard'), so the editor
+    shows them as Material blocks."""
+    from ..materials import get
+    from ..materials.curves import resolve_material
+    out = []
+    for k, v in (doc.get("params") or {}).items():
+        if isinstance(v, dict) and "value" in v:
+            v = v["value"]
+        if not isinstance(v, str) or v.strip().startswith("=") or "$" in v:
+            continue
+        for f in (lambda t: get(t), lambda t: get(resolve_material(t))):
+            try:
+                f(v.strip()); out.append(k); break
+            except Exception:
+                pass
+    return out
