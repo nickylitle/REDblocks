@@ -651,7 +651,9 @@ function sockets(n){
   if (n.kind === "builder"){
     const b = CAT && CAT.blocks.find(x => x.name === d.block);
     (b ? b.params : []).forEach(p => { if (!p.name.startsWith("*")) ins.push({key:"a." + p.name, label:p.name, type:"val", req:p.default === null}); });
-    outs.push({key:"out", label:"result", type:"val"});
+    const ks = String(d.take || "").trim() ? [] : (b && b.out_keys || []);     // "take" already picks one result
+    outs.push({key:"out", label: ks.length ? "whole result" : "result", type:"val"});
+    ks.forEach(k => outs.push({key:"o." + k, label:k, type:"val"}));     // each named result has its own socket
   }
   if (n.kind === "body" && is3d()){
     if (d.dof !== "ground"){ const f = free3(d), r = d.rot3, sh = hasShape(d);
@@ -770,6 +772,8 @@ function midOfValues(t, u){   // the middle of a Range: median of a list (as typ
     return joinQ(String(+m.toPrecision(6)), nums[0].unit || u || ""); }
   const x = xs[Math.floor(xs.length / 2)]; return u && !x.includes(" ") && isFinite(+x) ? x + " " + u : x;
 }
+const outField = key => String(key || "").startsWith("o.") ? key.slice(2) : "";
+function outKeyFor(n, field){ return field && n && sockets(n).outs.some(o => o.key === "o." + field) ? "o." + field : "out"; }
 function refOf(l){ const src = byId(l.from.node); return "$" + src.data.name + (l.field ? "." + l.field : ""); }
 function inVal(n, key, text){ const l = linkTo(n.id, key); return l ? refOf(l) : lit(text ?? ""); }
 function blank(v){ return v === "" || v === null || v === undefined; }
@@ -1202,7 +1206,7 @@ function fromDoc(doc){
   });
   pend.forEach(([nid, key, raw]) => {
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
-    S.links.push({from:{node:src.id, key:"out"}, to:{node:nid, key}, field:r.field});
+    S.links.push({from:{node:src.id, key:outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
   });
   (doc.exports || []).forEach(x => {
     const known_ = ["{model}_{name}","{model}_{name}_{date}_{time}","{name}","{name}_{date}_{time}","{model}_{name}_{run}"];
@@ -1830,13 +1834,13 @@ function isMatText(v){ const t = String(v || "").trim(); if (!t || t.startsWith(
   return CAT.materials.some(([k, nm]) => k.toLowerCase() === lo || String(nm).toLowerCase() === t.toLowerCase()) || /^[A-Za-z0-9]/.test(t); }
 // an expression (= ...) shows one input socket per value it uses, plus one to add another
 function exprRefs(v){ const t = String(v || ""); if (!t.trim().startsWith("=")) return [];
-  return [...new Set([...t.matchAll(/\$([A-Za-z_]\w*)/g)].map(m => m[1]))]; }
+  return [...new Set([...t.matchAll(/\$([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)/g)].map(m => m[1]))]; }
 function exprInputs(d){ const t = String(d.value || ""); if (!t.trim().startsWith("=")) return "";
   return exprRefs(t).map(r => `<div class="row"><span class="sock in t-val" data-s="@ref:${esc(r)}" data-t="val"></span><label title="the expression uses $${esc(r)}: drag another value onto it to use that one instead">${esc(r)}</label><span class="hint" style="padding:0">input</span></div>`).join("") +
     `<div class="row"><span class="sock in t-val" data-s="@ref:+" data-t="val"></span><label title="plug a value in to add $name to the end of the expression">add input</label></div>`; }
 function setExprRef(nid, key, name){ const n = byId(nid); if (!n) return;
   const old = key.slice(5), t = String(n.data.value || "");
-  n.data.value = old === "+" ? t.replace(/\s+$/, "") + " $" + name : t.replace(new RegExp("\\$" + old + "(?![A-Za-z0-9_])", "g"), "$" + name);
+  n.data.value = old === "+" ? t.replace(/\s+$/, "") + " $" + name : t.replace(new RegExp("\\$" + old.replace(/\./g, "\\.") + "(?![A-Za-z0-9_.])", "g"), "$" + name);
   render(); changed(false); }
 function textUseHint(n){
   const nm = nodeName(n); if (!nm || linksFrom(n.id).length) return "";
@@ -2155,22 +2159,25 @@ function refWires(){
   if (!fields.length) return h;
   srcs.forEach(n => {
     if (hiddenIn(n.id)) return;
-    const out = sockets(n).outs.find(o => o.type === "val"); if (!out) return;
-    const a = sockPos(n.id, out.key, "out"); if (!a) return;
-    const re = new RegExp("\\$" + nodeName(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
+    if (!sockets(n).outs.some(o => o.type === "val")) return;
+    const aOf = f => sockPos(n.id, outKeyFor(n, f), "out");       // a named result wires from its own socket
+    const nm = nodeName(n), re = new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
     fields.forEach(([m, el, inp]) => {
       if (m.id === n.id || !re.test(inp.value)) return;
-      if (m.kind === "value" && exprRefs(m.data.value).includes(nodeName(n))){ const b = sockPos(m.id, "@ref:" + nodeName(n), "in");
-        if (b){ const id = "E|" + m.id + "|" + nodeName(n), on = wireSel.has(id);
-          h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>click to select · Delete removes it from the expression</title></path>`; return; } }
+      if (m.kind === "value"){ const rs = exprRefs(m.data.value).filter(r => r === nm || r.startsWith(nm + "."));
+        if (rs.length){ rs.forEach(r => { const a = aOf(r.slice(nm.length + 1)), b = sockPos(m.id, "@ref:" + r, "in"); if (!a || !b) return;
+          const id = "E|" + m.id + "|" + r, on = wireSel.has(id);
+          h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>click to select · Delete removes it from the expression</title></path>`; });
+          return; } }
       const ex = exactRef(inp.value);
-      if (ex && ex.name === nodeName(n) && inp.dataset.fs){ const b = sockPos(m.id, inp.dataset.fs, "in"); if (!b) return;
+      if (ex && ex.name === nm && inp.dataset.fs){ const a = aOf(ex.field), b = sockPos(m.id, inp.dataset.fs, "in"); if (!a || !b) return;
         const sk = el.querySelector(`.fsock[data-s="${CSS.escape(inp.dataset.fs)}"]`); if (sk) sk.classList.add("on");
-        const id = "F|" + m.id + "|" + inp.dataset.fs, on = wireSel.has(id);
-        h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>${esc(nodeName(n))} feeds ${esc(nodeName(m) || m.kind)} · click to select · Delete unplugs</title></path>`; return; }
+        const id = "F|" + m.id + "|" + inp.dataset.fs, on = wireSel.has(id), lab = ex.field && outKeyFor(n, ex.field) === "out" ? "." + ex.field : "";
+        h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>${esc(nm + lab)} feeds ${esc(nodeName(m) || m.kind)} · click to select · Delete unplugs</title></path>`; return; }
+      const fm = inp.value.match(new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:\\.([A-Za-z_]\\w*))?")), a = aOf(fm && fm[1]); if (!a) return;
       const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
       const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
-      h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nodeName(n))} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
+      h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nm)} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
            `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2" fill="var(--s-val)"></circle>`;
     }); });
   return h; }
@@ -2182,12 +2189,13 @@ function drawWires(temp){
   const recolor = (el, t) => { if (!el) return; el.classList.forEach(c => { if (c.startsWith("t-")) el.classList.remove(c); }); el.classList.add("t-" + t); };
   world.querySelectorAll(".sock.in").forEach(el => { if (!el.classList.contains("t-" + el.dataset.t)) recolor(el, el.dataset.t); });
   S.links.forEach((l, i) => {
+    if (l.field && l.from.key === "out"){ const k = outKeyFor(byId(l.from.node), l.field); if (k !== "out") l.from.key = k; }   // older files: $b.k wired from "result"
     const ga = hiddenIn(l.from.node), gb = hiddenIn(l.to.node); if (ga && ga === gb) return;     // inside a closed group
     const a = sockPos(l.from.node, l.from.key, "out"), b = sockPos(l.to.node, l.to.key, "in"); if (!a || !b) return;
     const src = byId(l.from.node), st = sockets(src).outs.find(s => s.key === l.from.key);
     const wt_ = st ? st.type : "val", col = TYPE_COL[wt_], d = curve(a, b),
       _r = recolor(world.querySelector(`.node[data-id="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`) ||
-                   world.querySelector(`[data-m="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`), wt_), lab = l.field ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 5}" text-anchor="middle">.${esc(l.field)}</text>` : "";
+                   world.querySelector(`[data-m="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`), wt_), lab = l.field && !l.from.key.startsWith("o.") ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 5}" text-anchor="middle">.${esc(l.field)}</text>` : "";
     if (wireSel.has(l)) top += `<path class="halo" d="${d}"></path><path class="wsel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>${esc(byId(l.from.node).data.name || "")} → ${esc((byId(l.to.node) || {data:{}}).data.name || "")} · Delete removes</title></path>` + lab;
     else if (F && F.links.has(l)) top += `<path class="wrel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds</title></path>` + lab;
     else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
@@ -2212,14 +2220,14 @@ canvas.addEventListener("mousedown", e => {
     if (dir === "in" && key.startsWith("@ref:")){ drag = {type:"wire", toFirst:{node:nid, key}, ftype:"val"}; return; }
     if (dir === "in" && key.startsWith("@")){   // a field socket: pull its $name off, or start a wire from it
       const inp = fieldInput(nid, key), r = inp && exactRef(inp.value), src = r && byName(r.name, "p");
-      if (src){ setFieldText(nid, key, ""); drag = {type:"wire", from:{node:src.id, key:"out"}, field:r.field, ftype:"val"}; return; }
+      if (src){ setFieldText(nid, key, ""); drag = {type:"wire", from:{node:src.id, key:outKeyFor(src, r.field)}, field:r.field, ftype:"val"}; return; }
       drag = {type:"wire", toFirst:{node:nid, key}, ftype:"val"}; return; }
     if (dir === "in"){        // pull an existing wire off an input
       const l = linkTo(nid, key);
       if (l){ S.links = S.links.filter(x => x !== l); drag = {type:"wire", from:l.from, field:l.field, ftype:sock.dataset.t, pulled:l}; changed(false); return; }
       drag = {type:"wire", toFirst:{node:nid, key}, ftype:sock.dataset.t}; return;
     }
-    drag = {type:"wire", from:{node:nid, key}, ftype:sock.dataset.t}; return;
+    drag = {type:"wire", from:{node:nid, key}, field:outField(key), ftype:sock.dataset.t}; return;
   }
   const frameEl = e.target.closest(".gframe");
   if (frameEl && !nodeEl){
@@ -2299,14 +2307,14 @@ window.addEventListener("mouseup", e => {
         if (!["value","sweep","mc","builder"].includes(src.kind)){ status("bad", "Only a value can feed an expression."); render(); return; }
         setExprRef(nid, key, nodeName(src) + (d.field ? "." + d.field : "")); return; }
       if (d.toFirst && d.toFirst.key.startsWith("@ref:") && sock.classList.contains("out") && nid !== d.toFirst.node){
-        const src = byId(nid); if (["value","sweep","mc","builder"].includes(src.kind)){ setExprRef(d.toFirst.node, d.toFirst.key, nodeName(src)); return; } }
+        const src = byId(nid); if (["value","sweep","mc","builder"].includes(src.kind)){ setExprRef(d.toFirst.node, d.toFirst.key, nodeName(src) + (outField(key) ? "." + outField(key) : "")); return; } }
       if (d.from && sock.classList.contains("in") && key.startsWith("@") && nid !== d.from.node){
         const src = byId(d.from.node), fromT = sockets(src).outs.find(s => s.key === d.from.key).type;
         if (fromT !== "val"){ const m = `Only a value can feed a typed field (this is a ${fromT} output).`; status("bad", m); toast(m, e.clientX, e.clientY); render(); return; }
         setFieldText(nid, key, "$" + nodeName(src) + (d.field ? "." + d.field : "")); return; }
       if (d.toFirst && d.toFirst.key.startsWith("@") && sock.classList.contains("out") && nid !== d.toFirst.node){
         const src = byId(nid), t_ = (sockets(src).outs.find(s => s.key === key) || {}).type;
-        if (t_ === "val"){ setFieldText(d.toFirst.node, d.toFirst.key, "$" + nodeName(src)); return; } }
+        if (t_ === "val"){ setFieldText(d.toFirst.node, d.toFirst.key, "$" + nodeName(src) + (outField(key) ? "." + outField(key) : "")); return; } }
       if (d.from && sock.classList.contains("in") && nid !== d.from.node){
         const fromT = sockets(byId(d.from.node)).outs.find(s => s.key === d.from.key).type;
         if (compatible(fromT, t)){ const why = unitClash(d.from, {node:nid, key}, d.pulled);
@@ -2316,7 +2324,7 @@ window.addEventListener("mouseup", e => {
       } else if (d.toFirst && sock.classList.contains("out") && nid !== d.toFirst.node){
         if (compatible(t, d.ftype)){ const why = unitClash({node:nid, key}, d.toFirst);
           if (why){ toast(why, e.clientX, e.clientY); status("bad", why); render(); return; }
-          connect({node:nid, key}, d.toFirst); return; }
+          connect({node:nid, key}, d.toFirst, outField(key)); return; }
         status("bad", `A ${t} output can't plug into a ${d.ftype} input.`); toast(`A ${t} output can't plug into a ${d.ftype} input.`, e.clientX, e.clientY);
       }
     }
@@ -2676,7 +2684,7 @@ function deleteSel(){
   if (wireSel.size){
     [...wireSel].filter(x => typeof x === "string").forEach(id => { const [kind, nid, key] = [id.slice(0, 1), id.split("|")[1], id.split("|").slice(2).join("|")];
       if (kind === "F"){ const inp = fieldInput(nid, key); if (inp){ inp.value = ""; inp.dispatchEvent(new Event("input", {bubbles:true})); } }
-      else { const n = byId(nid); if (n){ n.data.value = String(n.data.value || "").replace(new RegExp("\\s*\\$" + key + "(?![A-Za-z0-9_])", "g"), "");
+      else { const n = byId(nid); if (n){ n.data.value = String(n.data.value || "").replace(new RegExp("\\s*\\$" + key.replace(/\./g, "\\.") + "(?![A-Za-z0-9_.])", "g"), "");
         status("bad", `Removed $${key} from ${nodeName(n)}: check the expression still reads right.`); } } });
     S.links = S.links.filter(l => !wireSel.has(l)); wireSel = new Set(); if (!selSet.size){ render(); changed(); return; } }
   const ids = new Set(); [...selSet].forEach(id => { const g = byGid(id); if (g){ g.members.forEach(m => ids.add(m)); S.groups = S.groups.filter(x => x !== g); } else ids.add(id); });

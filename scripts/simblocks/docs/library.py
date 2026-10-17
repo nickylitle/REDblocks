@@ -181,6 +181,92 @@ def _el_fig_raw(name):
     return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
 
 
+_SEC_KEYS = ["A", "Ix", "Iy", "c", "S", "Z", "J", "tau_coef", "kappa"]
+_ARRAY_FN = {"linspace", "zeros", "zeros_like", "ones", "ones_like", "array", "asarray", "concatenate", "cumsum", "interp",
+             "arange", "empty", "full", "diff", "gradient", "where", "stack", "vstack", "hstack"}
+
+
+def _out_keys(fn):
+    """The named scalar results a block returns as a dict, read from its source, so the editor can give each one
+    its own output socket (arrays such as a deflection curve are left out: they can't feed a number)."""
+    py = getattr(fn, "py_func", fn)
+    try:
+        tree = ast.parse(textwrap.dedent(inspect.getsource(py)))
+    except (OSError, TypeError, SyntaxError):
+        return []
+    fdef = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
+    if fdef is None:
+        return []
+    arrays, assigned = set(), {}
+
+    def is_arr(v):
+        if isinstance(v, ast.Call):
+            f = v.func
+            nm = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            base = getattr(f.value, "id", "") if isinstance(f, ast.Attribute) else ""
+            return base in ("np", "numpy") and nm in _ARRAY_FN
+        if isinstance(v, ast.Name):
+            return v.id in arrays
+        if isinstance(v, ast.BinOp):
+            return is_arr(v.left) or is_arr(v.right)
+        return False
+    for node in ast.walk(fdef):                          # names bound to numpy arrays (and dicts built by name)
+        if isinstance(node, ast.Assign):
+            for t in node.targets:
+                tg = t.elts if isinstance(t, ast.Tuple) else [t]
+                vals = node.value.elts if isinstance(node.value, ast.Tuple) and len(node.value.elts) == len(tg) else [node.value] * len(tg)
+                for t_, v_ in zip(tg, vals):
+                    if isinstance(t_, ast.Name):
+                        if is_arr(v_):
+                            arrays.add(t_.id)
+                        assigned.setdefault(t_.id, []).append(v_)
+        elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name) and is_arr(node.value):
+            arrays.add(node.target.id)
+    for _ in range(2):                                   # second pass catches arrays built from arrays
+        for k, vs in assigned.items():
+            if any(is_arr(v) for v in vs):
+                arrays.add(k)
+    keys = []
+
+    def add(k, v=None):
+        if isinstance(k, str) and k.isidentifier() and k not in keys and not (v is not None and is_arr(v)):
+            keys.append(k)
+
+    def from_value(v, depth=0):
+        if isinstance(v, ast.Call) and getattr(v.func, "id", "") == "_sec":
+            for k in _SEC_KEYS:
+                add(k)
+            for kw in v.keywords:
+                add(kw.arg, kw.value)
+        elif isinstance(v, ast.Call) and getattr(v.func, "id", "") == "dict":
+            for a in v.args:
+                if depth < 3:
+                    from_value(a, depth + 1)
+            for kw in v.keywords:
+                add(kw.arg, kw.value)
+        elif isinstance(v, ast.Dict):
+            for k, x in zip(v.keys, v.values):
+                if isinstance(k, ast.Constant):
+                    add(k.value, x)
+        elif isinstance(v, ast.Name) and depth < 3:
+            for x in assigned.get(v.id, []):
+                from_value(x, depth + 1)
+            for node in ast.walk(fdef):                  # out["key"] = ... on the returned dict
+                if isinstance(node, ast.Assign):
+                    for t in node.targets:
+                        if (isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == v.id
+                                and isinstance(t.slice, ast.Constant)):
+                            add(t.slice.value, node.value)
+                elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "update" \
+                        and getattr(node.func.value, "id", "") == v.id:
+                    for kw in node.keywords:
+                        add(kw.arg, kw.value)
+    for node in ast.walk(fdef):
+        if isinstance(node, ast.Return) and node.value is not None:
+            from_value(node.value)
+    return keys
+
+
 def _outputs(fn):
     """Read what a block returns from its source (dict keys, tuple names) or its docstring."""
     py = getattr(fn, "py_func", fn)
@@ -267,7 +353,7 @@ def entries(include_internal=False):
             params = []
         doc = inspect.getdoc(py) or b.summary
         out.append(dict(name=b.name, domain=b.domain, category=b.category, path=b.path, kind=b.kind,
-                        source=b.source, summary=b.summary, doc=doc, params=params, outputs=_outputs(b.func),
+                        source=b.source, summary=b.summary, doc=doc, params=params, outputs=_outputs(b.func), out_keys=_out_keys(b.func),
                         usage=_usage(b, params), fig=FG.figure_for(b), tags=list(b.tags),
                         legacy=b.source.startswith("LEGACY"), element=KERNEL_ELEMENT.get(b.name, ""),
                         superseded=SUPERSEDED.get(b.name, "")))

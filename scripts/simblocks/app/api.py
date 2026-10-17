@@ -153,7 +153,7 @@ class Api:
             from ..docs import figures as FG
             from ..materials import _ALL
             blocks = [dict(name=e["name"], domain=e["domain"], category=e["category"], kind=e["kind"],
-                           summary=e["summary"], source=e["source"], params=e["params"], outputs=e["outputs"],
+                           summary=e["summary"], source=e["source"], params=e["params"], outputs=e["outputs"], out_keys=e.get("out_keys", []),
                            legacy=e["legacy"], fig=e["fig"], doc=(e["doc"] or "")[:1400], tags=list(e.get("tags") or []),
                            superseded=e.get("superseded", ""))
                       for e in entries()]
@@ -697,7 +697,7 @@ class Api:
             from ..registry import CUSTOM
             return dict(ok=True, blocks=[dict(name=e["name"], domain=e["domain"], category=e["category"], path=e["path"],
                                               kind=e["kind"], source=e["source"], summary=e["summary"], doc=e["doc"],
-                                              params=e["params"], outputs=e["outputs"], usage=e["usage"], fig=e["fig"],
+                                              params=e["params"], outputs=e["outputs"], out_keys=e.get("out_keys", []), usage=e["usage"], fig=e["fig"],
                                               tags=e["tags"], legacy=e["legacy"], element=e.get("element", ""),
                                               custom=CUSTOM.get(e["name"], ""), superseded=e.get("superseded", "")) for e in entries()])
         except Exception as exc:
