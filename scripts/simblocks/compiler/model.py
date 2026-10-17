@@ -571,10 +571,12 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
         R["_timeout_s"] = float(limit)
     outs = M.doc["outputs"]
     tc = dict(zip(ckeys, tcr))
+    RSI = {}
     for name, o in outs.items():
         if "expr" in o:
             continue
         red = o.get("reduce", "final")
+        pk = None
         if "body" in o and dim3:
             qn = o["quantity"]; i = M.body_names.index(o["body"])
             if qn == "kinetic_energy":
@@ -593,7 +595,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 from .model3d import body_slot3
                 _, k = body_slot3(M, o["body"], qn, f"outputs.{name}")
                 lo, hi, fin = BT[k, 0], BT[k, 1], FB[k]
-                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
         elif "body" in o and dim2:
             qn = o["quantity"]
             if qn == "kinetic_energy":
@@ -612,7 +614,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                     lo, hi, fin = BT[k, 0], BT[k, 1], q[k]
                 else:
                     lo, hi, fin = BT[k, 2], BT[k, 3], v[k]
-                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
         elif "body" in o:
             i = M.body_names.index(o["body"]); qn = o["quantity"]
             if qn == "kinetic_energy":
@@ -623,7 +625,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 val = tc[name]
             else:
                 lo, hi, fin = (BT[i, 0], BT[i, 1], q[i]) if qn == "position" else (BT[i, 2], BT[i, 3], v[i])
-                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
         else:
             qn = o["quantity"]
             grp = (getattr(M, "groups", None) or {}).get(o["element"])
@@ -668,7 +670,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                     val = {"final": abs(x[2]), "max": m_, "min": 0.0, "max_abs": m_}[red]
                 else:
                     lo = min(x[0] for x in sp); hi = max(x[1] for x in sp); fin = sp[0][2]
-                    val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]
+                    val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
         val = float(val)
         if red.startswith("first_time"):
             reached = val >= 0
@@ -677,14 +679,22 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 val = M.t_end * 10.0        # sentinel: never crossed within t_end (flagged in reports)
         if o.get("abs"):
             val = abs(val)
+        RSI[name] = val                     # expressions read every output in SI, whatever unit it is shown in
         if "unit" in o:
             val = val / unit_factor(o["unit"])
+            if pk is not None:
+                pk = pk / unit_factor(o["unit"])
         R[name] = val
-    # expression outputs (may use params and other outputs)
+        if red == "final" and pk:           # a final value is judged against the quantity's own range in Verify
+            R[f"_{name}_scale"] = float(pk)
+        elif red.startswith("first_time"):  # a crossing time against the run's length (a crossing at t = 0+ is one step)
+            R[f"_{name}_scale"] = float(M.t_end) / (unit_factor(o["unit"]) if "unit" in o else 1.0)
+    # expression outputs (may use params and other outputs, always in SI)
     for name, o in outs.items():
         if "expr" in o:
             nums = numeric_namespace(M.ctx)
             nums.update({k: x for k, x in R.items() if not k.startswith("_")})
+            nums.update(RSI)
             try:
                 R[name] = float(eval_numeric(o["expr"], nums))
             except ZeroDivisionError:

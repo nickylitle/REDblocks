@@ -208,7 +208,9 @@ def verify_all(spec, skip=()):
                 vstar = v[-1] + (v[-1] - v[-2]) / (2 ** p - 1)
             else:
                 vstar = v[-1]
-            err = abs(v[0] - vstar) / max(abs(vstar), 1e-12)
+            # a final value that ends near zero (a ring-down, a swing) is judged against the range it moved through
+            rng = max((lv.get(f"_{m}_scale") or 0.0) for lv in levels)
+            err = abs(v[0] - vstar) / max(abs(vstar), rng, 1e-12)
             rows.append((m, v[0], vstar, p, err))
             if err > spec.conv_tol:
                 worst = FAIL

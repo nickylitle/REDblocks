@@ -258,3 +258,21 @@ def test_propeller_thrust_falls_with_airspeed():
     assert propeller_thrust(0.1, 1.2, 100, 0.25, V=20, J0=0.8) == pytest.approx(0.0, abs=1e-12)
     with pytest.raises(ValueError, match="pitch"):
         propeller_thrust(0.1, 1.2, 100, 0.25, V=10)
+
+
+def test_expression_outputs_read_si_whatever_the_display_unit():
+    txt = """simblocks: 1
+name: t
+dim: 1d
+bodies:
+  r: {dof: rotation, inertia: 1e-3, v0: 100 rad/s}
+elements:
+  d: {type: dashpot, c: 0, measure: r}
+outputs:
+  w: {body: r, quantity: velocity, unit: rpm}
+  twice: {expr: "= 2 * $w"}
+run: {t_end: 1 ms}
+"""
+    o = run(txt)
+    assert o["w"] == pytest.approx(100 * 60 / (2 * math.pi), rel=1e-6)
+    assert o["twice"] == pytest.approx(200.0, rel=1e-6)

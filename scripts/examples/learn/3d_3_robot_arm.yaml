@@ -82,7 +82,8 @@ outputs:
 
 run:
   t_end: 2.5 s
-  dt: 0.2 ms
+  dt: 50 us
+
 
 editor:
   layout:

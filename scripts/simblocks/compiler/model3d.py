@@ -676,6 +676,20 @@ def critical_dt3d(M):
             rot_inv[b] = a["Iax"][b]
         elif a["rmode"][b] == E3.R_FREE:
             rot_inv[b] = float(np.max(np.linalg.eigvalsh(a["Iinv"][b])))
+    def twist_inv(e):
+        """1 / inertia about a twist element's own axis, summed over its two bodies (not the weakest body axis)."""
+        ia = a["ba"][e]
+        RA = _qR(a["quat0"][ia]) if ia >= 0 else np.eye(3)
+        aw = RA @ np.asarray(a["GX"][e, :3], float)
+        tot = 0.0
+        for b in (a["ba"][e], a["bb"][e]):
+            if b < 0:
+                continue
+            if a["rmode"][b] == E3.R_FREE:
+                Rb = _qR(a["quat0"][b]); tot += float(aw @ (Rb @ a["Iinv"][b] @ Rb.T) @ aw)
+            elif a["rmode"][b] == E3.R_SPIN:
+                tot += a["Iax"][b] * float(aw @ a["axis"][b]) ** 2
+        return tot
     for e in range(len(M.el_names)):
         t = a["typ"][e]
         k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9, 11) else 0.0)
@@ -703,13 +717,15 @@ def critical_dt3d(M):
             Kt, R_, G = a["P"][e, 0], a["P"][e, 1], a["P"][e, 3]
             inv = sum((a["C"][e, 4 * b + 3] ** 2) * a["Iax"][b] for b in range(nb))
             if a["mk"][e] == E3.MK_TWIST:
-                inv = sum(rot_inv[b] for b in (a["ba"][e], a["bb"][e]) if b >= 0)
+                inv = twist_inv(e)
             if inv > 0:
                 best = min(best, 2.0 * R_ / (inv * (G * Kt) ** 2))
             continue
         if k <= 0:
             continue
-        if a["mk"][e] in (E3.MK_ROT, E3.MK_TWIST):
+        if a["mk"][e] == E3.MK_TWIST:
+            inv = twist_inv(e)
+        elif a["mk"][e] == E3.MK_ROT:
             inv = sum(rot_inv[b] for b in (a["ba"][e], a["bb"][e]) if b >= 0)
         elif a["mk"][e] == E3.MK_LIN:
             inv = sum(a["C"][e, 4 * b + j] ** 2 * a["minv"][b, j] for b in range(nb) for j in range(3)) + \

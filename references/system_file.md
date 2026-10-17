@@ -177,6 +177,8 @@ outputs:
 - reduce: `final`, `max`, `min`, `max_abs`, `first_time_above`, `first_time_below` (needs `value`; if never
   crossed, the value is 10 x t_end and the report says "never reached").
 - `unit` converts the SI result for display; failure limits are written in that same unit.
+- `expr` outputs read every other output in SI (rad, rad/s, m, N), whatever its `unit`: a display unit never changes
+  an expression.
 - peaks are tracked every step, not from the decimated log.
 
 ### failure (user-defined only)

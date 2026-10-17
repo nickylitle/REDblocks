@@ -962,7 +962,8 @@ function toDoc(){
     if (o.quantity === "kinetic_energy") delete o.reduce;
     outputs[d.name] = o;
   });
-  S.nodes.filter(n => n.kind === "expr").forEach(n => { outputs[n.data.name] = {expr: n.data.expr}; });
+  S.nodes.filter(n => n.kind === "expr").forEach(n => { const o = {expr: n.data.expr};
+    if (n.data.label) o.label = n.data.label; if (n.data.unit) o.unit = n.data.unit; outputs[n.data.name] = o; });
   S.nodes.filter(n => n.kind === "failure").forEach(n => {
     const d = n.data, o = {name:d.name};
     if (d.mode === "metric"){ const l = linkTo(n.id, "metric"); if (l) o.metric = byId(l.from.node).data.name;
@@ -1189,7 +1190,7 @@ function fromDoc(doc){
     put(3, n);
   });
   Object.entries(doc.outputs || {}).forEach(([k, o]) => {
-    if (o.expr !== undefined){ put(4, addNode("expr", {name:k, expr:str(o.expr)})); return; }
+    if (o.expr !== undefined){ put(4, addNode("expr", {name:k, expr:str(o.expr), label:o.label || "", unit:o.unit || ""})); return; }
     const n = addNode("output", {name:k, quantity:o.quantity || "force", reduce:o.reduce || "final", unit:o.unit || "",
       value:str(o.value ?? ""), abs:!!o.abs, label:o.label || ""});
     const src = o.element ? byName(o.element, "e") : byName(o.body, "b");
@@ -1421,7 +1422,7 @@ function termsHTML(n, ins){
         const ph = bn && isRotBody(bn.data) ? "lever arm" : "+1 / -1";
         const co = isGeo() ? `<select data-tco="${s.term}" title="which coordinate of ${esc(lab)}">${sel_(COS(), t.co || (bn && isRotBody(bn.data) ? SPINCO() : "x"))}</select>` : "";
         b += `<div class="row"><span class="sock in t-body" data-s="${s.key}" data-t="body"></span><label title="${esc(lab)}">${esc(lab)}</label>
-              <div class="${isGeo() ? "uv" : ""}"><input data-term="${s.term}" value="${esc(t.coef)}" placeholder="${ph}" title="factor on this body's coordinate (lever arm for a rotation)">${co}</div></div>`;
+              ${isGeo() ? `<div class="uv">` : ""}<input data-term="${s.term}" value="${esc(t.coef)}" placeholder="${ph}" title="factor on this body's coordinate (lever arm for a rotation)">${co}${isGeo() ? `</div>` : ""}</div>`;
       });
       b += `<div class="mini"><button data-act="addterm">+ body</button>${d.terms.length > 1 ? '<button data-act="delterm">− body</button>' : ""}
             <button data-act="raw">type measure</button></div>`;
@@ -1947,7 +1948,9 @@ function nodeHTML(n){
     if (uo !== null) b += `<div class="row"><label>unit</label><select data-k="unit">${uo}</select></div>`;
     b += `<div class="row"><label>abs</label><input type="checkbox" data-k="abs"${d.abs ? " checked" : ""} style="justify-self:start"></div>`;
   } else if (n.kind === "expr"){
-    b += `<div class="row wide"><input data-k="expr" value="${esc(d.expr)}" placeholder="= $F_peak / $capacity"></div>`;
+    b += `<div class="row wide"><input data-k="expr" value="${esc(d.expr)}" placeholder="= $F_peak / $capacity"></div>` +
+         `<div class="hint">outputs are read in SI here (rad, rad/s, m, N), whatever unit they are shown in</div>` +
+         `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label || "")}"></div>`;
   } else if (n.kind === "failure"){
     b += `<div class="row"><label>mode</label><select data-k="mode">${sel_([["metric","metric vs limit"],["dc","demand vs capacity"]], d.mode)}</select></div>`;
     if (d.mode === "metric"){
