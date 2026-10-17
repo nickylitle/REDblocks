@@ -1135,13 +1135,15 @@ def _run_payload(text, overrides=None, n_hist=600, model_path=None, export=False
             if "." not in k:
                 return True
             nm, q = k.split(".", 1)
+            if "__" in nm:                      # a joint's or beam's inner parts: the joint itself is listed
+                return False
             if nm not in types:
                 return True
             return q in ("force", "measure") or q in keep.get(types[nm], ())
         H = {k: v for k, v in H.items() if wanted(k)}
         n = len(H["t"]); step = max(1, n // n_hist)
         hist = {k: [float(x) for x in v[::step]] for k, v in H.items()}
-        return dict(ok=True, outputs=_clean(out), history=hist, exported=paths,
+        return dict(ok=True, outputs=_clean(out), history=hist, exported=paths, hist_units=_hist_units(s, hist),
                     units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()})
     except Exception as exc:
         return _err(exc)
@@ -1232,4 +1234,38 @@ def _material_params(doc):
                 f(v.strip()); out.append(k); break
             except Exception:
                 pass
+    return out
+
+
+_Q_UNIT = {"moment": "N m", "torque": "N m", "shear": "N", "hinge_set": "rad", "impulse": "N s", "friction_impulse": "N s",
+           "drift": "m", "dissipated": "J", "current": "A", "battery_current": "A", "bus_voltage": "V", "soc": "",
+           "broken": "", "x": "m", "y": "m", "z": "m", "vx": "m/s", "vy": "m/s", "vz": "m/s", "speed": "m/s",
+           "angle": "rad", "omega": "rad/s", "wx": "rad/s", "wy": "rad/s", "wz": "rad/s"}
+
+
+def _hist_units(s, hist):
+    """SI unit of every time-history series, for the plot's axis."""
+    M = s.nominal; out = {"t": "s"}
+    bodies = list(getattr(M, "body_names", []) or []); dof = list(getattr(M, "dof", []) or [])
+    info = getattr(M, "el_info", {}) or {}
+    for k in hist:
+        if k == "t" or "." not in k:
+            continue
+        nm, q = k.split(".", 1)
+        if nm in bodies and q in ("position", "velocity"):
+            rot = dof[bodies.index(nm)] == "rotation" if bodies.index(nm) < len(dof) else False
+            out[k] = ("rad" if rot else "m") if q == "position" else ("rad/s" if rot else "m/s"); continue
+        if q in _Q_UNIT:
+            out[k] = _Q_UNIT[q]; continue
+        if q in ("force", "measure", "plastic_set"):
+            mt = str((info.get(nm) or {}).get("measure", ""))
+            rot = any(w in mt for w in ("twist", ".angle", ".rz", "spin", ".theta"))
+            if not rot and getattr(M, "dim", "1d") == "1d" and nm in getattr(M, "el_names", []):
+                try:
+                    e = M.el_names.index(nm); row = M.arrays["C"][e]
+                    nz = [i for i in range(len(bodies)) if row[i] != 0.0]
+                    rot = bool(nz) and all(dof[i] == "rotation" for i in nz)
+                except Exception:
+                    pass
+            out[k] = ("N m" if rot else "N") if q == "force" else ("rad" if rot else "m")
     return out
