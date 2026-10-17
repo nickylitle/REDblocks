@@ -458,6 +458,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     first = True
     done = n
     KEpk = KE0
+    jacc = np.zeros(ne); jcnt = 0          # rigid impacts: force logged as the mean over each log interval
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -854,15 +855,23 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 if minv[k] > 0.0:
                     ke_ += 0.5 * v[k] * v[k] / minv[k]
             if ke_ > KEpk: KEpk = ke_
+        if nimp > 0:
+            jcnt += 1
+            for e in range(ne):
+                if typ[e] == 14:
+                    jacc[e] += Fe[e]
         if log_every > 0 and i % log_every == 0 and j < nlog:
             LOGT[j] = i * dt
             for k in range(nq):
                 LOGB[j, k] = q[k]; LOGB[j, nq + k] = v[k]
             for e in range(ne):
-                LOGE[j, e * (2 + NAUX)] = Fe[e]; LOGE[j, e * (2 + NAUX) + 1] = se[e]
+                LOGE[j, e * (2 + NAUX)] = (jacc[e] / jcnt if (typ[e] == 14 and jcnt > 0) else Fe[e]); LOGE[j, e * (2 + NAUX) + 1] = se[e]
                 for k in range(NAUX):
                     LOGE[j, e * (2 + NAUX) + 2 + k] = aux[e, k]
             j += 1
+            jcnt = 0
+            for e in range(ne):
+                jacc[e] = 0.0
     stop[1] = done
     for b in range(nb):
         if mass[b] > 0.0:

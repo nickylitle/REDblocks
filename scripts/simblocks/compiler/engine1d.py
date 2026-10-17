@@ -161,6 +161,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     first = True
     done = n
     KEpk = KE0
+    jacc = np.zeros(ne); jcnt = 0          # rigid impacts: force logged as the mean over each log interval
     Dq = np.zeros(nb); nimp = 0
     for e in range(ne):
         if typ[e] == 14:
@@ -306,15 +307,23 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for b in range(nb):
                 ke_ += 0.5 * m[b] * v[b] * v[b]
             if ke_ > KEpk: KEpk = ke_
+        if nimp > 0:
+            jcnt += 1
+            for e in range(ne):
+                if typ[e] == 14:
+                    jacc[e] += Fe[e]
         if log_every > 0 and i % log_every == 0 and j < nlog:
             LOGT[j] = i * dt
             for b in range(nb):
                 LOGB[j, 2 * b] = q[b]; LOGB[j, 2 * b + 1] = v[b]
             for e in range(ne):
-                LOGE[j, e * (2 + NAUX)] = Fe[e]; LOGE[j, e * (2 + NAUX) + 1] = se[e]
+                LOGE[j, e * (2 + NAUX)] = (jacc[e] / jcnt if (typ[e] == 14 and jcnt > 0) else Fe[e]); LOGE[j, e * (2 + NAUX) + 1] = se[e]
                 for k in range(NAUX):
                     LOGE[j, e * (2 + NAUX) + 2 + k] = aux[e, k]
             j += 1
+            jcnt = 0
+            for e in range(ne):
+                jacc[e] = 0.0
     stop[1] = done
     KE1 = 0.0
     for b in range(nb):

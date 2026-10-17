@@ -13,7 +13,7 @@ bodies:
     ground: true
     lines:
       ramp: {from: [-1.0, 0.363970], to: [1.0, -0.363970]}
-      floor: {from: [1.0, -0.363970], to: [4, -0.363970]}
+      floor: {from: [1.0, -0.363970], to: [8, -0.363970]}   # long enough that it is still rolling on it at the end
     note: "a 20 degree ramp running into a flat floor"
   ball:
     dof: planar

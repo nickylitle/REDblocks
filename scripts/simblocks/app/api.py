@@ -6,6 +6,7 @@ import io
 import json
 import math
 import os
+import numpy as np
 import threading
 import time
 import traceback
@@ -1166,7 +1167,18 @@ def _run_payload(text, overrides=None, n_hist=600, model_path=None, export=False
             return q in ("force", "measure") or q in keep.get(types[nm], ())
         H = {k: v for k, v in H.items() if wanted(k)}
         n = len(H["t"]); step = max(1, n // n_hist)
-        hist = {k: [float(x) for x in v[::step]] for k, v in H.items()}
+        def thin(k, v):
+            # a rigid impact's force is a short spike each hit: show the mean over each plotted interval, so every hit
+            # appears with its true impulse (area) instead of vanishing between samples
+            nm = k.split(".", 1)[0]
+            if step > 1 and k.endswith(".force") and types.get(nm) == "impact":
+                v = np.asarray(v, float); m = len(v) // step * step
+                avg = v[:m].reshape(-1, step).mean(axis=1)
+                if m < len(v):
+                    avg = np.append(avg, v[m:].mean())
+                return [float(x) for x in avg]
+            return [float(x) for x in v[::step]]
+        hist = {k: thin(k, v) for k, v in H.items()}
         return dict(ok=True, outputs=_clean(out), history=hist, exported=paths, hist_units=_hist_units(s, hist),
                     units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()})
     except Exception as exc:
