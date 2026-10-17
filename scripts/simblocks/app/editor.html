@@ -129,8 +129,8 @@ textarea{width:100%;resize:vertical}
 :root.dashwires #wires path[data-t="metric"],:root.dashwires #wiresTop path[data-t="metric"]{stroke-dasharray:5 5}
 #wires path:hover{stroke-width:calc(var(--wire-w,2.2) * 1.8)}
 #wires path.temp{stroke-dasharray:5 4;pointer-events:none}
-#wires path.ref{stroke-dasharray:6 3;opacity:.85;pointer-events:none}
-#wires circle.refend{pointer-events:none}
+#wires path.ref{stroke-width:1.1 !important;stroke-dasharray:none !important;opacity:.6;pointer-events:none}
+#wires circle.refend{pointer-events:none;fill:var(--bg);stroke:var(--s-val);stroke-width:1.4}
 #wiresTop{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:5}
 #wiresTop path{fill:none;pointer-events:stroke;cursor:pointer}
 #wiresTop path.halo{stroke:var(--bg);stroke-width:9;opacity:.85;pointer-events:none}
@@ -2207,7 +2207,7 @@ function refWires(){
       const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
       const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
       h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nm)} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
-           `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2" fill="var(--s-val)"></circle>`;
+           `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2"></circle>`;
     }); });
   return h; }
 function drawWires(temp){
@@ -4156,7 +4156,7 @@ function renderLegend(){
     wire("val", "Value:", "a number or expression") + wire("body", "Body:", "which body a part acts on") +
     wire("sig", "Signal:", "a time history out of a run") + wire("state", "State:", "a running state (set, broken, charge)") +
     wire("metric", "Metric:", "a result checked or swept") +
-    `<div class="lr"><svg viewBox="0 0 34 10"><path d="M1 5 H33" style="stroke:var(--s-val);stroke-width:var(--wire-w,2.2);stroke-dasharray:6 3;fill:none"/></svg><span><b>Dashed value:</b> used by name ($x) in a field</span></div>` + `</div>` +
+    `<div class="lr"><svg viewBox="0 0 34 10"><path d="M1 5 H29" style="stroke:var(--s-val);stroke-width:1.1;opacity:.6;fill:none"/><circle cx="30" cy="5" r="2.6" style="fill:var(--bg);stroke:var(--s-val);stroke-width:1.2"/></svg><span><b>Thin value, open ring:</b> used by name ($x) inside a field, not a socket</span></div>` + `</div>` +
     `<div><div class="lt">Sockets</div><div class="lk" style="grid-template-columns:1fr"><span><i class="sk" style="background:var(--s-val);width:9px;height:9px;border-radius:50%"></i>round: value / signal</span><span><i class="sk" style="background:var(--s-body);width:9px;height:9px;border-radius:2px"></i>square: body</span><span><i class="sk" style="background:var(--s-state);width:9px;height:9px;transform:rotate(45deg);border-radius:1px"></i>diamond: state</span></div></div>` +
     `<div><div class="lt">Node bars (what a node is)</div><div class="lk">` +
     kind("value", "Value") + kind("builder", "Builder block") + kind("body", "Body") + kind("element", "Element") +
