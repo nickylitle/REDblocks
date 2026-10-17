@@ -227,6 +227,8 @@ pre.yaml{font:11.5px/1.5 var(--mono);color:var(--ink2);background:var(--bg);bord
 #status{grid-column:1/3;display:flex;align-items:center;gap:12px;padding:0 12px;border-top:1px solid var(--edge);
   background:var(--panel);font:11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden}
 #status .dot{width:8px;height:8px;border-radius:50%;background:var(--ink3);flex:none}
+#stGif{height:18px;max-width:40px;object-fit:contain;flex:none} #status.has-gif.busy .dot{display:none}
+#pcard .pbrow{display:flex;align-items:center;gap:10px} #pcard .pbrow .pbar{flex:1} #pcGif{height:34px;max-width:64px;object-fit:contain;flex:none}
 #status.ok .dot{background:var(--pass)}#status.bad .dot{background:var(--fail)}#status.busy .dot{background:var(--warn)}
 #status .msg{overflow:hidden;text-overflow:ellipsis}
 #menu{position:absolute;z-index:20;width:360px;max-height:470px;display:none;flex-direction:column;background:var(--panel);
@@ -315,6 +317,7 @@ label.gx span{color:var(--ink3);font-size:10px}
 #top .live{display:flex;align-items:center;gap:4px;font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 #liveNote{font:10px var(--mono);color:var(--ink3);text-transform:none;letter-spacing:0;display:inline-block;width:10ch;margin-right:8px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ht .mcb{font-size:11px;padding:2px 8px}
 .dlg{position:fixed;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;z-index:50}
 .dlg .box{width:min(640px,94vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:18px;box-shadow:0 20px 50px var(--shadow)}
 .dlg h4{margin:0 0 4px;font:600 15px var(--sans)}
@@ -467,7 +470,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <div id="legend" aria-label="What the canvas colours mean"><div class="lh" id="legendHd" title="Show or hide the canvas key"><span>Canvas key</span><button id="legendTog" aria-label="Collapse">&#8722;</button></div><div class="lb" id="legendBody"></div></div>
     <div id="world"><svg id="wires" width="1" height="1"></svg><svg id="wiresTop" width="1" height="1"></svg></div>
     <div id="pcard" role="status" aria-live="polite"><div class="pt"><b id="pcTitle">Running</b><span id="pcTime"></span></div><div class="pst" id="pcStages"></div>
-      <div class="pbar"><i id="pcBar"></i></div><div class="pl"><span id="pcLabel"></span><b id="pcEta"></b></div><div id="pcBtns"></div></div>
+      <div class="pbrow"><img id="pcGif" alt="" hidden><div class="pbar"><i id="pcBar"></i></div></div><div class="pl"><span id="pcLabel"></span><b id="pcEta"></b></div><div id="pcBtns"></div></div>
     <div id="menu"><input id="mq" placeholder="Search nodes and blocks: typos are fine (beem defelction)">
       <div class="mf" id="mf"></div><div class="list" id="mlist"></div></div>
     <div id="info" role="dialog"></div>
@@ -519,7 +522,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       knockouts, limits, Monte Carlo and your failure modes.</div></div>
     <div class="pane" id="pYaml"><pre class="yaml" id="yamlOut"></pre></div>
   </div>
-  <div id="status"><span class="dot"></span><span id="prog"><i></i></span><span class="msg" id="smsg">Starting...</span></div>
+  <div id="status"><span class="dot"></span><img id="stGif" alt="" hidden><span id="prog"><i></i></span><span class="msg" id="smsg">Starting...</span></div>
 </div>
 <input type="file" id="fileIn" accept=".yaml,.yml" hidden>
 <div id="helpView"><div id="hSide"><div class="top"><button id="hBack" title="Back to the canvas (Esc)">← Canvas</button><input id="hQ" placeholder="Search features and blocks"></div><div id="hNav"></div></div><div id="hBody"></div></div>
@@ -539,6 +542,8 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="setKeep">Keep my own colours when I switch theme</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Body wires long dashes, signals dotted, states dash-dot, metrics short dashes, values solid"><input type="checkbox" id="setDash">Wire patterns by type (dashes)</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small GIF (or PNG / WebP) that plays next to the progress bar while something runs. Up to 2 MB.">Loading animation <button id="setLoader">Choose GIF…</button><button id="setLoaderOff">Remove</button><span class="sub" id="setLoaderNow"></span></label>
+    <input type="file" id="setLoaderFile" accept="image/gif,image/png,image/webp,image/apng" hidden></div>
   <h3 class="dsub">Colours</h3><div class="sub" id="setOwn"></div><div id="setColors"></div>
   <div class="btns"><button id="setResetAll">Reset all to the theme</button><button id="setClose" class="primary">Done</button></div></div></div>
 <div class="dlg" id="matvDlg" role="dialog" aria-modal="true" aria-labelledby="matvTitle"><div class="box" style="width:min(980px,96vw)">
@@ -1744,6 +1749,12 @@ function matSVG(r, W, H, small){
 function matMini(key){ const r = matData(key); if (!r) return "";
   if (r.error) return `<div class="hint">${esc(r.error)}</div>`;
   return `<div class="csvmini" data-act="matview" title="stress-strain curve: click for the full view"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${matSVG(r, 220, 56, true)}</svg></div>`; }
+async function matViewKey(key){             // open the curve window for any material, loading it first if needed
+  let r = MAT_CACHE[key];
+  if (!r){ try { r = await API.call("material_curve", key); } catch (e) { r = {error:"needs the desktop app"}; } MAT_CACHE[key] = r && r.ok ? r : {error:(r && r.error) || "no curve"}; }
+  if (MAT_CACHE[key].error){ status("bad", `No stress-strain curve for ${key}: ${MAT_CACHE[key].error}`); return; }
+  matView(key); }
+document.addEventListener("click", e => { const b = e.target.closest("button[data-matv]"); if (b) matViewKey(b.dataset.matv); });
 function matView(key){ const r = MAT_CACHE[key]; if (!r || r.error) return;
   const P = r.props || {}, row = (k, v) => v === null || v === undefined || v === "" ? "" : `<tr><td>${k}</td><td class="v">${esc(String(v))}</td></tr>`, M = v => v ? +(v / 1e6).toPrecision(4) + " MPa" : "", G = v => v ? +(v / 1e9).toPrecision(4) + " GPa" : "";
   document.getElementById("matvTitle").textContent = "Material: " + (r.name || key);
@@ -2952,7 +2963,11 @@ function changed(rerender = true){
   if (rerender) render(); else { drawWires(); renderYaml(); }
   clearTimeout(checkTimer); checkTimer = setTimeout(check, 450);
 }
-function status(cls, msg){ const s = document.getElementById("status"); s.className = cls; document.getElementById("smsg").textContent = msg; }
+function status(cls, msg){ const s = document.getElementById("status"); s.className = cls + (SETTINGS.loader ? " has-gif" : ""); document.getElementById("smsg").textContent = msg;
+  const g = document.getElementById("stGif"); if (g) g.hidden = !(SETTINGS.loader && cls === "busy"); }
+function applyLoader(){ ["pcGif","stGif"].forEach(id => { const g = document.getElementById(id); if (!g) return;
+    if (SETTINGS.loader){ if (g.src !== SETTINGS.loader) g.src = SETTINGS.loader; } else g.removeAttribute("src"); });
+  document.getElementById("pcGif").hidden = !SETTINGS.loader; const lt = document.getElementById("setLoaderNow"); if (lt) lt.textContent = SETTINGS.loader ? "set" : "none"; }
 let errFields = [];
 function markErrFields(){
   world.querySelectorAll(".errf").forEach(x => x.classList.remove("errf"));
@@ -3906,8 +3921,8 @@ async function helpShow(id){
         `<p>${esc(e.fields || "")}</p><h3>In a file</h3><pre class="code" id="hUse">elements:\n  my_${esc(t)}: {type: ${esc(t)}, measure: a - b${et.required.map(f => ", " + f + ": …").join("")}}</pre><div class="hb"><button data-copy="hUse">Copy</button><button data-addel="${esc(t)}">Add to canvas</button></div>`; }
   else if (id === "materials"){ const M = HELP.mats;
     h = `<div class="hk">Catalog</div><h2>Materials (${M.length})</h2><p>Type the key, or loose text such as <code>7075</code> or <code>4130 at 45 HRC</code>, into a Value node. Custom materials from your folder are marked. Lamina rows show E1/E2 and Xt/Xc.</p>
-      <div class="hscroll"><table class="ht"><tr><th>key</th><th>name</th><th>E</th><th>ν</th><th>ρ kg/m³</th><th>sy (Xt)</th><th>su (Xc)</th><th>family</th></tr>` +
-      M.map(m => `<tr><td><code>${esc(m.key)}</code>${m.custom ? ' <span class="chip2">custom</span>' : ""}</td><td title="${esc(m.note || "")}">${esc(m.name)}</td><td>${fmtSI(m.E, "GPa", 1e9)}</td><td>${m.nu ?? ""}</td><td>${fmtSI(m.rho, "", 1)}</td><td>${fmtSI(m.sy, "MPa", 1e6)}</td><td>${fmtSI(m.su, "MPa", 1e6)}</td><td>${esc(m.family || "")}</td></tr>`).join("") + `</table></div>`; }
+      <div class="hscroll"><table class="ht"><tr><th>key</th><th>name</th><th>E</th><th>ν</th><th>ρ kg/m³</th><th>sy (Xt)</th><th>su (Xc)</th><th>family</th><th></th></tr>` +
+      M.map(m => `<tr><td><code>${esc(m.key)}</code>${m.custom ? ' <span class="chip2">custom</span>' : ""}</td><td title="${esc(m.note || "")}">${esc(m.name)}</td><td>${fmtSI(m.E, "GPa", 1e9)}</td><td>${m.nu ?? ""}</td><td>${fmtSI(m.rho, "", 1)}</td><td>${fmtSI(m.sy, "MPa", 1e6)}</td><td>${fmtSI(m.su, "MPa", 1e6)}</td><td>${esc(m.family || "")}</td><td><button class="mcb" data-matv="${esc(m.key)}" title="Open the stress-strain curve of ${esc(m.name)}">curve</button></td></tr>`).join("") + `</table></div>`; }
   else if (id.startsWith("block:")){ const b = HELP.blocks.find(x => x.name === id.slice(6));
     if (!b){ h = `<h2>Not found</h2><p>${esc(id)}</p>`; }
     else {
@@ -4170,7 +4185,7 @@ async function settingsShow(){
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
     list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
-  document.getElementById("setConfetti").checked = confettiOn();
+  document.getElementById("setConfetti").checked = confettiOn(); applyLoader();
   document.getElementById("setDash").checked = document.documentElement.classList.contains("dashwires");
   document.getElementById("setOwn").textContent = user ? `Changes save straight into your theme "${th.name}".`
     : (n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${th.name} theme.` : `All colours from the ${th.name} theme.`);
@@ -4232,6 +4247,12 @@ document.getElementById("setDlg").addEventListener("change", async e => { if (!e
   const {id, user} = curLook(); applyColors();
   if (user) await saveUserTheme(id.slice(2)); else settingsSave();
   settingsShow(); });
+document.getElementById("setLoader").onclick = () => document.getElementById("setLoaderFile").click();
+document.getElementById("setLoaderOff").onclick = () => { delete SETTINGS.loader; applyLoader(); settingsSave(); };
+document.getElementById("setLoaderFile").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (f.size > 2 * 1024 * 1024){ status("bad", "That picture is over 2 MB: pick a smaller GIF."); return; }
+  const rd = new FileReader(); rd.onload = () => { SETTINGS.loader = rd.result; applyLoader(); settingsSave();
+    status("ok", "Loading animation set. It plays next to the progress bar while a run, study or verify works."); }; rd.readAsDataURL(f); });
 document.getElementById("setConfetti").onchange = e => { SETTINGS.confetti = e.target.checked; delete SETTINGS.confettiAuto; settingsSave(); if (e.target.checked) confetti(true); };
 document.getElementById("setDash").onchange = e => { SETTINGS.dashes = e.target.checked; applyColors(); settingsSave(); };
 document.getElementById("setResetAll").onclick = () => { SETTINGS.colors = {}; delete SETTINGS.look; applyColors(); settingsSave(); settingsShow(); };
@@ -4306,7 +4327,7 @@ async function start(){
     UF = CAT.unit_factors || {};
     const sv = document.createElementNS("http://www.w3.org/2000/svg", "svg"); sv.setAttribute("width", "0"); sv.setAttribute("height", "0");
     sv.style.position = "absolute"; sv.innerHTML = CAT.symbols || ""; document.body.appendChild(sv);
-    const info = await API.call("system_info"); SETTINGS = info.settings || {recent:[]}; await loadUserThemes(); applyColors();
+    const info = await API.call("system_info"); SETTINGS = info.settings || {recent:[]}; await loadUserThemes(); applyColors(); applyLoader();
     window.__defaultUnits = SETTINGS.units || "SI"; S.meta.units = window.__defaultUnits;
     const nc = info.cores, cur = Math.min(SETTINGS.workers || nc, nc);
     document.getElementById("bCores").innerHTML = Array.from({length:nc}, (_, i) => nc - i).map(k => `<option value="${k}"${k === cur ? " selected" : ""}>${k}${k === nc ? " (all)" : ""}</option>`).join("");
