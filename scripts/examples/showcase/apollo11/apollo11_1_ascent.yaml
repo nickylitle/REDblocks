@@ -433,7 +433,7 @@ editor:
     - o:T_eco
     expose: {}
   notes:
-  - text: '**2D-4 Apollo 11: Saturn V to Earth orbit, checked against NASA''s flight data.** The engines come from their propellant chemistry
+  - text: '**Apollo 11, part 1: Saturn V to Earth orbit, checked against NASA''s flight data.** The engines come from their propellant chemistry
       (equilibrium combustion and nozzle expansion: the F-1 block predicts 304.8 s vacuum Isp, published 304 s). The flight is the physics: inverse-square
       gravity round a turning Earth, the US Standard Atmosphere for thrust and drag, mass burnt and stages dropped. From the flight report: the
       masses, the engines'' measured levels and the event times (staging, cutoffs). One number is tuned: the pitch-over rate just after the tower

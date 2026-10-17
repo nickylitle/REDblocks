@@ -499,3 +499,14 @@ editor:
     - o:prop_used
     - o:dv_descent
     expose: {}
+  notes:
+  - text: '**Apollo 11, part 2: Eagle''s powered descent, checked against NASA.** The descent engine comes from its propellant
+      chemistry (Aerozine 50 / N2O4; chamber temperature matches Cantera). The *guidance_phases* group is Apollo''s own
+      descent guidance: P63 braking and P64 approach fly the quadratic guidance law to NASA''s published high gate and approach
+      terminus, and set the throttle (10 % for 26 s, full throttle, throttle recovery under 57 %). Below 400 ft P66 flies
+      the descent rates Aldrin called out. Set *crew* to 0 for the automatic landing NASA planned. *checks_against_NASA*
+      reads the flight at the events in NASA''s premission trajectory (TM X-58040 table I): 3,065 ft/s at 258 s, 1,456 ft/s
+      at 384 s, high gate at 506 s; touchdown 754.7 s.'
+    x: 30
+    y: -170
+    width: 900
