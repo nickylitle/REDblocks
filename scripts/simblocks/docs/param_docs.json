@@ -1,0 +1,1503 @@
+{
+ "rectangle": {
+  "b": "section width (m)",
+  "h": "section depth in bending direction (m)"
+ },
+ "given_section": {
+  "I": "second moment of area about bending axis (m^4)",
+  "c": "neutral axis to extreme fibre distance (m)",
+  "h": "section depth, gives c = h/2 (m)",
+  "A": "cross-sectional area (m^2)",
+  "Z": "plastic section modulus (m^3)",
+  "J": "torsion constant (m^4)",
+  "Iy": "second moment of area about other axis (m^4)",
+  "kappa": "shear correction factor (Timoshenko)",
+  "Zy": "plastic section modulus about other axis (m^3)"
+ },
+ "plate_per_width": {
+  "t": "plate thickness (m)"
+ },
+ "circle": {
+  "d": "diameter of solid round (m)"
+ },
+ "tube": {
+  "do": "tube outer diameter (m)",
+  "di": "tube inner diameter (m)"
+ },
+ "rect_tube": {
+  "b": "outside width (m)",
+  "h": "outside depth in bending direction (m)",
+  "t": "wall thickness (m)"
+ },
+ "i_beam": {
+  "bf": "flange width (m)",
+  "tf": "flange thickness (m)",
+  "hw": "web clear height between flanges (m)",
+  "tw": "web thickness (m)"
+ },
+ "polygon_section": {
+  "xy": "polygon vertex list [(x, y), ...] (m)"
+ },
+ "plastic_moment": {
+  "sy": "yield strength (Pa)",
+  "Z": "plastic section modulus (m^3)"
+ },
+ "shape_factor": {
+  "sec": "cross-section, from a section block (rectangle, tube...)"
+ },
+ "moment_curvature_rect": {
+  "curve": "material stress-strain curve (Curve object)",
+  "b": "section width (m)",
+  "h": "section depth in bending direction (m)",
+  "kappa_max": "largest curvature in table (1/m)",
+  "n": "number of table points",
+  "n_fiber": "number of fibre slices through depth",
+  "measure": "stress-strain measure: 'true' or engineering"
+ },
+ "moment_curvature_polygon": {
+  "curve": "material stress-strain curve (Curve object)",
+  "xy": "polygon vertex list [(x, y), ...] (m)",
+  "kappa_max": "largest curvature in table (1/m)",
+  "n": "number of table points",
+  "n_fiber": "number of fibre slices through depth",
+  "measure": "stress-strain measure: 'true' or engineering"
+ },
+ "hinge_table": {
+  "mk": "moment-curvature table, from a moment_curvature block",
+  "L_hinge": "plastic hinge length, about section depth (m)"
+ },
+ "cantilever_end_load": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "timoshenko": "true: include shear deflection (Timoshenko beam)"
+ },
+ "cantilever_point_at": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "a": "load distance from fixed end (m)",
+  "timoshenko": "true: include shear deflection (Timoshenko beam)"
+ },
+ "cantilever_tip_deflection_point_at": {
+  "P": "applied point load (N)",
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "L": "beam span length (m)",
+  "a": "load distance from fixed end (m)"
+ },
+ "cantilever_uniform": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "cantilever_end_moment": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "simply_supported_center": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "timoshenko": "true: include shear deflection (Timoshenko beam)"
+ },
+ "simply_supported_point_at": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "a": "load distance from one support (m)"
+ },
+ "simply_supported_uniform": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "fixed_fixed_center": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "timoshenko": "true: include shear deflection (Timoshenko beam)"
+ },
+ "fixed_fixed_uniform": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "fixed_guided_end_load": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)",
+  "timoshenko": "true: include shear deflection (Timoshenko beam)"
+ },
+ "propped_center": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "propped_uniform": {
+  "mat": "material from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "L": "beam span length (m)"
+ },
+ "springs_in_series": {
+  "k": "spring stiffnesses to combine (N/m)"
+ },
+ "springs_in_parallel": {
+  "k": "spring stiffnesses to combine (N/m)"
+ },
+ "effective_width_45": {
+  "load_width": "width of the concentrated load (m)",
+  "distance": "distance from the load (m)",
+  "plate_width": "actual plate width, caps result (m)"
+ },
+ "beam_membrane_point_load": {
+  "W": "midspan deflection (m)",
+  "H": "beam depth (m)",
+  "B": "beam breadth, width (m)",
+  "L_half": "half span length (m)",
+  "sigma0": "flow (yield) stress (Pa)",
+  "support": "end support: 'clamped' or 'pinned'"
+ },
+ "beam_plastic_spring": {
+  "material": "material name from the library",
+  "section": "section dict: {circle: d} or {rect: [b, h]}",
+  "L": "beam span length (m)",
+  "support": "load case: 'ss_center' or 'cantilever_end'",
+  "hinge_len": "plastic hinge length, default section depth (m)",
+  "kappa_max_x_depth": "max curvature times depth, table range"
+ },
+ "beam_case": {
+  "support": "'cantilever', 'simply_supported', 'fixed_fixed', 'propped' or 'fixed_guided'",
+  "load": "load type: 'point', 'uniform' or 'end_moment'",
+  "L": "beam span length (m)",
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "EI": "flexural rigidity, E times I (N m^2)",
+  "a": "point load position from x=0 (m)",
+  "Mp": "fully plastic moment, adds collapse load (N m)",
+  "My": "first-yield moment, adds yield load (N m)",
+  "GA": "shear rigidity kappa G A, adds shear flex (N)"
+ },
+ "spring_combination": {
+  "k": "list of spring stiffnesses (N/m or N m/rad)",
+  "arrangement": "'series' or 'parallel'"
+ },
+ "flexural_rigidity": {
+  "E": "Young's modulus (Pa)",
+  "t": "plate thickness (m)",
+  "nu": "Poisson's ratio"
+ },
+ "equivalent_load_radius": {
+  "r0": "radius of loaded area (m)",
+  "t": "plate thickness (m)"
+ },
+ "plate_mp": {
+  "sy": "yield strength (Pa)",
+  "t": "plate thickness (m)"
+ },
+ "collapse_point_interior": {
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "clamped": "true: clamped edges, false: simply supported"
+ },
+ "collapse_point_free_edge": {
+  "mp": "plate plastic moment per unit width (N m/m)"
+ },
+ "collapse_circular_pressure": {
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "a": "plate radius (m)",
+  "clamped": "true: clamped edges, false: simply supported"
+ },
+ "collapse_rect_pressure": {
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "a": "long side length (m)",
+  "b": "short side length (m)",
+  "clamped": "true: clamped edges, false: simply supported"
+ },
+ "collapse_three_edge_strip": {
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "b_eff": "effective root fold width (m)",
+  "L_slant": "side fold length (m)"
+ },
+ "laminate_plate_point_load": {
+  "layup": "laminate text, e.g. 'T300/5208 [0/+-45/90]2s'",
+  "a": "plate side length (m)",
+  "b": "other plate side length (m)",
+  "patch": "side of square centre load patch (m)",
+  "support": "edge support: only 'ss' (simply supported)",
+  "equal_moments": "true: assume Mx = My at centre"
+ },
+ "plate_root_hinge": {
+  "material": "material name from the library",
+  "width": "plate strip width (m)",
+  "t": "plate thickness (m)",
+  "L": "free length, root to loaded edge (m)",
+  "hinge_len": "plastic hinge length, default t (m)",
+  "clamp_factor": "plastic moment multiplier for extra edge support",
+  "rate_factor": "strain-rate hardening stress multiplier"
+ },
+ "plate_case": {
+  "shape": "'circular', 'rectangular' or 'annular'",
+  "edges": "edge support: 'clamped' or 'ss'",
+  "load": "'point', 'point_at', 'pressure', 'pressure_large' or 'inner_edge'",
+  "a": "outer radius or longer side (m)",
+  "t": "plate thickness (m)",
+  "b": "other side or annular inner radius (m)",
+  "material": "material name from the library",
+  "E": "Young's modulus, overrides material (Pa)",
+  "nu": "Poisson's ratio, overrides material",
+  "sy": "yield strength, overrides material (Pa)",
+  "r0": "radius of loaded area (m)",
+  "x0": "load x position (m)",
+  "y0": "load y position (m)",
+  "patch_u": "load patch size along x (m)",
+  "patch_v": "load patch size along y (m)",
+  "w0": "target centre deflection (m)"
+ },
+ "plate_collapse": {
+  "case": "'point_interior', 'point_free_edge', 'circular_pressure', 'rect_pressure' or 'three_edge'",
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "sy": "yield strength, used if mp not given (Pa)",
+  "t": "plate thickness, used if mp not given (m)",
+  "a": "radius or long side length (m)",
+  "b": "short side length (m)",
+  "clamped": "true: clamped edges, false: simply supported",
+  "b_eff": "effective root fold width (m)",
+  "L_slant": "side fold length (m)"
+ },
+ "thin_cylinder_stress": {
+  "p": "internal pressure (Pa)",
+  "r": "cylinder radius (m)",
+  "t": "wall thickness (m)"
+ },
+ "thin_sphere_stress": {
+  "p": "internal pressure (Pa)",
+  "r": "sphere radius (m)",
+  "t": "wall thickness (m)"
+ },
+ "lame_stresses": {
+  "pi": "internal pressure (Pa)",
+  "po": "external pressure (Pa)",
+  "ri": "inner radius (m)",
+  "ro": "outer radius (m)",
+  "r": "radius where stress is evaluated (m)"
+ },
+ "press_fit_pressure": {
+  "delta_r": "radial interference (m)",
+  "R": "nominal interface radius (m)",
+  "ri": "inner member bore radius, 0 if solid (m)",
+  "ro": "outer member outer radius (m)",
+  "E_in": "inner member Young's modulus (Pa)",
+  "nu_in": "inner member Poisson's ratio",
+  "E_out": "outer member Young's modulus (Pa)",
+  "nu_out": "outer member Poisson's ratio"
+ },
+ "press_fit_torque": {
+  "p": "interface contact pressure (Pa)",
+  "R": "interface radius (m)",
+  "L": "engaged fit length (m)",
+  "mu": "friction coefficient"
+ },
+ "press_fit_spin_growth": {
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "E": "Young's modulus (Pa)",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "R": "hub bore radius (m)",
+  "ro": "hub outer radius (m)"
+ },
+ "solid_disk_spin_stress": {
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "R": "disk outer radius (m)"
+ },
+ "annular_disk_spin_stress": {
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "Ri": "bore (inner) radius (m)",
+  "Ro": "rim (outer) radius (m)"
+ },
+ "annular_disk_spin_field": {
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "Ri": "bore (inner) radius (m)",
+  "Ro": "rim (outer) radius (m)",
+  "r": "radius where stress is evaluated (m)"
+ },
+ "thin_ring_spin_stress": {
+  "rho": "material density (kg/m^3)",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "R": "ring mean radius (m)"
+ },
+ "bar_spin_root_stress": {
+  "rho": "material density (kg/m^3)",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "L": "bar length from root (m)",
+  "A": "bar cross-sectional area (m^2)",
+  "m_tip": "tip mass at bar end (kg)",
+  "r_hub": "hub radius to bar root (m)"
+ },
+ "spin_energy": {
+  "I": "mass moment of inertia (kg m^2)",
+  "omega": "spin speed, angular velocity (rad/s)"
+ },
+ "tip_speed": {
+  "rpm": "spin speed (rev/min)",
+  "R": "tip radius (m)"
+ },
+ "burst_rpm_solid_disk": {
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "su": "ultimate tensile strength (Pa)",
+  "R": "disk outer radius (m)"
+ },
+ "bite_depth": {
+  "v_close": "closing speed toward the spinner (m/s)",
+  "rpm": "weapon spin speed (rev/min)",
+  "n_teeth": "number of teeth (impactors)"
+ },
+ "gyro_torque": {
+  "I_spin": "rotor mass moment of inertia (kg m^2)",
+  "omega_spin": "rotor spin speed (rad/s)",
+  "omega_precession": "turning (precession) rate (rad/s)"
+ },
+ "spin_stress": {
+  "shape": "'solid_disk', 'annular_disk', 'thin_ring' or 'bar_root'",
+  "omega": "spin speed, angular velocity (rad/s)",
+  "rpm": "spin speed (rev/min), instead of omega",
+  "rho": "material density (kg/m^3)",
+  "nu": "Poisson's ratio",
+  "su": "ultimate tensile strength (Pa)",
+  "material": "material name from the library",
+  "R": "outer or ring radius (m)",
+  "Ri": "bore (inner) radius (m)",
+  "Ro": "rim (outer) radius (m)",
+  "L": "bar length from root (m)",
+  "A": "bar cross-sectional area (m^2)",
+  "m_tip": "tip mass at bar end (kg)",
+  "r_hub": "hub radius to bar root (m)",
+  "r": "radius where stress is evaluated (m)"
+ },
+ "torsion_stiffness": {
+  "G": "shear modulus (Pa)",
+  "J": "torsion constant (m^4)",
+  "L": "shaft length (m)"
+ },
+ "torsion_stress": {
+  "T": "applied torque (N m)",
+  "sec": "cross-section, from a section block (rectangle, tube...)"
+ },
+ "torsion_plastic_solid": {
+  "tau_y": "shear yield strength (Pa)",
+  "d": "shaft diameter (m)"
+ },
+ "shaft_von_mises": {
+  "M": "bending moment (N m)",
+  "T": "torque (N m)",
+  "d": "shaft diameter (m)",
+  "N": "axial force (N)"
+ },
+ "key_shear": {
+  "T": "shaft torque (N m)",
+  "d": "shaft diameter (m)",
+  "w": "key width (m)",
+  "L": "key length (m)"
+ },
+ "key_bearing": {
+  "T": "shaft torque (N m)",
+  "d": "shaft diameter (m)",
+  "h": "key height (m)",
+  "L": "key length (m)"
+ },
+ "euler_load": {
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "L": "column length (m)",
+  "ends": "end fixity, e.g. 'pinned-pinned', 'fixed-free', 'fixed-fixed'"
+ },
+ "johnson_load": {
+  "E": "Young's modulus (Pa)",
+  "sy": "yield strength (Pa)",
+  "A": "cross-sectional area (m^2)",
+  "I": "second moment of area (m^4)",
+  "L": "column length (m)",
+  "ends": "end fixity, e.g. 'pinned-pinned', 'fixed-free', 'fixed-fixed'"
+ },
+ "plate_buckling_stress": {
+  "E": "Young's modulus (Pa)",
+  "nu": "Poisson's ratio",
+  "t": "plate thickness (m)",
+  "b": "loaded plate width (m)",
+  "case": "edge and load case, e.g. 'ss_all_compression', 'clamped_all_shear'"
+ },
+ "cylinder_axial_buckling": {
+  "E": "Young's modulus (Pa)",
+  "nu": "Poisson's ratio",
+  "t": "wall thickness (m)",
+  "R": "cylinder radius (m)",
+  "knockdown": "imperfection knockdown factor"
+ },
+ "bolt_tensile_area": {
+  "d": "bolt nominal diameter (m)",
+  "pitch": "thread pitch (m)"
+ },
+ "bolt_preload_from_torque": {
+  "T": "tightening torque (N m)",
+  "d": "bolt nominal diameter (m)",
+  "K": "nut factor (torque coefficient)"
+ },
+ "bolt_shear_capacity": {
+  "d": "bolt nominal diameter (m)",
+  "tau_u": "ultimate shear strength (Pa)",
+  "n_planes": "number of shear planes",
+  "threads_in_plane": "true: threads lie in shear plane",
+  "pitch": "thread pitch (m)"
+ },
+ "bearing_capacity": {
+  "d": "hole (bolt) diameter (m)",
+  "t": "plate thickness (m)",
+  "s_bearing": "allowable bearing stress (Pa)"
+ },
+ "tear_out_capacity": {
+  "e": "edge distance, hole centre to edge (m)",
+  "d": "hole diameter (m)",
+  "t": "plate thickness (m)",
+  "tau_u": "ultimate shear strength (Pa)"
+ },
+ "net_tension_capacity": {
+  "w": "plate width (m)",
+  "d": "hole diameter (m)",
+  "t": "plate thickness (m)",
+  "su": "ultimate tensile strength (Pa)",
+  "n_holes": "number of holes across the width"
+ },
+ "bolt_stiffness": {
+  "d": "bolt nominal diameter (m)",
+  "L_grip": "grip length, clamped thickness (m)",
+  "E": "bolt Young's modulus (Pa)",
+  "d_minor": "thread minor diameter (m)",
+  "L_thread": "threaded length within grip (m)"
+ },
+ "member_stiffness_wileman": {
+  "E": "clamped member Young's modulus (Pa)",
+  "d": "bolt nominal diameter (m)",
+  "L_grip": "grip length, clamped thickness (m)",
+  "A": "Wileman fit constant A (steel default)",
+  "B": "Wileman fit constant B (steel default)"
+ },
+ "thread_strip_capacity": {
+  "d": "thread nominal diameter (m)",
+  "L_engaged": "thread engagement length (m)",
+  "tau_u_weaker": "ultimate shear strength of weaker part (Pa)",
+  "pitch": "thread pitch (m)"
+ },
+ "tab_shear_out_force": {
+  "mp": "plate plastic moment per unit width (N m/m)",
+  "tau_y": "shear yield strength (Pa)",
+  "t": "plate thickness (m)",
+  "pen": "penetration depth (m)"
+ },
+ "beam_frequency": {
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "m_per_L": "mass per unit length (kg/m)",
+  "L": "beam span length (m)",
+  "bc": "end conditions, e.g. 'cantilever', 'simply_supported', 'free-free'",
+  "mode_lambda": "custom mode eigenvalue lambda, overrides bc"
+ },
+ "cantilever_tip_mass_frequency": {
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "L": "cantilever length (m)",
+  "m_per_L": "beam mass per unit length (kg/m)",
+  "M_tip": "tip mass (kg)"
+ },
+ "plate_frequency": {
+  "D": "plate flexural rigidity (N m)",
+  "rho": "material density (kg/m^3)",
+  "t": "plate thickness (m)",
+  "a": "radius (circular) or side (square) (m)",
+  "case": "e.g. 'circular_clamped', 'circular_ss', 'square_ss', 'square_clamped'"
+ },
+ "spring_mass_frequency": {
+  "k": "spring stiffness (N/m)",
+  "m": "mass (kg)"
+ },
+ "drop_impact_deflection": {
+  "W": "dropped weight, force (N)",
+  "k": "spring stiffness (N/m)",
+  "h": "drop height (m)"
+ },
+ "moving_mass_impact": {
+  "m": "impacting mass (kg)",
+  "v": "impact speed (m/s)",
+  "k": "spring stiffness (N/m)"
+ },
+ "bar_wave_speed": {
+  "E": "Young's modulus (Pa)",
+  "rho": "material density (kg/m^3)"
+ },
+ "endurance_limit_steel": {
+  "Sut": "ultimate tensile strength (Pa)"
+ },
+ "marin_surface_factor": {
+  "Sut": "ultimate tensile strength (Pa)",
+  "finish": "'ground', 'machined', 'cold_drawn', 'hot_rolled' or 'as_forged'"
+ },
+ "marin_size_factor": {
+  "d": "round diameter, None for axial (m)"
+ },
+ "sn_life": {
+  "sigma_a": "alternating stress amplitude (Pa)",
+  "Sut": "ultimate tensile strength (Pa)",
+  "Se": "endurance limit (Pa)",
+  "f": "fatigue strength fraction at 1000 cycles"
+ },
+ "fatigue_sf": {
+  "sigma_a": "alternating stress amplitude (Pa)",
+  "sigma_m": "mean stress (Pa)",
+  "Se": "endurance limit (Pa)",
+  "Sut": "ultimate tensile strength (Pa)",
+  "Sy": "yield strength (Pa)",
+  "criterion": "'goodman', 'gerber', 'asme_elliptic' or 'soderberg'"
+ },
+ "miner_damage": {
+  "cycles": "list of applied cycle counts per stress level",
+  "lives": "list of cycles to failure per stress level"
+ },
+ "kirsch_hoop_stress": {
+  "S": "far-field uniaxial stress (Pa)",
+  "a": "hole radius (m)",
+  "r": "radius from hole centre (m)",
+  "theta": "angle from load direction (rad)"
+ },
+ "kt_ellipse": {
+  "a_perp": "ellipse semi-axis perpendicular to load (m)",
+  "b_par": "ellipse semi-axis parallel to load (m)"
+ },
+ "fatigue_kf": {
+  "Kt": "theoretical stress concentration factor",
+  "r": "notch root radius (m)",
+  "Sut": "ultimate tensile strength (Pa)"
+ },
+ "curved_beam_rect": {
+  "M": "bending moment, positive closes curvature (N m)",
+  "b": "section width (m)",
+  "h": "section depth (m)",
+  "r_inner": "inner radius of curvature (m)",
+  "N": "normal (axial) force (N)"
+ },
+ "ring_diametral_load": {
+  "P": "diametral squeeze load (N)",
+  "R": "ring mean radius (m)",
+  "EI": "flexural rigidity, E times I (N m^2)",
+  "n": "number of integration points"
+ },
+ "punch_perimeter": {
+  "shape": "punch shape: 'rect' or 'circle'",
+  "w": "rectangle width (m)",
+  "l": "rectangle length (m)",
+  "d": "circle diameter (m)"
+ },
+ "shear_plug_capacity": {
+  "perimeter": "punched plug perimeter (m)",
+  "t": "plate thickness (m)",
+  "su": "ultimate tensile strength (Pa)",
+  "ssu_ratio": "shear-to-tensile ultimate strength ratio"
+ },
+ "blunt_punch_line_force": {
+  "sigma_y": "yield strength (Pa)",
+  "w": "flat tooth tip width (m)",
+  "L": "engaged tooth length (m)",
+  "criterion": "yield criterion: 'mises' or 'tresca'"
+ },
+ "circ_clamped_center_point": {
+  "mat": "material from the library",
+  "a": "plate outer radius (m)",
+  "t": "plate thickness (m)",
+  "r0": "radius of loaded area (m)"
+ },
+ "circ_ss_center_point": {
+  "mat": "material from the library",
+  "a": "plate outer radius (m)",
+  "t": "plate thickness (m)",
+  "r0": "radius of loaded area (m)"
+ },
+ "circ_clamped_pressure": {
+  "mat": "material from the library",
+  "a": "plate outer radius (m)",
+  "t": "plate thickness (m)"
+ },
+ "circ_ss_pressure": {
+  "mat": "material from the library",
+  "a": "plate outer radius (m)",
+  "t": "plate thickness (m)"
+ },
+ "circ_clamped_pressure_large": {
+  "mat": "material from the library",
+  "a": "plate outer radius (m)",
+  "t": "plate thickness (m)",
+  "w0": "target centre deflection (m)"
+ },
+ "annular_outer_fixed_inner_load": {
+  "mat": "material from the library",
+  "a": "outer (fixed) edge radius (m)",
+  "b": "inner (loaded) edge radius (m)",
+  "t": "plate thickness (m)"
+ },
+ "rect_ss_pressure": {
+  "mat": "material from the library",
+  "a": "long side length (m)",
+  "b": "short side length (m)",
+  "t": "plate thickness (m)"
+ },
+ "rect_clamped_pressure": {
+  "mat": "material from the library",
+  "a": "long side length (m)",
+  "b": "short side length (m)",
+  "t": "plate thickness (m)"
+ },
+ "rect_clamped_center_point": {
+  "mat": "material from the library",
+  "a": "long side length (m)",
+  "b": "short side length (m)",
+  "t": "plate thickness (m)"
+ },
+ "rect_ss_center_point": {
+  "mat": "material from the library",
+  "a": "long side length (m)",
+  "b": "short side length (m)",
+  "t": "plate thickness (m)",
+  "r0": "radius of loaded area (m)"
+ },
+ "rect_ss_point_at": {
+  "mat": "material from the library",
+  "a": "plate length along x (m)",
+  "b": "plate width along y (m)",
+  "t": "plate thickness (m)",
+  "x0": "load x position (m)",
+  "y0": "load y position (m)",
+  "patch": "load patch size (u, v) (m)"
+ },
+ "shore_A_to_E": {
+  "shore_A": "Shore A durometer hardness, about 20 to 95"
+ },
+ "air_properties": {
+  "T": "air temperature (K)",
+  "p": "air pressure (Pa)"
+ },
+ "rule_of_mixtures": {
+  "E_f": "fiber property, e.g. fiber modulus (Pa)",
+  "E_m": "matrix property, e.g. matrix modulus (Pa)",
+  "Vf": "fiber volume fraction, 0 to 1"
+ },
+ "halpin_tsai": {
+  "P_f": "fiber property, e.g. E2 or G12 (Pa)",
+  "P_m": "matrix property, same kind as P_f (Pa)",
+  "Vf": "fiber volume fraction, 0 to 1",
+  "xi": "Halpin-Tsai reinforcement factor, 2 for E2, 1 for G12"
+ },
+ "lamina_from_constituents": {
+  "fiber": "fiber material properties object",
+  "matrix": "matrix (resin) material properties object",
+  "Vf": "fiber volume fraction, 0 to 1",
+  "t_ply": "ply thickness (m)",
+  "name": "optional name for the lamina"
+ },
+ "lamina_Q": {
+  "lam": "lamina (ply material), from a catalog or lamina block"
+ },
+ "lamina_Qbar": {
+  "Q": "ply reduced stiffness matrix Q (Pa), from lamina_Q",
+  "theta_deg": "ply fiber angle (deg)"
+ },
+ "parse_layup": {
+  "code": "laminate layup code, e.g. [0/+-45/90]2s"
+ },
+ "laminate_ABD": {
+  "lamina": "ply material, one lamina or a list per ply",
+  "angles": "ply angle list (deg), from parse_layup"
+ },
+ "laminate_thermal_resultants": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD",
+  "dT": "uniform temperature change (K)"
+ },
+ "laminate_response": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD",
+  "N": "in-plane force resultants Nx, Ny, Nxy (N/m)",
+  "M": "moment resultants Mx, My, Mxy (N m/m)",
+  "dT": "uniform temperature change (K)"
+ },
+ "ply_stresses": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD",
+  "eps0": "midplane strains, from laminate_response",
+  "kappa": "midplane curvatures (1/m), from laminate_response",
+  "dT": "uniform temperature change (K)"
+ },
+ "strength_ratio_max_stress": {
+  "s": "ply material-axis stresses s1, s2, t12 (Pa)",
+  "lam": "lamina with strengths Xt, Xc, Yt, Yc, S"
+ },
+ "strength_ratio_tsai_hill": {
+  "s": "ply material-axis stresses s1, s2, t12 (Pa)",
+  "lam": "lamina with strengths Xt, Xc, Yt, Yc, S"
+ },
+ "strength_ratio_tsai_wu": {
+  "s": "ply material-axis stresses s1, s2, t12 (Pa)",
+  "lam": "lamina with strengths Xt, Xc, Yt, Yc, S"
+ },
+ "first_ply_failure": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD",
+  "N": "in-plane force resultants Nx, Ny, Nxy (N/m)",
+  "M": "moment resultants Mx, My, Mxy (N m/m)",
+  "criterion": "failure criterion: max_stress, tsai_hill or tsai_wu"
+ },
+ "laminate_engineering_constants": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD"
+ },
+ "laminate_as_isotropic": {
+  "lam_abd": "laminate ABD stiffness, from laminate_ABD",
+  "use": "which stiffness to use: flexural or membrane",
+  "name": "name for the equivalent material"
+ },
+ "strength_ratio": {
+  "criterion": "failure criterion: max_stress, tsai_hill or tsai_wu",
+  "s1": "ply stress along fibers (Pa)",
+  "s2": "ply stress across fibers (Pa)",
+  "t12": "ply in-plane shear stress (Pa)",
+  "lamina": "catalog lamina name, e.g. T300_5208",
+  "Xt": "fiber-direction tensile strength (Pa)",
+  "Xc": "fiber-direction compressive strength, positive (Pa)",
+  "Yt": "transverse tensile strength (Pa)",
+  "Yc": "transverse compressive strength, positive (Pa)",
+  "S": "in-plane shear strength (Pa)"
+ },
+ "resolve_material": {
+  "text": "loose material text, e.g. 7075 best temper"
+ },
+ "eng_to_true": {
+  "eng_strain": "engineering strain values",
+  "eng_stress": "engineering stress values (Pa)"
+ },
+ "true_to_plastic": {
+  "true_strain": "true strain values",
+  "true_stress": "true stress values (Pa)",
+  "E": "Young's modulus (Pa)"
+ },
+ "extend_hollomon": {
+  "eps_p": "plastic strain values of the hardening table",
+  "sigma": "flow stress values of the table (Pa)",
+  "eps_p_max": "plastic strain to extrapolate up to",
+  "n_add": "number of extrapolated points to add"
+ },
+ "ramberg_osgood_n": {
+  "E": "Young's modulus (Pa)",
+  "sy": "0.2% offset yield strength (Pa)",
+  "su": "ultimate tensile strength (Pa)",
+  "e_u": "uniform engineering strain at ultimate"
+ },
+ "ramberg_osgood_curve": {
+  "mat": "metal material from the library",
+  "e_u": "uniform engineering strain at ultimate, estimated if omitted",
+  "n_pts": "number of curve points"
+ },
+ "johnson_cook_curve": {
+  "mat": "material from the library with Johnson-Cook parameters",
+  "rate": "plastic strain rate (1/s)",
+  "T": "material temperature (K)",
+  "eps_p_max": "maximum plastic strain to evaluate",
+  "n_pts": "number of curve points"
+ },
+ "linear_to_failure_curve": {
+  "name": "name for the curve",
+  "E": "Young's modulus (Pa)",
+  "s_fail": "failure stress (Pa)",
+  "n_pts": "number of curve points"
+ },
+ "neo_hookean_curve": {
+  "mat": "elastomer material from the library",
+  "stretch_max": "maximum stretch ratio, default from elongation",
+  "n_pts": "number of curve points"
+ },
+ "read_curve_csv": {
+  "path": "file path of the stress-strain CSV",
+  "E": "Young's modulus (Pa), else from file or slope",
+  "measure": "strain measure in file: engineering, true or plastic",
+  "name": "name for the curve"
+ },
+ "load_curve": {
+  "text_or_key": "material name or loose text",
+  "curve_dir": "folder for curve CSVs, default library folder",
+  "prefer": "curve source: None, user, jc or ro",
+  "write": "save the resulting curve as CSV, true/false",
+  "rate": "strain rate for Johnson-Cook fits (1/s)"
+ },
+ "curve_from_fit": {
+  "mat": "material from the library",
+  "fit": "published fit record from the fits database",
+  "eps_p_max": "maximum plastic strain to evaluate",
+  "n_pts": "number of curve points",
+  "rate": "strain rate for Johnson-Cook fits (1/s)"
+ },
+ "material_property": {
+  "material": "material name or loose text",
+  "prop": "property name: E, nu, rho, sy, su, elong, G, tau_y, k, cp, alpha"
+ },
+ "hardening_stress": {
+  "law": "hardening law: hollomon, swift, voce, ludwik or johnson_cook",
+  "eps_p": "equivalent plastic strain",
+  "K": "strength coefficient (Pa)",
+  "n": "strain hardening exponent",
+  "eps0": "Swift pre-strain offset",
+  "sigma0": "initial yield stress (Pa)",
+  "Q": "Voce saturation stress increase (Pa)",
+  "b": "Voce saturation rate",
+  "A": "Johnson-Cook yield stress (Pa)",
+  "B": "Johnson-Cook hardening modulus (Pa)",
+  "C": "Johnson-Cook strain rate coefficient",
+  "m": "Johnson-Cook thermal softening exponent",
+  "Tm": "melting temperature (K)",
+  "Tr": "reference (room) temperature (K)",
+  "rate": "plastic strain rate (1/s)",
+  "T": "material temperature (K), default Tr",
+  "rate0": "Johnson-Cook reference strain rate (1/s)"
+ },
+ "laminate_card": {
+  "text": "lamina and layup text, e.g. T300/5208 [0/+-45/90]2s",
+  "lamina": "custom lamina properties dict, overrides text",
+  "layup": "laminate layup code, overrides text",
+  "t_ply": "ply thickness (m)",
+  "name": "name for the card",
+  "criterion": "failure criterion: max_stress, tsai_hill or tsai_wu"
+ },
+ "load_card": {
+  "name": "saved laminate card name",
+  "directory": "folder of saved cards, default cards/user"
+ },
+ "render_laminate_card": {
+  "card": "laminate card, from laminate_card",
+  "path_no_ext": "output image path without file extension"
+ },
+ "isotropic_card": {
+  "text": "material name or loose text"
+ },
+ "challen_oxley_mu": {
+  "theta": "wedge attack angle (rad)",
+  "f": "interface shear factor, 0 to 1"
+ },
+ "effective_modulus": {
+  "E1": "Young's modulus of body 1 (Pa)",
+  "nu1": "Poisson's ratio of body 1",
+  "E2": "Young's modulus of body 2 (Pa)",
+  "nu2": "Poisson's ratio of body 2"
+ },
+ "effective_radius": {
+  "R1": "radius of curvature of body 1 (m)",
+  "R2": "radius of curvature of body 2 (m), inf for flat, negative concave"
+ },
+ "hertz_sphere_stress": {
+  "F": "normal contact force (N)",
+  "Estar": "effective contact modulus E* (Pa), from effective_modulus",
+  "Rstar": "effective contact radius R* (m), from effective_radius",
+  "nu": "Poisson's ratio"
+ },
+ "hertz_cylinder_stress": {
+  "F_per_L": "contact force per unit length (N/m)",
+  "Estar": "effective contact modulus E* (Pa), from effective_modulus",
+  "Rstar": "effective contact radius R* (m), from effective_radius"
+ },
+ "hertz_impact": {
+  "m_star": "effective mass m1 m2/(m1+m2) (kg)",
+  "v": "impact approach speed (m/s)",
+  "Estar": "effective contact modulus E* (Pa), from effective_modulus",
+  "Rstar": "effective contact radius R* (m), from effective_radius"
+ },
+ "flat_punch_stiffness": {
+  "a": "flat punch radius (m)",
+  "Estar": "effective contact modulus E* (Pa), from effective_modulus"
+ },
+ "plastic_indentation_table": {
+  "R": "tooth corner radius (m)",
+  "Y": "yield strength of indented surface (Pa)",
+  "Estar": "effective contact modulus E* (Pa), from effective_modulus",
+  "depth_max": "maximum plastic indentation depth in table (m)",
+  "n": "number of table points"
+ },
+ "damping_for_restitution": {
+  "e": "coefficient of restitution, 0 to 1",
+  "k": "contact spring stiffness (N/m)",
+  "m": "effective contact mass (kg)"
+ },
+ "effective_mass_at_point": {
+  "m": "body mass (kg), inf for grounded",
+  "I": "body moment of inertia about its COM (kg m^2)",
+  "r_perp": "lever arm from COM to impulse line (m)"
+ },
+ "collision_impulse": {
+  "v_rel_normal": "relative normal approach speed (m/s)",
+  "m_eff1": "effective mass of body 1 (kg)",
+  "m_eff2": "effective mass of body 2 (kg)",
+  "e": "coefficient of restitution, 0 to 1"
+ },
+ "spinner_strike": {
+  "I_rotor": "spinning blade moment of inertia (kg m^2)",
+  "omega": "blade angular speed (rad/s)",
+  "R_tip": "blade tip impact radius (m)",
+  "m_target": "target mass (kg)",
+  "e": "coefficient of restitution, 0 to 1",
+  "I_target": "target moment of inertia (kg m^2), inf ignores rotation",
+  "r_target": "target lever arm from COM to hit line (m)",
+  "m_attacker": "attacker frame mass (kg), inf for grounded axle"
+ },
+ "hysteresis_damping_factor": {
+  "e": "coefficient of restitution, 0 to 1",
+  "v_impact": "impact approach speed (m/s)",
+  "model": "damping model: hunt_crossley, lankarani_nikravesh or flores"
+ },
+ "restitution_force_terminated": {
+  "k": "contact spring stiffness (N/m)",
+  "m": "effective contact mass (kg)",
+  "c": "dashpot damping coefficient (N s/m)"
+ },
+ "curve_to_spring_table": {
+  "curve": "stress-strain curve, from a curve block",
+  "A": "bar cross-section area (m^2)",
+  "L": "bar length (m)",
+  "extend_to": "plastic strain to extend the table to"
+ },
+ "hinge_to_spring_table": {
+  "hinge": "plastic hinge moment-rotation table, from hinge_table"
+ },
+ "hyperelastic_stress": {
+  "model": "hyperelastic model: neo_hookean or mooney_rivlin",
+  "stretch": "uniaxial stretch ratio lambda",
+  "mu": "shear modulus, about E/3 (Pa)",
+  "C10": "Mooney-Rivlin constant C10 (Pa)",
+  "C01": "Mooney-Rivlin constant C01 (Pa)"
+ },
+ "magic_formula_fit": {
+  "mu_peak": "peak friction coefficient",
+  "mu_slide": "full sliding friction coefficient",
+  "slip_peak": "slip ratio at peak friction",
+  "slip_stiffness": "initial slope of friction vs slip"
+ },
+ "brush_mu_s_for_peak": {
+  "mu_peak": "measured peak friction coefficient",
+  "mu_k": "kinetic (sliding) friction coefficient"
+ },
+ "axle_load_transfer": {
+  "m": "vehicle mass (kg)",
+  "g": "gravitational acceleration (m/s^2)",
+  "L": "wheelbase, front to rear axle (m)",
+  "c_rear": "CG distance ahead of rear axle (m)",
+  "h": "CG height above ground (m)",
+  "ax": "forward acceleration (m/s^2)",
+  "grade": "slope angle of the ground (rad)"
+ },
+ "motor_from_kv": {
+  "kv_rpm_per_V": "motor velocity constant Kv (rpm/V)",
+  "R_phase": "winding resistance (ohm)",
+  "I_limit": "ESC current limit (A)",
+  "J_rotor": "motor rotor moment of inertia (kg m^2)",
+  "I0": "no-load current (A)",
+  "name": "name for the motor"
+ },
+ "motor_from_curve": {
+  "V_test": "voltage of the vendor curve (V)",
+  "rpm_free_out": "output shaft free speed (rpm)",
+  "stall_torque_out": "output shaft stall torque (N m)",
+  "stall_current": "stall current (A)",
+  "G": "gear ratio, motor turns per output turn"
+ },
+ "lipo_ocv": {
+  "soc": "battery state of charge, 0 to 1",
+  "cells": "number of series cells",
+  "v_full": "cell voltage at full charge (V)",
+  "v_empty": "cell voltage when empty (V)",
+  "v_nom": "cell voltage at 50% charge (V)"
+ },
+ "spin_up_time": {
+  "J_total": "load moment of inertia (kg m^2)",
+  "Kt": "motor torque constant (N m/A)",
+  "R": "motor winding resistance (ohm)",
+  "V": "supply voltage (V)",
+  "I_limit": "motor current limit (A)",
+  "w_target": "target load angular speed (rad/s)",
+  "G": "gear ratio, motor turns per output turn"
+ },
+ "backdrive_efficiency": {
+  "eta_f": "forward gearbox efficiency, 0 to 1",
+  "G": "gear ratio, motor turns per output turn"
+ },
+ "I_disk": {
+  "m": "mass (kg)",
+  "R": "disk radius (m)"
+ },
+ "I_annulus": {
+  "m": "mass (kg)",
+  "Ri": "inner radius (m)",
+  "Ro": "outer radius (m)"
+ },
+ "I_thin_ring": {
+  "m": "mass (kg)",
+  "R": "ring radius (m)"
+ },
+ "I_rod_center": {
+  "m": "mass (kg)",
+  "L": "rod length (m)"
+ },
+ "I_rod_end": {
+  "m": "mass (kg)",
+  "L": "rod length (m)"
+ },
+ "I_rect_plate": {
+  "m": "mass (kg)",
+  "a": "plate side length (m)",
+  "b": "plate other side length (m)"
+ },
+ "I_cylinder_transverse": {
+  "m": "mass (kg)",
+  "R": "cylinder radius (m)",
+  "L": "cylinder length (m)"
+ },
+ "I_sphere": {
+  "m": "mass (kg)",
+  "R": "sphere radius (m)"
+ },
+ "parallel_axis": {
+  "I_cm": "moment of inertia about the COM (kg m^2)",
+  "m": "mass (kg)",
+  "d": "distance between the parallel axes (m)"
+ },
+ "polygon_plate": {
+  "xy": "outline vertices [(x, y), ...] (m)",
+  "t": "plate thickness (m)",
+  "rho": "material density (kg/m^3)",
+  "holes": "list of hole outline vertex lists (m)"
+ },
+ "assemble": {
+  "components": "parts list [(name, m, x, y, I_own), ...]"
+ },
+ "solve_remainder_centroid": {
+  "components": "known parts list [(name, m, x, ...), ...]",
+  "m_total": "measured total mass (kg)",
+  "x_com_target": "measured center of mass x (m)"
+ },
+ "mass_properties": {
+  "shape": "shape: rod, disc, ring, thin_ring, rect_plate, box, cylinder, tube, sphere",
+  "mass": "total mass (kg)",
+  "density": "material density (kg/m^3)",
+  "material": "material name from the library",
+  "L": "length along z (m)",
+  "R": "radius (m)",
+  "Ri": "inner radius (m)",
+  "Ro": "outer radius (m)",
+  "a": "side length along x (m)",
+  "b": "side length along y (m)",
+  "c": "side length along z (m)",
+  "t": "thickness along z (m)",
+  "A": "cross-section area for rod or ring wire (m^2)"
+ },
+ "I_box_tensor": {
+  "m": "mass (kg)",
+  "lx": "box side length along x (m)",
+  "ly": "box side length along y (m)",
+  "lz": "box side length along z (m)"
+ },
+ "parallel_axis_tensor": {
+  "I_cm": "inertia tensor about the COM (kg m^2)",
+  "m": "mass (kg)",
+  "d": "offset vector from COM [x, y, z] (m)"
+ },
+ "first_contact_delta": {
+  "v_close": "closing speed between the robots (m/s)",
+  "rpm": "weapon spin speed (rev/min)",
+  "D": "weapon blade tip diameter (m)",
+  "n_teeth": "number of teeth or impactors on weapon (no unit)"
+ },
+ "first_contact_stats": {
+  "delta": "closing distance per tooth pass over blade radius (no unit)"
+ },
+ "sample_first_contact": {
+  "delta": "closing distance per tooth pass over blade radius (no unit)",
+  "n": "number of random angles to draw",
+  "rng": "NumPy random generator, None makes a new one"
+ },
+ "outline_from_image": {
+  "path": "file path to the part image",
+  "px_per_m": "image scale in pixels per meter (px/m)",
+  "ref_length_m": "known reference length on the image (m)",
+  "ref_length_px": "same reference length measured in pixels (px)",
+  "dark_part": "True if part is darker than background",
+  "threshold": "grayscale cutoff for the part, None uses Otsu",
+  "simplify_tol_px": "outline simplification tolerance (px)",
+  "min_hole_area_px": "smallest hole area kept as a hole (px^2)"
+ },
+ "outline_from_dxf": {
+  "path": "file path to the DXF drawing",
+  "units_to_m": "DXF unit to meter scale factor, 0.001 for mm"
+ },
+ "outline_rounded_bar": {
+  "L": "bar or blade length (m)",
+  "W": "bar or blade width (m)",
+  "r_corner": "corner fillet radius (m)",
+  "n_arc": "number of points per rounded corner"
+ },
+ "glyph_sheet": {
+  "path_no_ext": "output file path without extension"
+ },
+ "results_report": {
+  "out_dir": "folder to write report files into",
+  "name": "sim name used in titles and filenames",
+  "question": "engineering question the sim answers, as text",
+  "answer": "headline answer to the question, as text",
+  "rep": "verification Report object from verify_all",
+  "history": "time history dict with key t, optional",
+  "history_panels": "list of panel specs for history plots",
+  "sweep": "design variable sweep results dict, optional",
+  "findings": "list of key finding text lines",
+  "assumptions": "list of modeling assumption text lines",
+  "sources": "list of reference or citation text lines",
+  "extra_svgs": "extra SVG diagram file paths to include"
+ },
+ "check_figure": {
+  "fig": "Matplotlib figure to check for layout problems",
+  "tol_px": "overlap tolerance before flagging (px)",
+  "check_axes_spill": "True also flags text spilling into other axes"
+ },
+ "qa_summary": {
+  "results": "dict of figure path to layout problem list"
+ },
+ "EnergyLedger": {},
+ "dt_convergence": {
+  "run_metric": "function returning a result metric for given dt",
+  "dt": "baseline time step (s)",
+  "factor": "time step reduction factor (no unit)",
+  "tol": "allowed relative change for convergence (no unit)"
+ },
+ "richardson": {
+  "m_h": "result metric at step size h",
+  "m_h2": "result metric at step size h over factor",
+  "order": "order of accuracy of the method (no unit)",
+  "factor": "step size refinement ratio (no unit)"
+ },
+ "verify_all": {
+  "spec": "SimSpec describing the sim to verify",
+  "skip": "checks to skip: convergence, sensitivity, monte_carlo"
+ },
+ "plot_report": {
+  "rep": "verification Report object from verify_all",
+  "path": "output figure file path, PNG or PDF"
+ },
+ "assess_failure_modes": {
+  "modes": "list of user FailureMode objects to evaluate",
+  "nominal_out": "output metrics dict of the nominal run",
+  "mc_outputs": "list of Monte Carlo output metric dicts",
+  "mc_inputs": "Monte Carlo input samples array, rows per sample",
+  "input_names": "names of the Monte Carlo input columns"
+ },
+ "candidate_failure_modes": {
+  "part_type": "part kind: ramp, blade, shaft, plate, drive, mount"
+ },
+ "pulse_metrics": {
+  "t": "time samples array (s)",
+  "F": "force history samples array (N)",
+  "frac": "fraction of peak marking pulse start and end"
+ },
+ "split_pulses": {
+  "t": "time samples array (s)",
+  "F": "force history samples array (N)",
+  "frac": "fraction of overall peak counted as a pulse",
+  "min_gap": "gaps shorter than this are merged (s)"
+ },
+ "half_sine_train": {
+  "peaks": "peak force of each pulse (N)",
+  "durations": "duration of each pulse (s)",
+  "starts": "start time of each pulse (s)",
+  "t_end": "end time of the generated history (s)",
+  "n_per": "number of samples per pulse"
+ },
+ "fe_load_table": {
+  "t": "time samples array (s)",
+  "F": "force history samples, one or more columns (N)",
+  "tol_frac": "allowed error as fraction of peak force",
+  "max_points": "maximum number of rows in the table"
+ },
+ "write_load_table": {
+  "path": "output text file path for the load table",
+  "t": "time samples array (s)",
+  "Fx": "force in x direction (N)",
+  "Fy": "force in y direction (N)",
+  "Fz": "force in z direction (N)",
+  "header": "True writes a column header line",
+  "notes": "extra comment lines written at top"
+ },
+ "isa_troposphere": {
+  "h": "geometric altitude above sea level (m)"
+ },
+ "reynolds": {
+  "rho": "fluid density (kg/m^3)",
+  "v": "flow speed (m/s)",
+  "L": "characteristic length (m)",
+  "mu": "dynamic viscosity (Pa s)"
+ },
+ "dynamic_pressure": {
+  "rho": "fluid density (kg/m^3)",
+  "v": "flow speed (m/s)"
+ },
+ "mach": {
+  "v": "flow speed (m/s)",
+  "T": "air static temperature (K)",
+  "gamma": "ratio of specific heats (no unit)",
+  "R": "specific gas constant (J/kg K)"
+ },
+ "cd_sphere": {
+  "Re": "Reynolds number based on sphere diameter (no unit)"
+ },
+ "flat_plate_cf": {
+  "Re_L": "Reynolds number based on plate length (no unit)",
+  "turbulent": "force turbulent True, laminar False, None auto"
+ },
+ "disk_windage_torque": {
+  "omega": "disk angular speed (rad/s)",
+  "R": "disk radius (m)",
+  "rho": "air density (kg/m^3)",
+  "mu": "air dynamic viscosity (Pa s)"
+ },
+ "thin_airfoil_cl": {
+  "alpha": "angle of attack (rad)",
+  "alpha_L0": "zero lift angle of attack (rad)"
+ },
+ "finite_wing_lift_slope": {
+  "AR": "wing aspect ratio (no unit)",
+  "a0": "2D airfoil lift curve slope (1/rad)",
+  "sweep": "wing sweep angle (rad)"
+ },
+ "induced_drag_cd": {
+  "CL": "wing lift coefficient (no unit)",
+  "AR": "wing aspect ratio (no unit)",
+  "e": "Oswald span efficiency factor (no unit)"
+ },
+ "ideal_hover_power": {
+  "T": "required thrust (N)",
+  "rho": "air density (kg/m^3)",
+  "A_disk": "rotor or propeller disk area (m^2)"
+ },
+ "propeller_thrust": {
+  "CT": "propeller thrust coefficient (no unit)",
+  "rho": "air density (kg/m^3)",
+  "n_rps": "propeller speed (rev/s)",
+  "D": "propeller diameter (m)"
+ },
+ "terminal_velocity": {
+  "m": "body mass (kg)",
+  "g": "gravitational acceleration (m/s^2)",
+  "rho": "fluid density (kg/m^3)",
+  "Cd": "drag coefficient (no unit)",
+  "A": "frontal reference area (m^2)"
+ },
+ "R_plane_wall": {
+  "L": "wall thickness (m)",
+  "k": "thermal conductivity (W/m K)",
+  "A": "wall area normal to heat flow (m^2)"
+ },
+ "R_cylinder": {
+  "ri": "inner radius of cylindrical shell (m)",
+  "ro": "outer radius of cylindrical shell (m)",
+  "k": "thermal conductivity (W/m K)",
+  "L": "cylinder length (m)"
+ },
+ "R_sphere": {
+  "ri": "inner radius of spherical shell (m)",
+  "ro": "outer radius of spherical shell (m)",
+  "k": "thermal conductivity (W/m K)"
+ },
+ "R_convection": {
+  "h": "convection heat transfer coefficient (W/m^2 K)",
+  "A": "surface area exposed to fluid (m^2)"
+ },
+ "h_radiation": {
+  "eps": "surface emissivity (no unit)",
+  "T": "surface temperature (K)",
+  "T_sur": "surroundings temperature (K)"
+ },
+ "fin_efficiency": {
+  "h": "convection heat transfer coefficient (W/m^2 K)",
+  "k": "fin thermal conductivity (W/m K)",
+  "t": "fin thickness (m)",
+  "L": "fin length from base to tip (m)"
+ },
+ "nu_flat_plate": {
+  "Re_L": "Reynolds number based on plate length (no unit)",
+  "Pr": "Prandtl number of the fluid (no unit)",
+  "Re_crit": "critical Reynolds number for transition (no unit)"
+ },
+ "nu_cylinder_crossflow": {
+  "Re": "Reynolds number based on cylinder diameter (no unit)",
+  "Pr": "Prandtl number of the fluid (no unit)"
+ },
+ "nu_vertical_plate_natural": {
+  "Ra": "Rayleigh number based on plate height (no unit)",
+  "Pr": "Prandtl number of the fluid (no unit)"
+ },
+ "nu_horizontal_cylinder_natural": {
+  "Ra": "Rayleigh number based on cylinder diameter (no unit)",
+  "Pr": "Prandtl number of the fluid (no unit)"
+ },
+ "nu_pipe_gnielinski": {
+  "Re": "Reynolds number based on pipe diameter (no unit)",
+  "Pr": "Prandtl number of the fluid (no unit)"
+ },
+ "rayleigh": {
+  "g": "gravitational acceleration (m/s^2)",
+  "beta": "volumetric thermal expansion coefficient (1/K)",
+  "dT": "surface to fluid temperature difference (K)",
+  "L": "characteristic length (m)",
+  "nu_kin": "kinematic viscosity (m^2/s)",
+  "alpha_th": "thermal diffusivity (m^2/s)"
+ },
+ "biot_number": {
+  "h": "convection heat transfer coefficient (W/m^2 K)",
+  "Lc": "characteristic length, volume over area (m)",
+  "k": "solid thermal conductivity (W/m K)"
+ },
+ "lumped_temperature": {
+  "t": "time since start (s)",
+  "T0": "initial body temperature (K)",
+  "T_inf": "surrounding fluid temperature (K)",
+  "h": "convection heat transfer coefficient (W/m^2 K)",
+  "A": "body surface area (m^2)",
+  "m": "body mass (kg)",
+  "cp": "specific heat capacity (J/kg K)",
+  "q_gen": "internal heat generation rate (W)"
+ },
+ "plastic_heating": {
+  "W_plastic": "plastic work done on the part (J)",
+  "m": "mass of heated material (kg)",
+  "cp": "specific heat capacity (J/kg K)",
+  "beta": "Taylor-Quinney fraction of work to heat"
+ },
+ "friction_heat_partition": {
+  "k1": "body 1 thermal conductivity (W/m K)",
+  "rho1": "body 1 density (kg/m^3)",
+  "c1": "body 1 specific heat capacity (J/kg K)",
+  "k2": "body 2 thermal conductivity (W/m K)",
+  "rho2": "body 2 density (kg/m^3)",
+  "c2": "body 2 specific heat capacity (J/kg K)"
+ },
+ "thermal_resistance": {
+  "kind": "path type: plane_wall, cylinder, sphere, convection",
+  "k": "thermal conductivity (W/m K)",
+  "A": "area normal to heat flow (m^2)",
+  "L": "wall thickness or cylinder length (m)",
+  "ri": "inner radius of shell (m)",
+  "ro": "outer radius of shell (m)",
+  "h": "convection heat transfer coefficient (W/m^2 K)"
+ },
+ "nusselt": {
+  "case": "flat_plate, cylinder_crossflow, vertical_plate_natural, horizontal_cylinder_natural, pipe_gnielinski",
+  "Pr": "Prandtl number of the fluid (no unit)",
+  "Re": "Reynolds number for forced convection cases (no unit)",
+  "Ra": "Rayleigh number for natural convection cases (no unit)",
+  "Re_crit": "critical Reynolds number for plate transition (no unit)"
+ },
+ "euler_step": {
+  "f": "derivative function f(s, t, p) of state",
+  "s": "current state vector",
+  "t": "current time (s)",
+  "dt": "time step (s)",
+  "p": "model parameters passed to f"
+ },
+ "semi_implicit_step": {
+  "acc": "acceleration function a(x, v, t, p)",
+  "x": "current position (m)",
+  "v": "current velocity (m/s)",
+  "t": "current time (s)",
+  "dt": "time step (s)",
+  "p": "model parameters passed to acc"
+ },
+ "velocity_verlet_step": {
+  "acc": "acceleration function a(x, v, t, p)",
+  "x": "current position (m)",
+  "v": "current velocity (m/s)",
+  "a": "current acceleration (m/s^2)",
+  "t": "current time (s)",
+  "dt": "time step (s)",
+  "p": "model parameters passed to acc"
+ },
+ "rk4_step": {
+  "f": "derivative function f(s, t, p) of state",
+  "s": "current state vector",
+  "t": "current time (s)",
+  "dt": "time step (s)",
+  "p": "model parameters passed to f"
+ },
+ "run_fixed": {
+  "step": "step function step(state, t, dt) returning state",
+  "state0": "initial state",
+  "t_end": "simulation end time (s)",
+  "dt": "time step (s)",
+  "log_every": "save state every this many steps",
+  "kw": "extra keyword arguments passed to step"
+ },
+ "critical_dt_spring": {
+  "k": "spring stiffness (N/m)",
+  "m": "mass (kg)",
+  "zeta": "damping ratio (no unit)"
+ },
+ "critical_dt_rotational": {
+  "k_theta": "torsional spring stiffness (N m/rad)",
+  "I": "mass moment of inertia (kg m^2)"
+ },
+ "dt_for_contact": {
+  "t_contact": "contact event duration (s)",
+  "samples": "time steps wanted across the contact"
+ },
+ "courant_dt": {
+  "L_element": "element length (m)",
+  "E": "Young's modulus (Pa)",
+  "rho": "material density (kg/m^3)",
+  "safety": "safety factor on the Courant step (no unit)"
+ },
+ "recommend_dt": {
+  "checks": "list of critical time steps (s)",
+  "safety": "fraction of smallest critical step used (no unit)"
+ },
+ "__domains__": {
+  "thermal": "Heat transfer: conduction and convection resistances, Nusselt correlations, lumped heating, plastic and friction heating",
+  "aero": "Air properties and aerodynamics: atmosphere, Reynolds and Mach numbers, drag, lift, windage, propeller and hover thrust",
+  "diagnostics": "Checking and reporting sims: energy ledgers, time step convergence, verification, failure modes, load pulses, reports",
+  "integrators": "Time stepping: explicit step schemes, a fixed step driver, and stable time step size estimates",
+  "geometry": "Part shapes and contact geometry: outlines from images, DXF or bars, and spinner first contact angles",
+  "structures": "Beams, plates, rings, columns, bolts, sections and fatigue: closed-form strength and stiffness answers",
+  "materials": "Material library and curves: properties by name, stress-strain curves, composite layups and lamina cards",
+  "contact": "Contact stiffness and impact: Hertz contact, effective modulus and radius, penalty and restitution estimates",
+  "friction": "Friction and tires: Coulomb and slip-curve models for sliding, wheels and traction",
+  "rigid_body": "Mass properties and rigid-body dynamics: inertia of shapes, assemblies, spin, gyroscopic and impact transfer",
+  "actuators": "Motors, ESCs and batteries: motor constants from curves, spin-up time, battery sag",
+  "constitutive": "Material laws for elements: elastic, plastic and hyperelastic force tables"
+ },
+ "cantilever": {
+  "L": "cantilever length (m)",
+  "load": "load case: point, moment, uniform, linear or csv",
+  "value": "load size: force (N), moment (N m) or load per length (N/m)",
+  "a": "where the load sits or starts, from the fixed end (m)",
+  "b": "where a distributed load ends, from the fixed end (m)",
+  "value_b": "linear load: load per length at b (N/m)",
+  "csv_file": "distributed load table: x, force per length, moment per length",
+  "more_loads": "extra load cases to add, a list of {load, value, a, b}",
+  "E": "Young's modulus (Pa)",
+  "I": "second moment of area (m^4)",
+  "EI": "bending stiffness E times I (N m^2)",
+  "mat": "material name from the library",
+  "sec": "cross-section, from a section block (rectangle, tube...)",
+  "c": "neutral axis to outer fibre, for stress (m)",
+  "csv_x_unit": "unit of the CSV x column (default m)",
+  "csv_unit": "unit of the CSV force-per-length column (default N/m)",
+  "csv_m_unit": "unit of the CSV moment-per-length column (default N m/m)",
+  "n": "points along the beam for the integration"
+ }
+}

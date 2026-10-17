@@ -103,7 +103,29 @@ ELEMENTS = [
 ]
 
 
+# older one-case blocks the general cantilever covers: kept for files that use them, left out of the Add menu
+SUPERSEDED = {"cantilever_end_load": "cantilever", "cantilever_point_at": "cantilever", "cantilever_uniform": "cantilever",
+              "cantilever_end_moment": "cantilever", "cantilever_tip_deflection_point_at": "cantilever"}
+_PD = None
+
+
+def _param_docs():
+    """One short description per block argument (docs/param_docs.json), shown in the editor and the library."""
+    global _PD
+    if _PD is None:
+        import json, os
+        try:
+            _PD = json.load(open(os.path.join(os.path.dirname(__file__), "param_docs.json"), encoding="utf-8"))
+        except Exception:
+            _PD = {}
+    return _PD
+
+
 def _el_fig(name):
+    return FG.place_labels("el-" + name, _el_fig_raw(name))
+
+
+def _el_fig_raw(name):
     a = FG._box(8, 30, 34, 30, "A") + FG._box(118, 30, 34, 30, "B")
     mid = {"spring": FG._spring(42, 118, 45),
            "dashpot": '<line x1="42" y1="45" x2="70" y2="45" stroke="currentColor" stroke-width="1.4"/>'
@@ -122,7 +144,7 @@ def _el_fig(name):
            "drag": '<path d="M48,32 q8,6 0,12 q-8,6 0,12" fill="none" style="stroke:var(--acc)"/>'
                    '<path d="M64,32 q8,6 0,12 q-8,6 0,12" fill="none" style="stroke:var(--acc)"/>'
                    '<line x1="80" y1="45" x2="118" y2="45" stroke="currentColor"/>',
-           "force": FG._arrow(60, 45, 116, 45),
+           "force": FG._arrow(60, 45, 113, 45),
            "drive": FG._box(52, 32, 40, 26, "M") + '<line x1="92" y1="45" x2="118" y2="45" stroke="currentColor"/>',
            "pin": '<line x1="42" y1="45" x2="76" y2="45" stroke="currentColor" stroke-width="1.4"/>' + FG._circle(80, 45, 5, soft=False) +
                   '<line x1="84" y1="45" x2="118" y2="45" stroke="currentColor" stroke-width="1.4"/>',
@@ -135,12 +157,12 @@ def _el_fig(name):
                      '<rect x="66" y="44" width="28" height="12" style="fill:var(--soft)" stroke="currentColor"/>',
            "beam": '<path d="M42,45 C70,45 90,52 118,60" fill="none" stroke="currentColor" stroke-width="3"/>'}[name]
     if name == "impact":                         # ball dropping onto a surface, with a bounce arrow
-        s = (FG._box(14, 62, 132, 10, "ground") + FG._circle(60, 40, 12) + FG._arrow(60, 10, 60, 26) +
-             FG._arrow(96, 58, 112, 30) + FG._text(30, 88, "hit: speed out = e x speed in"))
+        s = (FG._box(14, 58, 132, 15, "ground") + FG._circle(60, 38, 12) + FG._arrow(60, 8, 60, 24) +
+             FG._arrow(96, 54, 112, 28) + FG._text(30, 88, "hit: speed out = e x speed in"))
         return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
 
     if name == "contact_friction":                 # block on a surface: normal force down, friction along it
-        s = (FG._box(14, 54, 132, 12, "B") + FG._box(56, 28, 44, 26, "A") + FG._arrow(78, 14, 78, 27) + FG._arrow(56, 48, 34, 48) +
+        s = (FG._box(14, 54, 132, 16, "B") + FG._box(56, 28, 44, 26, "A") + FG._arrow(78, 14, 78, 27) + FG._arrow(56, 48, 34, 48) +
              FG._pt(78, 54) + FG._text(26, 84, "friction = mu x contact force"))
         return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
     if name == "pin":
@@ -153,8 +175,8 @@ def _el_fig(name):
         return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
     if name in ("force", "drag", "drive"):
         a = FG._box(118, 30, 34, 30, "body")
-    s = a + mid + FG._pt(42 if name not in ("force", "drag", "drive") else 116, 45)
     one = name in ("force", "drag", "drive")
+    s = a + mid + ("" if one else FG._pt(42, 45))     # one point per body end: a one-body element has just the one
     s += FG._pt(118, 45) + FG._text(46, 84, "measure s = body" if one else "measure s = A - B")
     return f'<symbol id="el-{name}" viewBox="0 0 160 90">{s}</symbol>'
 
@@ -235,7 +257,8 @@ def entries(include_internal=False):
         py = getattr(b.func, "py_func", b.func)
         try:
             sig = inspect.signature(py)
-            params = [dict(name=k, default=(None if p.default is inspect._empty else repr(p.default)))
+            pd = _param_docs().get(b.name, {})
+            params = [dict(name=k, default=(None if p.default is inspect._empty else repr(p.default)), doc=pd.get(k, ""))
                       for k, p in sig.parameters.items() if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)]
             if any(p.kind == p.VAR_POSITIONAL for p in sig.parameters.values()):
                 params.append(dict(name="*" + next(k for k, p in sig.parameters.items() if p.kind == p.VAR_POSITIONAL),
@@ -246,7 +269,8 @@ def entries(include_internal=False):
         out.append(dict(name=b.name, domain=b.domain, category=b.category, path=b.path, kind=b.kind,
                         source=b.source, summary=b.summary, doc=doc, params=params, outputs=_outputs(b.func),
                         usage=_usage(b, params), fig=FG.figure_for(b), tags=list(b.tags),
-                        legacy=b.source.startswith("LEGACY"), element=KERNEL_ELEMENT.get(b.name, "")))
+                        legacy=b.source.startswith("LEGACY"), element=KERNEL_ELEMENT.get(b.name, ""),
+                        superseded=SUPERSEDED.get(b.name, "")))
     return out
 
 

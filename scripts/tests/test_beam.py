@@ -187,3 +187,35 @@ def test_plastic_hinge_3d():
     lo = cant3("tip.y", -0.7 * Mp / L, n=4, t_end=0.6, extra_el=", hinge: auto, material: 4130_normalized",
                extra_out=out).run()
     assert hi["hs"] > 0.05 and lo["hs"] < 1e-3
+
+
+# ---- the general cantilever: every load case against Roark Table 8.1
+def test_general_cantilever_cases():
+    import os, tempfile
+    from simblocks.structures.beams.cantilever_general import cantilever
+    EI, L = 100.0, 1.0
+    assert cantilever(L, EI=EI, value=10)["tip_deflection"] == pytest.approx(10 / (3 * EI), rel=1e-5)
+    assert cantilever(L, EI=EI, load="moment", value=5)["tip_deflection"] == pytest.approx(5 / (2 * EI), rel=1e-5)
+    assert cantilever(L, EI=EI, load="uniform", value=12)["tip_deflection"] == pytest.approx(12 / (8 * EI), rel=1e-5)
+    a = 0.5
+    r = cantilever(L, EI=EI, load="uniform", value=12, a=a, b=L)
+    assert r["tip_deflection"] == pytest.approx(12 / (24 * EI) * (3 * L ** 4 - 4 * a ** 3 * L + a ** 4), rel=1e-3)
+    r = cantilever(L, EI=EI, load="linear", value=0, value_b=12)
+    assert r["tip_deflection"] == pytest.approx(11 * 12 * L ** 4 / (120 * EI), rel=1e-4)
+    assert r["root_moment"] == pytest.approx(4.0, rel=1e-4)
+    r = cantilever(L, EI=EI, load="point", value=10, a=0.4)
+    assert r["tip_deflection"] == pytest.approx(10 * 0.16 * (3 - 0.4) / (6 * EI), rel=1e-4)
+    r = cantilever(L, EI=EI, value=10, more_loads=[{"load": "uniform", "value": 12}])
+    assert r["tip_deflection"] == pytest.approx(10 / (3 * EI) + 12 / (8 * EI), rel=1e-5)
+    d = tempfile.mkdtemp(); f = os.path.join(d, "w.csv")
+    open(f, "w").write("x_mm,w\n0,12\n1000,12\n")
+    r = cantilever(L, EI=EI, load="csv", csv_file=f, csv_x_unit="mm")
+    assert r["tip_deflection"] == pytest.approx(12 / (8 * EI), rel=1e-4)
+
+
+def test_general_cantilever_stress_from_material_and_section():
+    from simblocks.structures.beams.cantilever_general import cantilever
+    from simblocks.structures.sections.properties import rectangle
+    sec = rectangle(0.02, 0.004)
+    r = cantilever(0.3, mat="6061-T6", sec=sec, value=10)
+    assert r["max_stress"] == pytest.approx(10 * 0.3 * 0.002 / sec["Ix"], rel=1e-6)

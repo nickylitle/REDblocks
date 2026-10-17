@@ -186,6 +186,7 @@ textarea{width:100%;resize:vertical}
 @keyframes needflash{from{background:transparent}to{background:color-mix(in srgb,var(--warn) 30%,transparent)}}
 .sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair;z-index:6}   /* above a selected wire (wiresTop is z 5), so its end never cuts the socket */
 .sock.in{left:-7px}.sock.out{right:-7px}
+.node .pdoc{margin:-3px 12px 3px 104px;font-size:10.5px;line-height:1.3;color:var(--ink3)}
 .node .errf:is(input,select){border-color:var(--fail)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--fail) 45%,transparent);animation:errpulse 1.6s ease-in-out 2}
 .node .row.errf > label{color:var(--fail)}
 @keyframes errpulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--fail) 25%,transparent)}}
@@ -233,6 +234,7 @@ pre.yaml{font:11.5px/1.5 var(--mono);color:var(--ink2);background:var(--bg);bord
 #menu input{margin:8px;font-size:12.5px}
 #menu .list{overflow:auto;padding:0 6px 8px}
 #menu .grp{font:700 10px var(--mono);letter-spacing:.12em;color:var(--ink3);padding:8px 6px 3px;text-transform:uppercase}
+#mf .mfdesc{flex-basis:100%;font-size:11px;color:var(--ink3);line-height:1.35;margin-top:2px}
 #menu .it{padding:5px 8px;border-radius:4px;cursor:pointer;display:grid;grid-template-columns:10px minmax(0,1fr);gap:8px;align-items:start}
 #menu .it>div{min-width:0}
 #menu .it:hover,#menu .it.hot{background:var(--panel3)}
@@ -1859,7 +1861,8 @@ function nodeHTML(n){
   } else if (n.kind === "builder"){
     const blk = CAT.blocks.find(x => x.name === d.block);
     b += `<div class="hint" title="${esc(blk ? blk.summary + "\n" + blk.source : "")}">${esc(d.block)}${blk ? " · " + esc(blk.kind) : " (not in catalog)"}</div>`;
-    ins.forEach(s => { const p = blk.params.find(x => "a." + x.name === s.key); b += fieldRow(n, s, d.args[s.key.slice(2)] ?? "", p && p.default !== null ? (["None","nan"].includes(p.default) ? "optional" : p.default) : ""); });
+    ins.forEach(s => { const p = blk.params.find(x => "a." + x.name === s.key); b += fieldRow(n, s, d.args[s.key.slice(2)] ?? "", p && p.default !== null ? (["None","nan"].includes(p.default) ? "optional" : p.default) : "");
+      if (p && p.doc) b += `<div class="pdoc">${esc(p.doc)}</div>`; });
     b += `<div class="row"><label>take</label><input data-k="take" value="${esc(d.take)}" placeholder="whole result"></div>`;
   } else if (n.kind === "body" && is3d()){
     b += `<div class="row"><label>kind</label><select data-k="dof">${sel_([["free","moving body"],["ground","ground (fixed)"]], d.dof === "ground" ? "ground" : "free")}</select></div>`;
@@ -2156,11 +2159,13 @@ function refWires(){
     fields.forEach(([m, el, inp]) => {
       if (m.id === n.id || !re.test(inp.value)) return;
       if (m.kind === "value" && exprRefs(m.data.value).includes(nodeName(n))){ const b = sockPos(m.id, "@ref:" + nodeName(n), "in");
-        if (b){ h += `<path d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" style="pointer-events:none"></path>`; return; } }
+        if (b){ const id = "E|" + m.id + "|" + nodeName(n), on = wireSel.has(id);
+          h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>click to select · Delete removes it from the expression</title></path>`; return; } }
       const ex = exactRef(inp.value);
       if (ex && ex.name === nodeName(n) && inp.dataset.fs){ const b = sockPos(m.id, inp.dataset.fs, "in"); if (!b) return;
         const sk = el.querySelector(`.fsock[data-s="${CSS.escape(inp.dataset.fs)}"]`); if (sk) sk.classList.add("on");
-        h += `<path d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" style="pointer-events:none"><title>${esc(nodeName(n))} feeds ${esc(nodeName(m) || m.kind)}</title></path>`; return; }
+        const id = "F|" + m.id + "|" + inp.dataset.fs, on = wireSel.has(id);
+        h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>${esc(nodeName(n))} feeds ${esc(nodeName(m) || m.kind)} · click to select · Delete unplugs</title></path>`; return; }
       const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
       const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
       h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nodeName(n))} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
@@ -2316,7 +2321,10 @@ window.addEventListener("mouseup", e => {
     render();
   }
 });
-function wireClick(e){ const p = e.target.closest("path[data-i]"); if (!p) return; const l = S.links[+p.dataset.i]; if (!l) return;
+function wireClick(e){ const pf = e.target.closest("path[data-f]");
+  if (pf){ const id = pf.dataset.f; if (e.ctrlKey || e.metaKey || e.shiftKey){ wireSel.has(id) ? wireSel.delete(id) : wireSel.add(id); }
+    else { wireSel = new Set([id]); selSet = new Set(); sel = null; renderGroupPanel(); } paintSel(); drawWires(); return; }
+  const p = e.target.closest("path[data-i]"); if (!p) return; const l = S.links[+p.dataset.i]; if (!l) return;
   if (e.ctrlKey || e.metaKey || e.shiftKey){ wireSel.has(l) ? wireSel.delete(l) : wireSel.add(l); }
   else { wireSel = new Set([l]); selSet = new Set(); sel = null; renderGroupPanel(); }
   paintSel(); }
@@ -2538,7 +2546,7 @@ function paintSel(){
 // the status line always describes the selection as it is now (and clears once nothing is selected)
 let selMsgShown = false;
 function selStatus(){
-  const live = S.links.filter(l => wireSel.has(l)).length, nn = [...selSet].filter(id => byId(id) || byGid(id)).length;
+  const live = S.links.filter(l => wireSel.has(l)).length + [...wireSel].filter(x => typeof x === "string").length, nn = [...selSet].filter(id => byId(id) || byGid(id)).length;
   if (live || nn > 1){
     const parts = []; if (nn) parts.push(`${nn} node${nn === 1 ? "" : "s"}`); if (live) parts.push(`${live} wire${live === 1 ? "" : "s"}`);
     status("", parts.join(" and ") + " selected · Delete removes"); selMsgShown = true;
@@ -2663,7 +2671,12 @@ function pasteClip(){ if (!CLIP){ status("", "Clipboard is empty: Ctrl+C some no
   status("ok", `Pasted ${n} node${n === 1 ? "" : "s"}.`); }
 function duplicateSel(){ if (!selSet.size) return; const fr = fragment(selSet); const n = insertFragment(fr, 40, 40); status("ok", `Duplicated ${n} node${n === 1 ? "" : "s"} (Ctrl+D). Inputs from outside stay wired.`); }
 function deleteSel(){
-  if (wireSel.size){ S.links = S.links.filter(l => !wireSel.has(l)); wireSel = new Set(); if (!selSet.size){ changed(); return; } }
+  if (wireSel.size){
+    [...wireSel].filter(x => typeof x === "string").forEach(id => { const [kind, nid, key] = [id.slice(0, 1), id.split("|")[1], id.split("|").slice(2).join("|")];
+      if (kind === "F"){ const inp = fieldInput(nid, key); if (inp){ inp.value = ""; inp.dispatchEvent(new Event("input", {bubbles:true})); } }
+      else { const n = byId(nid); if (n){ n.data.value = String(n.data.value || "").replace(new RegExp("\\s*\\$" + key + "(?![A-Za-z0-9_])", "g"), "");
+        status("bad", `Removed $${key} from ${nodeName(n)}: check the expression still reads right.`); } } });
+    S.links = S.links.filter(l => !wireSel.has(l)); wireSel = new Set(); if (!selSet.size){ render(); changed(); return; } }
   const ids = new Set(); [...selSet].forEach(id => { const g = byGid(id); if (g){ g.members.forEach(m => ids.add(m)); S.groups = S.groups.filter(x => x !== g); } else ids.add(id); });
   if (!ids.size) return;
   S.nodes = S.nodes.filter(n => !ids.has(n.id)); S.links = S.links.filter(l => !ids.has(l.from.node) && !ids.has(l.to.node));
@@ -2725,7 +2738,7 @@ function menuAll(){
   add("Notes", "Note", "free text on the canvas, with LaTeX ($...$, $$...$$)", COL.note, () => ["note", {text:""}], {words:"comment text latex equation"});
   add("Notes", "Image", "a picture on the canvas (a diagram, a sketch, a photo), linked from the model's folder", COL.note, () => ["image", {}], {words:"picture diagram photo sketch figure png drawing"});
   LIB.forEach(g => add("Library", g.name, `${(g.data.nodes || []).length} nodes · your saved group`, COL.group, () => ["library", g.data], {kind:"library"}));
-  CAT.blocks.forEach(b => add("Blocks · " + b.domain, b.name, b.summary, COL.builder, () => ["builder", {name:b.name.split("_").slice(0, 2).join("_"), block:b.name}],
+  CAT.blocks.filter(b => b.kind !== "kernel" && !b.superseded).forEach(b => add("Blocks · " + b.domain, b.name, b.summary, COL.builder, () => ["builder", {name:b.name.split("_").slice(0, 2).join("_"), block:b.name}],
     {kind:b.kind, domain:b.domain, words:[b.category, (b.tags || []).join(" "), b.domain].join(" ")}));
   return it;
 }
@@ -2769,7 +2782,7 @@ function menuItems(q){
   let it = all.filter(x => MF.kind === "all" || (MF.kind === "node" ? (x.kind === "node" || x.kind === "library") : x.kind === MF.kind))
               .filter(x => !MF.domain || x.domain === MF.domain);
   if (!toks.length){
-    if (MF.kind === "all" && !MF.domain) return it.filter(x => !x.grp.startsWith("Blocks")).concat([{grp:"Blocks", name:"type to search " + CAT.blocks.length + " blocks, or pick a filter", sub:"", color:"transparent", make:null}]);
+    if (MF.kind === "all" && !MF.domain) return it.filter(x => !x.grp.startsWith("Blocks")).concat([{grp:"Blocks", name:"type to search " + CAT.blocks.filter(b => b.kind !== "kernel" && !b.superseded).length + " blocks, or pick a filter", sub:"", color:"transparent", make:null}]);
     return it.slice(0, 150);
   }
   it = it.map(x => Object.assign({}, x, {score: scoreItem(x, toks)})).filter(x => x.score >= 0.5 * toks.length).sort((a, b) => b.score - a.score).slice(0, 60);
@@ -2777,9 +2790,10 @@ function menuItems(q){
 }
 function fillFilters(){
   const kinds = [["all","all"],["node","nodes"],["builder","builders"],["analytic","analytic"],["kernel","kernels"]];
-  const doms = {}; CAT.blocks.forEach(b => doms[b.domain] = (doms[b.domain] || 0) + 1);
+  const doms = {}; CAT.blocks.filter(b => b.kind !== "kernel" && !b.superseded).forEach(b => doms[b.domain] = (doms[b.domain] || 0) + 1);
   document.getElementById("mf").innerHTML = kinds.map(([k, l]) => `<button data-fk="${k}" class="${MF.kind === k ? "on" : ""}">${l}</button>`).join("") +
-    `<select id="mfDom" title="Filter blocks by domain"><option value="">all domains</option>${Object.entries(doms).sort((a, b) => b[1] - a[1]).map(([d, n]) => `<option value="${esc(d)}"${MF.domain === d ? " selected" : ""}>${esc(d)} (${n})</option>`).join("")}</select>`;
+    `<select id="mfDom" title="Filter blocks by domain"><option value="">all domains</option>${Object.entries(doms).sort((a, b) => b[1] - a[1]).map(([d, n]) => `<option value="${esc(d)}" title="${esc((CAT.domains || {})[d] || "")}"${MF.domain === d ? " selected" : ""}>${esc(d)} (${n})</option>`).join("")}</select>` +
+    (MF.domain && (CAT.domains || {})[MF.domain] ? `<div class="mfdesc">${esc(CAT.domains[MF.domain])}</div>` : "");
 }
 document.getElementById("mf").addEventListener("mousedown", e => { e.stopPropagation(); const b = e.target.closest("button[data-fk]"); if (!b) return; e.preventDefault();
   MF.kind = b.dataset.fk; if (MF.kind === "node") MF.domain = ""; fillFilters(); hot = 0; fillMenu(); document.getElementById("mq").focus(); });
@@ -3844,7 +3858,8 @@ async function helpShow(id){
         <div class="hchips"><span>${esc(b.domain)}</span><span>${esc(b.path)}</span>${(b.tags || []).map(t => `<span>${esc(t)}</span>`).join("")}${b.custom ? `<span class="c">custom: ${esc(b.custom.split(/[\\/]/).pop())}</span>` : ""}${b.legacy ? '<span class="w">legacy</span>' : ""}</div>` +
         (b.fig ? `<div class="hfig"><svg viewBox="0 0 160 90"><use href="#fig-${esc(b.fig)}"/></svg></div>` : "") +
         `<p class="hsum">${esc(b.summary)}</p>` + (b.doc && b.doc !== b.summary ? `<pre class="hdoc">${esc(b.doc)}</pre>` : "") +
-        `<h3>Inputs</h3>` + (b.params.length ? `<table class="ht"><tr><th>name</th><th>default</th></tr>` + b.params.map(p => `<tr><td><code>${esc(p.name)}</code></td><td>${p.default === null ? "<b>required</b>" : (["None","nan"].includes(p.default) ? "optional" : esc(p.default))}</td></tr>`).join("") + `</table>` : `<p>none</p>`) +
+        (b.superseded ? `<p class="hint" style="color:var(--warn)">The general <b>${esc(b.superseded)}</b> block covers this case and more (any mix of point, moment, uniform, linear and CSV loads). This one stays for files that use it.</p>` : "") +
+        `<h3>Inputs</h3>` + (b.params.length ? `<table class="ht"><tr><th>name</th><th>what it is</th><th>default</th></tr>` + b.params.map(p => `<tr><td><code>${esc(p.name)}</code></td><td>${esc(p.doc || "")}</td><td>${p.default === null ? "<b>required</b>" : (["None","nan"].includes(p.default) ? "optional" : esc(p.default))}</td></tr>`).join("") + `</table>` : `<p>none</p>`) +
         `<h3>Returns</h3><ul>${(b.outputs || []).map(o => `<li><code>${esc(o)}</code></li>`).join("") || "<li>see the description</li>"}</ul>` +
         `<h3>Source and citation</h3><p class="hcite">${esc(b.source)}</p>` + (b.element ? `<p>Runs inside the time loop through the <a data-h="element:${esc(b.element)}">${esc(b.element)}</a> element type.</p>` : "") +
         `<h3>Use it in a model</h3><pre class="code" id="hUse">${esc(b.usage || "")}</pre><div class="hb"><button data-copy="hUse">Copy</button>` + (b.kind !== "kernel" ? `<button data-addblk="${esc(b.name)}">Add to canvas</button>` : "") + `</div>` +
@@ -3913,8 +3928,8 @@ const THEMES = {
   ember: {name:"Ember", note:"Warm charcoal with red, amber and rose wires. Red without the glare.", scheme:"dark", t:{
     bg:"#170e0e", grid:"#211414", panel:"#201313", panel2:"#2a1919", panel3:"#362020", edge:"#573232", hair:"#2e1c1c", selbg:"#5a1d1d", "note-bg":"#241716", "group-hd":"#2f1a20", ink:"#f8ebe6", ink2:"#dcc4bc", ink3:"#b0948b", link:"#ff9a85", acc:"#ff5a4a", accf:"#f6b53c", pass:"#7fd1a8", warn:"#f6b53c", fail:"#ff6b5e", shadow:"rgba(0,0,0,.55)", "s-val":"#f6b53c", "s-body":"#f54f45", "s-sig":"#958d8a", "s-state":"#f6a0d1", "s-metric":"#fff1ea", "c-value":"#d39315", "c-builder":"#e18bcf", "c-body":"#fe987d", "c-element":"#459571", "c-load":"#459571", "c-output":"#af9a94", "c-expr":"#75c4d1", "c-fail":"#fd5745", "c-sweep":"#eed28f", "c-mc":"#cf2a5e", "c-export":"#6191b8", "c-group":"#9168a2", "c-note":"#74665c", p1:"#e84533", p2:"#f0b64b", p3:"#f8f1e9", p4:"#e892c3", p5:"#60a892"}},
   burning_on: {name:"Burning On", note:"A funeral in black and white, with blood-red roses: black lace panels, lily-white text, crimson wires and an old-print face. Dramatic.", scheme:"dark", ui:"fell", t:{
-    bg:"#0b0a0b", grid:"#161315", panel:"#141113", panel2:"#1d181b", panel3:"#272024", edge:"#4a3a40", hair:"#221c20", selbg:"#4a0f1c", "note-bg":"#171214", "group-hd":"#1f1619",
-    bar:"#0a0809", "bar-ink":"#f3ece4", "bar-ink2":"#c9bdb4", hd:"#1a1215", "hd-ink":"#f3ece4", "hd-ink2":"#c4a9ad",
+    bg:"#1c171a", grid:"#262024", panel:"#241e21", panel2:"#2d2529", panel3:"#382e33", edge:"#57454d", hair:"#30282c", selbg:"#5a1724", "note-bg":"#272024", "group-hd":"#2e2428",
+    bar:"#171315", "bar-ink":"#f3ece4", "bar-ink2":"#c9bdb4", hd:"#2b2024", "hd-ink":"#f3ece4", "hd-ink2":"#c4a9ad",
     ink:"#f3ece4", ink2:"#d6cbc2", ink3:"#a8999b", link:"#ff8095", acc:"#c8102e", accf:"#e7d7b8", pass:"#8fc7a0", warn:"#e0b25a", fail:"#ff5c6c", shadow:"rgba(0,0,0,.6)",
     "s-val":"#e01e3c", "s-body":"#f3ece4", "s-sig":"#8d97a3", "s-state":"#b56bd6", "s-metric":"#e8c26a",
     "c-value":"#c8102e", "c-builder":"#9b6bd1", "c-body":"#e9e1d6", "c-element":"#7f9c88", "c-load":"#7f9c88", "c-output":"#8a7e80", "c-expr":"#c78a9a",

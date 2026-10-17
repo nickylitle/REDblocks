@@ -153,7 +153,8 @@ class Api:
             from ..materials import _ALL
             blocks = [dict(name=e["name"], domain=e["domain"], category=e["category"], kind=e["kind"],
                            summary=e["summary"], source=e["source"], params=e["params"], outputs=e["outputs"],
-                           legacy=e["legacy"], fig=e["fig"], doc=(e["doc"] or "")[:1400], tags=list(e.get("tags") or []))
+                           legacy=e["legacy"], fig=e["fig"], doc=(e["doc"] or "")[:1400], tags=list(e.get("tags") or []),
+                           superseded=e.get("superseded", ""))
                       for e in entries()]
             self._catalog = dict(
                 # mass (and segments for springs and dampers) is open to every 1D element; the editor hides it in 2D/3D
@@ -171,6 +172,7 @@ class Api:
                 materials=sorted((k, getattr(m, "name", k) + (" (custom)" if k in custom_keys() else "")) for k, m in _ALL.items()),
                 symbols=FG.symbols() + "".join(_el_fig(e["name"]) for e in ELEMENTS),
                 element_info={e["name"]: dict(law=e["law"], fields=e["fields"], what=e["what"]) for e in ELEMENTS},
+                domains=__import__("simblocks.docs.library", fromlist=["_param_docs"])._param_docs().get("__domains__", {}),
                 unit_factors={k: v for k, v in __import__("simblocks.compiler.units", fromlist=["_U"])._U.items() if v is not None})
         return self._catalog
 
@@ -696,7 +698,7 @@ class Api:
                                               kind=e["kind"], source=e["source"], summary=e["summary"], doc=e["doc"],
                                               params=e["params"], outputs=e["outputs"], usage=e["usage"], fig=e["fig"],
                                               tags=e["tags"], legacy=e["legacy"], element=e.get("element", ""),
-                                              custom=CUSTOM.get(e["name"], "")) for e in entries()])
+                                              custom=CUSTOM.get(e["name"], ""), superseded=e.get("superseded", "")) for e in entries()])
         except Exception as exc:
             return _err(exc)
 

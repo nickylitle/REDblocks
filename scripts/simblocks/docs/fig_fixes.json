@@ -1,0 +1,186 @@
+{
+"fig-cantilever": {
+"0": [
+26,
+38
+],
+"1": [
+142.5,
+39.5
+]
+},
+"fig-cantilever_uniform": {
+"0": [
+27,
+57
+]
+},
+"fig-simply_supported": {
+"0": [
+84,
+33
+]
+},
+"fig-fixed_fixed": {
+"0": [
+84,
+35
+]
+},
+"fig-fixed_guided": {
+"0": [
+130,
+19
+]
+},
+"fig-propped": {
+"0": [
+84,
+33
+]
+},
+"fig-membrane": {
+"0": [
+84,
+49
+]
+},
+"fig-sec_polygon": {
+"0": [
+67.5,
+33
+]
+},
+"fig-ring": {
+"1": [
+83.5,
+64.5
+]
+},
+"fig-circ_plate_clamped": {
+"0": [
+83.5,
+38.5
+]
+},
+"fig-circ_plate_ss": {
+"0": [
+84,
+35
+]
+},
+"fig-plate_free_edge": {
+"0": [
+70,
+46
+]
+},
+"fig-plate_three_edge": {
+"0": [
+125,
+45
+]
+},
+"fig-bolt": {
+"0": [
+101.5,
+20.5
+]
+},
+"fig-plate_hole": {
+"0": [
+119,
+40
+]
+},
+"fig-torsion": {
+"0": [
+147,
+40
+]
+},
+"fig-sphere_flat": {
+"0": [
+103,
+55
+]
+},
+"fig-cylinder_flat": {
+"0": [
+85,
+76
+]
+},
+"fig-impulse": {
+"1": [
+121,
+49
+]
+},
+"fig-spinner_hit": {
+"0": [
+127,
+49
+],
+"1": [
+111,
+40
+]
+},
+"fig-indent": {
+"0": [
+87,
+47
+]
+},
+"fig-hinged_face": {
+"0": [
+85,
+86
+]
+},
+"fig-first_contact": {
+"0": [
+89.5,
+12
+]
+},
+"fig-wheel": {
+"0": [
+77,
+58
+]
+},
+"fig-motor": {
+"1": [
+135,
+30
+]
+},
+"fig-gearbox": {
+"0": [
+108.5,
+31.5
+]
+},
+"fig-atmosphere": {
+"0": [
+28,
+15.5
+]
+},
+"fig-bot_stance": {
+"0": [
+61,
+69
+],
+"1": [
+124.5,
+87.5
+],
+"2": [
+86,
+44
+]
+}
+}

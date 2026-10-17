@@ -838,8 +838,37 @@ def figure_for(b):
     return "formula"
 
 
+_FIXES = None
+
+
+def place_labels(sym_id, inner):
+    """Move labels that sat on a line or shape to their checked spots (fig_fixes.json, made by measuring every
+    figure in a browser: no label overlaps a stroke, a fill, another label or the frame)."""
+    global _FIXES
+    if _FIXES is None:
+        import json, os
+        try:
+            _FIXES = json.load(open(os.path.join(os.path.dirname(__file__), "fig_fixes.json")))
+        except Exception:
+            _FIXES = {}
+    fx = _FIXES.get(sym_id)
+    if not fx:
+        return inner
+    import re
+    count = [-1]
+
+    def sub(m):
+        count[0] += 1
+        p = fx.get(str(count[0]))
+        if not p:
+            return m.group(0)
+        t = re.sub(r'\bx="[^"]*"', f'x="{p[0]}"', m.group(0), count=1)
+        return re.sub(r'\by="[^"]*"', f'y="{p[1]}"', t, count=1)
+    return re.sub(r"<text\b[^>]*>", sub, inner)
+
+
 def symbols():
     out = []
     for k, fn in F.items():
-        out.append(f'<symbol id="fig-{k}" viewBox="0 0 160 90">{fn()}</symbol>')
+        out.append(f'<symbol id="fig-{k}" viewBox="0 0 160 90">{place_labels("fig-" + k, fn())}</symbol>')
     return "\n".join(out)
