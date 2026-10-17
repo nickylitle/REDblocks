@@ -245,56 +245,117 @@ CTL_D_TYPES = {0, 2, 3, 4, 9, 12}            # spring-like: a controlled one has
 
 
 def compile_model(doc, overrides=None):
-    """Compile a system file. Element fields written {control: signal} are found by compiling once with marker
-    values (which slot of the element's parameters each one lands in), then the model compiles with their initial
-    values and the control section is attached."""
+    """Compile a system file. Fields written {control: signal} are found by compiling once with marker values (which
+    parameter slot each one lands in, as itself or as its inverse, like a motor's kv), then the model compiles with
+    their first-step values. A field with max: is also compiled at its max, and the time step is sized for that."""
     from .control import controlled_fields, with_values, compile_control, SENTINEL, empty_control
     fields = controlled_fields(doc)
     if not doc.get("control") and not fields:
         return _compile_model(doc, overrides)
     sec = doc.get("control") or {}
-    where0 = doc.get("__file__", "")
+    fname = doc.get("__file__", "")
     acts = []
     if fields:
         marks = [SENTINEL * (i + 1) for i in range(len(fields))]
         Ms = _compile_model(with_values(doc, fields, marks), overrides)
         ctx0 = Ms.ctx
-        for i, (en, k, sg, init) in enumerate(fields):
-            where = f"elements.{en}.{k}"
-            if sg not in sec:
-                raise SpecError(f"no control signal named '{sg}' (signals: {', '.join(sec) or 'none'})", where, None, where0)
-            if en not in Ms.el_names:
-                raise SpecError("a split element (segments) cannot be driven by a control signal", where, None, where0)
-            e = Ms.el_names.index(en)
-            hits = list(np.where(Ms.arrays["P"][e] == marks[i])[0])
-            arr = 0
-            if not hits and getattr(Ms, "circ", None):
-                cp = Ms.circ["arrays"]["prm"]
-                rows = np.where(cp == marks[i])
-                if len(rows[0]) == 1:
-                    hits = [int(rows[1][0])]; arr = 1; e = int(rows[0][0])
-            if len(hits) != 1:
-                raise SpecError(f"'{k}' cannot be driven by a control signal (the model does not use it as one number "
-                                "as it runs)", where, None, where0)
-            acts.append((e, int(hits[0]), list(sec).index(sg), arr))
-        inits = [num(resolve(init, ctx0, f"elements.{en}.{k}.init"), f"elements.{en}.{k}.init") for en, k, _s, init in fields]
+        cp = Ms.circ["arrays"]["prm"] if getattr(Ms, "circ", None) else np.zeros((0, 1))
+        PP = Ms.arrays["P"]
+        for i, fd in enumerate(fields):
+            where = fd["where"]
+            if fd["signal"] not in sec:
+                raise SpecError(f"no control signal named '{fd['signal']}' (signals: {', '.join(sec) or 'none'})", where,
+                                None, fname)
+            m = marks[i]
+            found = []                                   # (array code, row, slot): 0 P, 1 circuit; +2 when inverted
+            for code, arr in ((0, PP), (1, cp)):
+                for inv, val in ((0, m), (2, 1.0 / m)):
+                    r_, c_ = np.where(np.isclose(arr, val, rtol=1e-9, atol=0.0)) if arr.size else ((), ())
+                    found += [(code + inv, int(r), int(c)) for r, c in zip(r_, c_)]
+            if fd["path"][0] == "elements":
+                en = fd["path"][1]
+                if en not in Ms.el_names:
+                    raise SpecError("a split element (segments) cannot be driven by a control signal", where, None, fname)
+                found = [x for x in found if x[0] in (0, 2) and x[1] == Ms.el_names.index(en)]
+            elif any(x[0] in (0, 2) for x in found):
+                found = []                               # also copied into the mechanics (a motor's Kt): not one number
+            if len(found) != 1:
+                raise SpecError(f"'{fd['path'][-1]}' cannot be driven by a control signal (the model turns it into "
+                                "other numbers before it runs)", where, None, fname)
+            acts.append((found[0][1], found[0][2], list(sec).index(fd["signal"]), found[0][0], i))
+        num_ = lambda v, w: num(resolve(v, ctx0, w), w)
+        inits = [num_(fd["init"], fd["where"] + ".init") for fd in fields]
+        maxes = [num_(fd["max"], fd["where"] + ".max") if fd["max"] is not None else None for fd in fields]
         M = _compile_model(with_values(doc, fields, inits), overrides)
+        if any(x is not None for x in maxes):
+            # the time step: a driven stiffness or damping is stable at its first-step value, but must stay stable at
+            # the most it reaches. Size the step (auto, or held in run bounds) for the declared max
+            Mx = _compile_model(with_values(doc, fields, [x if x is not None else v for x, v in zip(maxes, inits)]),
+                                overrides)
+            if Mx.dt_crit < M.dt_crit:
+                M.dt_crit = Mx.dt_crit
+                M.dt_auto = min(M.dt_auto, Mx.dt_auto)
+                if (doc.get("run") or {}).get("dt", "auto") == "auto":
+                    M.dt = min(M.dt, Mx.dt)
+        # fields with no max that move the stability limit: flagged after the run with the most they reached
+        probes = []
+        for i, fd in enumerate(fields):
+            if maxes[i] is None:
+                v = [inits[j] for j in range(len(fields))]
+                v[i] = 4.0 * inits[i] if inits[i] else 1.0
+                try:
+                    Mp = _compile_model(with_values(doc, fields, v), overrides)
+                    if Mp.dt_crit < 0.999 * M.dt_crit:
+                        probes.append(i)
+                except SpecError:
+                    pass
+        M.ctl_fields = [dict(fd, init_v=inits[i], max_v=maxes[i], sensitive=i in probes) for i, fd in enumerate(fields)]
     else:
         M = _compile_model(doc, overrides)
+        M.ctl_fields = []
     c = compile_control(M.doc, M.ctx, M, lambda n, q, w: sensor_slot(M, n, q, w))
     base = empty_control()
     if c is None:
         c = dict(names=[], sensors=[], **{k: v for k, v in base.items() if k not in ("ae", "aslot", "asig", "aarr", "ctlD")})
     ne = len(M.el_names)
     ctlD = np.zeros(max(ne, 1), np.int64)
-    for e, slot, sg, arr in acts:
-        if arr == 0 and int(M.arrays["typ"][e]) in CTL_D_TYPES:
+    for e, slot, sg, arr, _i in acts:
+        if arr in (0, 2) and int(M.arrays["typ"][e]) in CTL_D_TYPES:
             ctlD[e] = 1
     c.update(ae=np.array([a[0] for a in acts], np.int64), aslot=np.array([a[1] for a in acts], np.int64),
              asig=np.array([a[2] for a in acts], np.int64), aarr=np.array([a[3] for a in acts], np.int64), ctlD=ctlD)
+    c["act_field"] = [a[4] for a in acts]
     M.ctl = c
-    M.ctl_fields = fields
     return M
+
+
+def _control_notes(M, R, SGT):
+    """After a run: driven fields that went past their max, or that move the stability limit and have no max."""
+    c = getattr(M, "ctl", None)
+    if not c or not getattr(M, "ctl_fields", None):
+        return
+    for a, fi in enumerate(c["act_field"]):
+        fd = M.ctl_fields[fi]; j = int(c["asig"][a])
+        hi = float(SGT[j, 1]) if SGT.shape[0] > j and SGT[j, 1] > -1e299 else fd["init_v"]
+        key = fd["where"].replace(".", "__")
+        if fd["max_v"] is not None and hi > fd["max_v"] * (1 + 1e-9) + 1e-300:
+            R[f"_ctl_over_max__{key}"] = hi
+        elif fd["max_v"] is None and fd["sensitive"] and hi > fd["init_v"] * (1 + 1e-6):
+            R[f"_ctl_no_max__{key}"] = hi
+
+
+def control_messages(R):
+    """Plain-language notes for the flags _control_notes leaves in a run's outputs."""
+    out = []
+    for k, v in R.items():
+        if k.startswith("_ctl_over_max__"):
+            out.append(f"{k[15:].replace('__', '.')} was driven to {v:.4g}, past its max: the time step was sized for "
+                       "max, so raise max (and leave the time step on auto) or limit the signal")
+        elif k.startswith("_ctl_no_max__"):
+            out.append(f"{k[13:].replace('__', '.')} was driven up to {v:.4g} but has no max: the time step was sized "
+                       f"for its first-step value. Add max: {v:.4g} (or more) to the field so the auto time step stays "
+                       "stable at it")
+    return out
 
 
 def sensor_slot(M, name, qty, where):
@@ -916,6 +977,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 raise SpecError(str(exc), f"outputs.{name}")
             RSI[name] = val                 # the result is SI; its own unit only changes how it is shown
             R[name] = val / unit_factor(o["unit"]) if "unit" in o else val
+    _control_notes(M, R, SGT)
     if history and dim3:
         from .engine3d import NBQ
         from .model3d import BODY_Q3, body_slot3

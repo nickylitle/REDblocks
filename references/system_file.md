@@ -290,10 +290,16 @@ module's powered descent to touchdown).
 
 ### control (optional): live signals, logic and feedback
 
-Named signals worked out every time step from the running model. An element field written `{control: <signal>}`
-follows that signal as the model runs (a load's `P`, a drive's or rocket's `throttle`, a spring's `k`, a damper's
-`c`); `init:` is its value on the first step (default 0). Outputs and CSV columns read a signal with `control: <name>`
-(any reduce, including at, time_of_max and first_time_*).
+Named signals worked out every time step from the running model. An element field, or a circuit part's field
+(including its `esc` and `thermal` settings), written `{control: <signal>, init: <first-step value>, max: <the most it
+reaches>}` follows that signal as the model runs (a load's `P`, a drive's, rocket's or ESC's `throttle`, a spring's
+`k`, a damper's `c`, a drive's `kv`, which the model stores inverted). Signals are SI. Outputs and CSV columns read a
+signal with `control: <name>` (any reduce, including at, time_of_max and first_time_*).
+
+The time step: a driven stiffness or damping moves the explicit stability limit. With `max:` the model is also
+compiled at max and an automatic time step is sized for it (and Verify's stability margin uses it). Without `max:` on a
+field that moves the limit, the step is sized for `init`, and after the run a note gives the most the field reached
+and the max to set. A field driven past its `max` is flagged too.
 
 ```yaml
 control:
@@ -320,8 +326,8 @@ outputs:
 
 Timing: at the end of each step the signals read the state that step ended in (positions, speeds, forces and element
 states) and set the fields the next step uses. Signals are worked out in the order written; one that reads a signal
-written below it gets that one's value from the step before. A field the compiler transforms (a drive's kv) cannot be
-driven and is refused. A driven spring-like element (spring, kelvin_voigt, hertz, elastoplastic, pin, beam) does
+written below it gets that one's value from the step before. A field the compiler turns into several other numbers (a
+beam's section, a body's mass, a circuit motor's kv) cannot be driven and is refused. A driven spring-like element (spring, kelvin_voigt, hertz, elastoplastic, pin, beam) does
 work that is not its own law: its element check is skipped, the global ledger still closes.
 
 ### circuit (optional lumped electrical circuit)

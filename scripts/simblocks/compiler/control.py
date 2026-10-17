@@ -239,30 +239,45 @@ def compile_control(doc, ctx, M, sensor_slot):
 
 
 def controlled_fields(doc):
-    """[(element, field, signal, init)] for every element field written {control: signal}."""
+    """Every field written {control: signal, init: ..., max: ...}: in an element, or in a circuit part (including
+    its esc and thermal settings). Returns [dict(path, where, signal, init, max)]."""
     out = []
+
+    def take(path, where, v):
+        bad = set(v) - {"control", "init", "max"}
+        if bad:
+            raise SpecError(f"{path[-1]}: {{control: <signal>, init: <first-step value>, max: <the most it reaches>}}", where)
+        out.append(dict(path=path, where=where, signal=str(v["control"]), init=v.get("init", 0.0), max=v.get("max")))
     for en, d in (doc.get("elements") or {}).items():
+        if isinstance(d, dict):
+            for k, v in d.items():
+                if isinstance(v, dict) and "control" in v:
+                    take(("elements", en, k), f"elements.{en}.{k}", v)
+    parts = ((doc.get("circuit") or {}).get("parts") or {}) if isinstance(doc.get("circuit"), dict) else {}
+    for pn, d in parts.items():
         if not isinstance(d, dict):
             continue
         for k, v in d.items():
             if isinstance(v, dict) and "control" in v:
-                bad = set(v) - {"control", "init"}
-                if bad:
-                    raise SpecError(f"{k}: {{control: <signal>, init: <value>}}", f"elements.{en}.{k}")
-                out.append((en, k, str(v["control"]), v.get("init", 0.0)))
+                take(("circuit", "parts", pn, k), f"circuit.parts.{pn}.{k}", v)
+            elif isinstance(v, dict) and k in ("esc", "thermal"):
+                for kk, vv in v.items():
+                    if isinstance(vv, dict) and "control" in vv:
+                        take(("circuit", "parts", pn, k, kk), f"circuit.parts.{pn}.{k}.{kk}", vv)
     return out
 
 
 def with_values(doc, fields, values):
-    """A shallow copy of doc whose controlled fields hold the given numbers."""
+    """A copy of doc whose controlled fields hold the given numbers (only the branches on the way are copied)."""
     import copy
     d2 = copy.copy(doc)
     if hasattr(doc, "lines"):
         d2.lines = doc.lines
-    els = dict(doc["elements"])
-    for (en, k, _s, _i), v in zip(fields, values):
-        e = dict(els[en]); e[k] = v; els[en] = e
-    d2["elements"] = els
+    for fd, v in zip(fields, values):
+        node = d2
+        for key in fd["path"][:-1]:
+            child = dict(node[key]); node[key] = child; node = child
+        node[fd["path"][-1]] = v
     return d2
 
 

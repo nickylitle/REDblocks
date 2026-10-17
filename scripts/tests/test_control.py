@@ -176,3 +176,67 @@ def test_errors_are_plain():
         run(BASE_1D + "control:\n  push: '= missing * 2'\noutputs:\n  a: {control: push}\nrun: {t_end: 0.01 s}\n")
     with pytest.raises(SpecError, match="not a body or an element"):
         run(BASE_1D + "control:\n  push: '= truck.velocity'\noutputs:\n  a: {control: push}\nrun: {t_end: 0.01 s}\n")
+
+
+STIFF = """
+simblocks: 1
+name: stiffening spring
+dim: 1d
+units: SI
+bodies:
+  m: {dof: translation, mass: 1 kg, x0: 0.01}
+  g: {ground: true}
+elements:
+  s: {type: spring, measure: m - g, k: K_FIELD}
+  d: {type: dashpot, measure: m - g, c: 0.5}
+control:
+  kk: "= 1000 + 20000 * min(t, 1)"
+outputs:
+  x: {body: m, quantity: position, reduce: max_abs}
+run: {t_end: 2 s}
+"""
+
+
+def test_max_sizes_the_time_step_and_a_missing_max_is_flagged():
+    from simblocks.compiler.model import control_messages
+    no_max = load_system(STIFF.replace("K_FIELD", "{control: kk, init: 1000}"))
+    with_max = load_system(STIFF.replace("K_FIELD", "{control: kk, init: 1000, max: 21000}"))
+    assert with_max.nominal.dt_crit == pytest.approx(2 / math.sqrt(21000), rel=1e-6)   # sized for the stiffest it gets
+    assert with_max.nominal.dt < no_max.nominal.dt
+    o1, o2 = no_max.run(), with_max.run()
+    assert any("has no max" in m for m in control_messages(o1))
+    assert not control_messages(o2)
+    assert o2["_ledger_rel"] < 0.01
+    over = load_system(STIFF.replace("K_FIELD", "{control: kk, init: 1000, max: 5000}")).run()
+    assert any("past its max" in m for m in control_messages(over))
+
+
+def test_circuit_esc_throttle_on_a_speed_loop():
+    import os, yaml
+    here = os.path.join(os.path.dirname(__file__), "..", "examples", "learn")
+    d = yaml.safe_load(open(os.path.join(here, "1d_4_weapon_circuit.yaml")))
+    for p in d["circuit"]["parts"].values():
+        if p["type"] == "motor":
+            p["esc"]["throttle"] = {"control": "thr", "init": 0}
+    d["control"] = {"thr": {"pid": {"measure": "drum.velocity", "setpoint": "8000 rpm", "kp": 0.01, "ki": 0.05,
+                                    "min": 0, "max": 1}}}
+    d["outputs"] = {"w": {"body": "drum", "quantity": "velocity", "unit": "rpm"}, "thr": {"control": "thr"}}
+    d.pop("editor", None)
+    o = load_system(yaml.safe_dump(d)).run()
+    assert o["w"] == pytest.approx(8000, rel=1e-3)
+    assert 0.2 < o["thr"] < 0.9
+
+
+def test_a_field_stored_inverted_can_be_driven():
+    import os, yaml
+    here = os.path.join(os.path.dirname(__file__), "..", "examples", "learn")
+    base = yaml.safe_load(open(os.path.join(here, "1d_3_motor_flywheel.yaml")))
+    base.pop("editor", None)
+    en = next(k for k, v in base["elements"].items() if v["type"] == "drive")
+    ref = load_system(yaml.safe_dump(base)).run()
+    base["elements"][en]["kv"] = {"control": "kvs", "init": base["elements"][en]["kv"]}
+    base["control"] = {"kvs": "= " + str(base["elements"][en]["kv"]["init"])}
+    o = load_system(yaml.safe_dump(base)).run()
+    for k in ref:
+        if not k.startswith("_"):
+            assert o[k] == pytest.approx(ref[k], rel=1e-9, abs=1e-12), k

@@ -1349,10 +1349,13 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     sens[k] = aux[kk, src - 4]
             control_step((i + 1) * dt, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
             for a_ in range(cae.shape[0]):
-                if caarr[a_] == 0:
-                    P[cae[a_], caslot[a_]] = sig[casig[a_]]
+                x_ = sig[casig[a_]]
+                if caarr[a_] >= 2:                   # the field is stored as its inverse (a motor's kv as 1/kv)
+                    x_ = 1.0 / x_ if x_ != 0.0 else 1e300
+                if caarr[a_] == 0 or caarr[a_] == 2:
+                    P[cae[a_], caslot[a_]] = x_
                 else:
-                    cprm[cae[a_], caslot[a_]] = sig[casig[a_]]
+                    cprm[cae[a_], caslot[a_]] = x_
             for k in range(nsig):
                 if sig[k] < SG[k, 0]: SG[k, 0] = sig[k]
                 if sig[k] > SG[k, 1]: SG[k, 1] = sig[k]

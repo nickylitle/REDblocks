@@ -657,7 +657,7 @@ function defaults(kind){
     case "part": return {name:"part", ptype:"resistor", fields:{}, escOn:false, esc:{}, regen:false, thOn:false, th:{}, axis:"z", mraw:"", label:""};
     case "net": return {name:"net", ground:false};
     case "ctl": return {name:"sig", ctype:"expr", expr:"", cond:"", then:"1", else:"0", latch:false, hold:"", measure:"", setpoint:"",
-                        kp:"", ki:"", kd:"", min:"", max:"", d_filter:"", bias:"", input:"", tau:"", rate:"", init:"", start:"", label:""};
+                        kp:"", ki:"", kd:"", min:"", max:"", d_filter:"", bias:"", input:"", tau:"", rate:"", init:"", cap:"", start:"", label:""};
     case "note": return {text:""};
     case "image": return {path:"", w:"360", caption:""};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
@@ -843,7 +843,8 @@ function outKeyFor(n, field){ return field && n && sockets(n).outs.some(o => o.k
 function refOf(l){ const src = byId(l.from.node); return (src.kind === "ctl" ? "control: " : "$") + src.data.name + (l.field ? "." + l.field : ""); }
 function inVal(n, key, text){ const l = linkTo(n.id, key); if (!l) return lit(text ?? "");
   const src = byId(l.from.node);
-  if (src && src.kind === "ctl"){ const o = {control:src.data.name}; if (!blank(src.data.init) && String(src.data.init).trim()) o.init = lit(src.data.init); return o; }
+  if (src && src.kind === "ctl"){ const o = {control:src.data.name}; if (!blank(src.data.init) && String(src.data.init).trim()) o.init = lit(src.data.init);
+    if (!blank(src.data.cap) && String(src.data.cap).trim()) o.max = lit(src.data.cap); return o; }
   return refOf(l); }
 function blank(v){ return v === "" || v === null || v === undefined; }
 // ---- 2d: bodies carry their own geometry (points, circles, lines) and move in x, y and spin; elements measure it
@@ -1433,6 +1434,7 @@ function fromDoc(doc){
   pend.forEach(([nid, key, raw]) => {
     if (raw && typeof raw === "object" && raw.control !== undefined){ const c = byName(String(raw.control), "k"); if (!c) return;
       if (raw.init !== undefined && blank(c.data.init)) c.data.init = str(raw.init);
+      if (raw.max !== undefined && blank(c.data.cap)) c.data.cap = str(raw.max);
       const tn = byId(nid); if (tn && tn.data.fields && key.startsWith("f.")) tn.data.fields[key.slice(2)] = "";
       S.links.push({from:{node:c.id, key:"out"}, to:{node:nid, key}, field:""}); return; }
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
@@ -1642,6 +1644,7 @@ function ctlHTML(n, ins){
   if (d.ctype === "pid") b += txt("d_filter", "d filter", "derivative smoothing, s") + txt("bias", "bias", "added to the output");
   if (["lag","rate_limit","integrate"].includes(d.ctype)) b += txt("start", "start at", d.ctype === "integrate" ? "0" : "the first input");
   b += txt("init", "first step", "what driven fields use before the first update (0)");
+  b += txt("cap", "field max", "the most a driven stiffness or damping reaches: sizes the time step");
   b += `<div class="hint">reads: body.quantity, element.quantity, other signals, t, $values · runs every step</div>`;
   return b;
 }
@@ -3375,6 +3378,10 @@ function showRun(r, isLive){
   const v = varied();
   let h = "";
   const o = r.outputs || {};
+  Object.entries(o).forEach(([k, v]) => {
+    if (k.startsWith("_ctl_over_max__")) h += `<div class="banner bad"><b>${esc(k.slice(15).split("__").join("."))}</b> was driven to ${+(+v).toPrecision(4)}, past its max. The time step was sized for max: raise max (keep the time step on auto) or limit the signal.</div>`;
+    if (k.startsWith("_ctl_no_max__")) h += `<div class="banner bad"><b>${esc(k.slice(13).split("__").join("."))}</b> was driven up to ${+(+v).toPrecision(4)} with no max, and it moves the stability limit. The time step was sized for its first-step value: give the field max: ${+(+v).toPrecision(4)} (or more) and leave the time step on auto, so the step is sized for the stiffest it gets.</div>`;
+  });
   if (o._timed_out) h += `<div class="banner bad"><b>Stopped by the timeout</b> after ${o._timeout_s < 90 ? +o._timeout_s.toPrecision(3) + " s" : dur(o._timeout_s)}, at t = ${niceTime(o._t_stopped).join(" ")} of ${esc(S.meta.run.t_end || "")}. The outputs and plot cover only that part. Raise the timeout (top bar), shorten the end time, or use a larger time step.</div>`;
   if (v.length) h += `<div class="banner">${isLive ? "Live · " : ""}<b>${v.map(n => esc(n.data.name)).join(", ")}</b> held at middle values. Press <b>Study</b> for the full spread.</div>`;
   if (lastStudy) h += `<div class="pathbtn"><button id="bLastStudy">Show last study results</button><span>${studyStale ? "from before your latest edit" : ""}</span></div>`;
@@ -4025,7 +4032,8 @@ const GUIDE = [
    <li><b>PID</b>: drives its output so the <b>measure</b> follows the <b>setpoint</b>. kp, ki, kd; min and max limit the output, and the integral stops growing while the output is pinned at a limit (anti-windup). The derivative acts on the measure, so a setpoint step gives no kick; <b>d filter</b> smooths it.</li>
    <li><b>Lag</b> (first-order smoothing, time constant tau), <b>rate limit</b> (changes at most rate per second), <b>integrator</b> (the running integral).</li>
   </ul>
-  <p>Wire a signal's output into an element field (a load's force, a drive's or rocket's throttle, a spring's k, a damper's c) and the field follows the signal. Wire it into an <b>Output</b> or a <b>CSV export</b> to see it. A field whose value the model reworks while compiling (a motor's kv) cannot be driven, and says so.</p>
+  <p>Wire a signal's output into an element field (a load's force, a drive's or rocket's throttle, a spring's k, a damper's c) or a circuit part's field, and the field follows the signal. Wire it into an <b>Output</b> or a <b>CSV export</b> to see it. A field the model turns into other numbers while compiling (a beam's section, a body's mass, a circuit motor's kv) cannot be driven, and says so.</p>
+  <p><b>Stiffness, damping and the time step</b>: the solver steps forward explicitly, so its stable time step depends on the stiffest spring. Give a signal that drives a stiffness or damping a <b>field max</b> (the most it will reach) and leave the time step on auto: the step is sized for that worst case. Without it the step is sized for the first-step value, and after the run a banner says how stiff it got and what max to set. A circuit part's settings (an ESC throttle, a resistance) can be driven too, and so can a field the model stores inverted (a drive's kv): signals are in SI.</p>
   <p><b>Timing</b>: at the end of each step the signals read the state that step ended in, and set the fields the next step uses. The first step uses each driven field's <b>first step</b> value. A signal that reads one listed after it gets that one's value from the step before, so a feedback loop is always well defined. Driving a spring's stiffness does work that is not the spring's own: its own energy check is skipped, the model's overall ledger still closes.</p>`},
  {id:"rockets", grp:"Building models", t:"Rockets and launches", h:`
   <p>A launch is a 2D model with a planet: set <b>gravity</b> (side panel) to <code>{planet: earth, radius: 6373 km, rotation: $site.omega_plane}</code>. The Earth's centre is the origin, gravity falls off with distance, and the US Standard Atmosphere sits above the surface. The <b>launch_plane</b> block gives the Earth's turn about your flight plane and the pad's speed (the vehicle's v0).</p>

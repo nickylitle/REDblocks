@@ -37,6 +37,9 @@ def _print_outputs(out, sysm=None):
     for k, v in out.items():
         if k.endswith("_reached") and v < 0.5:
             print(f"  note: {k[1:-8]} never reached its threshold within t_end (value shown is a sentinel)")
+    from .compiler.model import control_messages
+    for m in control_messages(out):
+        print(f"  note: {m}")
 
 
 def _parse_set(items):
