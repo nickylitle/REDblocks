@@ -482,26 +482,25 @@ def _():
 
 @fig("torsion")
 def _():
-    # a shaft seen from the side, its free end face drawn as an ellipse; the torque is a loop round the shaft's own
-    # axis near the end (an ellipse in this view), hidden where it passes behind the shaft, its head along the loop
-    cx, cy, rx, ry, R = 118, 45, 10, 22, 8
-    shaft = (f'<rect x="20" y="{cy - R}" width="{cx - 20}" height="{2 * R}" style="fill:var(--soft)" stroke="currentColor"/>'
-             f'<ellipse cx="{cx}" cy="{cy}" rx="3" ry="{R}" style="fill:var(--soft)" stroke="currentColor"/>')
-    pts = [(cx + rx * math.cos(t), cy + ry * math.sin(t)) for t in [math.radians(a) for a in range(-55, 281, 5)]]
+    # an oblique side view: the shaft's free end face is an ellipse, and the torque is a ring round the shaft drawn
+    # with the same ellipse (same view), its back half hidden behind the shaft, its head on the front half
+    ex, cy, R, k = 128, 45, 8, 3.0 / 8.0          # end face centre, shaft radius, ellipse width / height
+    rx_, ry, rcx = 16 * k, 16, 104                # the torque ring: around the shaft near its end
+    shaft = (f'<rect x="20" y="{cy - R}" width="{ex - 20}" height="{2 * R}" style="fill:var(--soft)" stroke="currentColor"/>'
+             f'<ellipse cx="{ex}" cy="{cy}" rx="{R * k:.1f}" ry="{R}" style="fill:var(--soft)" stroke="currentColor"/>')
+    pts = [(rcx + rx_ * math.cos(math.radians(a)), cy + ry * math.sin(math.radians(a))) for a in range(150, 437, 4)]
     segs, cur = [], []
     for x, y in pts:
-        behind = x < cx and abs(y - cy) < R + 1.5
-        if behind:
+        if x < rcx and abs(y - cy) < R + 1.2:      # behind the shaft
             if len(cur) > 1:
                 segs.append(cur)
             cur = []
         else:
             cur.append((x, y))
-    loop = "".join(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in sg)}" {ACC} stroke-width="1.6"/>'
-                   for sg in segs)
+    line = lambda sg: f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in sg)}" {ACC} stroke-width="1.6"/>'
     (xa, ya), (xb, yb) = cur[-3], cur[-1]
-    return (_wall(20, 28, 62) + shaft + loop + f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in cur[:-2])}" {ACC} stroke-width="1.6"/>'
-            + _arrow(xa, ya, xb, yb) + _pt(cx, cy) + _text(cx + 13, 22, "T"))
+    return (_wall(20, 28, 62) + shaft + "".join(line(sg) for sg in segs) + line(cur[:-2]) + _arrow(xa, ya, xb, yb)
+            + _pt(ex, cy) + _text(rcx + 9, cy - ry - 2, "T"))
 
 
 @fig("keyed")

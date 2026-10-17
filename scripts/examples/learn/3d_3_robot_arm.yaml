@@ -87,70 +87,39 @@ run:
 
 editor:
   layout:
-    b:base:
-    - 30
-    - 170
-    b:forearm:
-    - 30
-    - 1590
-    b:payload:
-    - 30
-    - 2270
-    b:upper_arm:
-    - 30
-    - 830
-    e:elbow:
-    - 340
-    - 1690
-    e:gripper:
-    - 340
-    - 2150
-    e:motor:
-    - 340
-    - 30
-    e:shoulder:
-    - 340
-    - 830
-    e:stop_hit:
-    - 340
-    - 1290
-    o:bumper_mm:
-    - 650
-    - 1270
-    o:payload_top_mm:
-    - 340
-    - 2530
-    o:peak_current_A:
-    - 650
-    - 30
-    o:shoulder_force_N:
-    - 650
-    - 450
-    o:start_current_A:
-    - 650
-    - 230
-    o:stop_force_N:
-    - 650
-    - 870
-    o:stop_dissipated_J:
-    - 650
-    - 1070
-    o:t_hit_s:
-    - 650
-    - 650
-    p:gear:
-    - 30
-    - 30
-    p:k_elbow:
-    - 30
-    - 670
-    p:throttle:
-    - 30
-    - 530
+    b:base: [30, 430]
+    b:forearm: [30, 1680]
+    b:payload: [30, 2460]
+    b:upper_arm: [30, 840]
+    e:elbow: [690, 1704]
+    e:gripper: [690, 2160]
+    e:motor: [690, 40]
+    e:shoulder: [690, 840]
+    e:stop_hit: [690, 1300]
+    o:bumper_mm: [960, 1280]
+    o:payload_top_mm: [690, 2540]
+    o:peak_current_A: [960, 40]
+    o:shoulder_force_N: [960, 460]
+    o:start_current_A: [960, 240]
+    o:stop_dissipated_J: [960, 1080]
+    o:stop_force_N: [960, 880]
+    o:t_hit_s: [960, 660]
+    p:gear: [30, 30]
+    p:k_elbow: [30, 670]
+    p:throttle: [30, 533]
+  groups:
+    - name: inputs
+      collapsed: true
+      x: 30
+      y: 230
+      members: ['p:gear', 'p:throttle', 'p:k_elbow']
+      expose: {}
   notes:
-  - text: '**3D-3 Robot arm.** A gearmotor at the shoulder lifts a two-link aluminium arm holding a 0.9 kg steel ball. The shoulder is a rigid hinge, the elbow a rigid hinge with a torsion spring, the ball is welded on. The arm swings up until a bump on it hits a rubber stop at 60 degrees (a contact with stiffness and damping), then the motor pushes against the stop. Textbook check: the arm''s weight needs $\sum m g x \approx 11.5$ N m at the shoulder to start. Against the stop the motor stalls, so it draws its 15 A limit.
-
-      '
-    x: 30
-    y: -185
-    width: 640
+    - text: "**3D-3 Robot arm.** A gearmotor at the shoulder lifts a two-link aluminium arm holding a 0.9 kg steel ball. The shoulder\
+        \ is a rigid hinge, the elbow a rigid hinge with a torsion spring, the ball is welded on. The arm swings up until a bump\
+        \ on it hits a rubber stop at 60 degrees (a contact with stiffness and damping), then the motor pushes against the stop.\
+        \ Textbook check: the arm's weight needs $\\sum m g x \\approx 11.5$ N m at the shoulder to start. Against the stop the\
+        \ motor stalls, so it draws its 15 A limit.\n"
+      x: 30
+      y: 30
+      width: 640

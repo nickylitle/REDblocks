@@ -48,43 +48,24 @@ run:
 
 editor:
   layout:
-    b:ball:
-    - 30
-    - 630
-    b:ground:
-    - 30
-    - 190
-    e:hit_floor:
-    - 340
-    - 530
-    e:hit_ramp:
-    - 340
-    - 30
-    o:dissipated_floor_J:
-    - 650
-    - 230
-    o:dissipated_ramp_J:
-    - 650
-    - 30
-    o:ke_end_J:
-    - 340
-    - 1470
-    o:spin_end:
-    - 340
-    - 1250
-    o:vx_end:
-    - 340
-    - 1030
-    p:e:
-    - 30
-    - 30
-    p:mu:
-    - 30
-    - 490
+    b:ball: [30, 670]
+    b:ground: [30, 370]
+    e:hit_floor: [690, 540]
+    e:hit_ramp: [690, 40]
+    o:dissipated_floor_J: [960, 240]
+    o:dissipated_ramp_J: [960, 40]
+    o:ke_end_J: [690, 1488]
+    o:spin_end: [690, 1264]
+    o:vx_end: [690, 1040]
+    p:e: [30, 30]
+    p:mu: [30, 490]
+  groups:
+    - {name: inputs, collapsed: true, x: 30, y: 210, members: ['p:e', 'p:mu'], expose: {}}
   notes:
-  - text: '**2D-2 Ball bouncing down a ramp.** A rubber ball falls onto a 20 degree ramp, bounces down it and rolls away on the floor. Each impact keeps a fraction $e$ of the speed into the surface; friction spins the ball up until it rolls. Every joule lost is booked as dissipated. Textbook check: energy in = $m g \Delta h$, energy out = kinetic energy + dissipated energy (the ledger closes); once it rolls on the floor, $v = \omega R$.
-
-      '
-    x: 30
-    y: -146
-    width: 640
+    - text: "**2D-2 Ball bouncing down a ramp.** A rubber ball falls onto a 20 degree ramp, bounces down it and rolls away on\
+        \ the floor. Each impact keeps a fraction $e$ of the speed into the surface; friction spins the ball up until it rolls.\
+        \ Every joule lost is booked as dissipated. Textbook check: energy in = $m g \\Delta h$, energy out = kinetic energy +\
+        \ dissipated energy (the ledger closes); once it rolls on the floor, $v = \\omega R$.\n"
+      x: 30
+      y: 30
+      width: 640

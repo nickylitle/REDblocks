@@ -71,64 +71,32 @@ run:
 
 editor:
   layout:
-    b:coupler:
-    - 30
-    - 1270
-    b:crank:
-    - 30
-    - 630
-    b:frame:
-    - 30
-    - 170
-    b:rocker:
-    - 30
-    - 1910
-    e:A_hinge:
-    - 340
-    - 2390
-    e:B_hinge:
-    - 340
-    - 2830
-    e:O2_hinge:
-    - 340
-    - 810
-    e:O4_hinge:
-    - 340
-    - 1470
-    e:friction:
-    - 340
-    - 1910
-    e:motor:
-    - 340
-    - 30
-    o:crank_rpm:
-    - 340
-    - 1250
-    o:force_A_N:
-    - 650
-    - 430
-    o:force_O4_N:
-    - 650
-    - 230
-    o:peak_current_A:
-    - 650
-    - 30
-    o:rocker_max_deg:
-    - 340
-    - 3490
-    o:rocker_min_deg:
-    - 340
-    - 3270
-    p:gear:
-    - 30
-    - 30
-    p:throttle:
-    - 30
-    - 470
+    b:coupler: [30, 1330]
+    b:crank: [30, 670]
+    b:frame: [30, 370]
+    b:rocker: [30, 1990]
+    e:A_hinge: [690, 2400]
+    e:B_hinge: [690, 2840]
+    e:O2_hinge: [690, 820]
+    e:O4_hinge: [690, 1484]
+    e:friction: [690, 1920]
+    e:motor: [690, 40]
+    o:crank_rpm: [690, 1260]
+    o:force_A_N: [960, 440]
+    o:force_O4_N: [960, 240]
+    o:peak_current_A: [960, 40]
+    o:rocker_max_deg: [690, 3504]
+    o:rocker_min_deg: [690, 3280]
+    p:gear: [30, 30]
+    p:throttle: [30, 470]
+  groups:
+    - {name: inputs, collapsed: true, x: 30, y: 210, members: ['p:gear', 'p:throttle'], expose: {}}
   notes:
-  - text: '**2D-3 Four-bar linkage.** Crank 100 mm, coupler 300 mm, rocker 250 mm, ground 300 mm. The shortest link plus the longest (400 mm) is less than the other two (550 mm), so the crank can turn all the way round while the rocker rocks back and forth (a Grashof crank-rocker). Four rigid hinges join the links; a gearmotor drives the crank. Textbook check: the rocker''s end positions are where crank and coupler line up: it swings between 87.1 and 138.6 degrees, 51.5 degrees in all.
-
-      '
-    x: 30
-    y: -165
-    width: 640
+    - text: "**2D-3 Four-bar linkage.** Crank 100 mm, coupler 300 mm, rocker 250 mm, ground 300 mm. The shortest link plus the\
+        \ longest (400 mm) is less than the other two (550 mm), so the crank can turn all the way round while the rocker rocks\
+        \ back and forth (a Grashof crank-rocker). Four rigid hinges join the links; a gearmotor drives the crank. Textbook check:\
+        \ the rocker's end positions are where crank and coupler line up: it swings between 87.1 and 138.6 degrees, 51.5 degrees\
+        \ in all.\n"
+      x: 30
+      y: 30
+      width: 640

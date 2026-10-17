@@ -59,31 +59,39 @@ run:
 
 editor:
   layout:
-    p:kv: [30, 140]
-    p:belt: [30, 280]
+    b:flywheel: [690, 140]
+    c:caps: [1230, 140]
+    c:fuse: [960, 740]
+    c:m1: [1230, 680]
+    c:m2: [1500, 140]
+    c:pack: [960, 140]
+    c:wiring: [960, 1200]
+    e:bearings: [690, 440]
+    n:bat: [1770, 360]
+    n:bus: [1770, 520]
+    n:esc: [1770, 680]
+    n:gnd: [1770, 140]
+    o:E_heat_J: [2040, 1512]
+    o:I_pack_peak: [2040, 624]
+    o:T_motor_max: [2040, 1184]
+    o:V_bus_min: [2040, 820]
+    o:fuse_blown: [2040, 1020]
+    o:rpm_end: [2040, 400]
+    o:soc_end: [2040, 1348]
+    o:t_90_s: [2040, 140]
     p:I_esc: [30, 420]
-    b:flywheel: [330, 140]
-    e:bearings: [330, 440]
-    c:pack: [650, 140]
-    c:fuse: [650, 670]
-    c:wiring: [650, 1170]
-    c:caps: [970, 140]
-    c:m1: [970, 670]
-    c:m2: [1290, 140]
-    n:gnd: [1610, 140]
-    n:bat: [1610, 340]
-    n:bus: [1610, 510]
-    n:esc: [1610, 680]
-    o:t_90_s: [1930, 140]
-    o:rpm_end: [1930, 350]
-    o:I_pack_peak: [1930, 530]
-    o:V_bus_min: [1930, 710]
-    o:fuse_blown: [1930, 890]
-    o:T_motor_max: [1930, 1050]
-    o:soc_end: [1930, 1210]
-    o:E_heat_J: [1930, 1370]
+    p:belt: [30, 280]
+    p:kv: [30, 140]
+  groups:
+    - {name: inputs, collapsed: true, x: 30, y: 290, members: ['p:kv', 'p:belt', 'p:I_esc'], expose: {}}
   notes:
-  - text: '**1D-4 Battery, ESCs and two motors.** The electrical side is drawn as a circuit: a pack, a fuse, the leads, the ESC capacitors and two motors behind current-limited ESCs, all wired between nets. Both motors drive the flywheel through a 2:1 belt. Textbook check: top speed $\approx kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 \approx 13900$ rpm, a little less with sag and drag. While both ESCs hold 80 A the flywheel torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$ N m ($K_t = 1/kv$), about 690 rad/s gained every second. The peak pack current (about 540 A) is the inrush into the empty ESC capacitors in the first 50 microseconds: the spark you see when plugging in. Set the caps v0 to 25 V to see the motors alone (about 160 A). The motors carry a thermal model; tick thermal on any other part to see it heat.'
-    x: 30
-    y: -190
-    width: 640
+    - text: '**1D-4 Battery, ESCs and two motors.** The electrical side is drawn as a circuit: a pack, a fuse, the leads, the
+        ESC capacitors and two motors behind current-limited ESCs, all wired between nets. Both motors drive the flywheel through
+        a 2:1 belt. Textbook check: top speed $\approx kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 \approx 13900$ rpm, a little
+        less with sag and drag. While both ESCs hold 80 A the flywheel torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$
+        N m ($K_t = 1/kv$), about 690 rad/s gained every second. The peak pack current (about 540 A) is the inrush into the empty
+        ESC capacitors in the first 50 microseconds: the spark you see when plugging in. Set the caps v0 to 25 V to see the motors
+        alone (about 160 A). The motors carry a thermal model; tick thermal on any other part to see it heat.'
+      x: 30
+      y: 30
+      width: 640

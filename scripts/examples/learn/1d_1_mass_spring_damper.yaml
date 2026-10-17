@@ -37,43 +37,29 @@ run:
 
 editor:
   layout:
-    b:mass:
-    - 340
-    - 30
-    e:damper:
-    - 650
-    - 890
-    e:spring:
-    - 650
-    - 470
-    o:first_trough_mm:
-    - 650
-    - 30
-    o:dissipated_J:
-    - 960
-    - 230
-    o:peak_spring_N:
-    - 960
-    - 30
-    o:x_end_mm:
-    - 650
-    - 250
-    p:c:
-    - 30
-    - 330
-    p:k:
-    - 30
-    - 170
-    p:m:
-    - 30
-    - 30
-    p:x_start:
-    - 30
-    - 490
+    b:mass: [690, 40]
+    e:damper: [960, 903]
+    e:spring: [960, 488]
+    o:dissipated_J: [1230, 240]
+    o:first_trough_mm: [960, 40]
+    o:peak_spring_N: [1230, 40]
+    o:x_end_mm: [960, 264]
+    p:c: [30, 330]
+    p:k: [30, 170]
+    p:m: [30, 30]
+    p:x_start: [30, 490]
+  groups:
+    - name: inputs
+      collapsed: true
+      x: 30
+      y: 190
+      members: ['p:m', 'p:k', 'p:c', 'p:x_start']
+      expose: {}
   notes:
-  - text: '**1D-1 Mass on a spring and damper.** A mass is pulled 10 mm and let go. The spring pulls it back, it overshoots, and the damper takes a little energy each swing until it settles. Textbook check: damped period $T_d = 2\pi / (\omega_n \sqrt{1-\zeta^2}) = 0.316$ s, and the first swing past zero reaches $x_0 e^{-\zeta \omega_n T_d / 2} = 7.3$ mm. Open **Help > Examples** for the full walk-through.
-
-      '
-    x: 30
-    y: -147
-    width: 640
+    - text: "**1D-1 Mass on a spring and damper.** A mass is pulled 10 mm and let go. The spring pulls it back, it overshoots,\
+        \ and the damper takes a little energy each swing until it settles. Textbook check: damped period $T_d = 2\\pi / (\\omega_n\
+        \ \\sqrt{1-\\zeta^2}) = 0.316$ s, and the first swing past zero reaches $x_0 e^{-\\zeta \\omega_n T_d / 2} = 7.3$ mm.\
+        \ Open **Help > Examples** for the full walk-through.\n"
+      x: 30
+      y: 30
+      width: 640
