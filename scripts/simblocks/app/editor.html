@@ -126,6 +126,8 @@ textarea{width:100%;resize:vertical}
 :root.dashwires #wires path[data-t="metric"],:root.dashwires #wiresTop path[data-t="metric"]{stroke-dasharray:5 5}
 #wires path:hover{stroke-width:calc(var(--wire-w,2.2) * 1.8)}
 #wires path.temp{stroke-dasharray:5 4;pointer-events:none}
+#wires path.ref{stroke-dasharray:6 3;opacity:.85;pointer-events:none}
+#wires circle.refend{pointer-events:none}
 #wiresTop{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:5}
 #wiresTop path{fill:none;pointer-events:stroke;cursor:pointer}
 #wiresTop path.halo{stroke:var(--bg);stroke-width:9;opacity:.85;pointer-events:none}
@@ -1579,8 +1581,7 @@ function textUseHint(n){
   const re = new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
   const hit = (v, depth) => depth < 6 && (typeof v === "string" ? re.test(v) : (v && typeof v === "object" ? Object.values(v).some(x => hit(x, depth + 1)) : false));
   const users = S.nodes.filter(m => m.id !== n.id && m.data && hit(m.data, 0)).map(m => nodeName(m) || m.kind);
-  return users.length ? `<div class="hint" title="used by name in these blocks' fields, so there is no wire">used as $${esc(nm)} in ${esc(users.join(", "))}</div>`
-    : `<div class="hint">not used yet: wire it in, or type $${esc(nm)} in a field</div>`; }
+  return users.length ? "" : `<div class="hint">not used yet: wire it in, or type $${esc(nm)} in a field</div>`; }
 function nodeHTML(n){
   if (n.kind === "note") return noteHTML(n);
   if (n.kind === "image") return imageHTML(n);
@@ -1864,6 +1865,29 @@ function focus(){
   selNodes.forEach(id => nodes.add(vis(id)));
   return {links, nodes};
 }
+// a value used by name ($x) inside another block's text field gets a wire too, drawn to that field's row
+function refWires(){
+  let h = ""; const c = canvas.getBoundingClientRect();
+  const srcs = S.nodes.filter(n => ["value","sweep","mc","builder"].includes(n.kind) && nodeName(n));
+  if (!srcs.length) return h;
+  const fields = [];
+  S.nodes.forEach(m => { if (m.kind === "note" || m.kind === "image" || hiddenIn(m.id)) return;
+    const el = world.querySelector(`.node[data-id="${m.id}"]`); if (!el) return;
+    el.querySelectorAll("input:not([type=checkbox]), textarea").forEach(inp => { if (inp.value && inp.value.includes("$")) fields.push([m, el, inp]); }); });
+  if (!fields.length) return h;
+  srcs.forEach(n => {
+    if (hiddenIn(n.id)) return;
+    const out = sockets(n).outs.find(o => o.type === "val"); if (!out) return;
+    const a = sockPos(n.id, out.key, "out"); if (!a) return;
+    const re = new RegExp("\\$" + nodeName(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![A-Za-z0-9_])");
+    fields.forEach(([m, el, inp]) => {
+      if (m.id === n.id || !re.test(inp.value)) return;
+      const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
+      const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
+      h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nodeName(n))} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
+           `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2" fill="var(--s-val)"></circle>`;
+    }); });
+  return h; }
 function drawWires(temp){
   let h = "", top = "";
   const wt = document.getElementById("wiresTop"); if (wt && wt !== world.lastElementChild) world.appendChild(wt);
@@ -1883,6 +1907,7 @@ function drawWires(temp){
     else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
   });
   if (wt) wt.innerHTML = top;
+  h += refWires();
   if (temp) h += `<path class="temp" d="${curve(temp.a, temp.b)}" stroke="var(--acc)"></path>`;
   wires.innerHTML = h;
   selStatus();
@@ -3660,7 +3685,8 @@ function renderLegend(){
   b.innerHTML = `<div><div class="lt">Wires (what flows)</div>` +
     wire("val", "Value:", "a number or expression") + wire("body", "Body:", "which body a part acts on") +
     wire("sig", "Signal:", "a time history out of a run") + wire("state", "State:", "a running state (set, broken, charge)") +
-    wire("metric", "Metric:", "a result checked or swept") + `</div>` +
+    wire("metric", "Metric:", "a result checked or swept") +
+    `<div class="lr"><svg viewBox="0 0 34 10"><path d="M1 5 H33" style="stroke:var(--s-val);stroke-width:var(--wire-w,2.2);stroke-dasharray:6 3;fill:none"/></svg><span><b>Dashed value:</b> used by name ($x) in a field</span></div>` + `</div>` +
     `<div><div class="lt">Sockets</div><div class="lk" style="grid-template-columns:1fr"><span><i class="sk" style="background:var(--s-val);width:9px;height:9px;border-radius:50%"></i>round: value / signal</span><span><i class="sk" style="background:var(--s-body);width:9px;height:9px;border-radius:2px"></i>square: body</span><span><i class="sk" style="background:var(--s-state);width:9px;height:9px;transform:rotate(45deg);border-radius:1px"></i>diamond: state</span></div></div>` +
     `<div><div class="lt">Node bars (what a node is)</div><div class="lk">` +
     kind("value", "Value") + kind("builder", "Builder block") + kind("body", "Body") + kind("element", "Element") +
