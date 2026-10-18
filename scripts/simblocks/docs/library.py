@@ -115,7 +115,7 @@ ELEMENTS = [
          yaml="staging:\n  type: jettison\n  measure: vehicle\n  at: 162 s\n  mass: 165000 kg"),
     dict(name="aero_drag", law="D = 1/2 rho v^2 Cd(Mach) area, against the velocity through the turning air (2d)",
          fields="area, Cd (a number or {mach: [...], cd: [...]})",
-         what="2D, with a planet. Drag from the US Standard Atmosphere 1976 at the body's altitude, with Cd read against "
+         what="2D, with a planet. Drag from the standard atmosphere at the body's altitude (density, speed of sound), with Cd read against "
               "Mach. Outputs: drag, dynamic_pressure, mach, air_density, ambient_pressure.",
          yaml="air:\n  type: aero_drag\n  measure: vehicle\n  area: 10.5 m^2\n  Cd: {mach: [0, 1, 2, 5], cd: [0.3, 0.6, 0.45, 0.3]}"),
     dict(name="steering", law="vertical, pitch-over, gravity turn, attitude hold, then explicit guidance to an orbit (2d)",
@@ -192,6 +192,26 @@ def _el_fig_raw(name):
            "slider": '<line x1="42" y1="58" x2="118" y2="58" stroke="currentColor" stroke-width="2"/>' +
                      '<rect x="66" y="44" width="28" height="12" style="fill:var(--soft)" stroke="currentColor"/>',
            "beam": '<path d="M42,45 C70,45 90,52 118,60" fill="none" stroke="currentColor" stroke-width="3"/>'}.get(name)
+    VEH = {                                            # vehicle elements act on the one vehicle body: each its own sketch
+        "aero_drag": ('<path d="M14,22 H146 M14,68 H146" fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="5 4"/>'
+                      '<path d="M14,34 Q52,34 60,38 M14,56 Q52,56 60,52 M100,38 Q110,34 146,34 M100,52 Q110,56 146,56" fill="none" '
+                      'stroke="currentColor" stroke-width="0.8"/>' + FG._box(60, 32, 40, 26, "vehicle") + FG._arrow(58, 45, 24, 45) +
+                      FG._text(22, 40, "D") + FG._text(40, 84, "drag, against the airspeed")),
+        "rocket": (FG._box(68, 14, 24, 42, "") + '<polygon points="72,56 88,56 92,66 68,66" style="fill:var(--soft)" stroke="currentColor"/>' +
+                   '<path d="M70,68 L64,84 M80,68 V86 M90,68 L96,84" fill="none" stroke="currentColor" stroke-width="0.9" stroke-dasharray="3 2"/>' +
+                   FG._arrow(110, 50, 110, 16) + FG._text(116, 32, "thrust") + FG._pt(80, 35)),
+        "jettison": (FG._box(64, 10, 32, 34, "vehicle") +
+                     '<rect x="64" y="54" width="32" height="20" fill="none" stroke="currentColor" stroke-dasharray="3 2"/>' +
+                     FG._arrow(112, 56, 112, 80) + FG._text(102, 52, "") + FG._text(30, 86, "a spent stage drops off") + FG._pt(80, 27)),
+        "steering": ('<path d="M6,82 Q80,70 154,82" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+                     '<path d="M30,76 C30,40 70,20 128,16" fill="none" style="stroke:var(--acc)" stroke-width="1.6"/>' +
+                     FG._head(128, 16, 0.995, -0.1) + FG._pt(30, 76) + FG._text(40, 62, "pitch over, gravity turn")),
+        "landing_guidance": ('<path d="M6,82 Q80,72 154,82" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+                             '<path d="M10,12 C70,14 110,40 124,70" fill="none" style="stroke:var(--acc)" stroke-width="1.6"/>' +
+                             FG._head(124, 70, 0.3, 0.954) + FG._pt(126, 77) + FG._text(16, 34, "braking, approach, crew")),
+    }
+    if name in VEH:
+        return f'<symbol id="el-{name}" viewBox="0 0 160 90">{VEH[name]}</symbol>'
     if mid is None:                                   # vehicle elements act on one body: a body with its arrow
         a = FG._box(60, 30, 40, 30, "body")
         mid = {"rocket": '<path d="M80,62 L72,84 M80,62 L88,84" fill="none" stroke="currentColor" stroke-width="1.6"/>'

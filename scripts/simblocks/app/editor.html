@@ -622,7 +622,20 @@ const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", a
   EI:"bending stiffness", EIy:"bending stiffness (y)", EIz:"bending stiffness (z)", GJ:"torsional stiffness",
   section:"a section block", material:"material name", density:"density", hinge:"'auto' or a hinge table",
   damping:"fraction of critical", orient:"section h direction (3D)", rotary_inertia:"rotary inertia", end_mass:"true/false",
-  mass:"element's own mass", segments:"pieces (needs mass)"};
+  mass:"element's own mass", segments:"pieces (needs mass)",
+  csv:"a load table from a CSV file", pulse:"a standard shape against time", Kt:"torque constant (or give kv)", V:"supply voltage",
+  contact:"the contact element it rides on",
+  thrust_vac:"thrust in vacuum", exit_area:"nozzle exit area (sets the back-pressure loss)", mass_flow:"propellant flow at full thrust",
+  start:"when it starts", stop:"when it stops", rise:"time to build up to full thrust", tailoff:"time to die away after stop",
+  cutoff:"guidance: stop when the steering's target speed is reached", propellant:"propellant on board (stops when burnt)",
+  at:"when it happens", Cd:"drag coefficient: a number, or {mach: [...], cd: [...]}", area:"reference area the Cd goes with",
+  pitch_start:"time to start turning over", pitch_rate:"turn-over rate", pitch_end:"time to stop turning over",
+  tilt_arrest:"time to hold the attitude (end of the gravity turn)", guidance_start:"time closed-loop guidance takes over",
+  target_altitude:"altitude to reach, level", target_speed:"inertial speed for cutoff", tgo_freeze:"time-to-go below which guidance holds its last answer",
+  site_range:"distance to the landing site", mode:"target (guidance law) or rate (a schedule)", stop_below:"phase ends below this altitude",
+  end_before:"phase ends this long before its target time", target:"the state to arrive at", schedule:"descent rate and forward speed against time",
+  freeze:"time-to-go below which the steering is held", tau:"time constant of the rate loop", contact_altitude:"engine stop when the probes touch"};
+const FIELD_HELP_EL = {jettison:{mass:"mass dropped (the part that leaves)"}};
 let CAT = null;
 let S = newState();
 let filePath = null, dirty = false;
@@ -994,6 +1007,39 @@ const PART_PH = {I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF",
   I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
   throttle:"1 = full", I_max:"no limit", C_th:"heat cap.", R_th:"to ambient", T_amb_C:"25 °C", T0_C:"= ambient", alpha:"0 (Cu 0.00393)",
   T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002"};
+// what each part field means (the library pages)
+const PART_MEAN = {R:"resistance", C:"capacitance", ESR:"equivalent series resistance", R_leak:"leakage resistance (0 = none)",
+  v0:"voltage at the start", L:"inductance", i0:"current at the start", V:"voltage", I:"current", I_load:"a fixed current drawn across it (its part is <name>__load)",
+  cells:"cells in series", capacity:"capacity", R0:"series resistance", R1:"sag branch resistance", C1:"sag branch capacitance",
+  soc0:"charge at the start (0 to 1)", V_full:"cell voltage full", V_empty:"cell voltage empty", Vf:"forward voltage",
+  R_on:"resistance when on", R_off:"resistance when off", on_at:"closes at", off_at:"opens at", pwm_freq:"PWM frequency (0 = none)",
+  duty:"PWM on fraction (0 to 1)", phase:"PWM phase (0 to 1)", I_rating:"rated current", t_blow:"time at the rating before it blows",
+  I_trip:"current that blows it at once", kv:"speed constant", Kt:"torque constant", gear:"motor turns per shaft turn",
+  J_rotor:"rotor inertia (added to the shaft through the gear)", throttle:"ESC duty limit (0 to 1)", I_max:"ESC current limit",
+  regen:"let it push current back into the supply", C_th:"heat capacity", R_th:"thermal resistance to ambient", T_amb_C:"ambient temperature",
+  T0_C:"temperature at the start", T_max_C:"fails open above this", alpha:"resistance temperature coefficient",
+  kt_tempco:"Kt temperature coefficient", vf_tempco:"Vf temperature coefficient"};
+// schematic symbols for the library pages: + terminal left, - right
+const PART_SYM = (() => {
+  const W = `stroke="currentColor" stroke-width="1.6" fill="none"`, A = `style="stroke:var(--acc);fill:none" stroke-width="1.6"`;
+  const ends = (x0, x1) => `<line x1="14" y1="45" x2="${x0}" y2="45" ${W}/><line x1="${x1}" y1="45" x2="146" y2="45" ${W}/>` +
+    `<circle cx="14" cy="45" r="3" style="fill:var(--pt);stroke:var(--bg)"/><circle cx="146" cy="45" r="3" style="fill:var(--pt);stroke:var(--bg)"/>` +
+    `<text x="10" y="34" font-size="9" fill="currentColor">+</text><text x="143" y="34" font-size="9" fill="currentColor">−</text>`;
+  const head = (x, y, dx) => `<polygon points="${x},${y} ${x - 6 * dx},${y - 3.5} ${x - 6 * dx},${y + 3.5}" style="fill:var(--acc)"/>`;
+  return {
+    resistor: ends(50, 110) + `<polyline points="50,45 55,36 65,54 75,36 85,54 95,36 105,54 110,45" ${W}/>`,
+    capacitor: ends(76, 84) + `<line x1="76" y1="30" x2="76" y2="60" ${W}/><line x1="84" y1="30" x2="84" y2="60" ${W}/>`,
+    inductor: ends(50, 110) + `<path d="M50,45 a7.5,8 0 0 1 15,0 a7.5,8 0 0 1 15,0 a7.5,8 0 0 1 15,0 a7.5,8 0 0 1 15,0" ${W}/>`,
+    voltage_source: ends(64, 96) + `<circle cx="80" cy="45" r="16" ${W}/><text x="69" y="49" font-size="11" fill="currentColor">+</text><text x="85" y="49" font-size="11" fill="currentColor">−</text>`,
+    current_source: ends(64, 96) + `<circle cx="80" cy="45" r="16" ${W}/><line x1="92" y1="45" x2="73" y2="45" ${A}/>` + head(68, 45, -1),
+    current_load: ends(64, 96) + `<rect x="64" y="29" width="32" height="32" transform="rotate(45 80 45)" ${W}/><line x1="68" y1="45" x2="87" y2="45" ${A}/>` + head(92, 45, 1),
+    battery: ends(62, 98) + `<line x1="62" y1="30" x2="62" y2="60" ${W}/><line x1="70" y1="37" x2="70" y2="53" stroke="currentColor" stroke-width="3.2"/>` +
+             `<line x1="90" y1="30" x2="90" y2="60" ${W}/><line x1="98" y1="37" x2="98" y2="53" stroke="currentColor" stroke-width="3.2"/><line x1="70" y1="45" x2="90" y2="45" stroke="currentColor" stroke-dasharray="2 3"/>`,
+    diode: ends(66, 94) + `<polygon points="66,32 66,58 92,45" style="fill:var(--soft);stroke:currentColor" stroke-width="1.4"/><line x1="94" y1="31" x2="94" y2="59" ${W}/>`,
+    switch: ends(62, 98) + `<line x1="62" y1="45" x2="94" y2="28" ${W}/><circle cx="62" cy="45" r="2.2" fill="currentColor"/><circle cx="98" cy="45" r="2.2" fill="currentColor"/>`,
+    fuse: ends(56, 104) + `<rect x="56" y="37" width="48" height="16" rx="3" ${W}/><line x1="56" y1="45" x2="104" y2="45" stroke="currentColor"/>`,
+    motor: ends(62, 98) + `<circle cx="80" cy="45" r="18" ${W}/><text x="74" y="50" font-size="13" fill="currentColor">M</text><line x1="80" y1="27" x2="80" y2="10" stroke="currentColor" stroke-width="3"/><text x="86" y="16" font-size="8" fill="currentColor">shaft</text>`};
+})();
 // fields in the order a datasheet gives them
 const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty","I_load"],
   capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R","I_load"], current_source:["I"], current_load:["I"], resistor:["R"],
@@ -4331,6 +4377,7 @@ function helpEntries(){
   Object.keys(NODE_INFO).forEach(k => E.push({id:"node:" + k, grp:"Nodes", t:NODE_INFO[k][0], words:NODE_INFO[k][3]}));
   E.push({id:"node:group", grp:"Nodes", t:"Group", words:"group module fold library"});
   Object.keys(CAT.element_types).forEach(t => { const e = (CAT.element_info || {})[t] || {}; E.push({id:"element:" + t, grp:"Element types", t, words:(e.what || "") + " " + (e.law || "")}); });
+  if (CAT.circuit) Object.keys(CAT.circuit.types).forEach(t => { const I = PART_INFO[t] || ["", ""]; E.push({id:"part:" + t, grp:"Circuit parts", t:PART_NAME[t] || t, words:"circuit electrical " + I[0] + " " + I[1]}); });
   E.push({id:"materials", grp:"Materials", t:"Materials catalog", words:"materials steel aluminium titanium polymer composite"});
   (HELP ? HELP.blocks : CAT.blocks).forEach(b => E.push({id:"block:" + b.name, grp:"Blocks · " + b.domain, t:b.name, words:[b.summary, b.category, (b.tags || []).join(" "), b.kind, b.source].join(" "), kind:b.kind}));
   return E;
@@ -4376,9 +4423,23 @@ async function helpShow(id){
         `<p>${{group:'<a data-h="guide:groups">Groups and your library</a>', export:'<a data-h="guide:csv">CSV export guide</a>', sweep:'<a data-h="guide:studies">Studies</a>', mc:'<a data-h="guide:studies">Studies</a>', note:'<a data-h="guide:notes">Notes and LaTeX</a>', value:'<a data-h="guide:values">Values, units and expressions</a>', body:'<a data-h="guide:bodies">Bodies and measures</a>', load:'<a data-h="guide:loads">Loads</a>'}[k] || ""}</p>`; }
   else if (id.startsWith("element:")){ const t = id.slice(8), e = (CAT.element_info || {})[t] || {}, et = CAT.element_types[t] || {fields:[], required:[]};
     h = `<div class="hk">Element type</div><h2>${esc(t)}</h2><div class="hfig"><svg viewBox="0 0 160 90"><use href="#el-${esc(t)}"/></svg></div>` +
-        (e.law ? `<div class="hlaw">${esc(e.law)}</div>` : "") + `<p>${esc(e.what || "")}</p><h3>Fields</h3><table class="ht"><tr><th>field</th><th></th><th>meaning</th></tr>` +
-        et.fields.map(f => `<tr><td><code>${esc(f)}</code></td><td>${et.required.includes(f) ? "required" : "optional"}</td><td>${esc(FIELD_HELP[f] || "")}</td></tr>`).join("") + `</table>` +
-        `<p>${esc(e.fields || "")}</p><h3>In a file</h3><pre class="code" id="hUse">elements:\n  my_${esc(t)}: {type: ${esc(t)}, measure: a - b${et.required.map(f => ", " + f + ": …").join("")}}</pre><div class="hb"><button data-copy="hUse">Copy</button><button data-addel="${esc(t)}">Add to canvas</button></div>`; }
+        (e.law ? `<div class="hlaw">${esc(e.law)}</div>` : "") + `<p>${esc(e.what || "")}</p><h3>Fields</h3><table class="ht"><tr><th>field</th><th>needed</th><th>meaning</th></tr>` +
+        et.fields.filter(f => !f.startsWith("__")).map(f => `<tr><td><code>${esc(f)}</code></td><td>${et.required.includes(f) ? "required" : "optional"}</td><td>${esc((FIELD_HELP_EL[t] || {})[f] || FIELD_HELP[f] || "")}</td></tr>`).join("") + `</table>` +
+        `<p>${esc(e.fields || "")}</p><h3>In a file</h3><pre class="code" id="hUse">elements:\n  my_${esc(t)}: {type: ${esc(t)}, measure: ${VEH_TYPES.includes(t) ? "vehicle" : "a - b"}${et.required.map(f => ", " + f + ": …").join("")}}</pre><div class="hb"><button data-copy="hUse">Copy</button><button data-addel="${esc(t)}">Add to canvas</button></div>`; }
+  else if (id.startsWith("part:")){ const t = id.slice(5), ct = CAT.circuit.types[t] || {fields:[], required:[]}, I = PART_INFO[t] || ["", ""];
+    const row = (f, need) => `<tr><td><code>${esc(f)}</code></td><td>${need}</td><td>${esc(PART_MEAN[f] || "")}</td><td>${esc(PART_PH[f] || "")}</td></tr>`;
+    const fs = byOrder(ct.fields, PART_ORDER[t]);
+    let tb = fs.map(f => row(f, ct.required.includes(f) ? "required" : "optional")).join("");
+    if (t === "motor") tb += `<tr><td colspan="4"><b>esc:</b> a speed controller in front of it</td></tr>` + byOrder(CAT.circuit.esc, PART_ORDER.esc).map(f => row(f, "optional")).join("");
+    if (ct.thermal) tb += `<tr><td colspan="4"><b>thermal:</b> a lumped heat model (optional)</td></tr>` + byOrder(CAT.circuit.thermal, PART_ORDER.thermal).map(f => row(f, "optional")).join("");
+    const req = ct.required.map(f => `, ${f}: ${(PART_PH[f] || "…").replace(/^e\.g\. /, "")}`).join("");
+    h = `<div class="hk">Circuit part</div><h2>${esc(PART_NAME[t] || t)}</h2><div class="hfig"><svg viewBox="0 0 160 90" style="color:var(--ink)">${PART_SYM[t] || ""}</svg></div>` +
+        `<div class="hlaw">${esc(I[0])}</div><p>${esc(I[1])}</p>` +
+        `<h3>Fields</h3><table class="ht"><tr><th>field</th><th>needed</th><th>meaning</th><th>typical / default</th></tr>${tb}</table>` +
+        `<h3>Outputs</h3><p>${CAT.circuit.quantities.map(q => `<code>${esc(q)}</code>`).join(" · ")} (by the passive sign: current into + is positive)</p>` +
+        `<h3>In a file</h3><pre class="code" id="hUse">circuit:\n  ground: gnd\n  parts:\n    my_${esc(t)}: {type: ${esc(t)}, between: [bus, gnd]${t === "motor" ? ", measure: shaft" : ""}${esc(req)}}</pre>` +
+        `<div class="hb"><button data-copy="hUse">Copy</button><button data-addpart="${esc(t)}">Add to canvas</button></div>` +
+        `<p><a data-h="guide:circuit">How circuits work</a></p>`; }
   else if (id === "materials"){ const M = HELP.mats;
     h = `<div class="hk">Catalog</div><h2>Materials (${M.length})</h2><p>Type the key, or loose text such as <code>7075</code> or <code>4130 at 45 HRC</code>, into a Value node. Custom materials from your folder are marked. Lamina rows show E1/E2 and Xt/Xc.</p>
       <div class="hscroll"><table class="ht"><tr><th>key</th><th>name</th><th>E</th><th>ν</th><th>ρ kg/m³</th><th>sy (Xt)</th><th>su (Xc)</th><th>family</th><th></th></tr>` +
@@ -4422,10 +4483,12 @@ document.getElementById("helpView").addEventListener("click", async e => {
     catch (err) { const r = document.createRange(); r.selectNodeContents(document.getElementById(c.dataset.copy)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); c.textContent = "Selected: Ctrl+C"; } return; }
   const ab = e.target.closest("[data-addblk]"); if (ab){ const b = CAT.blocks.find(x => x.name === ab.dataset.addblk); helpClose();
     const c = canvas.getBoundingClientRect(); const n = addNode("builder", {name:b.name.split("_").slice(0, 2).join("_"), block:b.name}, (c.width / 2 - view.x) / view.k - 120, (120 - view.y) / view.k); setSel(n.id); changed(); return; }
+  const ap = e.target.closest("[data-addpart]"); if (ap){ const t = ap.dataset.addpart; helpClose(); const c = canvas.getBoundingClientRect();
+    const n = addNode("part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}, (c.width / 2 - view.x) / view.k - 120, (120 - view.y) / view.k); setSel(n.id); changed(); return; }
   const ae = e.target.closest("[data-addel]"); if (ae){ const t = ae.dataset.addel; helpClose(); const c = canvas.getBoundingClientRect();
     const n = addNode("element", {name:t, type:t, terms: ["drive","drag","force"].includes(t) ? [{coef:"1"}] : [{coef:"1"},{coef:"-1"}]}, (c.width / 2 - view.x) / view.k - 120, (120 - view.y) / view.k); setSel(n.id); changed(); }
 });
-function helpIdFor(n){ if (n.kind === "element") return "element:" + n.data.type; if (n.kind === "builder") return "block:" + n.data.block; return "node:" + n.kind; }
+function helpIdFor(n){ if (n.kind === "element") return "element:" + n.data.type; if (n.kind === "part") return "part:" + n.data.ptype; if (n.kind === "builder") return "block:" + n.data.block; return "node:" + n.kind; }
 // ------------------------------------------------------------------------------------------------ colours: themes + settings
 // Every colour token. A theme sets all of them; your own picks (Settings > Colours) override single tokens on top.
 const TOKEN_GROUPS = [
