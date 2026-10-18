@@ -8,7 +8,9 @@ gear: two shafts meshing (or a gear on a rack)
 
   measure        the two shafts, gear 1 first (in 2d: pinion.rz + wheel.rz). The signs written do not matter: an
                  external mesh turns the shafts opposite ways, internal: true is a ring gear (same way). A rack is
-                 a translation body with teeth: [z, rack].
+                 a translation body with teeth: [z, rack]; with the pinion turning +, the rack moves - (a rack under
+                 a pinion that turns counter-clockwise runs left). rack_reversed: true for a rack on the other side
+                 (it moves + as the pinion turns +).
   module, teeth  pitch radius r = module * z / 2 for each gear. The measure is then travel along the pitch line,
                  r1 a1 + r2 a2 (m), and the force is the tangential tooth load Ft (N).
   face_width     tooth width b
@@ -51,7 +53,7 @@ import re
 from .loader import SpecError, line_of
 
 GEAR_KEYS = {"module", "teeth", "face_width", "pressure_angle", "backlash", "k_mesh", "c", "zeta", "material", "E",
-             "nu", "internal"}
+             "nu", "internal", "rack_reversed"}
 BOLT_KEYS = {"size", "d", "pitch", "grip", "threaded", "preload", "torque", "nut_factor", "grade", "Sy", "E",
              "E_members", "k_bolt", "k_members", "c", "zeta", "Su", "elongation"}
 
@@ -155,6 +157,10 @@ def gear(en, e, ctx, doc):
     internal = bool(e.get("internal"))
     r = [m * z / 2.0 if z != "rack" else 1.0 for z in zs]
     sign = [1.0, -1.0 if internal else 1.0]
+    if e.get("rack_reversed"):
+        if "rack" not in zs:
+            raise SpecError("rack_reversed is for a gear on a rack (teeth: [z, rack])", where, line_of(e, "rack_reversed"), f)
+        sign = [s_ * (-1.0 if zs[i] == "rack" else 1.0) for i, s_ in enumerate(sign)]
     meas = " + ".join(f"({sign[i] * r[i]!r}) * ({t})" for i, t in enumerate(terms))
     E, nu = _material(e, ctx, where, num, resolve)
     k = g("k_mesh")

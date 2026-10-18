@@ -141,7 +141,7 @@ def series_unit(M, doc, key):
 
 Q_UNIT = {"moment": "N m", "torque": "N m", "shear": "N", "hinge_set": "rad", "impulse": "N s", "friction_impulse": "N s",
           "drift": "m", "dissipated": "J", "current": "A", "battery_current": "A", "bus_voltage": "V", "soc": "",
-          "broken": "", "voltage": "V", "power": "W", "energy": "J", "heat": "J", "temperature": ""}
+          "broken": "", "winding_current": "A", "voltage": "V", "power": "W", "energy": "J", "heat": "J", "temperature": ""}
 
 
 def column(doc, H, c, M=None):

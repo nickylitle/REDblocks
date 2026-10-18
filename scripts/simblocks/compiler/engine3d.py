@@ -721,7 +721,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             nimp += 1
             exact[e] = 0
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne)
-    jt3 = np.zeros((ne, 3)); invn = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    jt3 = np.zeros((ne, 3)); invn = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne); jp1 = np.zeros(ne)
     lossN = np.zeros(ne); lossT = np.zeros(ne)
     nrig = 0
     for e in range(ne):
@@ -1163,7 +1163,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
+                held[e] = jn[e] + jp1[e]; jp1[e] = jn[e]       # touched in either of the last two steps: resting
+                Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 if mk[e] == MK_LIN:

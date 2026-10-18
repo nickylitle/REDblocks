@@ -491,8 +491,11 @@ def load_curve(text_or_key, curve_dir=None, prefer=None, write=True, rate=None):
     if nearest:
         c.extras["nearest_fits"] = [f"{f['model']} | {f['citation']} | {f['location']} | "
                                     f"NOT THIS CONDITION: {f['test_conditions']}" for f in nearest]
-    if write:
-        c.write_csv(os.path.join(d, f"{key}.csv"))
+    if write:                       # a cache only: an installed, read-only package folder just skips it
+        try:
+            c.write_csv(os.path.join(d, f"{key}.csv"))
+        except OSError:
+            pass
     return c
 
 

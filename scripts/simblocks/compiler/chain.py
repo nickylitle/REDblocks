@@ -208,11 +208,18 @@ def check_ports(doc):
                             w, line_of(outs, k), f)
 
 
-def input_values(doc, ctx, overrides, where_file=""):
-    """Each input port's value into ctx: the override (the using model's wire), else the default."""
+def input_values(doc, ctx, overrides, where_file="", only=None, defer=None):
+    """Each input port's value into ctx: the override (the using model's wire), else the default. A default that
+    uses one of this file's params ('= 1.5 * $v0') is put off (its name added to defer) until the params exist."""
     from .model import resolve
     ins, _ = port_spec(doc)
+    params = set(doc.get("params") or {})
     for k, v in ins.items():
+        if only is not None and k not in only:
+            continue
+        if defer is not None and k not in overrides and "default" in v and \
+                any(p in params for p in re.findall(r"\$([A-Za-z_]\w*)", str(v["default"]))):
+            defer.append(k); continue
         if k in overrides:
             val = overrides.pop(k)
             if isinstance(val, str):

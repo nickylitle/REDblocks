@@ -52,15 +52,15 @@ REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_s
 ESC_FIELDS = {"throttle", "I_max", "regen", "R_on", "t_sw", "f_sw", "C_th", "R_th", "T_amb_C"}
 COMMON = {"type", "between", "label", "note", "source", "thermal"}
 QUANTITIES = {"current", "voltage", "power", "energy", "soc", "state", "torque", "temperature", "heat", "esc_temperature",
-              "esc_heat"}
+              "esc_heat", "winding_current"}
 THERMAL = {"C_th", "R_th", "T_amb_C", "T0_C", "alpha", "T_max_C", "kt_tempco", "vf_tempco"}
 HAS_THERMAL = {"resistor", "capacitor", "inductor", "battery", "diode", "switch", "fuse", "motor", "wire"}
 # typical temperature coefficients when a thermal model is on and none is given
 ALPHA_DEFAULT = {"motor": 0.00393, "inductor": 0.00393}
 KT_TEMPCO_DEFAULT = -0.0011          # NdFeB magnets: about -0.11 % per K
 VF_TEMPCO_DEFAULT = -0.002           # silicon diode: about -2 mV per K
-NPRM = 12; NST = 6; NOUT = 10      # out: current, voltage, power, energy, soc / state, torque, T (C), heat,
-                                   # ESC temperature (C), ESC heat (J)
+NPRM = 12; NST = 6; NOUT = 11      # out: current, voltage, power, energy, soc / state, torque, T (C), heat,
+                                   # ESC temperature (C), ESC heat (J), motor winding current (A)
 
 
 def compile_circuit(doc, ctx):
@@ -642,6 +642,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 pout[k, 8] = pst[k, 2] - 273.15; pout[k, 9] = pst[k, 3]
             pout[k, 4] = (flg[k] if tp == 11 else 1.0) if pst[k, 5] < 0.5 else 0.0
             pout[k, 5] = kt * im                                 # torque on the motor shaft
+            pout[k, 10] = im                                     # winding current (behind an ESC: not the bus current)
         elif tp == 7 or tp == 8:
             pout[k, 4] = 1.0 if G > 1e-3 else 0.0
         if tp != 9 and tp != 6 and tp != 10 and tp != 11 and tp != 7 and tp != 8:

@@ -506,13 +506,21 @@ class Api:
                     with ProcessPoolExecutor(max_workers=w, initializer=_worker_init,
                                              initargs=(text, model_path, dict(_RATE))) as ex:
                         futs = {ex.submit(_worker_run, ov, i): i for i, ov in enumerate(plan)}
+                        seen = set()
                         for f in as_completed(futs):
-                            job["results"][futs[f]] = f.result(); job["done"] += 1
+                            job["results"][futs[f]] = f.result(); job["done"] += 1; seen.add(f)
                             if job_limit and time.time() - job["t0"] > job_limit:
                                 job["timed_out"] = True; job["cancel"] = True
                             if job["cancel"]:
                                 for g in futs:
                                     g.cancel()
+                                # runs already going finish (a process cannot be stopped mid-run): keep them
+                                for g, gi in futs.items():
+                                    if g not in seen and not g.cancelled():
+                                        try:
+                                            job["results"][gi] = g.result(); job["done"] += 1
+                                        except Exception:
+                                            pass
                                 break
             except Exception as exc:
                 job["error"] = f"{type(exc).__name__}: {exc}"
@@ -838,7 +846,8 @@ class Api:
         """A picture for an image block, as a data: URL. A relative path is read from the model's folder."""
         try:
             import base64, mimetypes
-            p = path if os.path.isabs(path) or not model_path else os.path.join(os.path.dirname(os.path.abspath(model_path)), path)
+            base = os.path.dirname(os.path.abspath(model_path)) if model_path else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
+            p = path if os.path.isabs(path) else os.path.join(base, path)     # the model's folder, as CSVs are
             mime = mimetypes.guess_type(p)[0] or ""
             if mime not in ("image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"):
                 return dict(ok=False, error="an image block shows PNG, JPEG, GIF, WebP or SVG pictures")

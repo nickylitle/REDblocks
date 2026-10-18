@@ -33,6 +33,9 @@ def shaft_critical_speed(E, d, L, rho=7850.0, masses=(), positions=(), supports=
     ms = [float(m) for m in masses]; xs = [float(p) for p in positions]
     if len(ms) != len(xs):
         raise ValueError("give one position for each mass")
+    if any(not 0.0 <= x <= L for x in xs):
+        raise ValueError(f"every mass position is along the shaft, 0 to L = {L:g} m from "
+                         f"{'the first bearing' if supports == 'simply_supported' else 'the fixed bearing'}")
     if not ms:
         rpm = w_s * 60 / (2 * math.pi)
         return dict(rpm=rpm, rpm_rayleigh=rpm, rpm_dunkerley=rpm, rpm_shaft_alone=rpm)
@@ -113,6 +116,8 @@ def set_screw_holding(d_screw, d_shaft, n=1, factor=1.0):
     less adds about the same again. factor scales the table (cone point ~1.1, flat ~0.9). Returns dict(F, T)."""
     din = d_screw / 0.0254
     xs = [x for x, _ in SET_SCREW_LBF]; ys = [y for _, y in SET_SCREW_LBF]
+    if not xs[0] * 0.999 <= din <= xs[-1] * 1.001:
+        raise ValueError(f"Shigley's table covers set screws from {xs[0]:g} to {xs[-1]:g} in (got {din:.3g} in)")
     F = float(np.interp(din, xs, ys)) * 4.448222 * factor * n
     return dict(F=F, T=F * d_shaft / 2)
 
@@ -193,6 +198,9 @@ def notch_sensitivity(Kt, r, Sut, loading="bending"):
     """Fatigue notch factor from the theoretical one: Kf = 1 + q (Kt - 1), q = 1 / (1 + sqrt(a) / sqrt(r)).
     Steels, Sut 340 to 1700 MPa. loading: bending (also axial) or torsion. Returns dict(Kf, q)."""
     S = Sut / 6.894757e6                        # ksi
+    if not 340e6 * 0.999 <= Sut <= 1700e6 * 1.001:
+        raise ValueError(f"the Neuber constant fit covers steels with Sut 340 to 1700 MPa (got {Sut / 1e6:.0f} MPa); "
+                         "for other materials use q from a chart (Shigley Fig. 6-20) or q = 1 (Kf = Kt, conservative)")
     if loading == "torsion":
         sa = 0.190 - 2.51e-3 * S + 1.35e-5 * S * S - 2.67e-8 * S ** 3
     else:

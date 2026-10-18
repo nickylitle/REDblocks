@@ -206,8 +206,9 @@ def build_context(doc, overrides=None):
     ov = dict(overrides or {})
     if doc.get("budget"):
         ctx["__mass_total"] = ctx["__mass_margin"] = 0.0      # filled in once the bodies are compiled
+    later = []
     if doc.get("ports"):                       # input ports: values the using model wires in (chain.py)
-        _chain.input_values(doc, ctx, ov)
+        _chain.input_values(doc, ctx, ov, defer=later)
     for k, v in params.items():
         where = f"params.{k}"
         orig = v.get("value") if isinstance(v, dict) and "value" in v else v
@@ -218,6 +219,8 @@ def build_context(doc, overrides=None):
             orig = o_
         val = resolve(orig, ctx, where)
         ctx[k] = val
+    if later:                                  # port defaults written from this file's own params
+        _chain.input_values(doc, ctx, {}, only=set(later))
     for k in [k for k in ov if not k.startswith("__")]:
         raise SpecError(f"override '{k}' is not a parameter of this file", "params", None, f)
     if doc.get("models"):                      # model blocks: run upstream first, results into ctx (chain.py)
@@ -876,7 +879,7 @@ def critical_dt(M, skip=None):
 
 # ------------------------------------------------------------------------------------------- run
 CIRC_COL = {"current": 0, "voltage": 1, "power": 2, "energy": 3, "soc": 4, "state": 4, "torque": 5,
-            "temperature": 6, "heat": 7, "esc_temperature": 8, "esc_heat": 9}
+            "temperature": 6, "heat": 7, "esc_temperature": 8, "esc_heat": 9, "winding_current": 10}
 
 
 def circuit_args(M):

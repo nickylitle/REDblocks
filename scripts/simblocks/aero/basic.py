@@ -10,10 +10,22 @@ from .._jit import kernel
 @block("aero", "atmosphere", "isa", "troposphere", source="ICAO Standard Atmosphere (Doc 7488)",
        tags=("altitude", "density"))
 def isa_troposphere(h):
-    """ISA temperature (K), pressure (Pa), density (kg/m^3) for 0 <= h <= 11 km."""
-    T = 288.15 - 0.0065 * h
-    p = 101325.0 * (T / 288.15) ** 5.25588
-    return T, p, p / (287.058 * T)
+    """ISA temperature (K), pressure (Pa), density (kg/m^3) at geopotential altitude h, -0.6 to 32 km: the troposphere (lapse 6.5 K/km to
+    11 km), the isothermal tropopause layer (216.65 K, 11 to 20 km) and the lower stratosphere (+1 K/km, 20 to 32 km)."""
+    if not -610.0 <= h <= 32000.0:
+        raise ValueError("isa_troposphere covers -0.6 to 32 km; above that use the US76 atmosphere (gravity: "
+                         "{planet: earth}) or another model")
+    R, g = 287.058, 9.80665
+    if h <= 11000.0:
+        T = 288.15 - 0.0065 * h
+        return T, 101325.0 * (T / 288.15) ** 5.25588, 101325.0 * (T / 288.15) ** 5.25588 / (R * T)
+    p11 = 22632.06
+    if h <= 20000.0:
+        T = 216.65; p = p11 * math.exp(-g * (h - 11000.0) / (R * T))
+        return T, p, p / (R * T)
+    p20 = p11 * math.exp(-g * 9000.0 / (R * 216.65)); T = 216.65 + 0.001 * (h - 20000.0)
+    p = p20 * (T / 216.65) ** (-g / (R * 0.001))
+    return T, p, p / (R * T)
 
 
 @block("aero", "groups", "general", "reynolds", source="definition")
@@ -55,6 +67,9 @@ def cd_sphere(Re):
     """Sphere drag coefficient vs Reynolds number (Schiller-Naumann + Clift correction)."""
     if Re <= 0:
         return math.inf
+    if Re > 3e5:
+        raise ValueError(f"cd_sphere is valid to Re 3e5 (got {Re:.3g}): past that the drag crisis drops Cd to about "
+                         "0.1-0.2 depending on surface roughness; give Cd directly")
     return 24 / Re * (1 + 0.15 * Re ** 0.687) + 0.42 / (1 + 42500 * Re ** -1.16)
 
 

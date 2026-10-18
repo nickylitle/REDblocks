@@ -145,8 +145,10 @@ def test_plate_case_point_at_and_large_deflection():
     g = plate_case("rect", "ss", "point_at", 0.10, 0.003, b=0.06, material="4130_45HRC", x0=0.03, y0=0.02,
                    patch_u=0.005, patch_v=0.004)
     assert g == r
-    q = PC.circ_clamped_pressure_large(MAT, 0.04, 0.003, 0.002)
+    from simblocks.structures.plates.large_deflection import pressure_for_deflection
+    q = pressure_for_deflection(0.04, 0.003, 0.002, MAT.E, MAT.nu)      # the exact-limit law (not Roark's 11.8 fit)
     assert plate_case("circular", "clamped", "pressure_large", 0.04, 0.003, material="4130_45HRC", w0=0.002) == dict(q=q)
+    assert q == pytest.approx(PC.circ_clamped_pressure_large(MAT, 0.04, 0.003, 0.002), rel=0.02)   # they agree at w0 < t
 
 
 def test_plate_case_rejects_missing_cases():

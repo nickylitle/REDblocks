@@ -322,7 +322,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         if typ[e] == 14:
             nimp += 1
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne); invn = np.zeros(ne)
-    vst = np.zeros(nb); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    vst = np.zeros(nb); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne); jp1 = np.zeros(ne)
     if log_every > 0:                          # row 0: the starting state at t = 0 (its forces are step 0's, below)
         LOGT[0] = 0.0
         for b in range(nb):
@@ -401,7 +401,8 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; jn[e] = 0.0
+                held[e] = jn[e] + jp1[e]; jp1[e] = jn[e]       # touched in either of the last two steps: resting
+                Fe[e] = 0.0; aux[e, 0] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 s = s0[e]; sd = 0.0; w_ = 0.0
@@ -411,7 +412,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     continue
                 cand[nc] = e; nc += 1
                 tauv[e] = min(1.0, -s / (sd * dt)) if s < 0.0 else 0.0
-                tgt[e] = -P[e, 0] * sd if sd > P[e, 2] else 0.0
+                tgt[e] = -P[e, 0] * sd if (sd > P[e, 2] and held[e] <= 0.0) else 0.0   # a resting contact: no bounce
                 jn[e] = 0.0; invn[e] = w_
                 aux[e, 3] += 0.5 * sd * sd / w_
                 ucd[e] = sd; lst[e] = D[e]; u0d[e] = 0.0

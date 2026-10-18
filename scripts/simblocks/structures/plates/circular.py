@@ -69,7 +69,8 @@ def circ_ss_pressure(mat, a, t):
        source="Roark 7e Table 11.8 case 2 (Way 1934)", tags=("membrane", "large deflection"))
 def circ_clamped_pressure_large(mat, a, t, w0):
     """Pressure q for center deflection w0 including membrane stiffening (clamped, edge held):
-    q a^4/(E t^4) = 5.33/(1-nu^2) (w/t) + 2.6/(1-nu^2) (w/t)^3."""
+    q a^4/(E t^4) = 5.33/(1-nu^2) (w/t) + 2.6/(1-nu^2) (w/t)^3. A fit good to w0 ~ t; past that it runs 3-8 %
+    too flexible: plate_case(load='pressure_large') and circular_plate_large_deflection use the exact-limit law."""
     r = w0 / t
     return mat.E * t ** 4 / a ** 4 * (5.33 * r + 2.6 * r ** 3) / (1 - mat.nu ** 2)
 

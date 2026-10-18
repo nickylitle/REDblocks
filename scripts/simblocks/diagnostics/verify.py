@@ -165,6 +165,8 @@ def verify_all(spec, skip=()):
     base = _call(spec, rep, p0, dt0)
     names = _metric_names(spec, base)
 
+    for nm, st_, det in (getattr(spec, "notes", None) or []):    # model-level notes the compiler found (no runs)
+        rep.add(nm, st_, det)
     # 1 determinism
     _stage(1)
     again = _call(spec, rep, p0, dt0)

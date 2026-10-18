@@ -21,6 +21,29 @@ def _with_blocks(M, r, history):
     return r
 
 
+def contact_depth_notes(doc):
+    """WARN for each line or plane a contact bites into that has no depth: its default is the whole line length (the
+    patch size in 3D), so a tooth never tears through a thin plate. Give depth: the plate thickness (or the bite at
+    which it would punch through)."""
+    if doc.get("dim") not in ("2d", "3d"):
+        return []
+    used = set()
+    for e in (doc.get("elements") or {}).values():
+        m = e.get("measure") if isinstance(e, dict) else None
+        if isinstance(m, dict) and isinstance(m.get("contact"), (list, tuple)):
+            used.update(str(r) for r in m["contact"])
+    out = []
+    for bn, b in (doc.get("bodies") or {}).items():
+        for kind in ("lines", "planes"):
+            for fn, fv in ((b or {}).get(kind) or {}).items():
+                if f"{bn}.{fn}" in used and isinstance(fv, dict) and "depth" not in fv:
+                    out.append((f"contact_depth:{bn}.{fn}", "WARN",
+                                f"{bn}.{fn} has no depth, so a contact on it holds until the bite reaches the whole "
+                                f"{'line length' if kind == 'lines' else 'patch size'}: a thin plate would never punch "
+                                "through. Set depth to the plate thickness (or the bite where it tears)."))
+    return out
+
+
 def load_system(path_or_text):
     return System(path_or_text)
 
@@ -158,6 +181,7 @@ class System:
             f = seen["H"].get(f"{en}.force")
             return f is not None and len(f) > 0 and float(np.max(np.abs(f))) == 0.0
         sp.idle = idle
+        sp.notes = contact_depth_notes(doc)
         return sp
 
     def verify(self, mc_n=None):

@@ -55,10 +55,13 @@ def _parse_set(items):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="simblocks", description="Run simblocks system files (YAML) without Claude.")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for c in ("check", "run", "verify", "report"):
+    for c, opts in (("check", ("out",)), ("run", ("out",)), ("verify", ("mc", "out")), ("report", ("mc", "out"))):
         p = sub.add_parser(c); p.add_argument("file")
-        p.add_argument("--mc", type=int, default=None, help="Monte Carlo samples (default: run.mc_n)")
-        p.add_argument("--out", default=None, help="output folder (report, check)")
+        if "mc" in opts:
+            p.add_argument("--mc", type=int, default=None, help="Monte Carlo samples (default: run.mc_n)")
+        p.add_argument("--out", default=None, help={"check": "folder for the schematic",
+                       "run": "folder for outputs.json and history.csv", "verify": "folder for verify.md",
+                       "report": "folder for the report"}[c])
     p = sub.add_parser("sweep"); p.add_argument("file"); p.add_argument("param"); p.add_argument("values", nargs="+")
     p = sub.add_parser("set"); p.add_argument("file"); p.add_argument("assign", nargs="+")
     p = sub.add_parser("catalog"); p.add_argument("text", nargs="?", default=None)
@@ -131,6 +134,22 @@ def main(argv=None):
                       f"outputs cover only that part (raise run.timeout, or timeout: none)")
             for p in paths:
                 print(f"  csv: {p}")
+            if getattr(a, "out", None):                  # --out: the outputs and the full time history as files
+                import csv as _csv, json as _json
+                os.makedirs(a.out, exist_ok=True)
+                _, H = sysm.run(history=True)
+                with open(os.path.join(a.out, "outputs.json"), "w") as fh:
+                    _json.dump({k: float(v) for k, v in out.items() if isinstance(v, (int, float))}, fh, indent=1)
+                from .compiler.exports import series_unit
+                main_q = (".force", ".measure", ".position", ".velocity", ".x", ".y", ".z", ".angle", ".omega")
+                keys = ["t"] + [k for k in H if k != "t" and (k.endswith(main_q) or any(float(x) != 0.0 for x in H[k]))]
+                with open(os.path.join(a.out, "history.csv"), "w", newline="") as fh:
+                    w = _csv.writer(fh)
+                    w.writerow([f"{k} [{series_unit(sysm.nominal, sysm.doc, k)}]" if series_unit(sysm.nominal, sysm.doc, k)
+                                else k for k in keys])
+                    for row in zip(*(H[k] for k in keys)):
+                        w.writerow([f"{x:.9g}" for x in row])
+                print(f"  wrote {os.path.join(a.out, 'outputs.json')} and history.csv")
             return 0
         if a.cmd == "set":
             ov = _parse_set(a.assign)
@@ -147,6 +166,9 @@ def main(argv=None):
         if a.cmd == "verify":
             rep = sysm.verify(a.mc)
             print(rep.markdown())
+            if a.out:
+                os.makedirs(a.out, exist_ok=True)
+                open(os.path.join(a.out, "verify.md"), "w").write(rep.markdown())
             return 0 if rep.ok else 2
         if a.cmd == "report":
             rep = sysm.verify(a.mc)

@@ -68,7 +68,10 @@ def plate_case(shape, edges, load, a, t, b=None, material=None, E=None, nu=None,
             return (C.circ_clamped_center_point if ed == "clamped" else C.circ_ss_center_point)(m, a, t, r0)
         if ld == "pressure":
             return (C.circ_clamped_pressure if ed == "clamped" else C.circ_ss_pressure)(m, a, t)
-        res = dict(q=C.circ_clamped_pressure_large(m, a, t, need("w0", w0, "plate_case pressure_large")))
+        # the exact-limit law (within 2 % of a von Karman solution at every load); Roark's 11.8 polynomial fit
+        # (circ_clamped_pressure_large) is 3-8 % too flexible past w0 ~ t
+        from .large_deflection import pressure_for_deflection
+        res = dict(q=pressure_for_deflection(a, t, need("w0", w0, "plate_case pressure_large"), m.E, m.nu))
         return res
     if sh == "annular":
         return C.annular_outer_fixed_inner_load(m, a, need("b (inner radius)", b, "plate_case annular"), t)

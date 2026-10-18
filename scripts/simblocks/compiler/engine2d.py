@@ -582,7 +582,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         if typ[e] == 14:
             nimp += 1
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne); jt = np.zeros(ne)
-    invn = np.zeros(ne); invt = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    invn = np.zeros(ne); invt = np.zeros(ne); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne); jp1 = np.zeros(ne)
     lossN = np.zeros(ne); lossT = np.zeros(ne)
     # rigid joints (typ 15): projected constraints, rows in generalised coordinates
     nrig = 0
@@ -1078,7 +1078,8 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             for e in range(ne):
                 if typ[e] != 14:
                     continue
-                held[e] = jn[e]; Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
+                held[e] = jn[e] + jp1[e]; jp1[e] = jn[e]       # touched in either of the last two steps: resting
+                Fe[e] = 0.0; aux[e, 0] = 0.0; aux[e, 2] = 0.0; jn[e] = 0.0
                 if active[e] == 0:
                     continue
                 s, sd, ok = _measure(mk[e], e, q, v, ba, bb, C, s0, GA, GB, GX, geo)

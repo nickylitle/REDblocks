@@ -341,3 +341,14 @@ def plate_plastic_membrane(t, sy=None, shape="circular", edge="clamped", a=None,
     F = Pc * (1.0 + cm * acc / t)
     return dict(k=float(k), acc_tab=np.ascontiguousarray(acc), F_tab=np.ascontiguousarray(F), Pc=float(Pc),
                 M0=sy * t * t / 4.0, source=f"Jones rigid-plastic membrane, {shape} {edge}, sy {sy / 1e6:.4g} MPa")
+
+
+def pressure_for_deflection(a, t, w0, E, nu, edge="clamped", inplane="held"):
+    """The pressure q that gives centre deflection w0, from the same load-deflection law as
+    circular_plate_large_deflection (exact small-deflection k1, exact membrane k3 when the rim is held)."""
+    c = _RITZ[f"pressure|{edge}|{inplane}"]
+    k1 = c["k1"](nu); k3 = c["k3"](nu)
+    if inplane == "held":
+        k3 = 1.0 / _hencky(nu, 1) ** 3
+    x = w0 / t
+    return (k1 * x + k3 * x ** 3) * E * t ** 4 / a ** 4

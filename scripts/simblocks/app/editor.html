@@ -673,7 +673,7 @@ const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", a
   site_range:"distance to the landing site", mode:"target (guidance law) or rate (a schedule)", stop_below:"phase ends below this altitude",
   end_before:"phase ends this long before its target time", target:"the state to arrive at", schedule:"descent rate and forward speed against time",
   freeze:"time-to-go below which the steering is held", tau:"time constant of the rate loop", contact_altitude:"engine stop when the probes touch",
-  module:"gear module (pitch diameter / teeth)", teeth:"teeth: 12, 36 (gear 1 first, as in the measure) or 12, rack", face_width:"tooth face width",
+  module:"gear module (pitch diameter / teeth)", teeth:"teeth: 12, 36 (gear 1 first, as in the measure) or 12, rack", rack_reversed:"a rack on the other side of the pinion: it moves + as the pinion turns +", face_width:"tooth face width",
   pressure_angle:"pressure angle (20 deg standard)", backlash:"total play along the pitch line", k_mesh:"mesh stiffness (default ISO 6336)",
   zeta:"damping, fraction of critical", internal:"true: a ring gear (both turn the same way)", nu:"Poisson's ratio",
   size:"M5, M6x0.75, #10-32, 1/4-20", grip:"clamped length", threaded:"thread length inside the grip (default all)",
@@ -1141,9 +1141,10 @@ function partDim(key){ const f = key.slice(2);
   return null; }
 function partQuantities(d){ const q = ["current","voltage","power","energy","heat"];
   if (d.ptype === "battery") q.push("soc"); if (d.ptype === "motor") q.push("torque"); if (d.thOn) q.push("temperature");
+  if (d.ptype === "motor") q.push("winding_current");
   if (d.ptype === "motor" && d.escOn && d.escLossOn) q.push("esc_temperature", "esc_heat");
   q.push("state"); return q; }
-const PART_Q_HELP = {current:"current + to −", voltage:"v(+) − v(−)", power:"absorbed (− = delivering)", energy:"absorbed so far", soc:"charge 0-1",
+const PART_Q_HELP = {winding_current:"the current in the windings (behind an ESC it is higher than the battery-side current at part throttle)", current:"current + to −", voltage:"v(+) − v(−)", power:"absorbed (− = delivering)", energy:"absorbed so far", soc:"charge 0-1",
   state:"fuse 1 = blown; switch, diode 1 = on; motor ESC duty; else 1 = intact", torque:"motor shaft torque", temperature:"°C", heat:"J lost in its resistance"};
 function partSockets(n, ins, outs){
   const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
@@ -1292,7 +1293,9 @@ function bodyQuantityFor(d, ql, dim, src){
                vel.includes(q) ? (ql.includes("velocity") && dim === "1d" ? "velocity" : (rot ? "omega" : "vx")) : q;
   return ql.includes(want) ? want : (ql.includes(q) ? q : ql.find(x => x !== "kinetic_energy") || ql[0]);
 }
+let UNSAVED = [];     // nodes on the canvas that toDoc could not write yet (missing wires): said in the status line
 function toDoc(){
+  UNSAVED = [];
   const doc = {simblocks:1, name:S.meta.name || "model"};
   if (S.meta.question) doc.question = S.meta.question;
   doc.dim = S.meta.dim || "1d";
@@ -1407,7 +1410,7 @@ function toDoc(){
     if (sv && so && String(gn.data.target || "").trim()){ const g = {vary:sv.data.name, output:mname(so, lo_.from.key), target:lit(String(gn.data.target).trim()),
       tolerance:(String(gn.data.tol || "0.1").trim() || "0.1") + " %"};
       if (String(gn.data.lo || "").trim() && String(gn.data.hi || "").trim()) g.range = [lit(gn.data.lo), lit(gn.data.hi)];
-      study.goal_seek = g; } }
+      study.goal_seek = g; } else UNSAVED.push(`${gn.data.name || "goal seek"} (plug a value and an output, and give the target)`); }
   const on = S.nodes.find(n => n.kind === "opt");
   if (on){ const d = on.data, vary = {}, cons = [];
     for (let i = 0; i < (d.nv || 1); i++){ const l = linkTo(on.id, "v" + i), src = l && byId(l.from.node), r = (d.ranges || [])[i] || {};
@@ -1416,17 +1419,19 @@ function toDoc(){
     for (let i = 0; i < (d.nc || 0); i++){ const l = linkTo(on.id, "c" + i), src = l && byId(l.from.node), c = (d.cons || [])[i] || {};
       if (src && String(c.value || "").trim()){ const o = {output:mname(src, l.from.key)}; o[c.side === "min" ? "min" : "max"] = lit(c.value); cons.push(o); } }
     if (so && Object.keys(vary).length){ const o = {vary}; o[d.goal === "maximize" ? "maximize" : "minimize"] = mname(so, lo_.from.key);
-      if (cons.length) o.subject_to = cons; if (d.fm) o.failure_modes = true; if (parseInt(d.max)) o.max_runs = parseInt(d.max); study.optimize = o; } }
+      if (cons.length) o.subject_to = cons; if (d.fm) o.failure_modes = true; if (parseInt(d.max)) o.max_runs = parseInt(d.max); study.optimize = o; }
+    else UNSAVED.push(`${d.name || "optimizer"} (plug the output to optimize and at least one value with its range)`); }
   const sn = S.nodes.find(n => n.kind === "sens");
   if (sn){ const vary = [], of = [];
     for (let i = 0; i < (sn.data.nv || 1); i++){ const l = linkTo(sn.id, "v" + i), src = l && byId(l.from.node); if (src && !vary.includes(src.data.name)) vary.push(src.data.name); }
     for (let i = 0; i < (sn.data.no || 1); i++){ const l = linkTo(sn.id, "o" + i), src = l && byId(l.from.node); if (src && !of.includes(mname(src, l.from.key))) of.push(mname(src, l.from.key)); }
-    if (vary.length){ study.sensitivity = {vary}; if (of.length) study.sensitivity.of = of; study.sensitivity.step = (String(sn.data.step || "1").trim() || "1") + " %"; } }
+    if (vary.length){ study.sensitivity = {vary}; if (of.length) study.sensitivity.of = of; study.sensitivity.step = (String(sn.data.step || "1").trim() || "1") + " %"; }
+    else UNSAVED.push(`${sn.data.name || "levers"} (plug at least one value)`); }
   const pin = {}, pout = {}, models = {};
   S.nodes.filter(n => n.kind === "inport").forEach(n => { const d = n.data, o = {};
     if (d.pkind === "series") o.kind = "series"; if (String(d.unit || "").trim()) o.unit = d.unit.trim();
     if (d.pkind !== "series" && String(d.def || "").trim()) o.default = lit(d.def); if (d.label) o.label = d.label; pin[d.name] = o; });
-  S.nodes.filter(n => n.kind === "outport").forEach(n => { const d = n.data, l = linkTo(n.id, "src"), o = {}; if (!l) return; const src = byId(l.from.node); if (!src) return;
+  S.nodes.filter(n => n.kind === "outport").forEach(n => { const d = n.data, l = linkTo(n.id, "src"), o = {}; if (!l){ UNSAVED.push(`output port ${d.name} (plug what it reports)`); return; } const src = byId(l.from.node); if (!src) return;
     if (l.from.key === "metric") o.output = src.data.name;
     else if (src.kind === "ctl") o.control = src.data.name;
     else if (src.kind === "body"){ o.body = src.data.name; o.quantity = d.quantity || "position"; }
@@ -1871,7 +1876,7 @@ const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force",
 const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse",
   friction_impulse:"impulse", drift:"none", bending_stress:"stress", contact_stress:"stress", bolt_force:"force", clamp_force:"force", bolt_stress:"stress",
   force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
-  current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
+  current:"current", winding_current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
   voltage:"voltage", power:"power", energy:"energy", state:"none", temperature:"none", heat:"energy",
   position:"length", velocity:"speed", kinetic_energy:"energy",
   thrust:"force", mass_flow:"none", back_pressure:"stress", vehicle_mass:"mass", throttle:"none", dropped:"mass",
@@ -3932,7 +3937,8 @@ async function check(){
   if (r.ok){ lastDt = r; syncTimeBar();
     const hadB = JSON.stringify((LASTCHECK || {}).budget || null); LASTCHECK = r;
     if (JSON.stringify(r.budget || null) !== hadB){ const bn = S.nodes.find(n => n.kind === "budget"); if (bn){ const el = world.querySelector(`.node[data-id="${bn.id}"]`); if (el){ el.innerHTML = nodeHTML(bn); fieldSockets(el, bn); drawWires(); } } }
-    status("ok", `OK · ${r.bodies.length} ${r.bodies.length === 1 ? "body" : "bodies"}, ${r.elements.length} element${r.elements.length === 1 ? "" : "s"} · time step ${niceTime(r.dt).join(" ")} (${S.meta.dtMode || "auto"}) · ${S.meta.dtMode === "adaptive" ? "up to " : ""}${r.steps.toLocaleString()} steps`);
+    status("ok", `OK · ${r.bodies.length} ${r.bodies.length === 1 ? "body" : "bodies"}, ${r.elements.length} element${r.elements.length === 1 ? "" : "s"} · time step ${niceTime(r.dt).join(" ")} (${S.meta.dtMode || "auto"}) · ${S.meta.dtMode === "adaptive" ? "up to " : ""}${r.steps.toLocaleString()} steps` +
+      (UNSAVED.length ? ` · not saved until wired: ${UNSAVED.join("; ")}` : ""));
     liveRun(); }
   else {
     const m = String(r.path || "").match(/^(params|derived|bodies|elements|outputs)\.([A-Za-z_]\w*)/);
@@ -4451,7 +4457,15 @@ function convertDefaults(oldSys, newSys){
   const fixQ = (val, dim) => { const q = splitQ(val); if (q.text || q.num === "" || !dim || dim === "none") return val;
     const o = defUnit(dim, oldSys), nw = defUnit(dim, newSys); if (q.unit !== o || o === nw) return val; changedN++; return joinQ(conv(q.num, o, nw), nw); };
   S.nodes.forEach(n => { const d = n.data;
-    if (n.kind === "body") ["mass","inertia","x0","v0"].forEach(k => { if (!linkTo(n.id, k)) d[k] = fixQ(d[k], fieldDim(n, k)); });
+    if (n.kind === "body") ["mass","inertia","x0","v0","angle0","omega0"].forEach(k => { if (typeof d[k] === "string" && !linkTo(n.id, k)) d[k] = fixQ(d[k], fieldDim(n, k)); });
+    if (n.kind === "body" && isGeo()){     // 2D / 3D: the at / com / v0 vectors and the points, circles, lines, spheres, planes
+      const vec = (key, dim) => { const u = d[key + "u"], o = defUnit(dim, oldSys), nw = defUnit(dim, newSys);
+        if (u === undefined || u !== o || o === nw) return; ["x", "y", "z"].forEach(c => { if (d[key + c] !== undefined) d[key + c] = conv(d[key + c], o, nw); }); d[key + "u"] = nw; changedN++; };
+      vec("at", "length"); vec("com", "length"); vec("v0", "speed");
+      const o = defUnit("length", oldSys), nw = defUnit("length", newSys);
+      feats(d).forEach(f => { if ((f.unit || o) !== o || o === nw) return;
+        ["x", "y", "z", "r", "x2", "y2", "a", "b", "depth"].forEach(c => { if (f[c] !== undefined && f[c] !== "") f[c] = conv(f[c], o, nw); });
+        f.unit = nw; changedN++; }); }
     if (n.kind === "element") Object.keys(d.fields).forEach(f => { if (!linkTo(n.id, "f." + f)) d.fields[f] = fixQ(d.fields[f], fieldDim(n, "f." + f)); });
     if (n.kind === "load" && !linkTo(n.id, "P")) d.P = fixQ(d.P, "force");
     if (n.kind === "part") [["f.", d.fields], ["e.", d.esc], ["h.", d.th]].forEach(([pre, o]) => Object.keys(o).forEach(f => { if (!linkTo(n.id, pre + f)) o[f] = fixQ(o[f], fieldDim(n, pre + f)); }));
@@ -5125,8 +5139,8 @@ const GUIDE = [
  {id:"files", grp:"Files", t:"Files, YAML and the command line", h:`
   <p>A model is one plain YAML file you can read, diff and keep in version control. The YAML tab shows it live. Sections: <code>params</code> (values), <code>derived</code> (expressions and builders), <code>bodies</code>, <code>elements</code>, <code>outputs</code>, <code>failure</code>, <code>uncertain</code>, <code>study</code>, <code>exports</code>, <code>run</code>, and <code>editor</code> (layout, groups and notes; the solver ignores it). Keys the editor does not use are kept and written back unchanged.</p>
   <pre class="code">simblocks check  model.yaml      # compile, print bodies, elements and time step
-simblocks run    model.yaml      # one run (+ CSV exports)
-simblocks verify model.yaml      # the verification battery
+simblocks run    model.yaml      # one run (+ CSV exports); --out folder also writes outputs.json and history.csv
+simblocks verify model.yaml      # the verification battery (--mc N samples, --out folder for verify.md)
 simblocks report model.yaml      # verify + PDF/HTML report</pre>
   <p><b>Installing on Windows:</b> run <code>packaging\build_exes.bat</code> once. It builds the app and offers to install it for you, with no administrator rights: press the Windows key and type <i>Simblocks</i>, then right-click it and choose <b>Pin to taskbar</b>. Model files can open straight into it (right-click a <code>.yaml</code> &gt; Open with &gt; Simblocks &gt; Always), <kbd>Win+R</kbd> <code>simblocks</code> starts it, and it uninstalls from Settings &gt; Apps. Re-run the .bat to update; your settings and saved groups are kept.</p>
   <p>Settings (recent files, cores, units, live, folders) live in <code>~/.simblocks/app.json</code>; saved groups in <code>~/.simblocks/groups</code>. Custom folders also apply to the command line through <code>SIMBLOCKS_MATERIALS</code> and <code>SIMBLOCKS_BLOCKS</code>.</p>`},

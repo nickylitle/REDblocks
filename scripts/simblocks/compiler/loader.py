@@ -80,7 +80,7 @@ ELEMENT_KEYS = {
     "emotor": {"__part__", "gear", "J_rotor", "__kt__", "__idx__", "__R__"},
     "impact": {"e", "mu", "v_rest"},
     "gear": {"module", "teeth", "face_width", "pressure_angle", "backlash", "k_mesh", "c", "zeta", "material", "E",
-             "nu", "internal"},
+             "nu", "internal", "rack_reversed"},
     "bolt": {"size", "d", "pitch", "grip", "threaded", "preload", "torque", "nut_factor", "grade", "Sy", "E",
              "E_members", "k_bolt", "k_members", "c", "zeta", "Su", "elongation"},
     "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact"},
@@ -181,6 +181,17 @@ def check(doc):
                                     "('on') or pick another name", k, line_of(doc, k), f)
         if k in doc and v is None and k in ("bodies", "elements", "outputs", "run"):
             doc[k] = {} if k != "run" else None
+    for k, r in (doc.get("uncertain") or {}).items():   # each uncertain value is a [low, high] range
+        if not (isinstance(r, (list, tuple)) and len(r) == 2):
+            raise SpecError(f"uncertain.{k} is a range [low, high] (got {r!r})", f"uncertain.{k}",
+                            line_of(doc["uncertain"], k), f)
+    for i, L in enumerate(doc.get("limits") or []):
+        if not isinstance(L, dict):
+            raise SpecError("each limit case is a mapping {name, set: {...}, expect: {...}}", f"limits[{i}]", None, f)
+    for kn, kd in (doc.get("knockouts") or {}).items():
+        if not isinstance(kd, dict):
+            raise SpecError("a knockout is {set: {param: value}, expect: {output: '+' | '-'}}", f"knockouts.{kn}",
+                            line_of(doc["knockouts"], kn), f)
     if doc.get("run") is None and "run" in doc:
         raise SpecError("run needs t_end (run: {t_end: 1 s})", "run", line_of(doc, "run"), f)
     if doc.get("models"):                        # a sequence of model blocks needs no mechanics of its own
@@ -378,6 +389,9 @@ def check(doc):
                 raise SpecError(f"no circuit part named '{o['part']}'", p, line_of(o, "part"), f)
             if o.get("quantity") not in CQ:
                 raise SpecError(f"a part's quantity is one of {', '.join(sorted(CQ))}", p, line_of(o, "quantity"), f)
+            if o.get("quantity") == "winding_current" and str((circ_parts.get(pn_) or {}).get("type")) != "motor":
+                raise SpecError("winding_current is a motor's (behind an ESC it differs from the bus current)", p,
+                                line_of(o, "quantity"), f)
             red = o.get("reduce", "final")
             if red not in REDUCES or red.startswith("first_time"):
                 raise SpecError("a part's reduce is final, max, min or max_abs", p, line_of(o, "reduce"), f)

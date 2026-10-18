@@ -30,6 +30,8 @@ def marin_size_factor(d):
     if d is None:
         return 1.0
     dm = d * 1e3
+    if dm > 254.0:
+        raise ValueError(f"Shigley's size factor covers rounds up to 254 mm (got {dm:.0f} mm)")
     if dm <= 2.79:
         return 1.0
     return 1.24 * dm ** -0.107 if dm <= 51 else 1.51 * dm ** -0.157
