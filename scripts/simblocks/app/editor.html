@@ -908,7 +908,7 @@ function joinTerminals(a, b, e){
     render(); return; }
   let net = S.nodes.find(n => n.kind === "net" && n.data.name === (na || nb));
   if (!net){ const gnd = !S.nodes.some(n => n.kind === "net" && n.data.ground) && a.key === "pb" && b.key === "pb";
-    net = addNode("net", {name: gnd ? "gnd" : "n", ground: gnd}, Math.round((A.x + B.x) / 2), Math.round(Math.max(A.y, B.y) + 40)); }
+    net = addNode("net", {name: gnd ? "gnd" : "n", ground: gnd, hidden: true}, Math.round((A.x + B.x) / 2), Math.round(Math.max(A.y, B.y) + 40)); }
   const free = () => "p" + S.links.filter(l => l.to.node === net.id && /^p\d+$/.test(l.to.key)).reduce((m, l) => Math.max(m, +l.to.key.slice(1) + 1), 0);
   [[a, na], [b, nb]].forEach(([s_, on]) => { if (!on) S.links.push({from:s_, to:{node:net.id, key:free()}, field:""}); });
   status("ok", `Joined on net ${net.data.name}.`); changed(); }
@@ -1206,7 +1206,9 @@ function partSockets(n, ins, outs){
   if (d.ldOn && LOAD_ON.includes(d.ptype)) waveKeys(d.ldShape || "sine").forEach(f => ins.push({key:"l." + f, label:f, type:"val", req:waveReq(d.ldShape || "sine", f), tip:WAVE_TIP[f]}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
     .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:(f === "C_th" || f === "R_th") && d.ptype !== "wire"}));
-  outs.push({key:"pa", label:"+ terminal", type:"elec", tip:"wire to a net: the first net (current flows + to − through the part)"}, {key:"pb", label:"− terminal", type:"elec", tip:"wire to a net"});
+  const tn = k => { const nm = netOf(n, k), nt = nm && S.nodes.find(x => x.kind === "net" && x.data.name === nm); return nt && hiddenNet(nt) ? (nt.data.ground ? " · gnd" : " · " + nm) : ""; };
+  outs.push({key:"pa", label:"+ terminal" + tn("pa"), type:"elec", tip:"drag onto another part's terminal to join them, or onto a Net block (current flows + to − through the part)"},
+            {key:"pb", label:"− terminal" + tn("pb"), type:"elec", tip:"drag onto another part's terminal to join them, or onto a Net block"});
   partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig", tip:PART_Q_HELP[q]}));
 }
 function netPins(n){   // every wired pin, plus one free pin to drop the next wire on
@@ -1305,6 +1307,7 @@ function partHTML(n, ins){
 function netHTML(n, ins){
   const d = n.data; let b = "";
   b += `<div class="row"><label title="the 0 V reference: every net is measured against it (one per circuit)">ground</label><input type="checkbox" data-k="ground"${d.ground ? " checked" : ""} style="justify-self:start"></div>`;
+  b += `<div class="row"><label title="hide this block and draw its terminals wired to each other (double-click a wire to bring it back)">hide block</label><input type="checkbox" data-k="hidden"${d.hidden ? " checked" : ""} style="justify-self:start"></div>`;
   ins.forEach(s => { const l = linkTo(n.id, s.key), src = l && byId(l.from.node);
     const what = src ? `<span class="linked">${esc(src.data.name)} ${l.from.key === "pa" ? "+" : "−"}</span>` : `<span class="hint" style="padding:0">wire a terminal here</span>`;
     b += `<div class="row"><span class="sock in t-elec" data-s="${esc(s.key)}" data-t="elec"></span><label>pin</label>${what}</div>`; });
@@ -1543,8 +1546,9 @@ function toDoc(){
   doc.run = run;
   Object.assign(doc, S.meta.extra || {});
   // editor-only: where nodes sit and how they are grouped (the compiler ignores this key)
-  const layout = {}; S.nodes.filter(n => n.kind !== "note" && n.kind !== "image").map(n => [nodeKey(n), n]).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([k, n]) => { layout[k] = [Math.round(n.x), Math.round(n.y)]; });
-  const ed = {layout};
+  const layout = {}; S.nodes.filter(n => n.kind !== "note" && n.kind !== "image" && !hiddenNet(n)).map(n => [nodeKey(n), n]).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([k, n]) => { layout[k] = [Math.round(n.x), Math.round(n.y)]; });
+  const ed = {layout}, hn = S.nodes.filter(hiddenNet).map(n => n.data.name).sort();
+  if (hn.length) ed.hidden_nets = hn;
   if ((S.groups || []).length) ed.groups = S.groups.map(g => ({name:g.name, collapsed:!!g.collapsed, x:Math.round(g.x), y:Math.round(g.y),
     members:g.members.map(id => byId(id)).filter(Boolean).map(nodeKey),
     expose:Object.fromEntries(Object.entries(g.expose || {}).map(([k, v]) => { const [id, key] = k.split("|"); const m = byId(id); return m ? [nodeKey(m) + "|" + key, v] : null; }).filter(Boolean))}));
@@ -1833,6 +1837,8 @@ function fromDoc(doc){
   if (ed.layout && typeof ed.layout === "object"){ let hit = 0;
     Object.entries(ed.layout).forEach(([k, xy]) => { const n = byKey(k); if (n && Array.isArray(xy)){ n.x = +xy[0] || 0; n.y = +xy[1] || 0; hit++; } });
     S.meta.hasLayout = hit > 0; }
+  const hidN = new Set(Array.isArray(ed.hidden_nets) ? ed.hidden_nets.map(String) : []);
+  S.nodes.filter(n => n.kind === "net").forEach(n => { if (hidN.has(n.data.name) || !(ed.layout && ("n:" + n.data.name) in ed.layout)) n.data.hidden = true; });
   (ed.notes || []).forEach(t => { const n = addNode("note", Object.assign({text:String(t.text ?? "")}, t.width ? {w:String(t.width)} : {}), +t.x || 0, +t.y || 0); });
   S.meta.overlays = Array.isArray(ed.overlays) ? ed.overlays.map(String) : []; OVL = {};
   (ed.images || []).forEach(t => { addNode("image", {path:String(t.path ?? ""), w:String(t.width ?? 360), caption:String(t.caption ?? "")}, +t.x || 0, +t.y || 0); });
@@ -2811,7 +2817,7 @@ function render(){
   world.querySelectorAll(".node,.gframe").forEach(e => e.remove());
   S.groups = S.groups || [];
   for (const n of S.nodes){
-    if (hiddenIn(n.id)) continue;
+    if (hiddenIn(n.id) || hiddenNet(n)) continue;
     const el = document.createElement("div");
     el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
     el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
@@ -3101,6 +3107,25 @@ function wireVal(src, key){ if (!src) return "";
   const hs = lastRun.history[src.data.name + "." + q]; if (!hs || !hs.length) return "";
   const u = (lastRun.hist_units || {})[src.data.name + "." + q] || "", pk = hs.reduce((a, v) => Math.abs(v) > Math.abs(a) ? v : a, 0);
   return `${src.data.name}.${q}: peak ${fmt(pk)}${u ? " " + u : ""}, end ${fmt(hs[hs.length - 1])}${u ? " " + u : ""}\n`; }
+// a hidden net: no block on the canvas, its terminals wired to each other directly (the file still names the net)
+const hiddenNet = n => !!(n && n.kind === "net" && n.data.hidden);
+function netTerms(net){ return S.links.filter(l => l.to.node === net.id && /^p\d+$/.test(l.to.key)).sort((a, b) => +a.to.key.slice(1) - +b.to.key.slice(1)); }
+function pruneNets(){   // a hidden net with nothing on it goes away (a ground net stays: it is the 0 V reference)
+  S.nodes.filter(n => hiddenNet(n) && !n.data.ground && !netTerms(n).length).forEach(net => { S.nodes = S.nodes.filter(x => x !== net); }); }
+function outCurve(a, b){ const st = (SETTINGS || {}).wire || "curved", dx = Math.max(36, Math.abs(b.y - a.y) * 0.35);
+  if (st === "straight") return `M${a.x},${a.y} L${b.x},${b.y}`;
+  if (st === "right"){ const mx = Math.max(a.x, b.x) + 20; return `M${a.x},${a.y} H${mx} V${b.y} H${b.x}`; }
+  return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x + dx},${b.y} ${b.x},${b.y}`; }
+function hiddenNetWires(F){ let h = "", top = "";
+  S.nodes.filter(hiddenNet).forEach(net => { const T = netTerms(net);
+    for (let i = 1; i < T.length; i++){ const l = T[i], a = sockPos(T[i - 1].from.node, T[i - 1].from.key, "out"), b = sockPos(l.from.node, l.from.key, "out"); if (!a || !b) continue;
+      const d = outCurve(a, b), col = TYPE_COL.elec, j = S.links.indexOf(l), tip = `<title>net ${esc(net.data.name)}${net.data.ground ? " (ground, 0 V)" : ""} · click to select, Delete unhooks ${esc(byId(l.from.node).data.name)} · double-click shows the net block</title>`;
+      if (wireSel.has(l)) top += `<path class="halo" d="${d}"></path><path class="wsel" d="${d}" stroke="${col}" data-t="elec" data-i="${j}" data-net="${net.id}">${tip}</path>`;
+      else h += `<path${F && !F.links.has(l) ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="elec" data-i="${j}" data-net="${net.id}">${tip}</path>`; } });
+  return [h, top]; }
+function showNet(net){ const T = netTerms(net).map(l => byId(l.from.node)).filter(Boolean);
+  if (T.length){ net.x = Math.round(T.reduce((s_, n) => s_ + n.x, 0) / T.length); net.y = Math.round(Math.max(...T.map(n => n.y)) + 60); }
+  net.data.hidden = false; changed(); }
 function drawWires(temp){
   let h = "", top = "";
   const wt = document.getElementById("wiresTop"); if (wt && wt !== world.lastElementChild) world.appendChild(wt);
@@ -3111,6 +3136,7 @@ function drawWires(temp){
   S.links.forEach((l, i) => {
     if (l.field && l.from.key === "out"){ const k = outKeyFor(byId(l.from.node), l.field); if (k !== "out") l.from.key = k; }   // older files: $b.k wired from "result"
     const ga = hiddenIn(l.from.node), gb = hiddenIn(l.to.node); if (ga && ga === gb) return;     // inside a closed group
+    if (hiddenNet(byId(l.to.node))) return;                                                       // drawn terminal to terminal below
     const a = sockPos(l.from.node, l.from.key, "out"), b = sockPos(l.to.node, l.to.key, "in"); if (!a || !b) return;
     const src = byId(l.from.node), st = sockets(src).outs.find(s => s.key === l.from.key);
     const wt_ = st ? st.type : "val", col = TYPE_COL[wt_], d = curve(a, b),
@@ -3120,6 +3146,7 @@ function drawWires(temp){
     else if (F && F.links.has(l)) top += `<path class="wrel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds</title></path>` + lab;
     else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>${wireVal(src, l.from.key)}click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
   });
+  const [hn, tn] = hiddenNetWires(F); h += hn; top += tn;
   if (wt) wt.innerHTML = top;
   h += refWires();
   if (temp) h += `<path class="temp" d="${curve(temp.a, temp.b)}" stroke="var(--acc)"></path>`;
@@ -3263,6 +3290,8 @@ function wireClick(e){ const pf = e.target.closest("path[data-f]");
   if (e.ctrlKey || e.metaKey || e.shiftKey){ wireSel.has(l) ? wireSel.delete(l) : wireSel.add(l); }
   else { wireSel = new Set([l]); selSet = new Set(); sel = null; renderGroupPanel(); }
   paintSel(); }
+const wireDbl = e => { const p = e.target.closest("path[data-net]"); if (!p) return; const net = byId(p.dataset.net); if (net) showNet(net); };
+wires.addEventListener("dblclick", wireDbl); document.getElementById("wiresTop").addEventListener("dblclick", wireDbl);
 wires.addEventListener("click", wireClick); document.getElementById("wiresTop").addEventListener("click", wireClick);
 canvas.addEventListener("wheel", e => {
   if (e.target.closest("#info,#menu,#legend,#pcard,#orgMenu,.dlg")) return;     // panels over the canvas scroll themselves
@@ -3986,7 +4015,7 @@ async function renderYaml(){
   document.getElementById("yamlOut").textContent = yamlText;
 }
 function changed(rerender = true){
-  histSoon(); studyStale = true;
+  pruneNets(); histSoon(); studyStale = true;
   dirty = true; document.getElementById("fname").textContent = (filePath ? filePath.split(/[\\/]/).pop() : "untitled") + " •";
   if (rerender) render(); else { drawWires(); renderYaml(); }
   clearTimeout(checkTimer); checkTimer = setTimeout(check, Math.max(100, parseInt((SETTINGS || {}).liveDelay) || 450));
@@ -5074,7 +5103,7 @@ const GUIDE = [
   <p>Two ways to power a motor:</p>
   <ul>
    <li><b>Just motor values.</b> A <code>drive</code> element is a motor, an ESC and a LiPo pack in one block. A <code>dc_motor</code> element is a motor on a fixed supply voltage (kv or Kt, R, V). No circuit needed.</li>
-   <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Drag a terminal straight onto another part's terminal to join them: the net is made for you (two − terminals make <code>gnd</code>). Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
+   <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Drag a terminal straight onto another part's terminal to join them. No Net block appears: the net is kept hidden, its terminals are drawn wired to each other, and each terminal shows the net it is on (two − terminals make <code>gnd</code>). A Net block is optional: add one from Add, or double-click a wire to show its net; tick <b>hide block</b> on a net to hide it again. Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
   </ul>
   <p>A motor part also takes a <b>shaft</b> body (and an optional <b>frame</b> body, for a motor that turns one body against another). Give kv or Kt. Tick <b>ESC</b> for a speed controller with a throttle and a current limit; <b>regen</b> lets it push current back.</p>
   <p><b>Function generator.</b> A resistor is passive: current flows through it only when a source or load is wired to the same two nets. To test with a changing current or voltage, tick <b>function gen</b> on a current source, current load or voltage source and pick a shape: <b>sine</b>, <b>square</b>, <b>triangle</b>, <b>sawtooth</b>, <b>pulse</b> (0 to amplitude), <b>step</b> or <b>ramp</b>. Output = offset + amplitude × wave; blank offset = the part's I or V. <b>duty</b> sets how much of each period a square or pulse is high; <b>start</b> and <b>stop</b> gate it. Tick <b>load gen</b> on a battery or supply for a time-varying draw in place of the fixed I_load. The step size shrinks on its own to about 50 steps per period. In a file: <code>wave: {shape: square, amplitude: 5 A, offset: 5 A, frequency: 10 Hz, duty: 0.25}</code>.</p>

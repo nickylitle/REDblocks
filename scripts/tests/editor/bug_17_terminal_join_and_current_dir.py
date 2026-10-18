@@ -1,6 +1,6 @@
 """Dragging one part terminal onto another makes a net; current source and load are one Add entry with a direction switch."""
 import asyncio
-from common import main, export, check
+from common import main, export, check, load
 
 async def s(pg):
     await pg.evaluate("""() => { S.nodes = []; S.links = [];
@@ -29,5 +29,23 @@ async def s(pg):
     doc, y = await export(pg)
     c2 = doc["circuit"]["parts"]["c2"]
     ok &= check(c2.get("between", [None])[0] == "n", c2, "c2 + joined net n by drag", "drag")
+    nb = await pg.evaluate("() => document.querySelectorAll('.node .hd').length - document.querySelectorAll('.node').length + [...document.querySelectorAll('.node')].filter(e => (byId(e.dataset.id) || {}).kind === 'net').length")
+    ok &= check(nb == 0, nb, "no net blocks on the canvas", "hidden")
+    w = await pg.evaluate("() => document.querySelectorAll('path[data-net]').length")
+    ok &= check(w == 3, w, "3 terminal-to-terminal wires", "wires")
+    await pg.screenshot(path="/tmp/claude-0/-home-claude/9883ddf4-3cb2-512a-abcd-30edf08680bb/scratchpad/hidden_nets.png")
+    # the file keeps them hidden after a reload
+    await load(pg, y); await pg.wait_for_timeout(400)
+    nn = await pg.evaluate("() => S.nodes.filter(n => n.kind === 'net' && !n.data.hidden).length")
+    ok &= check(nn == 0, nn, "still hidden after reload", "reload")
+    # a file with no layout: nets come in hidden; double-click a wire shows the block
+    await load(pg, "simblocks: 1\nname: t\ndim: 1d\ncircuit:\n  ground: gnd\n  parts:\n    s: {type: current_source, between: [a, gnd], I: 2 A}\n    r: {type: resistor, between: [a, gnd], R: 10 ohm}\noutputs:\n  v: {part: r, quantity: voltage, reduce: max}\nrun: {t_end: 1 ms}\n")
+    await pg.wait_for_timeout(400)
+    nn = await pg.evaluate("() => S.nodes.filter(n => n.kind === 'net' && !n.data.hidden).length")
+    ok &= check(nn == 0, nn, "no-layout file: nets hidden", "nolayout")
+    await pg.evaluate("() => { const net = S.nodes.find(n => n.kind === 'net' && n.data.name === 'a'); showNet(net); }")
+    await pg.wait_for_timeout(300)
+    doc, y = await export(pg)
+    ok &= check(doc["circuit"]["parts"]["r"]["between"] == ["a", "gnd"] and doc["editor"].get("hidden_nets") == ["gnd"], doc["editor"].get("hidden_nets"), "a shown, gnd hidden, wiring same", "show")
     assert ok
 asyncio.run(main(s))
