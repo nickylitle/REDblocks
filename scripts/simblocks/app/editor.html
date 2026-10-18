@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Simblocks Editor</title>
+<title>REDblocks Editor</title>
 <script src="katex_bundle.js" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -78,6 +78,7 @@ textarea{width:100%;resize:vertical}
 #top,#bar2{background:var(--bar)!important}
 #top label,#bar2 label,#top .file,#bar2 .dtinfo,#top .live,#bar2 .live{color:var(--bar-ink2)!important}
 #top .brand{color:var(--bar-ink)!important}
+#top .brand .red{color:var(--brand-red,#e5383b)!important;font-weight:800}
 #top .grp,#bar2 .grp{border-left-color:color-mix(in srgb,var(--bar-ink) 25%,transparent)!important}
 .node .hd{background:var(--hd)!important}
 .node .hd .kind,.node .hd .x,.node .hd .ib{color:var(--hd-ink2)!important}
@@ -427,7 +428,7 @@ label.cpick button{padding:0 6px;font-size:12px}
 <body>
 <div id="app">
   <div id="top">
-    <span class="brand">SIMBLOCKS</span>
+    <span class="brand" title="REDblocks: Rapid Explicit Dynamics"><b class="red">RED</b>BLOCKS</span>
     <div class="grp" title="Files live on this computer only">
       <button id="bNew" title="New model">New</button>
       <button id="bOpen" title="Open a .yaml model (Ctrl+O)">Open</button>
@@ -5398,6 +5399,13 @@ const TOKEN_GROUPS = [
   ["Plots", [["p1","Series 1"],["p2","Series 2"],["p3","Series 3"],["p4","Series 4"],["p5","Series 5"]]],
 ];
 const THEMES = {
+  redline: {name:"Redline", note:"Charcoal and steel with a red accent, the REDblocks house look. Errors show in hot pink so they never blend with the accent.", scheme:"dark", t:{
+    bg:"#121214", grid:"#1b1b1f", panel:"#18181b", panel2:"#202024", panel3:"#2a2a2f", edge:"#3a3a41", hair:"#26262b", selbg:"#4a1214", "note-bg":"#1c1b1d", "group-hd":"#2a1a1c",
+    ink:"#f1eeee", ink2:"#bdb6b6", ink3:"#8a8383", link:"#ff8a80", acc:"#e5383b", accf:"#f5a524", pass:"#2dd4a0", warn:"#f5a524", fail:"#ff4fa3", shadow:"rgba(0,0,0,.55)",
+    "s-val":"#f5a524", "s-body":"#ff6b6b", "s-sig":"#a9b4c2", "s-state":"#c084fc", "s-metric":"#f2f2f2",
+    "c-value":"#d98a12", "c-builder":"#8c72f2", "c-body":"#e5383b", "c-element":"#14a06e", "c-load":"#14a06e", "c-output":"#9aa0a8", "c-expr":"#5fa8a0",
+    "c-fail":"#ff4fa3", "c-sweep":"#e0b341", "c-mc":"#d84b8b", "c-export":"#3fc1c9", "c-group":"#8a8fb8", "c-note":"#8a8378",
+    p1:"#e5383b", p2:"#f5a524", p3:"#2dd4a0", p4:"#8c72f2", p5:"#3fa9ff"}},
   blueprint: {name:"Blueprint", note:"Deep navy with bright accents. High contrast that reads well on any screen, for everyday work.", scheme:"dark", t:{
     bg:"#0b1018", grid:"#141d2a", panel:"#111823", panel2:"#162131", panel3:"#1c2a3d", edge:"#2a3850", hair:"#1f2a3a", selbg:"#0e3a52", "note-bg":"#151a22", "group-hd":"#1d2340",
     ink:"#e6edf5", ink2:"#a8b6c8", ink3:"#6b7d94", link:"#7cc4ff", acc:"#38bdf8", accf:"#f2a541", pass:"#2dd4bf", warn:"#fbbf24", fail:"#f87171", shadow:"rgba(0,0,0,.5)",
@@ -5524,10 +5532,10 @@ async function loadUserThemes(){
   } catch (err) { USER_THEMES = {}; }
 }
 function themeId(){
-  let id = SETTINGS.theme || "blueprint";
+  let id = SETTINGS.theme || "redline";
   if (OLD_THEME[id]){ id = OLD_THEME[id]; SETTINGS.theme = id; }
-  if (id.startsWith("u:")) return USER_THEMES[id.slice(2)] ? id : "blueprint";
-  return THEMES[id] ? id : "blueprint";
+  if (id.startsWith("u:")) return USER_THEMES[id.slice(2)] ? id : "redline";
+  return THEMES[id] ? id : "redline";
 }
 const isUserTheme = id => id.startsWith("u:");
 function themeObj(id){ return isUserTheme(id) ? USER_THEMES[id.slice(2)].theme : THEMES[id]; }
@@ -5776,7 +5784,7 @@ document.getElementById("utRemove").onclick = async () => {
   if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = `Really remove "${th.name}"?`; setTimeout(() => { delete b.dataset.armed; b.textContent = "Remove"; }, 4000); return; }
   delete b.dataset.armed; b.textContent = "Remove";
   const r = await API.call("delete_theme", id.slice(2)); if (!r || !r.ok){ status("bad", "Could not remove: " + (r && r.error || "")); return; }
-  await loadUserThemes(); SETTINGS.theme = "blueprint"; applyColors(); settingsSave(); settingsShow(); };
+  await loadUserThemes(); SETTINGS.theme = "redline"; applyColors(); settingsSave(); settingsShow(); };
 function syncBars(){ const c = document.getElementById("canvas"); if (!c) return;
   document.documentElement.style.setProperty("--bars-h", c.getBoundingClientRect().top + "px"); drawWires(); }
 if (window.ResizeObserver){ new ResizeObserver(syncBars).observe(document.getElementById("top")); new ResizeObserver(syncBars).observe(document.getElementById("bar2")); }
