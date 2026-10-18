@@ -901,6 +901,17 @@ function ctlIn(k, v){      // a control section entry -> node data
 }
 const linkTo = (nid, key) => S.links.find(l => l.to.node === nid && l.to.key === key);
 const linksFrom = nid => S.links.filter(l => l.from.node === nid);
+// two part terminals dropped on each other: they share a net, made here if neither is on one yet
+function joinTerminals(a, b, e){
+  const A = byId(a.node), B = byId(b.node), na = netOf(A, a.key), nb = netOf(B, b.key);
+  if (na && nb){ if (na !== nb){ const m = `Both terminals are already on nets (${na}, ${nb}). Wire one into the other's net block.`; status("bad", m); toast(m, e.clientX, e.clientY); }
+    render(); return; }
+  let net = S.nodes.find(n => n.kind === "net" && n.data.name === (na || nb));
+  if (!net){ const gnd = !S.nodes.some(n => n.kind === "net" && n.data.ground) && a.key === "pb" && b.key === "pb";
+    net = addNode("net", {name: gnd ? "gnd" : "n", ground: gnd}, Math.round((A.x + B.x) / 2), Math.round(Math.max(A.y, B.y) + 40)); }
+  const free = () => "p" + S.links.filter(l => l.to.node === net.id && /^p\d+$/.test(l.to.key)).reduce((m, l) => Math.max(m, +l.to.key.slice(1) + 1), 0);
+  [[a, na], [b, nb]].forEach(([s_, on]) => { if (!on) S.links.push({from:s_, to:{node:net.id, key:free()}, field:""}); });
+  status("ok", `Joined on net ${net.data.name}.`); changed(); }
 function connect(from, to, field){
   S.links = S.links.filter(l => !(l.to.node === to.node && l.to.key === to.key));
   const fn = byId(from.node); if (fn && fn.kind === "part" && /^p[ab]$/.test(from.key)) S.links = S.links.filter(l => !(l.from.node === from.node && l.from.key === from.key));
@@ -1268,6 +1279,8 @@ function partHTML(n, ins){
     if (!linkTo(n.id, "t0")) b += `<div class="row"><label title="or type a measure (a body name, b.rz, b.spin, {twist: [frame, b]})">measure</label><input data-k="mraw" value="${esc(d.mraw || "")}" placeholder="or plug a shaft body"></div>`;
     b += `<div class="hint">give kv or Kt, one of them</div>`;
   }
+  if (d.ptype === "current_source" || d.ptype === "current_load")
+    b += `<div class="row"><label title="source: pushes I out of its + terminal (powers the circuit). load: draws I in at + (a sink on a supply). Same part, opposite sign.">acts as</label><select data-k="ptype">${sel_([["current_source","source (pushes I out of +)"],["current_load","load (draws I into +)"]], d.ptype)}</select></div>`;
   b += `<div class="sep"></div>`;
   ins.filter(s => s.key.startsWith("f.") && s.key !== "f.I0").forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
   if (d.ptype === "motor"){
@@ -3225,6 +3238,8 @@ window.addEventListener("mouseup", e => {
       if (d.toFirst && d.toFirst.key.startsWith("@") && sock.classList.contains("out") && nid !== d.toFirst.node){
         const src = byId(nid), t_ = (sockets(src).outs.find(s => s.key === key) || {}).type;
         if (t_ === "val"){ setFieldText(d.toFirst.node, d.toFirst.key, "$" + nodeName(src) + (outField(key) ? "." + outField(key) : "")); return; } }
+      if (d.from && sock.classList.contains("out") && t === "elec" && nid !== d.from.node && byId(d.from.node).kind === "part"){
+        joinTerminals(d.from, {node:nid, key}, e); return; }
       if (d.from && sock.classList.contains("in") && nid !== d.from.node){
         const fromT = sockets(byId(d.from.node)).outs.find(s => s.key === d.from.key).type;
         if (compatible(fromT, t)){ const why = unitClash(d.from, {node:nid, key}, d.pulled);
@@ -3767,7 +3782,7 @@ function menuAll(){
   if (CAT.circuit){
     const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current", current_load:"load sink draw amps constant current", wire:"wire cable lead awg gauge xt60 xt30 xt90 connector harness copper loss",
       battery:"lipo pack cells mah", diode:"rectifier flyback freewheel", switch:"relay contactor pwm mosfet", fuse:"breaker protection", motor:"dc brushless bldc kv esc spinner weapon"};
-    Object.keys(CAT.circuit.types).forEach(t => add("Electrical", "Part · " + PART_NAME[t], (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "")}));
+    Object.keys(CAT.circuit.types).filter(t => t !== "current_load").forEach(t => add("Electrical", "Part · " + (t === "current_source" ? "current source / load" : PART_NAME[t]), (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "") + (t === "current_source" ? " " + (EW.current_load || "") : "")}));
     add("Electrical", "Part · function generator (current)", "a current load driven by a waveform: sine, square, triangle, sawtooth, pulse, step, ramp", "var(--s-elec)", () => ["part", {name:"load", ptype:"current_load", wvOn:true, wvShape:"square", wv:{amplitude:"5 A", offset:"5 A", frequency:"10 Hz", duty:"0.5"}}], {words:"circuit electrical function generator waveform sine square pulse load current test"});
     add("Electrical", "Part · function generator (voltage)", "a voltage source driven by a waveform", "var(--s-elec)", () => ["part", {name:"supply", ptype:"voltage_source", wvOn:true, wvShape:"sine", wv:{amplitude:"5 V", offset:"12 V", frequency:"50 Hz"}}], {words:"circuit electrical function generator waveform sine ac voltage supply"});
     add("Electrical", "Part · motor with ESC", "a motor behind a speed controller: throttle and current limit", "var(--s-elec)", () => ["part", {name:"motor", ptype:"motor", escOn:true, esc:{throttle:"1"}}], {words:"circuit electrical esc speed controller weapon drive bldc"});
@@ -5059,7 +5074,7 @@ const GUIDE = [
   <p>Two ways to power a motor:</p>
   <ul>
    <li><b>Just motor values.</b> A <code>drive</code> element is a motor, an ESC and a LiPo pack in one block. A <code>dc_motor</code> element is a motor on a fixed supply voltage (kv or Kt, R, V). No circuit needed.</li>
-   <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
+   <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Drag a terminal straight onto another part's terminal to join them: the net is made for you (two − terminals make <code>gnd</code>). Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
   </ul>
   <p>A motor part also takes a <b>shaft</b> body (and an optional <b>frame</b> body, for a motor that turns one body against another). Give kv or Kt. Tick <b>ESC</b> for a speed controller with a throttle and a current limit; <b>regen</b> lets it push current back.</p>
   <p><b>Function generator.</b> A resistor is passive: current flows through it only when a source or load is wired to the same two nets. To test with a changing current or voltage, tick <b>function gen</b> on a current source, current load or voltage source and pick a shape: <b>sine</b>, <b>square</b>, <b>triangle</b>, <b>sawtooth</b>, <b>pulse</b> (0 to amplitude), <b>step</b> or <b>ramp</b>. Output = offset + amplitude × wave; blank offset = the part's I or V. <b>duty</b> sets how much of each period a square or pulse is high; <b>start</b> and <b>stop</b> gate it. Tick <b>load gen</b> on a battery or supply for a time-varying draw in place of the fixed I_load. The step size shrinks on its own to about 50 steps per period. In a file: <code>wave: {shape: square, amplitude: 5 A, offset: 5 A, frequency: 10 Hz, duty: 0.25}</code>.</p>
