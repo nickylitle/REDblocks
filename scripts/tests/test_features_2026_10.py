@@ -157,3 +157,69 @@ run: {t_end: 0.5 s, dt: 1 ms}
     o, H = o
     assert np.max(np.abs(H["a.velocity"][len(H["t"]) // 2:])) < 1e-9     # it settles: no restitution chatter
     assert abs(o["_ledger_rel"]) < 0.01
+
+
+# ------------------------------------------------------------------ function generator on sources and loads
+def _gen(wave, t_end="10 ms", part="current_source", key="wave"):
+    return load_system(f"""simblocks: 1
+name: t
+dim: 1d
+circuit:
+  ground: gnd
+  parts:
+    src: {{type: {part}, between: [a, gnd], {key}: {wave}}}
+    r: {{type: resistor, between: [a, gnd], R: 10 ohm}}
+outputs:
+  i: {{part: r, quantity: current, reduce: max}}
+run: {{t_end: {t_end}}}
+""").run(history=True)
+
+
+@pytest.mark.parametrize("wave,peak", [
+    ("{shape: sine, amplitude: 2 A, frequency: 100 Hz}", 2.0),
+    ("{shape: square, amplitude: 1 A, offset: 1 A, frequency: 100 Hz, duty: 0.25}", 2.0),
+    ("{shape: triangle, amplitude: 3 A, frequency: 100 Hz}", 3.0),
+    ("{shape: sawtooth, amplitude: 1.5 A, frequency: 100 Hz}", 1.5),
+    ("{shape: pulse, amplitude: 4 A, frequency: 100 Hz, duty: 0.3}", 4.0),
+    ("{shape: step, amplitude: 5 A, start: 2 ms}", 5.0),
+    ("{shape: ramp, amplitude: 6 A, rise: 5 ms}", 6.0)])
+def test_function_generator_shapes_reach_their_peak(wave, peak):
+    o, H = _gen(wave)
+    assert o["i"] == pytest.approx(peak, rel=0.03)
+
+
+def test_function_generator_duty_sets_the_mean():
+    o, H = _gen("{shape: square, amplitude: 1 A, offset: 1 A, frequency: 100 Hz, duty: 0.25}", t_end="100 ms")
+    assert np.mean(H["r.current"]) == pytest.approx(0.5, abs=0.03)
+
+
+def test_function_generator_on_a_voltage_source():
+    o, H = _gen("{shape: sine, amplitude: 10 V, offset: 0 V, frequency: 100 Hz}", part="voltage_source")
+    assert o["i"] == pytest.approx(1.0, rel=0.03)            # 10 V peak into 10 ohm
+
+
+def test_load_generator_on_a_battery():
+    o = load_system("""simblocks: 1
+name: t
+dim: 1d
+circuit:
+  ground: gnd
+  parts:
+    pack: {type: battery, between: [b, gnd], cells: 6, capacity: 2200 mAh, I_load: {shape: pulse, amplitude: 20 A, frequency: 50 Hz, duty: 0.5}}
+outputs:
+  i: {part: pack, quantity: current, reduce: min}
+run: {t_end: 40 ms}
+""").run()
+    assert o["i"] == pytest.approx(-20.0, rel=0.03)          # the pack delivers the pulse
+
+
+@pytest.mark.parametrize("wave,msg", [
+    ("{shape: sine, amplitude: 1 A}", "frequency"),
+    ("{shape: ramp, amplitude: 1 A}", "rise"),
+    ("{shape: square, amplitude: 1 A, frequency: 1 Hz, duty: 2}", "duty"),
+    ("{shape: sine, amplitude: 1 A, frequency: 1 Hz, period: 1 s}", "not both"),
+    ("{shape: wobble, amplitude: 1 A}", "shape"),
+    ("{shape: sine, amp: 1 A}", "unknown")])
+def test_function_generator_refuses_bad_input(wave, msg):
+    with pytest.raises(SpecError, match=msg):
+        _gen(wave)

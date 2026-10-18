@@ -187,15 +187,16 @@ textarea{width:100%;resize:vertical}
 .uv select{flex:0 0 auto;max-width:96px;padding:3px 2px;font:11.5px var(--mono);color:var(--ink2)}
 .uv input.bad{border-color:var(--fail)}
 .xp{font:10px var(--mono);color:var(--acc);padding:0 12px 2px 104px;margin-top:-2px}
-.row.need{animation:needflash .55s ease-in-out 5 alternate;border-radius:4px}
-.row.need input,.row.need select{border-color:var(--warn)!important;box-shadow:0 0 0 1px var(--warn)}
+.row.need{animation:needflash .55s ease-in-out 6 alternate;border-radius:4px}
+.row.need input,.row.need select{border-color:var(--warn)!important;animation:needring .55s ease-in-out 6 alternate}
+@keyframes needring{from{box-shadow:0 0 0 0 transparent}to{box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 55%,transparent)}}
 @keyframes needflash{from{background:transparent}to{background:color-mix(in srgb,var(--warn) 30%,transparent)}}
 .sock{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid var(--bg);cursor:crosshair;z-index:6}   /* above a selected wire (wiresTop is z 5), so its end never cuts the socket */
 .sock.in{left:-7px}.sock.out{right:-7px}
 .node .pdoc{margin:-3px 12px 3px 104px;font-size:10.5px;line-height:1.3;color:var(--ink3)}
-.node .errf:is(input,select){border-color:var(--fail)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--fail) 45%,transparent);animation:errpulse 1.6s ease-in-out 2}
+.node .errf:is(input,select){border-color:var(--fail)!important;animation:errpulse .55s ease-in-out 6 alternate}
 .node .row.errf > label{color:var(--fail)}
-@keyframes errpulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--fail) 25%,transparent)}}
+@keyframes errpulse{from{box-shadow:0 0 0 0 transparent}to{box-shadow:0 0 0 3px color-mix(in srgb,var(--fail) 45%,transparent)}}
 .node input.grow{position:relative;z-index:40;max-width:none!important;min-width:0;flex:0 0 auto!important;box-shadow:0 4px 14px var(--shadow)}
 .sock.fsock{width:9px;height:9px;margin-top:0;border-width:1.5px;opacity:.6}.sock.fsock:hover,.sock.fsock.on{opacity:1}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
@@ -717,7 +718,7 @@ function defaults(kind){
     case "sweep": return {name:"range", values:"", unit:"", nominal:""};
     case "mc": return {name:"mc", lo:"", hi:"", unit:"", nominal:"", n:"100"};
     case "load": return {name:"load", terms:[{coef:"1"}], const:"", raw:null, P:"", label:"", axis:"x"};
-    case "part": return {name:"part", ptype:"resistor", fields:{}, escOn:false, esc:{}, regen:false, thOn:false, th:{}, axis:"z", mraw:"", label:""};
+    case "part": return {name:"part", ptype:"resistor", fields:{}, escOn:false, esc:{}, regen:false, thOn:false, th:{}, wvOn:false, wv:{}, wvShape:"sine", ldOn:false, ld:{}, ldShape:"sine", axis:"z", mraw:"", label:""};
     case "net": return {name:"net", ground:false};
     case "ctl": return {name:"sig", ctype:"expr", expr:"", cond:"", then:"1", else:"0", latch:false, hold:"", measure:"", setpoint:"",
                         kp:"", ki:"", kd:"", min:"", max:"", d_filter:"", bias:"", input:"", tau:"", rate:"", init:"", cap:"", start:"", label:""};
@@ -1068,9 +1069,9 @@ const PART_INFO = {
   resistor:["v = R i", "An ideal resistor."],
   capacitor:["i = C dv/dt", "A capacitor with optional series ESR (equivalent series resistance, default 0) and leakage resistance R_leak (0 = none). v0 is its starting voltage."],
   inductor:["v = L di/dt + R i", "An inductor with optional winding resistance R. i0 is its starting current."],
-  voltage_source:["v = V - R i", "A DC voltage source; + is the first terminal. R is its internal resistance (default 0.1 mohm)."],
-  current_source:["i = I", "Drives current I out of its + terminal into the circuit and back in at − (a source: its current reads negative by the passive sign)."],
-  current_load:["i = I", "Draws a fixed current I: in at its + terminal (the supply side), out at − (the return). Its current reads positive."],
+  voltage_source:["v = V - R i", "A DC voltage source; + is the first terminal. R is its internal resistance (default 0.1 mohm). Tick function gen to drive V with a waveform, or load gen for a time-varying draw."],
+  current_source:["i = I", "Drives current I out of its + terminal into the circuit and back in at − (a source: its current reads negative by the passive sign). Tick function gen to make I a waveform."],
+  current_load:["i = I", "Draws a fixed current I: in at its + terminal (the supply side), out at − (the return). Its current reads positive. Tick function gen for a sine, square, pulse, step or ramp draw."],
   battery:["v = OCV(soc) - R0 i - v1", "A LiPo pack: open-circuit voltage from charge (V_full to V_empty per cell), series R0, and an R1 || C1 branch for the voltage sag that recovers. Charge drains with the current; capacity in mAh."],
   diode:["on: v = Vf + R_on i", "Conducts from + (anode) to − (cathode) once forward biased past Vf; off it leaks through R_off."],
   switch:["R_on or R_off", "Closed (R_on) from on_at to off_at. With pwm_freq it chops at duty (0 to 1)."],
@@ -1136,7 +1137,46 @@ const ESC_DIM = {throttle:"none", I_max:"current", R_on:"resistance", t_sw:"time
 const ESC_LOSS = ["R_on","t_sw","f_sw","C_th","R_th","T_amb_C"];          // optional: shown only with "ESC losses" ticked
 const TH_DIM = {C_th:"heat_cap", R_th:"th_res", T_amb_C:"none", T0_C:"none", alpha:"tempco", T_max_C:"none", kt_tempco:"tempco", vf_tempco:"vtempco"};
 const TH_FOR = {kt_tempco:["motor"], vf_tempco:["diode"]};       // only these parts have them
-function partDim(key){ const f = key.slice(2);
+// function generator: a wave on a source or load (w.), and a load profile on a battery or supply (l.)
+const WAVE_SHAPE = ["sine","square","triangle","sawtooth","pulse","step","ramp"];
+const WAVE_ON = ["voltage_source","current_source","current_load"], LOAD_ON = ["battery","voltage_source"];
+const WAVE_DIM = {frequency:"frequency", phase:"angle", duty:"none", start:"time", stop:"time", rise:"time"};
+const WAVE_PH = {amplitude:"peak above offset", offset:"the V or I above", frequency:"e.g. 50 Hz", phase:"0 deg", duty:"0.5", start:"0 s", stop:"never", rise:"e.g. 10 ms"};
+const WAVE_TIP = {amplitude:"peak swing above the offset (a step or ramp: the jump)", offset:"the level the wave rides on; blank = the part's V or I",
+  frequency:"cycles per second", phase:"shifts the wave later in its cycle (360 deg = one period)", duty:"fraction of each period the square or pulse is high, 0 to 1",
+  start:"before this the output sits at the offset", stop:"after this the output returns to the offset", rise:"how long the ramp takes to climb by the amplitude"};
+const wavePeriodic = sh => ["sine","square","triangle","sawtooth","pulse"].includes(sh);
+function waveKeys(sh){ return ["amplitude", "offset"].concat(wavePeriodic(sh) ? ["frequency", "phase"] : [], ["square","pulse"].includes(sh) ? ["duty"] : [], sh === "ramp" ? ["rise"] : [], ["start", "stop"]); }
+const waveReq = (sh, f) => f === "amplitude" || (f === "frequency" && wavePeriodic(sh)) || (f === "rise" && sh === "ramp");
+function waveAt(w, t){ // the solver's _src, for the preview (SI numbers)
+  if (t < w.start || t > w.stop) return w.offset; const tt = t - w.start, A = w.amplitude, o = w.offset, sh = w.shape;
+  if (sh === "step") return o + A; if (sh === "ramp") return o + A * Math.min(1, tt / w.rise);
+  const fr = x => x - Math.floor(x), p = fr(tt * w.frequency + w.phase / (2 * Math.PI));
+  const v = sh === "sine" ? Math.sin(2 * Math.PI * p) : sh === "square" ? (p < w.duty ? 1 : -1) : sh === "triangle" ? 1 - 4 * Math.abs(fr(p + .25) - .5)
+    : sh === "sawtooth" ? 2 * fr(p + .5) - 1 : (p < w.duty ? 1 : 0);
+  return o + A * v; }
+function wavePts(w, shape, base){  // null when a value is not a plain number (a $param, an expression)
+  const si = (k, def) => { const raw = String(w[k] ?? "").trim(); if (raw === "") return def; const q = splitQ(raw); if (q.text) return NaN;
+    if (WAVE_DIM[k] === "angle" && /deg/.test(q.unit || "deg")) return +q.num * Math.PI / 180; return pulseSI(raw); };
+  const b = pulseSI(String(base ?? "").trim() || "0");
+  const v = {shape, amplitude:si("amplitude", 0), offset:si("offset", isFinite(b) ? b : 0), frequency:si("frequency", 0), phase:si("phase", 0),
+             duty:si("duty", .5), start:si("start", 0), stop:si("stop", Infinity), rise:si("rise", 0)};
+  if (Object.values(v).some(x => typeof x === "number" && isNaN(x))) return null;
+  const T = pulseSI(S.meta.run.t_end || "1 s") || 1, span = wavePeriodic(shape) && v.frequency > 0 ? Math.min(T, v.start + 3 / v.frequency) : T;
+  if (shape === "ramp" && !(v.rise > 0)) return null; if (wavePeriodic(shape) && !(v.frequency > 0)) return null;
+  const m = 400, out = []; for (let i = 0; i <= m; i++){ const t = span * i / m; out.push([t, waveAt(v, t)]); } return out; }
+function waveBlock(n, ins, pre, on, shapeK, w, title, help){
+  const d = n.data; let b = `<div class="row"><label title="${esc(help)}">${title}</label><input type="checkbox" data-k="${on}"${d[on] ? " checked" : ""} style="justify-self:start"></div>`;
+  if (!d[on]) return b;
+  b += `<div class="row"><label title="the waveform">shape</label><select data-k="${shapeK}">${sel_(WAVE_SHAPE, d[shapeK] || "sine")}</select></div>`;
+  ins.filter(s => s.key.startsWith(pre)).forEach(s => b += fieldRow(n, s, w[s.key.slice(2)] ?? "", WAVE_PH[s.key.slice(2)] || ""));
+  const pts = wavePts(w, d[shapeK] || "sine", pre === "w." ? d.fields[d.ptype === "voltage_source" ? "V" : "I"] : "0");
+  b += pts ? `<div class="csvmini" data-wv="${pre}" title="preview: the first cycles (or the whole run)"><svg viewBox="0 0 220 56" preserveAspectRatio="none">${csvSVG({csvInterp:"linear"}, pts, 220, 56, true)}</svg></div>`
+           : `<div class="hint">preview needs plain numbers</div>`;
+  return b; }
+function partDim(key, d){ const f = key.slice(2);
+  if (key.startsWith("w.")) return WAVE_DIM[f] || (d && d.ptype === "voltage_source" ? "voltage" : "current");
+  if (key.startsWith("l.")) return WAVE_DIM[f] || "current";
   if (key.startsWith("f.")) return PART_DIM[f] || null; if (key.startsWith("e.")) return ESC_DIM[f] || null; if (key.startsWith("h.")) return TH_DIM[f] || null;
   return null; }
 function partQuantities(d){ const q = ["current","voltage","power","energy","heat"];
@@ -1149,8 +1189,10 @@ const PART_Q_HELP = {winding_current:"the current in the windings (behind an ESC
 function partSockets(n, ins, outs){
   const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
   if (d.ptype === "motor"){ if (!String(d.mraw || "").trim()) ins.push({key:"t0", label:"shaft", type:"body", req:true}); ins.push({key:"t1", label:"frame", type:"body"}); }
-  byOrder(ct.fields, PART_ORDER[d.ptype]).filter(f => !(f === "I0" && !d.ioOn)).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
+  byOrder(ct.fields, PART_ORDER[d.ptype]).filter(f => f !== "wave" && !(f === "I0" && !d.ioOn) && !(f === "I_load" && d.ldOn)).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
   if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen" && (d.escLossOn || !ESC_LOSS.includes(f))), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
+  if (d.wvOn && WAVE_ON.includes(d.ptype)) waveKeys(d.wvShape || "sine").forEach(f => ins.push({key:"w." + f, label:f, type:"val", req:waveReq(d.wvShape || "sine", f), tip:WAVE_TIP[f]}));
+  if (d.ldOn && LOAD_ON.includes(d.ptype)) waveKeys(d.ldShape || "sine").forEach(f => ins.push({key:"l." + f, label:f, type:"val", req:waveReq(d.ldShape || "sine", f), tip:WAVE_TIP[f]}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
     .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:(f === "C_th" || f === "R_th") && d.ptype !== "wire"}));
   outs.push({key:"pa", label:"+ terminal", type:"elec", tip:"wire to a net: the first net (current flows + to − through the part)"}, {key:"pb", label:"− terminal", type:"elec", tip:"wire to a net"});
@@ -1174,8 +1216,11 @@ function circuitOut(){
   const g = groundNet(), P = {};
   parts.forEach(n => { const d = n.data, o = {type:d.ptype}, a = netOf(n, "pa"), b = netOf(n, "pb");
     if (a || b) o.between = [a || "(unwired)", b || "(unwired)"];
-    sockets(n).ins.forEach(s => { const v = inVal(n, s.key, fieldValue(n, s.key)); if (blank(v) || !/^[feh]\./.test(s.key)) return;
-      const f = s.key.slice(2); if (s.key[0] === "f") o[f] = v; else if (s.key[0] === "e") (o.esc = o.esc || {})[f] = v; else (o.thermal = o.thermal || {})[f] = v; });
+    if (d.wvOn && WAVE_ON.includes(d.ptype)) o.wave = {shape:d.wvShape || "sine"};
+    if (d.ldOn && LOAD_ON.includes(d.ptype)) o.I_load = {shape:d.ldShape || "sine"};
+    sockets(n).ins.forEach(s => { const v = inVal(n, s.key, fieldValue(n, s.key)); if (blank(v) || !/^[fehwl]\./.test(s.key)) return;
+      const f = s.key.slice(2), c = s.key[0]; if (c === "f") o[f] = v; else if (c === "e") (o.esc = o.esc || {})[f] = v;
+      else if (c === "w") o.wave[f] = v; else if (c === "l") o.I_load[f] = v; else (o.thermal = o.thermal || {})[f] = v; });
     if (d.ptype === "motor"){ o.measure = motorMeasure(n); if (d.escOn){ o.esc = o.esc || {}; if (d.regen) o.esc.regen = true; } }
     if (d.thOn && !o.thermal) o.thermal = {};             // a wire fills its own thermal values in
     if (d.label) o.label = d.label; P[d.name] = o; });
@@ -1189,8 +1234,11 @@ function circuitIn(doc, pend, put){
   Object.entries(c.parts || {}).forEach(([k, e]) => { if (!e || typeof e !== "object") return;
     const d = {name:k, ptype:String(e.type || "resistor"), fields:{}, esc:{}, th:{}, escOn:e.esc !== undefined, regen:!!(e.esc && e.esc.regen === true),
                thOn:e.thermal !== undefined, label:e.label || "", axis:"z", mraw:"",
-               escLossOn:!!(e.esc && ESC_LOSS.some(k => e.esc[k] !== undefined)), ioOn:e.I0 !== undefined};
-    Object.entries(e).forEach(([f, v]) => { if (!["type","between","esc","thermal","measure","label"].includes(f)) d.fields[f] = str(v); });
+               escLossOn:!!(e.esc && ESC_LOSS.some(k => e.esc[k] !== undefined)), ioOn:e.I0 !== undefined,
+               wvOn:!!(e.wave && typeof e.wave === "object"), wv:{}, wvShape:"sine", ldOn:!!(e.I_load && typeof e.I_load === "object"), ld:{}, ldShape:"sine"};
+    Object.entries(e).forEach(([f, v]) => { if (!["type","between","esc","thermal","measure","label","wave"].includes(f) && !(f === "I_load" && d.ldOn)) d.fields[f] = str(v); });
+    [["wave", "wv", "wvShape", "wvOn"], ["I_load", "ld", "ldShape", "ldOn"]].forEach(([y, k, sk, on]) => { if (!d[on]) return;
+      Object.entries(e[y]).forEach(([f, v]) => { if (f === "shape") d[sk] = String(v); else if (f === "period"){ const T = pulseSI(str(v)); d[k].frequency = isFinite(T) && T > 0 ? String(+(1 / T).toPrecision(6)) + " Hz" : "= 1 / (" + str(v) + ")"; } else d[k][f] = str(v); }); });
     Object.entries(e.esc || {}).forEach(([f, v]) => { if (f !== "regen") d.esc[f] = str(v); });
     Object.entries(e.thermal || {}).forEach(([f, v]) => { d.th[f] = str(v); });
     const n = addNode("part", d), bodyLinks = [];
@@ -1205,6 +1253,8 @@ function circuitIn(doc, pend, put){
     Object.keys(d.fields).forEach(f => pend.push([n.id, "f." + f, e[f]]));
     Object.keys(d.esc).forEach(f => pend.push([n.id, "e." + f, e.esc[f]]));
     Object.keys(d.th).forEach(f => pend.push([n.id, "h." + f, e.thermal[f]]));
+    Object.keys(d.wv).forEach(f => { if (f in e.wave) pend.push([n.id, "w." + f, e.wave[f]]); });
+    Object.keys(d.ld).forEach(f => { if (f in e.I_load) pend.push([n.id, "l." + f, e.I_load[f]]); });
     put(3, n); });
   Object.values(nets).forEach(t => put(4, t));
 }
@@ -1228,6 +1278,10 @@ function partHTML(n, ins){
     b += `<div class="row"><label title="optional: the no-load current I0 from the datasheet, as an iron and bearing drag Kt I0 on the shaft">no-load loss</label><input type="checkbox" data-k="ioOn"${d.ioOn ? " checked" : ""} style="justify-self:start"></div>`;
     if (d.ioOn){ const s0 = ins.find(s => s.key === "f.I0"); if (s0) b += fieldRow(n, s0, d.fields.I0 ?? "", PART_PH.I0); }
   }
+  if (WAVE_ON.includes(d.ptype)) b += waveBlock(n, ins, "w.", "wvOn", "wvShape", d.wv || (d.wv = {}), "function gen",
+    "drive the " + (d.ptype === "voltage_source" ? "voltage" : "current") + " with a waveform: sine, square, triangle, sawtooth, pulse, step or ramp");
+  if (LOAD_ON.includes(d.ptype)) b += waveBlock(n, ins, "l.", "ldOn", "ldShape", d.ld || (d.ld = {}), "load gen",
+    "draw a time-varying current from this supply (replaces the fixed I_load): the offset is the base draw");
   if (ct.thermal){
     b += `<div class="row"><label title="advanced: the part heats with its losses, cools to ambient, and its resistance (and a motor's Kt, a diode's Vf) shift with temperature">thermal</label><input type="checkbox" data-k="thOn"${d.thOn ? " checked" : ""} style="justify-self:start"></div>`;
     if (d.thOn) ins.filter(s => s.key.startsWith("h.")).forEach(s => b += fieldRow(n, s, d.th[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
@@ -1897,7 +1951,7 @@ function fieldDim(n, key){
   if ((n.kind === "element" || n.kind === "load") && (key.startsWith("f.") || key === "P")){
     const f = key === "P" ? "P" : key.slice(2); return EL_DIM[f] || null; }
   if (["value","sweep","mc"].includes(n.kind) && (key === "value" || key === "unit")) return feedDim(n);
-  if (n.kind === "part") return partDim(key);
+  if (n.kind === "part") return partDim(key, n.data);
   return null;                                   // builder args: any dimension
 }
 function feedDim(n, seen){   // a value / range / Monte Carlo node takes the dimension of the first field it feeds
@@ -3281,6 +3335,10 @@ world.addEventListener("input", e => {
     if (nx && nx.classList.contains("xp")) nx.remove(); const hint = expandHint(el.value.trim()); if (hint) row.insertAdjacentHTML("afterend", hint); }
   if (k === "name"){ if (n._nameWas === undefined) n._nameWas = d.name; d.name = v.replace(/[^A-Za-z0-9_]/g, "_"); changed(false); return; }
   setField(n, k, v);
+  if (n.kind === "part" && /^[wl]\./.test(k) || (n.kind === "part" && /^f\.(V|I)$/.test(k))){   // live waveform preview
+    const pre = k[0] === "f" ? "w." : k.slice(0, 2), box = world.querySelector(`.node[data-id="${n.id}"] .csvmini[data-wv="${pre}"] svg`);
+    const pts = box && wavePts(pre === "w." ? d.wv : d.ld, (pre === "w." ? d.wvShape : d.ldShape) || "sine", pre === "w." ? d.fields[d.ptype === "voltage_source" ? "V" : "I"] : "0");
+    if (box && pts) box.innerHTML = csvSVG({csvInterp:"linear"}, pts, 220, 56, true); }
   const rerender = ["dof","type","mode","reduce","quantity"].includes(k) || (el.tagName === "SELECT" && !el.dataset.part) || el.type === "checkbox";
   changed(rerender);
   if (k === "const" || k === "raw") refreshMeasure(n);
@@ -3308,6 +3366,7 @@ function setField(n, k, v){ const d = n.data;
   else if (n.kind === "model" && k.startsWith("carry.")){ d.carry = d.carry || {}; if (v) d.carry[k.slice(6)] = v; else delete d.carry[k.slice(6)]; }
   else if (n.kind === "model" && k.startsWith("i.")){ d.inputs = d.inputs || {}; d.inputs[k.slice(2)] = v; }
   else if (n.kind === "part" && k.startsWith("e.")) d.esc[k.slice(2)] = v; else if (n.kind === "part" && k.startsWith("h.")) d.th[k.slice(2)] = v;
+  else if (n.kind === "part" && k.startsWith("w.")) (d.wv = d.wv || {})[k.slice(2)] = v; else if (n.kind === "part" && k.startsWith("l.")) (d.ld = d.ld || {})[k.slice(2)] = v;
   else if (n.kind === "net" && k === "ground" && v){ S.nodes.forEach(x => { if (x.kind === "net") x.data.ground = false; }); d.ground = true; }
   else d[k] = v; }
 function refreshMeasure(n){ const el = world.querySelector(`.node[data-id="${n.id}"] .hint[title="the stretch this element acts on"]`); if (el) el.textContent = "s = " + (measureOf(n) || "…"); }
@@ -3512,7 +3571,8 @@ function groupCandidates(g){
   return {ins, outs};
 }
 function fieldValue(m, key){ const d = m.data; if (key.startsWith("a.")) return d.args[key.slice(2)]; if (key.startsWith("f.")) return d.fields[key.slice(2)];
-  if (m.kind === "part" && key.startsWith("e.")) return d.esc[key.slice(2)]; if (m.kind === "part" && key.startsWith("h.")) return d.th[key.slice(2)]; return d[key]; }
+  if (m.kind === "part" && key.startsWith("e.")) return d.esc[key.slice(2)]; if (m.kind === "part" && key.startsWith("h.")) return d.th[key.slice(2)];
+  if (m.kind === "part" && key.startsWith("w.")) return (d.wv || {})[key.slice(2)]; if (m.kind === "part" && key.startsWith("l.")) return (d.ld || {})[key.slice(2)]; return d[key]; }
 const exposed = (g, c) => { const k = c.m.id + "|" + c.s.key; return (g.expose && k in g.expose) ? g.expose[k] : c.def; };
 const isValTable = g => g.members.length > 0 && g.members.every(id => { const m = byId(id); return m && m.kind === "value"; });
 function valTableHTML(g){
@@ -3708,6 +3768,8 @@ function menuAll(){
     const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current", current_load:"load sink draw amps constant current", wire:"wire cable lead awg gauge xt60 xt30 xt90 connector harness copper loss",
       battery:"lipo pack cells mah", diode:"rectifier flyback freewheel", switch:"relay contactor pwm mosfet", fuse:"breaker protection", motor:"dc brushless bldc kv esc spinner weapon"};
     Object.keys(CAT.circuit.types).forEach(t => add("Electrical", "Part · " + PART_NAME[t], (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "")}));
+    add("Electrical", "Part · function generator (current)", "a current load driven by a waveform: sine, square, triangle, sawtooth, pulse, step, ramp", "var(--s-elec)", () => ["part", {name:"load", ptype:"current_load", wvOn:true, wvShape:"square", wv:{amplitude:"5 A", offset:"5 A", frequency:"10 Hz", duty:"0.5"}}], {words:"circuit electrical function generator waveform sine square pulse load current test"});
+    add("Electrical", "Part · function generator (voltage)", "a voltage source driven by a waveform", "var(--s-elec)", () => ["part", {name:"supply", ptype:"voltage_source", wvOn:true, wvShape:"sine", wv:{amplitude:"5 V", offset:"12 V", frequency:"50 Hz"}}], {words:"circuit electrical function generator waveform sine ac voltage supply"});
     add("Electrical", "Part · motor with ESC", "a motor behind a speed controller: throttle and current limit", "var(--s-elec)", () => ["part", {name:"motor", ptype:"motor", escOn:true, esc:{throttle:"1"}}], {words:"circuit electrical esc speed controller weapon drive bldc"});
     add("Electrical", "Net", "a wire junction: every terminal plugged in shares one voltage", "var(--s-elec)", () => ["net", {name:"net"}], {words:"circuit node wire junction bus"});
     add("Electrical", "Ground net", "the 0 V reference (one per circuit)", "var(--s-elec)", () => ["net", {name:"gnd", ground:true}], {words:"circuit ground zero earth reference"});
@@ -3985,7 +4047,7 @@ function needCheck(){
   world.querySelectorAll(".row.need").forEach(r => r.classList.remove("need"));
   if (!miss.length) return true;
   miss.forEach(([r]) => { r.classList.remove("need"); void r.offsetWidth; r.classList.add("need"); });
-  setTimeout(() => world.querySelectorAll(".row.need").forEach(r => r.classList.remove("need")), 3200);
+  setTimeout(() => world.querySelectorAll(".row.need").forEach(r => r.classList.remove("need")), 3400);   // 6 x 0.55 s: it ends dark, then the class goes
   const names = [...new Set(miss.map(([, nd]) => { const n = byId(nd.dataset.id); return n && n.data.name ? n.data.name : "a node"; }))];
   status("bad", `${miss.length} required box${miss.length === 1 ? " is" : "es are"} empty (${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""}): fill the flashing ones.`);
   return false;
@@ -5000,6 +5062,7 @@ const GUIDE = [
    <li><b>A circuit.</b> Add parts from <b>Add &gt; Electrical</b>: battery, resistor, capacitor, inductor, voltage and current sources, diode, switch, fuse and motor. Each part has a <b>+</b> and a <b>−</b> terminal. Wire each terminal into a <b>Net</b> block. Every terminal on one net shares its voltage. Tick <b>ground</b> on one net: it is 0 V.</li>
   </ul>
   <p>A motor part also takes a <b>shaft</b> body (and an optional <b>frame</b> body, for a motor that turns one body against another). Give kv or Kt. Tick <b>ESC</b> for a speed controller with a throttle and a current limit; <b>regen</b> lets it push current back.</p>
+  <p><b>Function generator.</b> A resistor is passive: current flows through it only when a source or load is wired to the same two nets. To test with a changing current or voltage, tick <b>function gen</b> on a current source, current load or voltage source and pick a shape: <b>sine</b>, <b>square</b>, <b>triangle</b>, <b>sawtooth</b>, <b>pulse</b> (0 to amplitude), <b>step</b> or <b>ramp</b>. Output = offset + amplitude × wave; blank offset = the part's I or V. <b>duty</b> sets how much of each period a square or pulse is high; <b>start</b> and <b>stop</b> gate it. Tick <b>load gen</b> on a battery or supply for a time-varying draw in place of the fixed I_load. The step size shrinks on its own to about 50 steps per period. In a file: <code>wave: {shape: square, amplitude: 5 A, offset: 5 A, frequency: 10 Hz, duty: 0.25}</code>.</p>
   <p><b>Thermal</b> (advanced, on every part except the sources): the part heats with its I²R losses (C_th, J/K) and cools to ambient through R_th (K/W). Its resistance rises by alpha per K, a motor's Kt falls with its magnets' tempco, and a diode's Vf drops. Above T_max_C it fails open. Capacitors have an optional <b>ESR</b> (0 when blank).</p>
   <p>Results: plug a part's <b>current</b>, <b>voltage</b>, <b>power</b>, <b>energy</b>, <b>heat</b>, <b>soc</b>, <b>torque</b>, <b>temperature</b> or <b>state</b> socket into an Output (final, max, min, max_abs) or a CSV export. Current flows from + to − through the part; power is absorbed, so a source delivering shows negative power.</p>
   <p>How it is solved: every step, nodal analysis with backward-Euler companions for the capacitors, inductors and the battery's sag branch, re-solved until the diodes and ESC limits agree. The part powers sum to zero every step (<code>_circuit_ledger_rel</code> in Verify). The automatic time step resolves the circuit's fastest time constant (five steps per one). Example: <b>1D-4 Battery, ESCs and two motors</b>.</p>`},

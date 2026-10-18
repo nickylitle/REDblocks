@@ -38,7 +38,7 @@ TYPES = {"resistor": R_, "capacitor": C_, "inductor": L_, "voltage_source": VS, 
          "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT, "wire": R_}
 FIELDS = {
     "resistor": {"R"}, "capacitor": {"C", "v0", "R_leak", "ESR"}, "inductor": {"L", "R", "i0"},
-    "voltage_source": {"V", "R", "I_load"}, "current_source": {"I"}, "current_load": {"I"},
+    "voltage_source": {"V", "R", "I_load", "wave"}, "current_source": {"I", "wave"}, "current_load": {"I", "wave"},
     "battery": {"cells", "capacity", "R0", "R1", "C1", "soc0", "V_full", "V_empty", "I_load"},
     "diode": {"Vf", "R_on", "R_off"},
     "switch": {"R_on", "R_off", "on_at", "off_at", "pwm_freq", "duty", "phase"},
@@ -46,9 +46,12 @@ FIELDS = {
     "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor", "I0"},
     "wire": {"awg", "area", "length", "material", "connectors", "R_contact"},
 }
-REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": {"V"},
-            "current_source": {"I"}, "current_load": {"I"}, "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
+REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": set(),
+            "current_source": set(), "current_load": set(), "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
             "fuse": {"I_rating"}, "motor": {"R", "measure"}, "wire": {"length"}}
+# a source's function generator (wave:): the value follows a shape in time instead of staying fixed
+WAVE_SHAPES = {"sine": 1, "square": 2, "triangle": 3, "sawtooth": 4, "pulse": 5, "step": 6, "ramp": 7}
+WAVE_FIELDS = {"shape", "amplitude", "offset", "frequency", "period", "phase", "duty", "start", "stop", "rise"}
 ESC_FIELDS = {"throttle", "I_max", "regen", "R_on", "t_sw", "f_sw", "C_th", "R_th", "T_amb_C"}
 COMMON = {"type", "between", "label", "note", "source", "thermal"}
 QUANTITIES = {"current", "voltage", "power", "energy", "soc", "state", "torque", "temperature", "heat", "esc_temperature",
@@ -89,8 +92,9 @@ def compile_circuit(doc, ctx):
             if isinstance(d, dict) and d.get("I_load") not in (None, ""):
                 d = dict(d); il = d.pop("I_load")
                 p2[pn] = d
-                p2[f"{pn}__load"] = {"type": "current_load", "between": d.get("between"), "I": il,
-                                     "label": f"{pn}'s fixed load"}
+                p2[f"{pn}__load"] = dict({"type": "current_load", "between": d.get("between")},
+                                         **({"wave": il} if isinstance(il, dict) else {"I": il}),
+                                         label=f"{pn}'s load" + (" (function generator)" if isinstance(il, dict) else ""))
             else:
                 p2[pn] = d
         parts = p2
@@ -143,14 +147,18 @@ def compile_circuit(doc, ctx):
             if P[0] <= 0:
                 raise SpecError("L must be positive", where, line_of(d, "L"), f)
         elif t == "voltage_source":
-            P[0] = g("V"); P[1] = g("R", 1e-4)
+            if "V" not in d and "wave" not in d:
+                raise SpecError("a voltage_source needs V (or a wave: function generator)", where, line_of(parts, pn), f)
+            P[0] = g("V", 0.0); P[1] = g("R", 1e-4)
             if P[1] <= 0:
                 raise SpecError("a voltage source's R (internal resistance) must be positive", where,
                                 line_of(d, "R"), f)
-        elif t == "current_source":
-            P[0] = g("I")
-        elif t == "current_load":                      # a fixed current drawn in at + and out at - (a sink)
-            P[0] = -g("I")
+        elif t in ("current_source", "current_load"):
+            if "I" not in d and "wave" not in d:
+                raise SpecError(f"a {t} needs I (or a wave: function generator)", where, line_of(parts, pn), f)
+            P[0] = g("I", 0.0) * (-1.0 if t == "current_load" else 1.0)   # a load draws in at + and out at -
+        if t in ("voltage_source", "current_source", "current_load") and "wave" in d:
+            _wave_in(d["wave"], P, -1.0 if t == "current_load" else 1.0, P[0], ctx, where + ".wave", line_of(d, "wave"), f)
         elif t == "battery":
             P[0] = g("cells"); P[1] = g("capacity"); P[2] = g("R0", 0.0); P[3] = g("R1", 0.0); P[4] = g("C1", 0.0)
             P[5] = g("V_full", 4.2); P[6] = g("V_empty", 3.3)
@@ -307,6 +315,35 @@ def _wire(pn, d, ctx, f):
     return out
 
 
+def _wave_in(w, P, sign, base, ctx, where, ln, f):
+    """wave: {shape, amplitude, offset, frequency or period, phase, duty, start, stop, rise} into P[2:12]."""
+    from .model import resolve, num
+    if not isinstance(w, dict):
+        raise SpecError("wave is a function generator: {shape: sine, amplitude: 2 A, frequency: 50 Hz, offset: 0 A}",
+                        where, ln, f)
+    bad = set(w) - WAVE_FIELDS
+    if bad:
+        raise SpecError(f"unknown wave key(s): {', '.join(sorted(bad))} (allowed: {', '.join(sorted(WAVE_FIELDS))})", where, ln, f)
+    shp = str(w.get("shape", "sine")).strip().lower()
+    if shp not in WAVE_SHAPES:
+        raise SpecError(f"wave shape is one of {', '.join(WAVE_SHAPES)}", where, ln, f)
+    g = lambda k, d: num(resolve(w[k], ctx, f"{where}.{k}"), f"{where}.{k}") if k in w else d
+    P[2] = WAVE_SHAPES[shp]; P[3] = g("amplitude", 0.0); P[4] = g("offset", base / sign if sign else base)
+    if "frequency" in w and "period" in w:
+        raise SpecError("give frequency or period, not both", where, ln, f)
+    per = g("period", None)
+    P[5] = (1.0 / per if per else 0.0) if per is not None else g("frequency", 0.0)
+    if shp in ("sine", "square", "triangle", "sawtooth", "pulse") and P[5] <= 0:
+        raise SpecError(f"a {shp} wave needs a frequency (or period) above zero", where, ln, f)
+    P[6] = g("phase", 0.0); P[7] = g("duty", 0.5)
+    if not 0.0 <= P[7] <= 1.0:
+        raise SpecError("duty is the fraction of each period the wave is high, 0 to 1", where, ln, f)
+    P[8] = g("start", 0.0); stop = g("stop", None); P[9] = stop if stop is not None else 1e300
+    P[10] = g("rise", 0.0); P[11] = sign
+    if shp == "ramp" and P[10] <= 0:
+        raise SpecError("a ramp needs rise: the time it takes to climb by the amplitude", where, ln, f)
+
+
 def circuit_tau(circ):
     """The circuit's fastest time scale, for the automatic step: each capacitor's C (ESR + the smallest other
     resistance), each inductor's or motor's L / (R + that), the battery's R1 C1, and a PWM switch's period.
@@ -332,6 +369,12 @@ def circuit_tau(circ):
             taus.append(P[3] * P[4])
         elif t == SW and P[4] > 0:
             taus.append(1.0 / P[4])
+    for k in range(len(pt)):                    # a function generator: about 50 steps a period, 10 over a ramp
+        if int(pt[k]) in (VS, IS) and prm[k][2] > 0:
+            if prm[k][5] > 0:
+                taus.append(0.1 / prm[k][5])
+            if prm[k][2] == 7 and prm[k][10] > 0:
+                taus.append(prm[k][10] / 2.0)
     taus = [x for x in taus if x > 0]
     return min(taus) if taus else math.inf
 
@@ -401,6 +444,36 @@ def _kt(k, prm, th, pst):
 
 
 @njit(cache=True, nogil=True, inline="always")
+def _src(prm, k, t):
+    """A source's value at time t: fixed (prm[k, 0]) or its function generator (prm[k, 2] = shape code)."""
+    sh = prm[k, 2]
+    if sh <= 0.0:
+        return prm[k, 0]
+    A = prm[k, 3]; off = prm[k, 4]
+    if t < prm[k, 8] or t >= prm[k, 9]:                # before start / after stop: the offset (the DC level)
+        return prm[k, 11] * off
+    tt = t - prm[k, 8]
+    if sh == 6.0:                                      # step: offset, then offset + amplitude from the start
+        return prm[k, 11] * (off + A)
+    if sh == 7.0:                                      # ramp: rises by the amplitude over 'rise', then holds
+        r = prm[k, 10]
+        return prm[k, 11] * (off + A * (min(1.0, tt / r) if r > 0.0 else 1.0))
+    ph = tt * prm[k, 5] + prm[k, 6] / (2.0 * math.pi)
+    p = ph - math.floor(ph)
+    if sh == 1.0:
+        v = math.sin(2.0 * math.pi * p)
+    elif sh == 2.0:
+        v = 1.0 if p < prm[k, 7] else -1.0
+    elif sh == 3.0:
+        q = p + 0.25; q = q - math.floor(q); v = 1.0 - 4.0 * abs(q - 0.5)
+    elif sh == 4.0:
+        q = p + 0.5; q = q - math.floor(q); v = 2.0 * q - 1.0
+    else:                                              # pulse: amplitude for the duty fraction of each period, else 0
+        v = 1.0 if p < prm[k, 7] else 0.0
+    return prm[k, 11] * (off + A * v)
+
+
+@njit(cache=True, nogil=True, inline="always")
 def _bdf2(pst, k, dt):
     """Second-order BDF for this capacitor or inductor: once it has a step of history at this same step size.
     pst[k, 2] is the state two steps back, pst[k, 3] the step it was taken with (0 before the first step)."""
@@ -431,9 +504,9 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
         Z = prm[k, 1] * rf + prm[k, 0] / dt
         return 1.0 / Z, -(prm[k, 0] / dt) * pst[k, 0] / Z
     if tp == 4:                                        # v = V - R (-i)  ->  i = (v - V)/R
-        return 1.0 / prm[k, 1], prm[k, 0] / prm[k, 1]
+        return 1.0 / prm[k, 1], _src(prm, k, t) / prm[k, 1]
     if tp == 5:                                        # pushes I into the first net: i = -I
-        return 0.0, prm[k, 0]
+        return 0.0, _src(prm, k, t)
     if tp == 6:                                        # battery: v = OCV - v1 - R0 (-i), v1 BE-advanced
         ocv = _ocv(pst[k, 0], prm[k, 0], prm[k, 5], prm[k, 6])
         R1 = prm[k, 3] * rf
