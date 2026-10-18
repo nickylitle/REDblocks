@@ -456,6 +456,8 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             if overrides.get(ELASTIC + en) or overrides.get(ELASTIC + en.split("__")[0]):
                 tF = tF * 0 + 1e30
             P[e, 1] = gg("break_at", math.inf)
+            from .model import strain_rate_params
+            P[e, 2:5] = strain_rate_params(d, ctx, where, f)
         elif t == "hertz":
             P[e, 0] = gg("K"); P[e, 1] = gg("n", 1.5); P[e, 2] = gg("alpha", 0.0)
         elif t == "friction":

@@ -40,3 +40,29 @@ def test_levers_reject_a_bad_name():
     d["study"] = {"sensitivity": {"vary": ["nope"]}}
     r = Api().study_start(yaml.safe_dump(d, sort_keys=False), 1)
     assert not r["ok"] and "nope" in r["error"]
+
+
+def _study(d):
+    A = Api(); r = A.study_start(yaml.safe_dump(d, sort_keys=False), 1)
+    assert r["ok"], r
+    while True:
+        p = A.study_progress()
+        if not p["running"]:
+            return p
+        time.sleep(0.05)
+
+
+def test_levers_give_a_first_order_spread_from_uncertainty_ranges():
+    d = yaml.safe_load(MODEL); d.pop("editor", None)
+    d["uncertain"] = {"k": ["360 N/m", "440 N/m"]}
+    d["study"] = {"sensitivity": {"vary": ["k", "c"], "of": ["peak_spring_N"]}}
+    sp = _study(d)["sensitivity"]["table"]["peak_spring_N"]["spread"]
+    assert sp["sd"] == pytest.approx(0.01 * 80 / 12 ** 0.5, rel=1e-6)          # dF/dk = x0, sigma_k = range / sqrt 12
+    assert sp["share"]["k"] == pytest.approx(1.0)
+
+
+def test_goal_seek_finds_the_input_for_a_target():
+    d = yaml.safe_load(MODEL); d.pop("editor", None)
+    d["study"] = {"goal_seek": {"vary": "c", "output": "first_trough_mm", "target": -5, "tolerance": "0.1 %"}}
+    g = _study(d)["goal"]
+    assert g["found"] and abs(g["y"] + 5) <= 0.005 and len(g["runs"]) <= 10

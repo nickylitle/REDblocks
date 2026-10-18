@@ -69,6 +69,31 @@ def tabular_return(x, xp, acc, k, acc_tab, F_tab, one_sided):
     return k * (x - xp_new), xp_new, acc + d
 
 
+@kernel
+def tabular_return_rate(x, xp, acc, k, acc_tab, F_tab, one_sided, f):
+    """tabular_return with the yield table scaled by f >= 1 this step (strain-rate hardening: the dynamic yield)."""
+    Ftr = k * (x - xp)
+    if one_sided == 1 and Ftr <= 0.0:
+        return 0.0, xp, acc
+    Fy = f * interp_clamped(acc, acc_tab, F_tab)
+    if abs(Ftr) <= Fy:
+        return Ftr, xp, acc
+    sgn = 1.0 if Ftr > 0.0 else -1.0
+    lo, hi = 0.0, (abs(Ftr) - Fy) / k
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        g = f * interp_clamped(acc + mid, acc_tab, F_tab) + k * mid - abs(Ftr)
+        if g > 0.0:
+            hi = mid
+        else:
+            lo = mid
+        if hi - lo < 1e-15 * (1.0 + abs(x)):
+            break
+    d = 0.5 * (lo + hi)
+    xp_new = xp + sgn * d
+    return k * (x - xp_new), xp_new, acc + d
+
+
 @block("constitutive", "plasticity", "spring_1d", "linear_hardening", kind="kernel",
        source="Simo & Hughes 1998, Box 1.4", tags=("bilinear", "kinematic", "Bauschinger"))
 @kernel

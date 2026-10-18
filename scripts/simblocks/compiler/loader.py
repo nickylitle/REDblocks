@@ -70,7 +70,7 @@ BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0
 BODY_KEYS_2D = {"dof", "mass", "inertia", "shape", "at", "com", "angle0", "v0", "omega0", "points", "circles", "lines", "ground",
                 "label", "note"}
 ELEMENT_KEYS = {
-    "spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table", "break_at"},
+    "spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table", "break_at", "strain_rate"},
     "hertz": {"K", "n", "alpha"}, "friction": {"F_c", "v_eps", "F_s", "v_s"}, "drag": {"K"},
     "force": {"P", "csv", "pulse"}, "drive": {"kv", "R", "I_max", "gear", "cells", "R0", "R1", "C1", "capacity", "throttle",
                               "J_rotor"},
@@ -104,7 +104,7 @@ REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"
                     "rocket": {"thrust_vac", "mass_flow"}, "jettison": {"at", "mass"}, "aero_drag": {"area", "Cd"},
                     "steering": set(), "landing_guidance": {"site_range"}}
 OUTPUT_KEYS = {"element", "body", "part", "control", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
-ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "absorbed_work", "dissipated", "current",
+ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "rate_factor", "absorbed_work", "dissipated", "current",
                       "battery_current", "bus_voltage", "soc", "broken", "moment", "torque", "shear", "hinge_set",
                       "impulse", "friction_impulse", "drift",
                       "pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed",
@@ -119,7 +119,7 @@ REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_bel
 EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
 EXPORT_COLUMN_KEYS = {"element", "body", "part", "control", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
-STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
+STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken", "rate_factor"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "dc_motor": {"current"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
                  "impact": {"impulse", "dissipated", "friction_impulse"},

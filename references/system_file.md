@@ -97,7 +97,7 @@ generalized force is a torque.
 | `spring` | `k` | F = k s |
 | `dashpot` | `c` | F = c ds/dt |
 | `kelvin_voigt` | `k`, `c`, `one_sided` | F = k s + c ds/dt; one_sided: only for s > 0, never pulls |
-| `elastoplastic` | `table`, `one_sided`, `break_at` | `tabular_return` with a (k, acc_tab, F_tab) table from a block; `break_at` = plastic set at which it tears off / punches through and carries nothing after |
+| `elastoplastic` | `table`, `one_sided`, `break_at`, `strain_rate` | `tabular_return` with a (k, acc_tab, F_tab) table from a block; `break_at` = plastic set at which it tears off / punches through and carries nothing after; `strain_rate: {D, q, length}` or `{material, length}` scales the yield each step by Cowper-Symonds 1 + (rate/D)^(1/q), rate = \|ds/dt\| / length (output `rate_factor`) |
 | `hertz` | `K`, `n` (1.5), `alpha` (0) | F = K s^n (1 + alpha ds/dt), compression only |
 | `friction` | `F_c`, `v_eps`, `F_s`, `v_s` | regularized Coulomb, optional Stribeck peak F_s at speed scale v_s |
 | `drag` | `K` | F = K v abs(v) (windage, quadratic air drag) |
@@ -218,10 +218,24 @@ levers are ranked by elasticity (% change of the output per % change of the inpu
 derivative (output unit per the input's SI unit) are listed too. Up and down changes that differ by more than 20 %
 are flagged: a kink or a threshold near the nominal point. A zero-valued lever moves by +-step in its own SI units.
 
+### goal seek
+
+```yaml
+study:
+  goal_seek: {vary: t_wedge, output: peak_stress_MPa, target: 900, tolerance: 0.1 %, range: [2 mm, 12 mm]}
+```
+Study runs the model again and again: from the value's own number, a small step, then secant steps from the last
+two runs (inside range, or within x10 of the last value), until the output is within tolerance of the target
+(the output's own unit). It reports the value found, the runs it took, and why it stopped if it did not converge.
+With uncertainty ranges on the levers (uncertain: {p: [lo, hi]}), a Levers study also gives each output's
+first-order spread: the derivatives times each input's standard deviation (uniform), added in quadrature.
+
 ### run and report
 
 ```yaml
 run: {t_end: 0.4 ms, dt: 20 ns, mc_n: 150, bounds: {shaft_set_mm: [0, 15]}}   # dt: auto = 0.02 x critical
+# accuracy: draft | normal | fine  scales the automatic step x2 | x1 | x0.5 (run: {t_end: 2 s, accuracy: fine})
+# first_time_* outputs are interpolated between steps (the crossing of a straight line through the two steps)
 # automatic step held inside bounds instead of a fixed one:  run: {t_end: 0.4 ms, dt_min: 5 ns, dt_max: 50 ns}
 # motors (drive, circuit motor) do not limit the step for stability: their back-EMF damping on the shaft is stepped
 #   exactly (the shaft's speed change over a step is the plain step's x (1 - e^-k)/k, k = c dt / J, with the other

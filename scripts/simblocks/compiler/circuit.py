@@ -518,7 +518,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             elif R1 > 0.0:
                 pst[k, 1] = R1 * iout
             heat = prm[k, 2] * rf * iout * iout + (pst[k, 1] * pst[k, 1] / R1 if R1 > 0.0 else 0.0)
-            pst[k, 0] -= iout * dt / prm[k, 1]
+            pst[k, 0] = min(1.0, max(0.0, pst[k, 0] - iout * dt / prm[k, 1]))   # charge stays 0 to 100 %
             pout[k, 4] = pst[k, 0]
         if tp == 9:
             if pst[k, 5] < 0.5:

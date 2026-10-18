@@ -28,7 +28,7 @@ from .circuit import circuit_step
 from .control import control_step
 from .adaptive import pick_dt
 
-from ..constitutive.plasticity import tabular_return
+from ..constitutive.plasticity import tabular_return, tabular_return_rate
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
 
 NP = 12      # floats per element
@@ -58,7 +58,13 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         if st[2] > 0.5:                         # broken (punched through / torn off): carries nothing
             return 0.0, 0.0, 0.0, 0.0
         xp0 = st[0]
-        F, xp, acc = tabular_return(s, st[0], st[1], tab_k, tab_x, tab_F, one_sided)
+        if p[2] > 0.0 and p[4] > 0.0:            # strain-rate hardening: Cowper-Symonds on the yield, at this rate
+            rate = abs(sd) / p[4]
+            fac = 1.0 + (rate / p[2]) ** (1.0 / p[3]) if rate > 0.0 else 1.0
+            F, xp, acc = tabular_return_rate(s, st[0], st[1], tab_k, tab_x, tab_F, one_sided, fac)
+            aux[3] = fac
+        else:
+            F, xp, acc = tabular_return(s, st[0], st[1], tab_k, tab_x, tab_F, one_sided)
         st[0] = xp; st[1] = acc
         dd = F * (xp - xp0)
         stored = F * F / (2.0 * tab_k)
@@ -134,7 +140,7 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         diss = (R0 * Ib * Ib + R1 * iR1 * iR1 + Rm * I * I) * dt
         a = math.exp(-dt / (R1 * C1)) if R1 > 0.0 and C1 > 0.0 else 0.0
         st[4] = a * iR1 + (1.0 - a) * Ib
-        st[3] = soc - Ib * dt / Q
+        st[3] = max(0.0, soc - Ib * dt / Q)
         aux[0] = I; aux[1] = Ib; aux[2] = v; aux[3] = st[3]
         cap = 0.5 * C1 * (R1 * st[4]) ** 2 if C1 > 0.0 else 0.0
         return -G * Kt * I, diss, Ech, cap
@@ -188,7 +194,7 @@ def drive_books(p, st, aux, F0, F1, k, dt, D, IN, A, dsp, e):
     dIb = Ib0 * (r - 1.0)
     ocv = lipo_ocv_k(st[3] + Ib0 * dt / Q, p[4])
     IN[e] += ocv * dIb * dt
-    st[3] -= dIb * dt / Q
+    st[3] = min(1.0, max(0.0, st[3] - dIb * dt / Q))
     a = math.exp(-dt / (R1 * C1)) if R1 > 0.0 and C1 > 0.0 else 0.0
     st[4] += (1.0 - a) * dIb
     aux[3] = st[3]                             # (current outputs stay the step's starting values: the peak is real)
@@ -237,6 +243,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         BT[b, 0] = q[b]; BT[b, 1] = q[b]; BT[b, 2] = v[b]; BT[b, 3] = v[b]
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
+    cx_prev = np.full(ncr, np.nan)                  # each crossing's value last step: the time is interpolated
     adapt = adp[0] > 0.5
     t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
     adsp = np.zeros(ne); inc1 = np.zeros(ne, np.int64)
@@ -448,7 +455,14 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
-                    t_cross[c] = tn
+                    xp_ = cx_prev[c]
+                    if xp_ == xp_ and x != xp_:            # straight line between last step and this one
+                        fr = (cross_thr[c] - xp_) / (x - xp_)
+                        fr = 0.0 if fr < 0.0 else (1.0 if fr > 1.0 else fr)
+                        t_cross[c] = tn - dt + fr * dt
+                    else:
+                        t_cross[c] = tn
+                cx_prev[c] = x
         if i % 4 == 0:
             ke_ = 0.0
             for b in range(nb):

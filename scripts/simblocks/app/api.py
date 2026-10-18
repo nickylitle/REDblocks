@@ -317,6 +317,11 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            G = goal_spec(s.doc, s)
+            if G:
+                s.run(); t0 = time.time(); s.run(); one = time.time() - t0
+                return dict(ok=True, runs=G["max_runs"], sweeps=[], mc=[], sens=[], goal=G["vary"], one_run_s=one, workers=1,
+                            est_s=one * G["max_runs"], ask=False)
             sp = sens_spec(s.doc, s)
             if sp:
                 plan = (plan if (sweeps or mc) else [{}]) + sens_plan(sp[0], sp[2])
@@ -338,12 +343,26 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            G = goal_spec(s.doc, s)
+            if G:                                        # goal seek: one run after another, in this thread
+                job = self._job = dict(running=True, done=0, total=G["max_runs"], results=[], cancel=False, sweeps=[], mc=[],
+                                       t0=time.time(), error=None, goal=None, goal_log=[], job_limit=None, timed_out=False,
+                                       units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()}, failure=[])
+                def go_goal():
+                    try:
+                        job["goal"] = dict(goal_seek(s, G, cancel=lambda: job["cancel"], log=job["goal_log"]), spec=G)
+                    except Exception as exc:
+                        job["error"] = f"{type(exc).__name__}: {exc}"
+                    finally:
+                        job["running"] = False; job["elapsed"] = time.time() - job["t0"]
+                threading.Thread(target=go_goal, daemon=True).start()
+                return dict(ok=True, total=G["max_runs"], workers=1, goal=True)
             sp = sens_spec(s.doc, s)
             sens = None
             if sp:
                 if not (sweeps or mc):
                     plan = [{}]                              # the nominal run the levers are measured from
-                sens = dict(start=len(plan), levers=sp[0], outs=sp[1], h=sp[2])
+                sens = dict(start=len(plan), levers=sp[0], outs=sp[1], h=sp[2], sigma=_unc_sigma(s.doc, s.nominal.ctx))
                 plan = plan + sens_plan(sp[0], sp[2])
         except Exception as exc:
             return _err(exc)
@@ -394,13 +413,19 @@ class Api:
         j = getattr(self, "_job", None)
         if not j:
             return dict(ok=False, error="no study")
+        if "goal_log" in j:
+            j["done"] = len(j["goal_log"])
         out = dict(ok=True, running=j["running"], done=j["done"], total=j["total"], error=j["error"],
                    timed_out=j.get("timed_out", False), job_limit=j.get("job_limit"),
                    elapsed=time.time() - j["t0"])
+        if not j["running"] and "goal_log" in j:
+            out.update(goal=j.get("goal"), results=[], sweeps=[], mc=[], units=j["units"], failure=[])
+            return out
         if not j["running"]:
             res = j["results"]; sn = j.get("sens")
             if sn:
-                out["sensitivity"] = sens_result(res, sn["start"], sn["levers"], sn["outs"], sn["h"], j["units"])
+                out["sensitivity"] = sens_result(res, sn["start"], sn["levers"], sn["outs"], sn["h"], j["units"],
+                                                 sn.get("sigma"))
                 if not (j["sweeps"] or j["mc"]):
                     res = res[:1]                            # the lever runs are reported as levers, not as a sample
                 else:
@@ -1297,6 +1322,69 @@ def sens_spec(doc, s):
     return [(v, float(ctx[v])) for v in vary], outs, h
 
 
+def goal_spec(doc, s):
+    """study.goal_seek: {vary: p, output: o, target: number in the output's unit, tolerance: 0.1 %, range: [lo, hi]}."""
+    g = (doc.get("study") or {}).get("goal_seek")
+    if not g:
+        return None
+    from ..compiler.units import parse_quantity
+    v = str(g.get("vary", "")); o = str(g.get("output", ""))
+    ctx = s.nominal.ctx
+    if not isinstance(ctx.get(v), (int, float)) or isinstance(ctx.get(v), bool):
+        raise ValueError(f"study.goal_seek.vary: '{v}' is not a number value")
+    if o not in s.doc["outputs"]:
+        raise ValueError(f"study.goal_seek.output: no output named '{o}'")
+    if g.get("target") in (None, ""):
+        raise ValueError("study.goal_seek.target: the value the output should reach (in the output's unit)")
+    T = float(g["target"]) if not isinstance(g["target"], str) else float(str(g["target"]).split()[0])
+    tol = str(g.get("tolerance", "0.1 %")).strip()
+    tol = float(tol.rstrip("%").strip()) / 100.0 if tol.endswith("%") else float(tol)
+    rng = g.get("range")
+    lo = hi = None
+    if rng:
+        lo, hi = (float(parse_quantity(x)) if isinstance(x, str) else float(x) for x in rng)
+    return dict(vary=v, output=o, target=T, tol=tol, x0=float(ctx[v]), lo=lo, hi=hi, max_runs=int(g.get("max_runs", 25)))
+
+
+def goal_seek(s, G, cancel=lambda: False, log=None):
+    """Find the input value that brings the output to the target: a secant search from the nominal value, started
+    with a small central difference, each step held inside the range (or within a factor of 10 of the last value).
+    Every step is one ordinary run. Returns dict(found, x, y, runs=[(x, y)], reason)."""
+    v, o, T, tol = G["vary"], G["output"], G["target"], G["tol"]
+    runs = []
+
+    def f(x):
+        y = s.run({v: x})[o]
+        runs.append((x, y))
+        if log is not None:
+            log.append((x, y))
+        return y
+    clamp = lambda x, ref: min(max(x, G["lo"]), G["hi"]) if G["lo"] is not None else \
+        (min(max(x, ref / 10.0), ref * 10.0) if ref > 0 else (max(min(x, ref / 10.0), ref * 10.0) if ref < 0 else x))
+    ok = lambda y: abs(y - T) <= tol * max(abs(T), 1e-300) or (T == 0 and abs(y) <= tol)
+    x0 = G["x0"]; y0 = f(x0)
+    if ok(y0):
+        return dict(found=True, x=x0, y=y0, runs=runs, reason="already there")
+    d = abs(x0) * 0.01 if x0 != 0 else 0.01
+    x1 = x0 + d; y1 = f(x1)
+    best = min(runs, key=lambda r: abs(r[1] - T))
+    for _ in range(G["max_runs"] - 2):
+        if cancel():
+            return dict(found=False, x=best[0], y=best[1], runs=runs, reason="cancelled")
+        if y1 == y0:
+            return dict(found=False, x=best[0], y=best[1], runs=runs, reason=f"{o} does not change with {v} here")
+        x2 = x1 - (y1 - T) * (x1 - x0) / (y1 - y0)
+        x2 = clamp(x2, x1)
+        if x2 == x1:
+            return dict(found=False, x=best[0], y=best[1], runs=runs, reason="stuck at the edge of the range")
+        y2 = f(x2)
+        best = min(runs, key=lambda r: abs(r[1] - T))
+        if ok(y2):
+            return dict(found=True, x=x2, y=y2, runs=runs, reason="")
+        x0, y0, x1, y1 = x1, y1, x2, y2
+    return dict(found=False, x=best[0], y=best[1], runs=runs, reason=f"not within tolerance after {len(runs)} runs")
+
+
 def sens_plan(levers, h):
     plan = []
     for name, x0 in levers:
@@ -1305,7 +1393,20 @@ def sens_plan(levers, h):
     return plan
 
 
-def sens_result(results, start, levers, outs, h, units):
+def _unc_sigma(doc, ctx):
+    """Standard deviation of each input that has an uncertainty range (uncertain: {p: [lo, hi]}), as uniform."""
+    from ..compiler.units import parse_quantity
+    out = {}
+    for k, v in (doc.get("uncertain") or {}).items():
+        try:
+            lo, hi = (float(parse_quantity(x)) if isinstance(x, str) else float(x) for x in v)
+            out[k] = abs(hi - lo) / math.sqrt(12.0)
+        except Exception:
+            pass
+    return out
+
+
+def sens_result(results, start, levers, outs, h, units, sigma=None):
     """Each output's levers, ranked: what a +step change of each input does to it (central difference), the
     derivative, the elasticity (% output per % input) and how lopsided the two sides are (a kink or a threshold)."""
     nom = results[0]["outputs"] if results and results[0] and results[0].get("ok") else None
@@ -1330,7 +1431,14 @@ def sens_result(results, start, levers, outs, h, units):
                              elasticity=el, lopsided=lop))
         key = lambda r: -abs(r["elasticity"]) if r.get("elasticity") is not None else (-abs(r.get("change", 0.0)) * 1e-300 if "change" in r else 1.0)
         rows.sort(key=key)
-        table[o] = dict(unit=units.get(o, ""), y0=y0, rows=rows)
+        # first-order spread: the levers with an uncertainty range, each as a uniform input, combined in quadrature
+        spread = None
+        if sigma:
+            parts = [(r["lever"], (r["dydx"] * sigma[r["lever"]]) ** 2) for r in rows if "dydx" in r and r["lever"] in sigma]
+            var = sum(v for _, v in parts)
+            if parts:
+                spread = dict(sd=math.sqrt(var), share={k: (v / var if var > 0 else 0.0) for k, v in parts})
+        table[o] = dict(unit=units.get(o, ""), y0=y0, rows=rows, spread=spread)
     return dict(step=h, levers=[n for n, _ in levers], outputs=outs, table=table)
 
 

@@ -740,6 +740,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             BT[b * NBQ + k, 0] = BQ[k]; BT[b * NBQ + k, 1] = BQ[k]
     ncr = cross_src.shape[0]
     t_cross = -np.ones(ncr)
+    cx_prev = np.full(ncr, np.nan)                  # each crossing's value last step: the time is interpolated
     adapt = adp[0] > 0.5
     t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
     adsp = np.zeros(ne)
@@ -1517,7 +1518,14 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 else:
                     x = aux[k, src - 4]
                 if (cross_dir[c] > 0 and x >= cross_thr[c]) or (cross_dir[c] < 0 and x <= cross_thr[c]):
-                    t_cross[c] = tn
+                    xp_ = cx_prev[c]
+                    if xp_ == xp_ and x != xp_:            # straight line between last step and this one
+                        fr = (cross_thr[c] - xp_) / (x - xp_)
+                        fr = 0.0 if fr < 0.0 else (1.0 if fr > 1.0 else fr)
+                        t_cross[c] = tn - dt + fr * dt
+                    else:
+                        t_cross[c] = tn
+                cx_prev[c] = x
         if i % 4 == 0:
             ke_ = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
             if ke_ > KEpk: KEpk = ke_

@@ -16,7 +16,7 @@ from . import engine1d as E
 
 TYPE_CODE = {"spring": 0, "dashpot": 1, "kelvin_voigt": 2, "elastoplastic": 3, "hertz": 4, "friction": 5,
              "drag": 6, "force": 7, "drive": 8, "impact": 14, "emotor": 17}
-AUX = {"plastic_set": 0, "broken": 2, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
+AUX = {"plastic_set": 0, "broken": 2, "rate_factor": 3, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
        "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3,
        # vehicles in flight: steering (altitude, inertial speed, flight path angle, speed through the air),
        # aero_drag (dynamic pressure, Mach, density, outside pressure), rocket (flow, back pressure, vehicle mass)
@@ -503,6 +503,7 @@ def _compile_model(doc, overrides=None):
             if overrides.get(ELASTIC + en) or overrides.get(ELASTIC + en.split("__")[0]):
                 tF = tF * 0 + 1e30
             P[e, 1] = g("break_at", math.inf)
+            P[e, 2:5] = strain_rate_params(d, ctx, where, f)
         elif t == "hertz":
             P[e, 0] = g("K"); P[e, 1] = g("n", 1.5); P[e, 2] = g("alpha", 0.0)
         elif t == "friction":
@@ -599,6 +600,14 @@ def _run_settings(M, doc, ctx):
         if M.contact_el.any():
             M.dt_auto_free = min(M.dt_auto_free, M.t_end / 20000.0)
     M.dt_auto = _step_caps(M, base)
+    # run.accuracy: draft takes twice the automatic step, fine half of it (normal: as worked out above)
+    acc = str(run.get("accuracy", "normal")).strip().lower()
+    if acc not in ACCURACY:
+        raise SpecError("run.accuracy is draft, normal or fine", "run.accuracy")
+    M.accuracy = acc
+    M.dt_auto *= ACCURACY[acc]
+    if adaptive:
+        M.dt_auto_free *= ACCURACY[acc]
     if adaptive:
         M.dt_auto_free = max(M.dt_auto_free, M.dt_auto)
     M.timeout = parse_timeout(run.get("timeout", "auto"), ctx)
@@ -633,6 +642,7 @@ def _step_share(M, crit, cb, other):
                min(0.02 * (other if other is not None else math.inf), 0.2 * cb), M.t_end / 2000.0)
 
 
+ACCURACY = {"draft": 2.0, "normal": 1.0, "fine": 0.5}     # run.accuracy: the automatic step x this
 MOTOR_SHARE = 0.2           # five steps per motor time constant (the circuit's rule for its own transients): the
                             # motor's own response is exact at any step; this resolves the spin-up curve itself
 
@@ -661,6 +671,40 @@ def _step_caps(M, dt_auto):
         if math.isfinite(M.dt_circ):
             M.dt_auto = min(M.dt_auto, 0.2 * M.dt_circ)
     return M.dt_auto
+
+
+def strain_rate_params(d, ctx, where, f=""):
+    """An elastoplastic element's strain_rate: {D: 1/s, q: ..., length: ...} or {material: <name>, length: ...}.
+    The yield scales by Cowper-Symonds 1 + (rate / D)^(1/q) each step, rate = |d measure / dt| / length (the
+    length that turns the measure's speed into a strain rate: the gauge, the dent depth scale, the hinge length).
+    Returns [D, q, length], zeros when off."""
+    sr = d.get("strain_rate")
+    if isinstance(sr, str) and sr.strip().startswith("{"):     # typed in the editor as text
+        import yaml
+        sr = yaml.safe_load(sr)
+    if not sr:
+        return [0.0, 0.0, 0.0]
+    w = where + ".strain_rate"
+    if not isinstance(sr, dict) or "length" not in sr:
+        raise SpecError("strain_rate is {D: 40/s, q: 5, length: 10 mm} or {material: <name>, length: 10 mm}", w,
+                        line_of(d, "strain_rate"), f)
+    L = num(resolve(sr["length"], ctx, w + ".length"), w + ".length")
+    if "material" in sr:
+        from ..materials import get
+        from ..materials.curves import resolve_material
+        mn = str(resolve(sr["material"], ctx, w + ".material"))
+        try:
+            m = get(mn)
+        except Exception:
+            m = get(resolve_material(mn))
+        D, q = float(getattr(m, "cowper_D", float("nan"))), float(getattr(m, "cowper_q", float("nan")))
+        if not (D > 0 and q > 0):
+            raise SpecError(f"{mn} has no Cowper-Symonds constants: give D and q", w, line_of(d, "strain_rate"), f)
+    else:
+        D = num(resolve(sr.get("D"), ctx, w + ".D"), w + ".D"); q = num(resolve(sr.get("q"), ctx, w + ".q"), w + ".q")
+    if not (D > 0 and q > 0 and L > 0):
+        raise SpecError("strain_rate needs D > 0, q > 0 and length > 0", w, line_of(d, "strain_rate"), f)
+    return [D, q, L]
 
 
 def contact_mask(M):
