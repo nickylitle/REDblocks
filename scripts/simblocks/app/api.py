@@ -1699,6 +1699,11 @@ def _hist_units(s, hist):
         nm, q = k.split(".", 1)
         if nm in bodies and q in ("position", "velocity"):
             rot = dof[bodies.index(nm)] == "rotation" if bodies.index(nm) < len(dof) else False
+            b3 = (getattr(M, "b3", None) or {}).get(nm); b2 = (getattr(M, "b2", None) or {}).get(nm)
+            if b3 is not None:                       # a 3D body: position / velocity is its spin when that is all it does
+                rot = bool(b3.get("spin_only"))
+            elif b2 is not None:                     # a 2D body with one free coordinate: rz is a rotation
+                fr = list(b2.get("free") or []); rot = sum(map(bool, fr)) == 1 and len(fr) == 3 and bool(fr[2])
             out[k] = ("rad" if rot else "m") if q == "position" else ("rad/s" if rot else "m/s"); continue
         if q in _Q_UNIT:
             out[k] = _Q_UNIT[q]; continue

@@ -248,3 +248,15 @@ run: {{t_end: 0.5 s}}
     o = S.run()
     assert o["ke"] == pytest.approx(0.5 * 1e-3 * 16, rel=1e-6)     # spinning about its own principal x axis
     assert o["w"] == pytest.approx(4.0, rel=1e-6)
+
+
+def test_gravity3_planet_surface_value():
+    """3D takes gravity: {planet: ...} as the planet's surface value mu / R^2 along -z."""
+    import numpy as np
+    from simblocks.compiler.model3d import gravity3
+    from simblocks.compiler.model import build_context
+    doc = {"dim": "3d", "gravity": {"planet": "moon"}}
+    g = gravity3(doc, build_context(doc))
+    assert np.allclose(g, [0, 0, -4.9028e12 / 1737400.0 ** 2])
+    doc = {"dim": "3d", "gravity": {"planet": "mars", "mu": "4.2828e13 m^3/s^2", "radius": "3389.5 km"}}
+    assert abs(gravity3(doc, build_context(doc))[2] + 3.728) < 0.01

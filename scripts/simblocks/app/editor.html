@@ -57,18 +57,23 @@ input,select,textarea{font:12px var(--mono);color:var(--ink);background:var(--bg
 textarea{width:100%;resize:vertical}
 #app{display:grid;grid-template-rows:auto auto minmax(0,1fr) 26px;grid-template-columns:minmax(0,1fr) 390px;height:100%}
 #bar2{grid-column:1/3;display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;padding:5px 12px;min-height:38px;border-bottom:1px solid var(--edge);background:var(--panel);white-space:nowrap}
-#bar2 .grp{display:flex;flex-wrap:nowrap;align-items:center;gap:5px;padding:0 10px;border-left:1px solid var(--hair)}
+#bar2 .grp{display:flex;flex-wrap:nowrap;align-items:center;gap:5px;padding:0 8px;border-left:1px solid var(--hair)}
 #bar2 .grp:first-child{border-left:0;padding-left:0}
 #bar2 label{font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
 #bar2 select{font:12px var(--sans);padding:3px 4px}
-#bar2 input.tb{width:76px;font:12px var(--mono)}
+#bar2 input.tb{font:12px var(--mono)}
 #bar2 .uv select{max-width:64px}
 #bar2 .off{opacity:.38;filter:saturate(0)}
 #bar2 .off input,#bar2 .off select{cursor:not-allowed}
 .dtinfo{font:11px var(--mono);color:var(--ink3);margin-left:4px}
-#top{grid-column:1/3;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:6px 12px;min-height:46px;border-bottom:1px solid var(--edge);background:var(--panel)}
+#top{grid-column:1/3;display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;padding:6px 12px;min-height:46px;border-bottom:1px solid var(--edge);background:var(--panel)}
 #top .brand{font:700 11px var(--mono);letter-spacing:.14em;color:var(--acc);margin-right:10px;white-space:nowrap}
-#top .file{font:12px var(--mono);color:var(--ink2);margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30ch}
+#top .file{font:12px var(--mono);color:var(--ink2);margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:24ch;min-width:0}
+#top #bRecent{max-width:96px}#top #bEx{max-width:118px}
+#bar2 input.tb{width:64px}
+/* narrower screens: tighter buttons so the toolbar still fits on two rows */
+@media (max-width:1880px){#top button{padding-left:7px;padding-right:7px}#top .grp{gap:3px;padding:0 4px}#top .brand{margin-right:2px}
+  #top .file{max-width:16ch}#top #bEx{max-width:96px}#bar2 .grp{padding:0 5px}#bar2 .dtinfo{max-width:34ch;overflow:hidden;text-overflow:ellipsis}}
 #top .sp{flex:1}
 #top,#bar2{background:var(--bar)!important}
 #top label,#bar2 label,#top .file,#bar2 .dtinfo,#top .live,#bar2 .live{color:var(--bar-ink2)!important}
@@ -433,13 +438,6 @@ label.cpick button{padding:0 6px;font-size:12px}
       <button id="bMat" title="Connect folders of your own materials and blocks">Folders</button>
     </div>
     <span class="file" id="fname">untitled</span>
-    <span class="sp"></span>
-    <div class="grp">
-      <button id="bUndo" title="Undo (Ctrl+Z)">↶</button><button id="bRedo" title="Redo (Ctrl+Y)">↷</button>
-      <button id="bAdd" title="Add a node (Shift+A or right-click)">+ Add</button>
-      <button id="bGroup" title="Group the selected nodes (Ctrl+G)">Group</button>
-      <button id="bArrange" title="Organize the canvas: clean up onto a grid, sort, or lay out by data flow. Acts on the selection when 2+ nodes are selected." aria-haspopup="menu">Organize &#9662;</button>
-    </div>
     <div class="grp">
       <label class="live" title="Re-run on every edit. Range and Monte Carlo inputs use their middle value; CSV exports are only written by Run."><input type="checkbox" id="bLive" checked>live<span id="liveNote"></span></label>
       <button id="bRun" class="primary" title="Run once at the nominal values and write CSV exports (F5)">Run</button>
@@ -450,6 +448,13 @@ label.cpick button{padding:0 6px;font-size:12px}
       <button id="bReport" title="Verify, then write a PDF and HTML report: next to the saved file, or in your home folder (simblocks/out) if it is not saved">Report</button>
     </div>
     <div class="grp"><button id="bSettings" title="Settings: colours and themes">Settings</button><button id="bHelp" title="Feature guide and every block (F1)">Help</button></div>
+    <span class="sp"></span>
+    <div class="grp">
+      <button id="bUndo" title="Undo (Ctrl+Z)">↶</button><button id="bRedo" title="Redo (Ctrl+Y)">↷</button>
+      <button id="bAdd" title="Add a node (Shift+A or right-click)">+ Add</button>
+      <button id="bGroup" title="Group the selected nodes (Ctrl+G)">Group</button>
+      <button id="bArrange" title="Organize the canvas: clean up onto a grid, sort, or lay out by data flow. Acts on the selection when 2+ nodes are selected." aria-haspopup="menu">Organize &#9662;</button>
+    </div>
   </div>
   <div id="bar2">
     <div class="grp"><label for="bUnits">units</label>
@@ -499,7 +504,6 @@ label.cpick button{padding:0 6px;font-size:12px}
       <div class="kv">
         <label for="mName">name</label><input id="mName">
         <label for="mQ">question</label><input id="mQ">
-        <label for="mGrav" class="only2d" title="2D only: along -y (a number or quantity), or a vector [gx, gy]">gravity</label><input id="mGrav" class="only2d" placeholder="blank = none · 9.81 m/s^2">
       </div>
       <h3>Run</h3>
       <div class="kv">
@@ -633,9 +637,9 @@ let SETTINGS = {recent:[]}, LASTCHECK = null, OVL = {};          // this compute
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
   export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)", goal:"var(--c-sweep)",
-  inport:"var(--c-value)", outport:"var(--c-output)", model:"var(--c-group)", opt:"var(--c-sweep)", budget:"var(--c-output)", scen:"var(--c-sweep)"};
+  inport:"var(--c-value)", outport:"var(--c-output)", model:"var(--c-group)", opt:"var(--c-sweep)", budget:"var(--c-output)", scen:"var(--c-sweep)", grav:"var(--c-body)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek", inport:"input port", outport:"output port", model:"model block", opt:"optimizer", budget:"weight budget", scen:"scenarios"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek", inport:"input port", outport:"output port", model:"model block", opt:"optimizer", budget:"weight budget", scen:"scenarios", grav:"gravity"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], gear:["bending_stress","contact_stress"],
   bolt:["bolt_force","clamp_force","bolt_stress","plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
@@ -688,7 +692,7 @@ let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
 // names live in separate YAML sections, so uniqueness is per namespace: p params+derived, b bodies, e elements, o outputs, f failure
-const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z", inport:"p", model:"p", outport:"q", opt:"w", budget:"u", scen:"v"};
+const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z", inport:"p", model:"p", outport:"q", opt:"w", budget:"u", scen:"v", grav:"g"};
 const byName = (nm, ns) => S.nodes.find(n => nodeName(n) === nm && (!ns || ns.includes(NS[n.kind])));
 function nodeName(n){ return n.data.name; }
 function uniqueName(base, ns){
@@ -725,6 +729,7 @@ function defaults(kind){
     case "outport": return {name:"port", quantity:"position", unit:"", label:""};
     case "model": return {name:"block", file:"", inputs:{}, info:null, repeat:"", carry:{}};
     case "budget": return {name:"budget", limit:"3 lb", bodies:true, items:[{name:"wiring", mass:""}]};
+    case "grav": return {name:"gravity", gmode:"uniform", g:"9.81 m/s^2", vec:"", planet:"earth", pname:"", mu:"", radius:"", rotation:"", atm:""};
     case "scen": return {name:"scenarios", nv:1, names:["scenario_1", "scenario_2"], cells:[[""], [""]]};
     case "opt": return {name:"optimize", goal:"minimize", nv:1, nc:1, ranges:[{lo:"", hi:""}], cons:[{side:"max", value:""}], fm:true, max:"150"};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
@@ -1235,12 +1240,32 @@ function netHTML(n, ins){
     b += `<div class="row"><span class="sock in t-elec" data-s="${esc(s.key)}" data-t="elec"></span><label>pin</label>${what}</div>`; });
   return b;
 }
+// the gravity node -> the top-level gravity: key (a number, a vector, or {planet, mu, radius, rotation, atmosphere})
+const PLANET_JS = {earth:{mu:3.986004418e14, radius:6371000}, moon:{mu:4.9028e12, radius:1737400}};
+const has = v => String(v ?? "").trim() !== "";
+function gravDoc(d){
+  if (d.gmode === "vector"){ const p = String(d.vec || "").replace(/^\s*\[|\]\s*$/g, "").split(",").map(x => x.trim()).filter(Boolean);
+    return p.length ? p.map(lit) : undefined; }
+  if (d.gmode === "planet"){ const custom = d.planet === "custom", o = {planet: custom ? (String(d.pname || "").trim().replace(/[^A-Za-z0-9_]/g, "_") || "custom") : d.planet};
+    if (has(d.mu)) o.mu = lit(d.mu); if (has(d.radius)) o.radius = lit(d.radius); if (has(d.rotation)) o.rotation = lit(d.rotation);
+    if (d.atm === "us76" || d.atm === "none") o.atmosphere = d.atm; return o; }
+  return has(d.g) ? lit(d.g) : undefined;
+}
+function gravFrom(gv){
+  if (gv && typeof gv === "object" && !Array.isArray(gv)){ const pl = String(gv.planet || "").toLowerCase(), known = pl in PLANET_JS;
+    return {gmode:"planet", planet: known ? pl : "custom", pname: known ? "" : str(gv.planet ?? ""), mu:str(gv.mu ?? ""), radius:str(gv.radius ?? ""),
+            rotation:str(gv.rotation ?? ""), atm:str(gv.atmosphere ?? "")}; }
+  if (Array.isArray(gv)) return {gmode:"vector", vec:gv.map(str).join(", ")};
+  const t = str(gv); return /^\s*\[/.test(t) ? {gmode:"vector", vec:t.replace(/^\s*\[|\]\s*$/g, "")} : {gmode:"uniform", g:t};
+}
 function toDoc(){
   const doc = {simblocks:1, name:S.meta.name || "model"};
   if (S.meta.question) doc.question = S.meta.question;
   doc.dim = S.meta.dim || "1d";
   doc.units = S.meta.units || "SI";
-  if (isGeo() && String(S.meta.gravity || "").trim()) doc.gravity = lit(S.meta.gravity);
+  const gvn = S.nodes.find(n => n.kind === "grav");
+  if (gvn && isGeo()){ const gv = gravDoc(gvn.data); if (gv !== undefined) doc.gravity = gv; }
+  else if (!gvn && isGeo() && String(S.meta.gravity || "").trim()) doc.gravity = lit(S.meta.gravity);
   const params = {}, derived = {}, bodies = {}, elements = {}, outputs = {}, failure = [], uncertain = {};
   const withNote = (n, v) => n.data.note ? {value:v, note:n.data.note} : v;
   S.nodes.filter(n => n.kind === "value").forEach(n => {
@@ -1644,6 +1669,8 @@ function fromDoc(doc){
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
     S.links.push({from:{node:src.id, key: src.kind === "model" && r.field ? "o." + r.field : outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
   });
+  if (doc.gravity !== undefined && doc.gravity !== null && String(doc.gravity).trim() !== ""){
+    put(0, addNode("grav", Object.assign(defaults("grav"), {g:""}, gravFrom(doc.gravity)))); S.meta.gravity = ""; }
   if (doc.budget && typeof doc.budget === "object"){ const B = doc.budget;
     put(5, addNode("budget", {name:"budget", limit:str(B.limit ?? ""), bodies:B.bodies !== false, items:Object.entries(B.items || {}).map(([k, v]) => ({name:k, mass:str(v)}))})); }
   if (doc.scenarios && typeof doc.scenarios === "object"){ const sc = doc.scenarios, names = Object.keys(sc), keys = [...new Set(names.flatMap(nm => Object.keys(sc[nm] || {})))];
@@ -2545,6 +2572,29 @@ function nodeHTML(n){
     b += `<div class="mini"><button data-act="addlever">+ lever</button><button data-act="addsout">+ output</button>${(d.nv || 1) > 1 ? '<button data-act="dellever">− lever</button>' : ""}${(d.no || 1) > 1 ? '<button data-act="delsout">− output</button>' : ""}</div>`;
     b += `<div class="row"><label title="each lever runs once a little up and once a little down from its value">step</label><div class="uv"><input data-k="step" value="${esc(d.step || "1")}" placeholder="1"><span class="u" style="padding:0 6px">%</span></div></div>`;
     b += `<div class="hint">Press Study: every lever runs ${esc(d.step || "1")} % up and down (two runs each). The results rank which inputs move each output most.</div>`;
+  } else if (n.kind === "grav"){
+    const dim = S.meta.dim || "1d", m = d.gmode || "uniform", sel = (k, opts, cur) => `<select data-k="${k}">` + opts.map(([v, t]) => `<option value="${v}"${v === cur ? " selected" : ""}>${t}</option>`).join("") + `</select>`;
+    if (dim === "1d") b += `<div class="hint" style="color:var(--warn)">1D models have no gravity setting, so this node writes nothing. Add a force element P = -$m*9.81 on each body, or switch the model to 2D or 3D.</div>`;
+    b += `<div class="row"><label title="how gravity is given">kind</label>${sel("gmode", [["uniform", "uniform (straight down)"], ["vector", "vector"], ["planet", "planet"]], m)}</div>`;
+    if (m === "uniform"){
+      b += `<div class="row req"><label title="${dim === "3d" ? "along -z" : "along -y"}">g</label><input data-k="g" value="${esc(d.g || "")}" placeholder="9.81 m/s^2"></div>`;
+      b += `<div class="hint">Points down the ${dim === "3d" ? "-z" : "-y"} axis. Moon: 1.62 m/s^2. Mars: 3.71 m/s^2.</div>`;
+    } else if (m === "vector"){
+      b += `<div class="row req"><label title="components, comma separated, each with units">vector</label><input data-k="vec" value="${esc(d.vec || "")}" placeholder="${dim === "3d" ? "0, 0, -9.81 m/s^2" : "0, -9.81 m/s^2"}"></div>`;
+      b += `<div class="hint">${dim === "3d" ? "Three" : "Two"} components (${dim === "3d" ? "gx, gy, gz" : "gx, gy"}). Use it for a tilted floor or a ramp frame.</div>`;
+    } else {
+      b += `<div class="row"><label>planet</label>${sel("planet", [["earth", "Earth"], ["moon", "Moon"], ["custom", "custom"]], d.planet || "earth")}</div>`;
+      const cu = d.planet === "custom";
+      if (cu) b += `<div class="row"><label title="a label for the file">name</label><input data-k="pname" value="${esc(d.pname || "")}" placeholder="mars"></div>`;
+      b += `<div class="row${cu ? " req" : ""}"><label title="gravitational parameter GM${cu ? "" : " (blank = the preset)"}">mu</label><input data-k="mu" value="${esc(d.mu || "")}" placeholder="${cu ? "4.2828e13 m^3/s^2" : PLANET_JS[d.planet || "earth"].mu.toExponential(4) + " m^3/s^2"}"></div>`;
+      b += `<div class="row${cu ? " req" : ""}"><label title="mean radius${cu ? "" : " (blank = the preset)"}">radius</label><input data-k="radius" value="${esc(d.radius || "")}" placeholder="${cu ? "3389.5 km" : PLANET_JS[d.planet || "earth"].radius / 1000 + " km"}"></div>`;
+      if (dim === "2d"){
+        b += `<div class="row"><label title="spin rate in the plane (blank = the preset; 0 for none)">rotation</label><input data-k="rotation" value="${esc(d.rotation || "")}" placeholder="${cu ? "0 rad/s" : "preset"}"></div>`;
+        b += `<div class="row"><label title="air drag from the US Standard Atmosphere 1976, or none">atmosphere</label>${sel("atm", [["", cu ? "none" : "preset"], ["us76", "US76 (Earth air)"], ["none", "none"]], d.atm || "")}</div>`;
+      }
+      const P = cu ? null : PLANET_JS[d.planet || "earth"], gs = P && !has(d.mu) && !has(d.radius) ? P.mu / P.radius ** 2 : null;
+      b += `<div class="hint">${dim === "3d" ? "3D uses the surface value mu / R² as uniform gravity along -z." : "2D uses central gravity: it weakens with altitude and the ground curves, for long flights and orbits."}${gs ? ` Surface g = ${gs.toFixed(3)} m/s².` : ""}</div>`;
+    }
   } else if (n.kind === "budget"){
     const B = LASTCHECK && LASTCHECK.budget;
     b += `<div class="row req"><label title="the class limit, with its unit (3 lb, 1.36 kg)">limit</label><input data-k="limit" value="${esc(d.limit || "")}" placeholder="e.g. 3 lb"></div>`;
@@ -3255,6 +3305,7 @@ world.addEventListener("click", async e => {
   changed();
 });
 const NODE_INFO = {
+  grav: ["Gravity", null, "the whole model's gravity", "One per model; it writes the top-level gravity. Uniform points straight down (-y in 2D, -z in 3D). A vector sets each component, for a tilted frame. A planet (Earth, Moon, or your own mu and radius) gives central gravity in 2D, which weakens with altitude, curves the ground and can carry the planet's spin and air. In 3D a planet sets its surface value as uniform gravity. 1D has no gravity: put a force P = -m g on each body."],
   budget: ["Weight budget", null, "every mass against the class limit", "Counts the mass of every body in the model (2D and 3D bodies, and any element's own mass) plus the items you list, and compares the total with the limit. Its mass_total and mass_margin are outputs: plug them into a failure mode or the optimizer. A 1D spinning body has an inertia, not a mass, so list its mass as an item."],
   scen: ["Scenarios", null, "named sets of values, side by side", "Plug in the values that change between cases and give each scenario (a column) its values; blank cells keep the model's own. Run all scenarios runs each once, plus the model as written, and lists every output side by side."],
   opt: ["Optimizer", null, "the best values for an output, within limits", "Plug in the values it may change (each with a range), the output to minimize or maximize, and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Press Study: it runs the model again and again, moving every value at once (COBYLA: Powell's constrained method, which needs no derivatives, so a contact that starts or a part that yields does not stall it), and keeps the best run that meets every limit. Use these values writes them back into the model."],
@@ -3599,6 +3650,8 @@ function menuAll(){
       {words:"optimize optimise optimization minimize maximize lightest cheapest best design size constraint cobyla"});
   add("Results", "Levers (sensitivity)", "which inputs move an output most: each nudged up and down a little", COL.sens, () => ["sens", {name:"levers"}],
       {words:"sensitivity derivative gradient levers influence elasticity tornado ranking what matters"});
+  add("Misc", "Gravity", "the whole model's gravity: uniform, a vector, or a planet (Earth, Moon, your own) · 2D and 3D", COL.grav, () => ["grav", {name:"gravity"}],
+      {words:"misc miscellaneous gravity weight g planet moon earth mars orbit fall drop 9.81 down"});
   add("Notes", "Note", "free text on the canvas, with LaTeX ($...$, $$...$$)", COL.note, () => ["note", {text:""}], {words:"comment text latex equation"});
   add("Notes", "Image", "a picture on the canvas (a diagram, a sketch, a photo), linked from the model's folder", COL.note, () => ["image", {}], {words:"picture diagram photo sketch figure png drawing"});
   LIB.forEach(g => add("Library", g.name, `${(g.data.nodes || []).length} nodes · your saved group`, COL.group, () => ["library", g.data], {kind:"library"}));
@@ -3692,6 +3745,7 @@ function pick(x){
     const x0 = Math.min(...nodes.map(n => n.x)), y0 = Math.min(...nodes.map(n => n.y));
     insertFragment(Object.assign({}, fr, {doc:"library"}), menuAt.x - (isFinite(x0) ? x0 : 0), menuAt.y - (isFinite(y0) ? y0 : 0)); return; }
   if (kind === "valtable"){ hideMenu(); const n = addNode("value", {name:"p", value:""}, menuAt.x, menuAt.y); const g = valTable([n.id], "values"); setSel(g.id); changed(); return; }
+  if (kind === "grav"){ const g0 = S.nodes.find(n => n.kind === "grav"); if (g0){ hideMenu(); setSel(g0.id); status("ok", "A model has one gravity: this is it."); return; } }
   const n = addNode(kind, data, menuAt.x, menuAt.y); hideMenu();
   if (kind === "net" && n.data.ground) setField(n, "ground", true);
   setSel(n.id); changed();
@@ -3703,11 +3757,11 @@ let yamlText = "", checkTimer = null;
 function syncMeta(){
   const m = S.meta; document.getElementById("bDim").value = m.dim || "1d"; document.getElementById("bUnits").value = m.units || "SI"; document.getElementById("mName").value = m.name; document.getElementById("mQ").value = m.question || "";
   syncTimeBar(); document.getElementById("mMc").value = m.run.mc_n || "";
-  document.getElementById("mGrav").value = m.gravity || ""; document.querySelectorAll(".only2d").forEach(e => e.style.display = m.dim === "2d" || m.dim === "3d" ? "" : "none");
+  document.querySelectorAll(".only2d").forEach(e => e.style.display = m.dim === "2d" || m.dim === "3d" ? "" : "none");
   const kept = Object.keys(m.extra || {}).concat(Object.keys(m.run_extra || {}).map(k => "run." + k));
   document.getElementById("kept").textContent = kept.length ? kept.join(", ") + " (written back unchanged)" : "Nothing extra.";
 }
-[["mName","name"],["mQ","question"],["mGrav","gravity"]].forEach(([id, k]) => document.getElementById(id).addEventListener("input", e => { S.meta[k] = e.target.value; changed(false); }));
+[["mName","name"],["mQ","question"]].forEach(([id, k]) => document.getElementById(id).addEventListener("input", e => { S.meta[k] = e.target.value; changed(false); }));
 // ------------------------------------------------------------------------------------------------ time bar
 const TB = [["tEnd","tEndU","t_end"],["dtFix","dtFixU","dt"],["dtMin","dtMinU","dt_min"],["dtMax","dtMaxU","dt_max"]];
 let lastDt = null;
@@ -3722,6 +3776,7 @@ function syncTimeBar(){
   const on = {dtFix: mode === "fixed", dtMin: bnd, dtMax: bnd};
   Object.entries(on).forEach(([id, en]) => { const box = document.getElementById(id).closest(".uv"), lab = document.querySelector(`label[for="${id}"]`);
     box.classList.toggle("off", !en); lab.classList.toggle("off", !en);
+    if (id !== "dtFix"){ box.style.display = en ? "" : "none"; lab.style.display = en ? "" : "none"; }      // min / max only take room when Bounded or Adaptive uses them
     box.querySelectorAll("input,select").forEach(x => { x.disabled = !en; x.title = en ? "" : "Set the time step to " + (id === "dtFix" ? "Fixed" : "Bounded or Adaptive") + " to type here"; }); });
   // show what the program picked, greyed, when the box is not in use
   if (mode !== "fixed" && lastDt){ const [nv, nu] = niceTime(lastDt.dt); document.getElementById("dtFix").value = nv; document.getElementById("dtFixU").innerHTML = unitOptions("time", nu); }
@@ -4811,6 +4866,12 @@ const GUIDE = [
   <p>Outputs: x, y, z, vx, vy, vz, speed; angle and omega of a spinning body; wx, wy, wz of a freely rotating one. Example: <b>Examples → horizontal_spinner_wedge.yaml</b>.</p>`},
  {id:"loads", grp:"Building models", t:"Loads", h:`
   <p>A <b>Load</b> is a constant force on a body along its measure: gravity, a thrust, a push. Type the force, or plug a Range or Monte Carlo node into it to vary it. It is written to the file as a <code>force</code> element.</p>`},
+ {id:"gravity", grp:"Building models", t:"Gravity", h:`
+  <p>Add a <b>Gravity</b> node from <b>Misc</b>. A model has one. It writes the top-level <code>gravity:</code> key, and opening a file that has one puts the node back on the canvas.</p>
+  <ul><li><b>uniform</b>: straight down, <code>gravity: 9.81 m/s^2</code> (-y in 2D, -z in 3D). Moon 1.62, Mars 3.71.</li>
+  <li><b>vector</b>: each component, <code>gravity: [0, -9.81 m/s^2]</code>, for a tilted frame.</li>
+  <li><b>planet</b>: <code>gravity: {planet: moon}</code>, or your own with mu and radius. In 2D this is central gravity: it weakens with altitude, the ground curves, and the planet's spin and air (Earth) can be on. In 3D the planet's surface value is used as uniform gravity.</li></ul>
+  <p><b>1D has no gravity.</b> Add a force element <code>P = -$m*9.81</code> on each body instead.</p>`},
  {id:"control", grp:"Building models", t:"Control, logic and feedback", h:`
   <p>A <b>control signal</b> node (Add &rsaquo; Control) is worked out every time step from the running model, and can set an element's field as the model runs. That is how a reading feeds back into the forces: air pressure switching an engine, a speed error driving a motor, an altitude holding a hover.</p>
   <ul>
@@ -4823,7 +4884,7 @@ const GUIDE = [
   <p><b>Stiffness, damping and the time step</b>: the solver steps forward explicitly, so its stable time step depends on the stiffest spring. Give a signal that drives a stiffness or damping a <b>field max</b> (the most it will reach) and leave the time step on auto: the step is sized for that worst case. Without it the step is sized for the first-step value, and after the run a banner says how stiff it got and what max to set. A circuit part's settings (an ESC throttle, a resistance) can be driven too, and so can a field the model stores inverted (a drive's kv): signals are in SI.</p>
   <p><b>Timing</b>: at the end of each step the signals read the state that step ended in, and set the fields the next step uses. The first step uses each driven field's <b>first step</b> value. A signal that reads one listed after it gets that one's value from the step before, so a feedback loop is always well defined. Driving a spring's stiffness does work that is not the spring's own: its own energy check is skipped, the model's overall ledger still closes.</p>`},
  {id:"rockets", grp:"Building models", t:"Rockets and launches", h:`
-  <p>A launch is a 2D model with a planet: set <b>gravity</b> (side panel) to <code>{planet: earth, radius: 6373 km, rotation: $site.omega_plane}</code>. The Earth's centre is the origin, gravity falls off with distance, and the US Standard Atmosphere sits above the surface. The <b>launch_plane</b> block gives the Earth's turn about your flight plane and the pad's speed (the vehicle's v0).</p>
+  <p>A launch is a 2D model with a planet: add a <b>Gravity</b> node (Misc), pick <i>planet</i> and <i>Earth</i>, and set radius 6373 km and rotation <code>$site.omega_plane</code>. In the file it is <code>gravity: {planet: earth, radius: 6373 km, rotation: $site.omega_plane}</code>. The Earth's centre is the origin, gravity falls off with distance, and the US Standard Atmosphere sits above the surface. The <b>launch_plane</b> block gives the Earth's turn about your flight plane and the pad's speed (the vehicle's v0).</p>
   <ul>
    <li><b>rocket_engine</b> block: an engine from its propellants (RP-1, hydrogen or methane with liquid oxygen). Chemistry gives the ideal Isp and the nozzle exit area; one rating (sea-level or vacuum Isp, or vacuum thrust with flow) sets the real engine. Its F_vac, A_e and mdot feed a rocket element.</li>
    <li><b>rocket</b> element: thrust F_vac − p_outside · A_e along the steering direction, burning mass_flow off the vehicle. start / stop with a rise and tail-off, or cutoff: guidance.</li>

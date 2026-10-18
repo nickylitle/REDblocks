@@ -632,6 +632,12 @@ def gravity3(doc, ctx):
     gv = doc.get("gravity")
     if gv in (None, 0, "none", "off"):
         return np.zeros(3)
+    if isinstance(gv, dict):                    # a planet: its surface value mu / R^2 as uniform gravity along -z
+        from .model2d import planet_of
+        mu, R = planet_of(doc, ctx)[:2]
+        if R <= 0:
+            raise SpecError("gravity: a custom planet needs mu and radius", "gravity")
+        return np.array([0.0, 0.0, -mu / R ** 2])
     if isinstance(gv, list) or (isinstance(gv, str) and gv.strip().startswith("[")):
         return np.array(_vec(gv, ctx, "gravity"))
     return np.array([0.0, 0.0, -abs(num(resolve(gv, ctx, "gravity"), "gravity"))])
