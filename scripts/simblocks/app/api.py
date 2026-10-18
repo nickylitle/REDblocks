@@ -163,7 +163,7 @@ class Api:
                       for e in entries()]
             self._catalog = dict(
                 # mass (and segments for springs and dampers) is open to every 1D element; the editor hides it in 2D/3D
-                element_types={t: dict(fields=sorted(set(f) | ({"mass"} if t not in L.TYPES_2D_ONLY and t != "impact" else set())
+                element_types={t: dict(fields=sorted(set(f) | ({"mass"} if t not in L.TYPES_2D_ONLY and t not in ("impact", "gear") else set())
                                                      | ({"segments"} if t in ("spring", "dashpot", "kelvin_voigt") else set())
                                                      | ({"mass", "segments"} if t == "beam" else set())),
                                        required=sorted(L.REQUIRED_ELEMENT[t]))
@@ -592,11 +592,26 @@ class Api:
                 return dict(ok=False, error="no window")
             import webview
             types = {"csv": ("Tables (*.csv;*.txt;*.dat)", "All files (*.*)"),
-                     "image": ("Pictures (*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg)", "All files (*.*)")}.get(kind, ("All files (*.*)",))
+                     "image": ("Pictures (*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg)", "All files (*.*)"),
+                     "yaml": ("Simblocks models (*.yaml;*.yml)", "All files (*.*)")}.get(kind, ("All files (*.*)",))
             r = self._window.create_file_dialog(webview.OPEN_DIALOG, directory=start or "", file_types=types)
             if not r:
                 return dict(ok=False, cancelled=True)
             return dict(ok=True, path=r if isinstance(r, str) else r[0])
+        except Exception as exc:
+            return _err(exc)
+
+    def model_ports(self, path, model_path=None):
+        """A model file's ports, for drawing it as a block on the canvas (chain.describe)."""
+        try:
+            from ..compiler.chain import describe
+            p = os.path.expanduser(str(path))
+            if not os.path.isabs(p):
+                base = os.path.dirname(os.path.abspath(model_path)) if model_path else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
+                p = os.path.join(base, p)
+            if not os.path.exists(p):
+                return dict(ok=False, error=f"'{path}' does not exist (relative paths start at the saved model's folder)")
+            return dict(ok=True, path=p, **describe(p))
         except Exception as exc:
             return _err(exc)
 

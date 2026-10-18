@@ -728,9 +728,9 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         if typ[e] == 15 and (mk[e] == MK_LIN or mk[e] == MK_ALONG):
             _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
             refc[e] = cps[0]
-    TR = np.empty((ne, 12))
+    TR = np.empty((ne, 4 + 2 * NAUX))
     for e in range(ne):
-        for k in range(6):
+        for k in range(2 + NAUX):
             TR[e, 2 * k] = 1e300; TR[e, 2 * k + 1] = -1e300
     BQ = np.zeros(NBQ)
     BT = np.empty((nb * NBQ, 2))

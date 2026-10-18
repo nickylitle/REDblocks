@@ -598,9 +598,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
         if mk[e] != MK_LIN and mk[e] != MK_SLIP and typ[e] != 9 and mk[e] != MK_BEAM and typ[e] != 14 and typ[e] != 15:
             exact[e] = 1
     geo = np.zeros((ne, 6))
-    TR = np.empty((ne, 12))
+    TR = np.empty((ne, 4 + 2 * NAUX))
     for e in range(ne):
-        for k in range(6):
+        for k in range(2 + NAUX):
             TR[e, 2 * k] = 1e300; TR[e, 2 * k + 1] = -1e300
     BT = np.empty((nq, 4))
     for k in range(nq):

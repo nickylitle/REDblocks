@@ -421,6 +421,50 @@ Reduce: `final`, `max`, `min`, `max_abs`.
 caption}]}` keeps node positions, groups, canvas notes (Markdown and LaTeX) and image blocks (a picture linked from
 the model's folder). Hand-written files can leave it out.
 
+## Gears and bolts (type: gear, type: bolt)
+
+Both are measure elements, so they work in 1d, 2d and 3d.
+
+```yaml
+mesh: {type: gear, measure: pinion + wheel, module: 1 mm, teeth: [12, 36], face_width: 8 mm,
+       backlash: 0.05 mm, material: 4140_annealed}         # 2d: pinion.rz + wheel.rz, 3d: .spin
+hold: {type: bolt, measure: lid - frame, size: M5, grip: 6 mm, grade: "12.9", torque: 6 N m}
+```
+
+- **gear.** The measure lists the two shafts, gear 1 first (the signs written do not matter; `internal: true` is a ring gear; `teeth: [z, rack]` meshes with a translation body). It becomes pitch-line travel `r1 a1 + r2 a2`. The force is the tangential tooth load Ft. The mesh stiffness defaults to ISO 6336-1 (`c_gamma` 20 N/(mm um) per mm of face, scaled by E), with no force inside the backlash, and teeth that only push. Damping is `zeta` 0.05 of critical by default, or `c`. Outputs: `bending_stress` (Lewis, Ft / (b m Y) for the weaker gear) and `contact_stress` (Hertz at the pitch point, AGMA form with no extra factors).
+- **bolt.** The measure is the joint opening from the clamped state. Size is `M5`, `M6x0.75`, `#10-32` or `1/4-20`, or `d` and `pitch`. The preload is `preload` or `torque` (Fi = T / (K d), with `nut_factor` K = 0.2). The bolt stiffness is `Ad At E / (Ad lt + At ld)`; the member stiffness is the 30 deg frustum (Shigley 8-23). `grade` sets Sy, Su and the elongation at break (ISO 898-1, ISO 3506-1, SAE J429). Past yield the bolt hardens linearly to Su over elongation x the thread in the grip, then breaks. Outputs: `bolt_force`, `clamp_force`, `bolt_stress` (Fb / At), `plastic_set` and `broken`. The joint separates at Fi (1 + k_b / k_m).
+
+## Model blocks, ports and sequences (ports:, models:)
+
+A model with **ports** can be used as one block inside another model. Ports carry no value of their own:
+
+```yaml
+ports:
+  inputs:
+    v_in:  {unit: m/s, default: 2 m/s}     # a value: $v_in anywhere a number goes
+    F_hit: {kind: series, unit: N}         # a time series: csv: {series: $F_hit} on a force
+  outputs:
+    v_out: {output: v}                     # a value: one of this model's outputs
+    F_out: {element: s, quantity: force}   # a time series: anything an export column can name
+```
+
+An input with no default makes the model run only as a block. The using model lists its blocks:
+
+```yaml
+models:
+  hit:   {file: hit.yaml, inputs: {v_in: $v}}
+  frame: {file: frame.yaml, inputs: {F_hit: $hit.F_out, v0: $hit.v_out}}
+```
+
+- Blocks run before this model compiles, in wire order: a block that reads `$hit.x` runs after `hit`. A loop is an error.
+- Each block's value ports and outputs are numbers here (`$hit.v_out`, also inside `=` expressions). Series ports feed force tables: `csv: {series: $hit.F_out}`.
+- Every block's outputs are added to the results as `hit.v_out`, `hit.F`.
+- A file with `models:` and no bodies is a sequence (`bodies`, `elements`, `outputs`, `run` and `dim` may be left out).
+- Runs are cached by file time and inputs. A study on this model reruns only the blocks whose inputs change.
+- Blocks are one-way (no feedback from downstream). Each keeps its own `dim` and time step.
+
+**Values from a CSV** anywhere a number goes: `{from_csv: out/csv/hit_loads.csv, column: va, pick: final}`. `pick` is final, first, max, min, max_abs, mean, or at (with `at: 5 ms`); `unit` overrides the header. A header cell `name [unit]` (every export writes these) gives the column's unit. A force table picks columns by header text, with or without the unit, and takes its `x_unit` and `y_unit` from the header when they are left out.
+
 ## What the compiler checks before running
 
 Unknown keys, missing required fields, wrong field for an element type, `mass` on a rotation body, bodies in

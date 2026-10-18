@@ -14,7 +14,9 @@ csv keys
   interpolation  linear (default), step (hold each value until the next x) or smooth (monotone cubic, PCHIP: no
                  overshoot between points; next to a flat stretch it rounds the corners and can add a few % of area,
                  so use linear when the impulse must match the table exactly).
-  x_col, y_col   which columns: a number (1 = first) or the header text. Default the first two.
+  x_col, y_col   which columns: a number (1 = first) or the header text (with or without its '[unit]'). Default
+                 the first two. A header written as 'name [unit]' (every CSV export) gives that column's unit, so
+                 x_unit and y_unit can be left out: another model's export reads straight in (see chain.py).
 Outside the table the end values are held. A header row (any non-numeric cell) is skipped; '#' starts a comment.
 The force acts like P on a force element: positive pushes the measure positive."""
 import csv
@@ -26,7 +28,7 @@ import numpy as np
 from .loader import SpecError, line_of
 from .units import unit_factor, UnitError
 
-CSV_KEYS = {"file", "x", "y", "against", "x_unit", "y_unit", "interpolation", "x_col", "y_col"}
+CSV_KEYS = {"file", "series", "x", "y", "against", "x_unit", "y_unit", "interpolation", "x_col", "y_col"}
 _TIME = {"s", "ms", "us", "ns", "min", "h"}
 _LEN = {"m", "mm", "cm", "um", "km", "in", "ft"}
 _ANG = {"rad", "deg"}
@@ -82,7 +84,8 @@ def _pchip(x, y, per=40, cap=20000):
     return np.array(xs), np.array(ys)
 
 
-def _read_csv(path, xc, yc, where, ln, f):
+def _parse(path, where, ln=None, f=""):
+    """(header list or None, rows of text cells) from a CSV: header row optional, '#' comments, , ; tab or space."""
     try:
         fh = open(path, newline="", encoding="utf-8-sig")
     except OSError as exc:
@@ -99,15 +102,35 @@ def _read_csv(path, xc, yc, where, ln, f):
     rows = [r for r in rows if r]
     if not rows:
         raise SpecError(f"the CSV '{path}' has no rows", where, ln, f)
-
-    def isnum(c):
-        try:
-            float(c); return True
-        except ValueError:
-            return False
     header = None
-    if not all(isnum(c) for c in rows[0]):
+    if not all(_isnum(c) for c in rows[0]):
         header = rows[0]; rows = rows[1:]
+    return header, rows
+
+
+def _isnum(c):
+    try:
+        float(c); return True
+    except ValueError:
+        return False
+
+
+def _read_rows(path, where, ln=None, f=""):
+    """(header or None, float array of every row) for chained inputs (from_csv)."""
+    header, rows = _parse(path, where, ln, f)
+    try:
+        data = np.array([[float(c) for c in r] for r in rows], float)
+    except ValueError:
+        raise SpecError(f"CSV '{os.path.basename(path)}' has a cell that is not a number", where, ln, f)
+    if data.ndim != 2:
+        raise SpecError(f"CSV '{os.path.basename(path)}' rows have different numbers of cells", where, ln, f)
+    return header, data
+
+
+def _read_csv(path, xc, yc, where, ln, f):
+    from .chain import find_column, split_header
+    header, rows = _parse(path, where, ln, f)
+    _read_csv.units = (None, None)
 
     def col(c, name):
         if c is None:
@@ -116,11 +139,15 @@ def _read_csv(path, xc, yc, where, ln, f):
             if int(c) < 1:
                 raise SpecError(f"{name}_col counts from 1 (the first column), got {c}", where, ln, f)
             return int(c) - 1
-        if header and str(c) in header:
-            return header.index(str(c))
+        j = find_column(header, c)
+        if j is not None:
+            return j
         raise SpecError(f"{name}_col '{c}' is not a column number or a header name" +
                         (f" (headers: {', '.join(header)})" if header else " (the file has no header row)"), where, ln, f)
     ix, iy = col(xc, "x"), col(yc, "y")
+    if header:                                     # an export's header carries each column's unit: 'Fz [kN]'
+        _read_csv.units = (split_header(header[ix])[1] if ix < len(header) else None,
+                           split_header(header[iy])[1] if iy < len(header) else None)
     xs, ys = [], []
     for k, r in enumerate(rows):
         try:
@@ -148,7 +175,31 @@ def load_table(d, ctx, where, doc):
     interp = str(spec.get("interpolation", "linear")).strip().lower()
     if interp not in ("linear", "step", "smooth"):
         raise SpecError("interpolation is linear, step or smooth", where, ln, f)
-    xu = str(spec.get("x_unit", "s" if against == "time" else "m")); yu = str(spec.get("y_unit", "N"))
+    xs = ys = None
+    hx = hy = None
+    ser = None
+    if "series" in spec:                           # a time series from another model's port (chain.py)
+        from .chain import Series
+        if against != "time" or set(spec) & {"file", "x", "y", "x_unit", "y_unit", "x_col", "y_col"}:
+            raise SpecError("csv: {series: $block.port} is a load against time and takes only interpolation", where, ln, f)
+        ser = resolve(spec["series"], ctx, where + ".csv.series")
+        if not isinstance(ser, Series):
+            raise SpecError(f"csv series must name a time-series port ($F_in or $block.F_out), got {ser!r}", where, ln, f)
+        xs = [float(v) for v in ser.t]; ys = [float(v) for v in ser.y]       # already SI
+        hx, hy = "s", "N"
+    if "file" in spec:
+        if "x" in spec or "y" in spec:
+            raise SpecError("give file or the x / y lists, not both", where, ln, f)
+        p = str(resolve(spec["file"], ctx, where + ".csv.file"))
+        if not os.path.isabs(p):
+            # a model typed in the editor has no file: the app sets SIMBLOCKS_MODEL_DIR to the saved model's folder
+            base = os.path.dirname(f) if f and not f.startswith("<") else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
+            p = os.path.join(base, p)
+        xs, ys = _read_csv(p, spec.get("x_col"), spec.get("y_col"), where, ln, f)
+        hx, hy = _read_csv.units
+    xu = str(spec.get("x_unit") or hx or ("s" if against == "time" else "m"))
+    yu = str(spec.get("y_unit") or hy or "N")
+    load_table.last_yu = yu if ser is None else (ser.unit or "any")
     try:
         fx = unit_factor(xu); fy = unit_factor(yu)
     except UnitError as exc:
@@ -160,16 +211,7 @@ def load_table(d, ctx, where, doc):
         raise SpecError(f"x_unit '{xu}' is not a length or an angle (against: measure)", where, ln, f)
     if ky not in ("force", "torque"):
         raise SpecError(f"y_unit '{yu}' is not a force (N, kN, lbf) or a torque (N m)", where, ln, f)
-    if "file" in spec:
-        if "x" in spec or "y" in spec:
-            raise SpecError("give file or the x / y lists, not both", where, ln, f)
-        p = str(resolve(spec["file"], ctx, where + ".csv.file"))
-        if not os.path.isabs(p):
-            # a model typed in the editor has no file: the app sets SIMBLOCKS_MODEL_DIR to the saved model's folder
-            base = os.path.dirname(f) if f and not f.startswith("<") else (os.environ.get("SIMBLOCKS_MODEL_DIR") or os.getcwd())
-            p = os.path.join(base, p)
-        xs, ys = _read_csv(p, spec.get("x_col"), spec.get("y_col"), where, ln, f)
-    else:
+    if xs is None:
         if "x" not in spec or "y" not in spec:
             raise SpecError("csv needs file (a path) or both x and y lists", where, ln, f)
         try:
@@ -214,7 +256,7 @@ def check_load_kind(d, rotation, where, doc):
     spec = d.get("csv") or {}
     if not isinstance(spec, dict):
         return
-    yu = str(spec.get("y_unit", "N")); ky = _kind(yu)
+    yu = str(spec.get("y_unit") or getattr(load_table, "last_yu", None) or "N"); ky = _kind(yu)
     f = doc.get("__file__", "")
     if rotation and ky == "force":
         raise SpecError(f"y_unit '{yu}' is a force, but this load turns a rotation: give a torque (N m, lbf in)",

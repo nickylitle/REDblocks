@@ -50,6 +50,21 @@ ELEMENTS = [
               "hold outside the table. Or a standard shape (pulse): half_sine, haversine, triangle, rectangle, trapezoid, "
               "ramp, step, sine, square_wave, sweep (chirp) or decay, each from a few numbers (peak, duration, frequency...).",
          yaml="shock:\n  type: force\n  measure: instrument\n  csv: {file: data/shock.csv, against: time, x_unit: ms, y_unit: kN, interpolation: linear}"),
+    dict(name="gear", law="Ft = k_mesh e + c de/dt on the pitch-line travel e = r1 a1 + r2 a2 past the backlash; teeth only push",
+         fields="module, teeth [z1, z2] (or [z, rack]), face_width, pressure_angle (20 deg), backlash, k_mesh, c or zeta (0.05), material or E, nu, internal",
+         what="A spur gear mesh between two shafts (or a gear on a rack), 1D, 2D and 3D. Mesh stiffness from ISO 6336-1 "
+              "(c_gamma = 20 N/(mm um) per mm of face for steel, scaled by E); free play inside the backlash, so tooth "
+              "rattle and impact loads come out of the run. Gives the tangential tooth load (force), the Lewis root "
+              "bending stress (Ft / (b m Y), the weaker gear) and the Hertz contact stress at the pitch point (AGMA form, "
+              "no extra factors: the run supplies the dynamic load).",
+         yaml="mesh:\n  type: gear\n  measure: pinion + wheel\n  module: 1 mm\n  teeth: [12, 36]\n  face_width: 8 mm\n  backlash: 0.05 mm\n  material: 4140_annealed"),
+    dict(name="bolt", law="Fb = Fi + k_b s (yields at Sy At, hardens to Su, then breaks); Fm = max(Fi - k_m s, 0); F = Fb - Fm",
+         fields="size (M5, #10-32, 1/4-20) or d and pitch, grip, threaded, preload or torque (+ nut_factor 0.2), grade or Sy, Su, elongation, E, E_members, k_bolt, k_members, c or zeta (0.02)",
+         what="A preloaded bolted joint along its axis (Shigley ch. 8). The bolt and the clamped parts share an opening "
+              "load in the ratio C = k_b / (k_b + k_m) until the clamp force reaches zero and the joint separates; a bolt "
+              "pulled past yield keeps a permanent stretch and loses preload, and one pulled past its ultimate snaps. "
+              "Gives bolt_force, clamp_force, bolt_stress (Fb / At), plastic_set and broken.",
+         yaml="hold:\n  type: bolt\n  measure: lid - frame\n  size: M5\n  grip: 6 mm\n  grade: \"12.9\"\n  torque: 6 N m"),
     dict(name="drive", law="DC motor + current-limited ESC + LiPo 1-RC pack", fields="kv, R, I_max, gear, cells, R0, R1, C1, capacity, throttle, J_rotor",
          what="Powers one rotation body. Tracks motor current, battery current, bus voltage and state of charge.",
          yaml="motor:\n  type: drive\n  measure: rotor\n  kv: 1100 rpm/V\n  R: 35 mohm\n  I_max: 60 A\n  gear: 1.5\n  cells: 5\n  R0: 0.15 ohm\n  capacity: 450 mAh"),

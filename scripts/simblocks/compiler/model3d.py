@@ -557,6 +557,8 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             P[e, 1] = gg("break_at", math.inf)
             from .model import strain_rate_params
             P[e, 2:5] = strain_rate_params(d, ctx, where, f)
+        elif t in ("gear", "bolt"):               # machine.py worked these out from the gear or bolt's geometry
+            P[e, :len(d["__P__"])] = d["__P__"]
         elif t == "hertz":
             P[e, 0] = gg("K"); P[e, 1] = gg("n", 1.5); P[e, 2] = gg("alpha", 0.0)
         elif t == "friction":
@@ -700,7 +702,8 @@ def critical_dt3d(M, skip=None):
         if skip is not None and skip[e]:
             continue
         t = a["typ"][e]
-        k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9, 11) else 0.0)
+        k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 9, 11, 30) else
+                                                (a["P"][e, 0] + a["P"][e, 1] if t == 31 else 0.0))
         if t == 12:                              # beam: axial, transverse, bending and torsion modes
             L0 = a["P"][e, 4]; kax = a["P"][e, 0]; kt = a["P"][e, 3]
             E0 = M.beam_axes[e]
@@ -749,6 +752,8 @@ def critical_dt3d(M, skip=None):
             for b in (a["ba"][e], a["bb"][e]):
                 if b >= 0:
                     inv += float(np.max(a["minv"][b])) + rot_inv[b] * M.reach[e] ** 2
+        if t in (30, 31) and a["P"][e, 6] > 0 and inv > 0:      # gear / bolt damping as a fraction of critical
+            a["P"][e, 1 if t == 30 else 5] = 2.0 * a["P"][e, 6] * math.sqrt(k / inv)
         if inv > 0:
             best = min(best, 2.0 / math.sqrt(k * inv))
     # beams are kept stable at a larger share of their own limit (see _run_settings); contacts at the usual share

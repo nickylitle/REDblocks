@@ -15,7 +15,7 @@ from .units import parse_quantity, unit_factor, UnitError
 from . import engine1d as E
 
 TYPE_CODE = {"spring": 0, "dashpot": 1, "kelvin_voigt": 2, "elastoplastic": 3, "hertz": 4, "friction": 5,
-             "drag": 6, "force": 7, "drive": 8, "impact": 14, "emotor": 17}
+             "drag": 6, "force": 7, "drive": 8, "impact": 14, "emotor": 17, "gear": 30, "bolt": 31}
 AUX = {"plastic_set": 0, "broken": 2, "rate_factor": 3, "current": 0, "battery_current": 1, "bus_voltage": 2, "soc": 3,
        "moment": 0, "torque": 1, "shear": 2, "hinge_set": 3, "impulse": 0, "friction_impulse": 2, "drift": 3,
        # vehicles in flight: steering (altitude, inertial speed, flight path angle, speed through the air),
@@ -24,7 +24,9 @@ AUX = {"plastic_set": 0, "broken": 2, "rate_factor": 3, "current": 0, "battery_c
        "dynamic_pressure": 0, "mach": 1, "air_density": 2, "ambient_pressure": 3,
        "mass_flow": 0, "back_pressure": 1, "vehicle_mass": 2, "throttle": 3,
        # landing guidance: altitude (0), forward speed over the ground, climb rate, throttle level (3)
-       "speed_forward": 1, "speed_up": 2}
+       "speed_forward": 1, "speed_up": 2,
+       # gear: Lewis bending and Hertz contact stress; bolt: permanent set (plastic_set, 0), bolt and clamp force, stress
+       "bending_stress": 0, "contact_stress": 1, "bolt_force": 1, "bolt_stress": 3, "clamp_force": 4}
 QALIAS = {"pitch": "force", "thrust": "force", "drag": "force", "dropped": "force", "downrange": "measure",
           "thrust_command": "force", "range_to_site": "measure", "propellant": "measure"}
 KNOCK = "__knock__"          # override prefix: element switched off
@@ -49,6 +51,9 @@ def resolve(v, ctx, where):
         if isinstance(v, dict):
             if "block" in v:
                 return call_block(v, ctx, where)
+            if "from_csv" in v:                   # a number read off a CSV (another model's export): chain.py
+                from .chain import csv_value
+                return csv_value(v, where)
             return {k: resolve(x, ctx, f"{where}.{k}") for k, x in v.items() if k != "lines"}
         if isinstance(v, str):
             s = v.strip()
@@ -194,9 +199,13 @@ class Compiled:
 
 def build_context(doc, overrides=None):
     f = doc.get("__file__", "")
+    from . import chain as _chain
+    _chain.BASE[0] = _chain.model_dir(doc)
     ctx = {}
     params = doc.get("params", {}) or {}
     ov = dict(overrides or {})
+    if doc.get("ports"):                       # input ports: values the using model wires in (chain.py)
+        _chain.input_values(doc, ctx, ov)
     for k, v in params.items():
         where = f"params.{k}"
         orig = v.get("value") if isinstance(v, dict) and "value" in v else v
@@ -209,6 +218,8 @@ def build_context(doc, overrides=None):
         ctx[k] = val
     for k in [k for k in ov if not k.startswith("__")]:
         raise SpecError(f"override '{k}' is not a parameter of this file", "params", None, f)
+    if doc.get("models"):                      # model blocks: run upstream first, results into ctx (chain.py)
+        _chain.run_models(doc, ctx)
     for k, v in _derived_order(doc.get("derived", {}) or {}):
         try:
             ctx[k] = resolve(v, ctx, f"derived.{k}")
@@ -504,6 +515,8 @@ def _compile_model(doc, overrides=None):
                 tF = tF * 0 + 1e30
             P[e, 1] = g("break_at", math.inf)
             P[e, 2:5] = strain_rate_params(d, ctx, where, f)
+        elif t in ("gear", "bolt"):               # machine.py worked these out from the gear or bolt's geometry
+            P[e, :len(d["__P__"])] = d["__P__"]
         elif t == "hertz":
             P[e, 0] = g("K"); P[e, 1] = g("n", 1.5); P[e, 2] = g("alpha", 0.0)
         elif t == "friction":
@@ -724,7 +737,7 @@ def contact_mask(M):
         t = int(a["typ"][e])
         if t in (10, 14, 15):                      # friction, rigid impacts, breakaways: no step of their own
             continue
-        if a["one_sided"][e] == 1 or t == 4 or ("mk" in a and int(a["mk"][e]) in geo):
+        if a["one_sided"][e] == 1 or t == 4 or t == 30 or ("mk" in a and int(a["mk"][e]) in geo):
             out[e] = 1
     return out
 
@@ -742,7 +755,8 @@ def critical_dt(M, skip=None):
         if skip is not None and skip[e]:
             continue
         t = a["typ"][e]
-        k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2) else 0.0)
+        k = a["tab_k"][e] if t in (3, 13) else (a["P"][e, 0] if t in (0, 2, 30) else
+                                                (a["P"][e, 0] + a["P"][e, 1] if t == 31 else 0.0))
         c = a["C"][e]
         inv = sum(c[i] ** 2 / a["m"][i] for i in range(len(c)) if c[i] != 0.0)
         if t == 8 or t == 17:            # motor: mechanical time constant J R / (G Kt)^2, stable below 2 tau
@@ -756,6 +770,8 @@ def critical_dt(M, skip=None):
                 a["P"][e, 10] = inv
                 M.dt_motor = min(M.dt_motor, 0.5 * lim)
             continue
+        if t in (30, 31) and a["P"][e, 6] > 0 and inv > 0:      # gear / bolt damping as a fraction of critical
+            a["P"][e, 1 if t == 30 else 5] = 2.0 * a["P"][e, 6] * math.sqrt(k / inv)
         if k > 0 and inv > 0:
             best = min(best, 2.0 / math.sqrt(k * inv))
     return best if math.isfinite(best) else M.t_end / 100.0

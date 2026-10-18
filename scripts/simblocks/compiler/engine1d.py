@@ -19,7 +19,10 @@ Element type codes and their float parameters p[0..9]:
   6 drag          K                          (F = K sd |sd|)
   7 force         P                          (constant push of P along +measure: F = -P)
   8 drive         Kt, R, I_max, G, cells, R0, R1, C1, Q, throttle  (DC motor + ESC + LiPo 1-RC pack)
-aux per element (4 values): elastoplastic [xp, acc, broken, -]; drive [I_motor, I_batt, v_bus, soc]."""
+ 30 gear          k, c, half backlash, bending stress / Ft, contact stress / sqrt(Ft)   (measure: pitch-line travel)
+ 31 bolt          k_bolt, k_members, preload, yield force, stress area, c, -, ultimate force, hardening k,
+                  set at break   (measure: joint opening; aux: set, bolt force, broken, bolt stress, clamp force)
+aux per element (5 values): elastoplastic [xp, acc, broken, -]; drive [I_motor, I_batt, v_bus, soc]."""
 import math
 import numpy as np
 from numba import njit
@@ -32,7 +35,7 @@ from ..constitutive.plasticity import tabular_return, tabular_return_rate
 from ..actuators.motors import esc_supply, esc_supply_thr, lipo_ocv_k
 
 NP = 12      # floats per element
-NAUX = 4
+NAUX = 5
 
 
 @njit(cache=True, nogil=True)
@@ -96,6 +99,44 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
     if typ == 7:
         F = -p[0]
         return F, 0.0, -1.0, 0.0                 # -1: input = -absorbed (a pure source)
+    if typ == 30:                                # gear mesh: tooth stiffness along the pitch line, backlash dead band
+        b = p[2]
+        if s > b:
+            ex = s - b
+        elif s < -b:
+            ex = s + b
+        else:
+            aux[0] = 0.0; aux[1] = 0.0
+            return 0.0, 0.0, 0.0, 0.0
+        F = p[0] * ex + p[1] * sd
+        if F * ex < 0.0:                         # teeth push, they never pull: clipped at zero
+            F = 0.0
+        aF = abs(F)
+        aux[0] = aF * p[3]                       # Lewis root bending stress, weaker gear
+        aux[1] = p[4] * math.sqrt(aF)            # Hertz contact stress at the pitch point
+        return F, -1.0, 0.0, 0.5 * p[0] * ex * ex
+    if typ == 31:                                # preloaded bolted joint: bolt and clamped members in parallel
+        kb = p[0]; km = p[1]; Fi = p[2]; Fy = p[3]; kh = p[8]
+        Fm = Fi - km * s                         # clamp force on the members (0 once the joint opens)
+        if Fm < 0.0:
+            Fm = 0.0
+        if st[2] > 0.5:                          # snapped: only the members' contact is left
+            aux[0] = st[0]; aux[1] = 0.0; aux[2] = 1.0; aux[3] = 0.0; aux[4] = Fm
+            return -Fm + p[5] * sd, -1.0, 0.0, Fm * Fm / (2.0 * km) - Fi * Fi / (2.0 * kb) - Fi * Fi / (2.0 * km)
+        eb = Fi / kb + s - st[0]                 # bolt stretch (st[0]: its permanent set after yielding)
+        Fb = kb * eb
+        Fyc = Fy + kh * st[0]                    # yield rises with the set (linear hardening to Su)
+        if Fb > Fyc:
+            st[0] += (Fb - Fyc) / (kb + kh)
+            Fb = Fy + kh * st[0]
+            if st[0] >= p[9]:                    # stretched to its ultimate: it breaks
+                st[2] = 1.0; Fb = 0.0
+        if Fb < 0.0:
+            Fb = 0.0                             # a bolt goes slack, it cannot push
+        F = Fb - Fm + p[5] * sd
+        aux[0] = st[0]; aux[1] = Fb; aux[2] = st[2]; aux[3] = Fb / p[4]; aux[4] = Fm
+        stored = Fb * Fb / (2.0 * kb) + Fm * Fm / (2.0 * km) - Fi * Fi / (2.0 * kb) - Fi * Fi / (2.0 * km)
+        return F, -1.0, 0.0, stored
     if typ == 13:                                # load from a table (CSV): F(t) or F(s), held at the ends
         x = st[0] if p[1] < 0.5 else s
         nt = tab_x.shape[0]
@@ -234,9 +275,9 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     Fe = np.zeros(ne); se = np.zeros(ne)
     Fp = np.zeros(ne); dsp = np.zeros(ne)      # previous step's force and stretch increment (trapezoidal work)
     # trackers: [Fmin, Fmax, smin, smax, aux0min, aux0max, aux1min, aux1max, aux2min, aux2max, aux3min, aux3max]
-    TR = np.empty((ne, 12))
+    TR = np.empty((ne, 4 + 2 * NAUX))
     for e in range(ne):
-        for k in range(6):
+        for k in range(2 + NAUX):
             TR[e, 2 * k] = 1e300; TR[e, 2 * k + 1] = -1e300
     BT = np.empty((nb, 4))                     # body [qmin, qmax, vmin, vmax]
     for b in range(nb):

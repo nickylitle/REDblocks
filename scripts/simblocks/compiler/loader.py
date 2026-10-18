@@ -62,7 +62,7 @@ def line_of(d, key):
 # ---------------------------------------------------------------------------------------------- schema
 TOP = {"simblocks", "name", "question", "dim", "units", "params", "derived", "bodies", "elements", "outputs",
        "failure", "uncertain", "limits", "knockouts", "run", "report", "notes", "assumptions", "sources",
-       "directions", "angles", "study", "exports", "editor", "gravity", "circuit", "control"}
+       "directions", "angles", "study", "exports", "editor", "gravity", "circuit", "control", "ports", "models"}
 REQUIRED_TOP = {"simblocks", "name", "dim", "bodies", "elements", "outputs", "run"}
 BODY_KEYS = {"dof", "mass", "inertia", "shape", "x0", "v0", "ground", "label", "note", "__hidden__"}
 BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0", "angle0", "v0", "omega0", "points", "spheres",
@@ -77,6 +77,10 @@ ELEMENT_KEYS = {
     "dc_motor": {"kv", "Kt", "R", "V", "I_max", "gear", "throttle", "J_rotor"},
     "emotor": {"__part__", "gear", "J_rotor", "__kt__", "__idx__", "__R__"},
     "impact": {"e", "mu", "v_rest"},
+    "gear": {"module", "teeth", "face_width", "pressure_angle", "backlash", "k_mesh", "c", "zeta", "material", "E",
+             "nu", "internal"},
+    "bolt": {"size", "d", "pitch", "grip", "threaded", "preload", "torque", "nut_factor", "grade", "Sy", "E",
+             "E_members", "k_bolt", "k_members", "c", "zeta", "Su", "elongation"},
     "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact"},
     "rope": {"k", "c", "length"}, "weld": {"k", "c", "k_rot", "c_rot", "rigid"},
     "hinge": {"k", "c", "k_rot", "c_rot", "axis", "k_twist", "c_twist", "rigid"},
@@ -101,6 +105,7 @@ REQUIRED_ELEMENT = {"spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"
                     "drive": {"kv", "R", "I_max", "cells", "R0", "capacity"}, "dc_motor": {"R", "V"}, "emotor": set(), "pin": {"k"},
                     "contact_friction": {"mu", "contact"}, "rope": {"k"}, "weld": {"k", "k_rot"}, "hinge": {"k"},
                     "slider": {"k", "axis"}, "beam": set(), "impact": {"e"},
+                    "gear": {"module", "teeth", "face_width"}, "bolt": {"grip"},
                     "rocket": {"thrust_vac", "mass_flow"}, "jettison": {"at", "mass"}, "aero_drag": {"area", "Cd"},
                     "steering": set(), "landing_guidance": {"site_range"}}
 OUTPUT_KEYS = {"element", "body", "part", "control", "quantity", "reduce", "unit", "abs", "value", "expr", "label", "note"}
@@ -110,7 +115,8 @@ ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "rate_factor", "absorbe
                       "pitch", "downrange", "altitude", "speed_inertial", "flight_path_angle", "airspeed",
                       "drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure",
                       "thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "dropped",
-                      "thrust_command", "range_to_site", "speed_forward", "speed_up", "propellant"}
+                      "thrust_command", "range_to_site", "speed_forward", "speed_up", "propellant",
+                      "bending_stress", "contact_stress", "bolt_force", "clamp_force", "bolt_stress"}
 BODY_QUANTITIES = {"position", "velocity", "kinetic_energy"}
 BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
                       "velocity", "kinetic_energy"}
@@ -121,6 +127,8 @@ EXPORT_COLUMN_KEYS = {"element", "body", "part", "control", "quantity", "unit", 
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken", "rate_factor"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "dc_motor": {"current"},
+                 "gear": {"bending_stress", "contact_stress"},
+                 "bolt": {"bolt_force", "clamp_force", "bolt_stress", "plastic_set", "broken"},
                  "beam": {"moment", "torque", "shear", "hinge_set"},
                  "impact": {"impulse", "dissipated", "friction_impulse"},
                  "weld": {"moment"}, "hinge": {"moment"}, "slider": {"moment"},
@@ -140,6 +148,11 @@ def check(doc):
     unknown = set(doc) - TOP - {"__file__"}
     for k in unknown:
         raise SpecError(f"unknown top-level key '{k}' (allowed: {', '.join(sorted(TOP))})", k, line_of(doc, k), f)
+    if doc.get("models"):                        # a sequence of model blocks needs no mechanics of its own
+        doc.setdefault("dim", "1d"); doc.setdefault("outputs", {}); doc.setdefault("elements", {})
+        if not doc.get("bodies"):
+            doc["bodies"] = {"__ground__": {"ground": True}}
+        doc.setdefault("run", {"t_end": 1e-6})
     if "elements" not in doc and doc.get("circuit"):
         doc["elements"] = {}                     # a circuit-only model: the motors are the elements
     if not doc.get("bodies") and doc.get("circuit"):
@@ -217,7 +230,7 @@ def check(doc):
         if need not in b and "shape" not in b:
             raise SpecError(f"a {dof} body needs '{need}'", p, line_of(bodies, name), f)
     els = doc["elements"]
-    has_circ = isinstance(doc.get("circuit"), dict) and bool((doc["circuit"].get("parts") or {}))
+    has_circ = (isinstance(doc.get("circuit"), dict) and bool((doc["circuit"].get("parts") or {}))) or bool(doc.get("models"))
     if els is None and has_circ:
         els = doc["elements"] = {}
     if not isinstance(els, dict) or (not els and not has_circ):
@@ -340,6 +353,8 @@ def check(doc):
         if has_metric and m["metric"] not in outs:
             raise SpecError(f"metric '{m['metric']}' is not an output", p, line_of(m, "metric"), f)
     check_exports(doc)
+    from .chain import check_ports
+    check_ports(doc)
     run = doc["run"]
     if "t_end" not in run:
         raise SpecError("run needs t_end", "run", line_of(doc, "run"), f)

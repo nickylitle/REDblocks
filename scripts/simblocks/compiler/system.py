@@ -10,6 +10,17 @@ from .expr import eval_numeric, ExprError
 from .units import unit_factor, parse_quantity, UnitError
 
 
+def _with_blocks(M, r, history):
+    """Add each model block's results (block.output) to the outputs."""
+    if not M.doc.get("models"):
+        return r
+    from .chain import block_results
+    out = r[0] if history else r
+    for k, v in block_results(M).items():
+        out.setdefault(k, v)
+    return r
+
+
 def load_system(path_or_text):
     return System(path_or_text)
 
@@ -31,7 +42,8 @@ class System:
 
     def run(self, overrides=None, dt=None, history=False, n_log=800):
         M = self.compile(overrides)
-        return run_model(M, dt=dt, history=history, n_log=n_log)
+        r = run_model(M, dt=dt, history=history, n_log=n_log)
+        return _with_blocks(M, r, history)
 
     def run_with_exports(self, overrides=None, model_path=None, run="nominal", when="run", n_log=800):
         """One run that also writes the file's CSV exports. Returns (outputs, history, paths written)."""
@@ -41,7 +53,7 @@ class System:
             return out, H, []
         M = self.compile(overrides)
         n = int(round(M.t_end / M.dt))
-        out, H = run_model(M, history=True, n_log=max(n_log, X.log_points(self.doc, n)))
+        out, H = _with_blocks(M, run_model(M, history=True, n_log=max(n_log, X.log_points(self.doc, n))), True)
         return out, H, X.write(self.doc, H, model_path or self.path, run=run, when=when)
 
     def _si(self, v, where, key=None):

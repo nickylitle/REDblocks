@@ -60,6 +60,8 @@ def expand(doc, ctx):
     """Returns (doc_for_the_compiler, {parent: Group}). The input doc is not modified."""
     from .expand_shape import expand_shapes
     doc = _desugar_dc_motors(doc, ctx)
+    from .machine import desugar as _machines
+    doc = _machines(doc, ctx)
     doc = expand_shapes(doc, ctx)
     dim = doc.get("dim", "1d")
     els = doc.get("elements") or {}

@@ -194,7 +194,7 @@ textarea{width:100%;resize:vertical}
 .sock.fsock{width:9px;height:9px;margin-top:0;border-width:1.5px;opacity:.6}.sock.fsock:hover,.sock.fsock.on{opacity:1}
 .sock.t-val{background:var(--s-val)}.sock.t-body{background:var(--s-body);border-radius:2px}
 .sock.t-sig{background:var(--s-sig)}.sock.t-state{background:var(--s-state);border-radius:2px;transform:rotate(45deg)}
-.sock.t-ctl{background:var(--s-ctl);border-radius:1px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}.sock.t-sigin{background:linear-gradient(135deg,var(--s-sig),var(--s-ctl))}.sock.t-metric{background:var(--s-metric)}.sock.t-elec{background:var(--s-elec);box-shadow:0 0 0 2px color-mix(in srgb,var(--s-elec) 35%,transparent)}.sock.t-any{background:linear-gradient(135deg,var(--s-sig),var(--s-state))}
+.sock.t-ctl{background:var(--s-ctl);border-radius:1px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}.sock.t-sigin{background:linear-gradient(135deg,var(--s-sig),var(--s-ctl))}.sock.t-metric{background:var(--s-metric)}.sock.t-elec{background:var(--s-elec);box-shadow:0 0 0 2px color-mix(in srgb,var(--s-elec) 35%,transparent)}.sock.t-any{background:linear-gradient(135deg,var(--s-sig),var(--s-state))}.sock.t-ser{background:var(--s-sig);border-radius:2px;box-shadow:0 0 0 2px color-mix(in srgb,var(--s-sig) 30%,transparent)}.sock.t-port{background:linear-gradient(135deg,var(--s-metric),var(--s-sig))}
 .sock:hover{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 45%,transparent)}
 .mini{display:flex;gap:4px;padding:2px 12px 0}
 .mini button{padding:2px 7px;font-size:11px}
@@ -626,11 +626,13 @@ const API = {
 let SETTINGS = {recent:[]};          // this computer's settings (loaded at start); declared first: everything reads it
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
-  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)", goal:"var(--c-sweep)"};
+  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)", goal:"var(--c-sweep)",
+  inport:"var(--c-value)", outport:"var(--c-output)", model:"var(--c-group)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek", inport:"input port", outport:"output port", model:"model block"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
-const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
+const STATE_Q = {elastoplastic:["plastic_set","broken"], gear:["bending_stress","contact_stress"],
+  bolt:["bolt_force","clamp_force","bolt_stress","plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
   pin:["drift"], weld:["drift"], hinge:["drift"], slider:["drift"],
   rocket:["thrust","mass_flow","back_pressure","vehicle_mass","throttle","propellant"], jettison:["dropped"],
@@ -660,7 +662,15 @@ const FIELD_HELP = {k:"stiffness", c:"damping", K:"coefficient", n:"exponent", a
   target_altitude:"altitude to reach, level", target_speed:"inertial speed for cutoff", tgo_freeze:"time-to-go below which guidance holds its last answer",
   site_range:"distance to the landing site", mode:"target (guidance law) or rate (a schedule)", stop_below:"phase ends below this altitude",
   end_before:"phase ends this long before its target time", target:"the state to arrive at", schedule:"descent rate and forward speed against time",
-  freeze:"time-to-go below which the steering is held", tau:"time constant of the rate loop", contact_altitude:"engine stop when the probes touch"};
+  freeze:"time-to-go below which the steering is held", tau:"time constant of the rate loop", contact_altitude:"engine stop when the probes touch",
+  module:"gear module (pitch diameter / teeth)", teeth:"teeth: 12, 36 (gear 1 first, as in the measure) or 12, rack", face_width:"tooth face width",
+  pressure_angle:"pressure angle (20 deg standard)", backlash:"total play along the pitch line", k_mesh:"mesh stiffness (default ISO 6336)",
+  zeta:"damping, fraction of critical", internal:"true: a ring gear (both turn the same way)", nu:"Poisson's ratio",
+  size:"M5, M6x0.75, #10-32, 1/4-20", grip:"clamped length", threaded:"thread length inside the grip (default all)",
+  preload:"clamp force after tightening", torque:"tightening torque (Fi = T / (K d))", nut_factor:"nut factor K (0.2 dry steel)",
+  grade:"property class: 8.8, 10.9, 12.9, A2-70, grade 5, grade 8", Sy:"bolt yield strength", Su:"bolt ultimate strength",
+  elongation:"strain at break over the thread in the grip", E_members:"modulus of the clamped parts", k_bolt:"bolt stiffness (default from size)",
+  k_members:"member stiffness (default 30 deg frustum)", d:"nominal diameter", pitch:"thread pitch"};
 const FIELD_HELP_EL = {jettison:{mass:"mass dropped (the part that leaves)"}};
 let CAT = null;
 let S = newState();
@@ -672,7 +682,7 @@ let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
 // names live in separate YAML sections, so uniqueness is per namespace: p params+derived, b bodies, e elements, o outputs, f failure
-const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z"};
+const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z", inport:"p", model:"p", outport:"q"};
 const byName = (nm, ns) => S.nodes.find(n => nodeName(n) === nm && (!ns || ns.includes(NS[n.kind])));
 function nodeName(n){ return n.data.name; }
 function uniqueName(base, ns){
@@ -705,6 +715,9 @@ function defaults(kind){
     case "image": return {path:"", w:"360", caption:""};
     case "sens": return {name:"levers", step:"1", nv:2, no:1};
     case "goal": return {name:"goal", target:"", tol:"0.1", lo:"", hi:""};
+    case "inport": return {name:"in", pkind:"value", unit:"", def:"", label:""};
+    case "outport": return {name:"port", quantity:"position", unit:"", label:""};
+    case "model": return {name:"block", file:"", inputs:{}, info:null};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
                            custom:"", time_unit:"s", points:"1000", header:"units", when:"run"};
   }
@@ -761,13 +774,18 @@ function sockets(n){
   if (n.kind === "sweep" || n.kind === "mc") outs.push({key:"out", label:"value", type:"val"});
   if (n.kind === "load"){
     if (!d.raw) d.terms.forEach((t, i) => ins.push({key:"t" + i, label:"body " + (i + 1), type:"body", term:i}));
-    if (!d.csvOn && !d.pulseOn) ins.push({key:"P", label:"force", type:"val", req:true});
+    if (!d.csvOn && !d.pulseOn){ ins.push({key:"ser", label:"series", type:"ser"}); if (!linkTo(n.id, "ser")) ins.push({key:"P", label:"force", type:"val", req:true}); }
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
   }
   if (n.kind === "sens"){
     for (let i = 0; i < (d.nv || 1); i++) ins.push({key:"v" + i, label:"lever " + (i + 1), type:"val", req:i === 0});
     for (let i = 0; i < (d.no || 1); i++) ins.push({key:"o" + i, label:"output " + (i + 1), type:"metric", req:false}); }
   if (n.kind === "goal"){ ins.push({key:"v", label:"change", type:"val", req:true}); ins.push({key:"o", label:"until", type:"metric", req:true}); }
+  if (n.kind === "inport") outs.push({key:"out", label: d.pkind === "series" ? "series" : "value", type: d.pkind === "series" ? "ser" : "val"});
+  if (n.kind === "outport") ins.push({key:"src", label:"source", type:"port", req:true});
+  if (n.kind === "model"){ const inf = d.info && d.info.ok ? d.info : {inputs:Object.keys(d.inputs || {}).map(k => ({name:k, kind:"value"})), outputs:[]};
+    inf.inputs.forEach(p => ins.push({key:"i." + p.name, label:p.name, type: p.kind === "series" ? "ser" : "val", req: p.default === null || p.default === undefined, port:p}));
+    inf.outputs.forEach(p => outs.push({key:"o." + p.name, label:p.name + (p.unit ? " [" + p.unit + "]" : ""), type: p.kind === "series" ? "ser" : "val"})); }
   if (n.kind === "export") d.cols.forEach((c, i) => ins.push({key:"c" + i, label:"column " + (i + 1), type:"any", col:i, req:i === 0}));
   if (n.kind === "part") partSockets(n, ins, outs);
   if (n.kind === "net") netPins(n).forEach(k => ins.push({key:k, label:"pin", type:"elec"}));
@@ -820,6 +838,7 @@ function toast(msg, x, y){
 function compatible(outType, inType){
   if (outType === "elec" || inType === "elec") return outType === inType;
   if (inType === "any") return ["sig","state","body","ctl"].includes(outType);
+  if (inType === "port") return ["sig","state","body","ctl","metric"].includes(outType);
   if (inType === "sigin") return ["sig","state","ctl"].includes(outType);
   if (outType === "ctl") return inType === "val";          // a control signal drives an element field as it runs
   return outType === inType;
@@ -1277,7 +1296,8 @@ function toDoc(){
   Object.assign(uncertain, S.meta.unc_extra || {});
   S.nodes.filter(n => n.kind === "load").forEach(n => {
     const d = n.data, o = {type:"force", measure:measureOf(n)};
-    if (d.pulseOn) o.pulse = pulseOut(d); else if (d.csvOn) o.csv = csvOut(n); else o.P = inVal(n, "P", d.P);
+    const ls = !d.pulseOn && !d.csvOn ? linkTo(n.id, "ser") : null;
+    if (d.pulseOn) o.pulse = pulseOut(d); else if (d.csvOn) o.csv = csvOut(n); else if (ls) o.csv = {series: refOf(ls)}; else o.P = inVal(n, "P", d.P);
     if (d.label) o.label = d.label; elements[d.name] = o;
   });
   const exps = [];
@@ -1303,6 +1323,22 @@ function toDoc(){
     for (let i = 0; i < (sn.data.nv || 1); i++){ const l = linkTo(sn.id, "v" + i), src = l && byId(l.from.node); if (src && !vary.includes(src.data.name)) vary.push(src.data.name); }
     for (let i = 0; i < (sn.data.no || 1); i++){ const l = linkTo(sn.id, "o" + i), src = l && byId(l.from.node); if (src && !of.includes(src.data.name)) of.push(src.data.name); }
     if (vary.length){ study.sensitivity = {vary}; if (of.length) study.sensitivity.of = of; study.sensitivity.step = (String(sn.data.step || "1").trim() || "1") + " %"; } }
+  const pin = {}, pout = {}, models = {};
+  S.nodes.filter(n => n.kind === "inport").forEach(n => { const d = n.data, o = {};
+    if (d.pkind === "series") o.kind = "series"; if (String(d.unit || "").trim()) o.unit = d.unit.trim();
+    if (d.pkind !== "series" && String(d.def || "").trim()) o.default = lit(d.def); if (d.label) o.label = d.label; pin[d.name] = o; });
+  S.nodes.filter(n => n.kind === "outport").forEach(n => { const d = n.data, l = linkTo(n.id, "src"), o = {}; if (!l) return; const src = byId(l.from.node); if (!src) return;
+    if (l.from.key === "metric") o.output = src.data.name;
+    else if (src.kind === "ctl") o.control = src.data.name;
+    else if (src.kind === "body"){ o.body = src.data.name; o.quantity = d.quantity || "position"; }
+    else if (src.kind === "part"){ o.part = src.data.name; o.quantity = l.from.key.slice(2); }
+    else { o.element = src.data.name; o.quantity = l.from.key.slice(2); }
+    if (l.from.key !== "metric" && String(d.unit || "").trim()) o.unit = d.unit.trim(); if (d.label) o.label = d.label; pout[d.name] = o; });
+  S.nodes.filter(n => n.kind === "model").forEach(n => { const d = n.data, o = {file:d.file || ""}, inp = {};
+    sockets(n).ins.forEach(s => { const k = s.key.slice(2), v = inVal(n, s.key, (d.inputs || {})[k]); if (!blank(v) && String(v).trim() !== "") inp[k] = v; });
+    if (Object.keys(inp).length) o.inputs = inp; models[d.name] = o; });
+  if (Object.keys(pin).length || Object.keys(pout).length){ doc.ports = {}; if (Object.keys(pin).length) doc.ports.inputs = pin; if (Object.keys(pout).length) doc.ports.outputs = pout; }
+  if (Object.keys(models).length) doc.models = models;
   Object.assign(doc, {params, derived, bodies, elements});
   const circ = circuitOut(); if (circ) doc.circuit = circ;
   const ctl = {}; S.nodes.filter(n => n.kind === "ctl").forEach(n => { ctl[n.data.name] = ctlOut(n); });
@@ -1385,7 +1421,7 @@ function fromDoc(doc){
   const to = run.timeout; S.meta.toMode = (to === undefined || String(to).toLowerCase() === "auto") ? "auto" : (["none","off","never"].includes(String(to).toLowerCase()) ? "off" : "limit");
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
   ["t_end","dt","dt_min","dt_max","mc_n","timeout","accuracy"].forEach(k => delete run[k]); S.meta.run_extra = run;
-  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor"];
+  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor","ports","models"];
   S.meta.gravity = str(doc.gravity ?? "");
   S.meta.units = ["SI","mm","US"].includes(doc.units) ? doc.units : "SI";
   S.meta.dim = doc.dim || "1d";
@@ -1412,6 +1448,11 @@ function fromDoc(doc){
     else put(0, addNode("value", Object.assign({name:k, value:str(v)}, MATP.has(k) ? {mat:true} : {})));
   });
   Object.entries(pnotes).forEach(([k, t]) => { const n = byName(k, "p"); if (n) n.data.note = t; });
+  Object.entries((doc.ports || {}).inputs || {}).forEach(([k, v]) => { v = v || {};
+    put(0, addNode("inport", {name:k, pkind:v.kind === "series" ? "series" : "value", unit:str(v.unit ?? ""), def:str(v.default ?? ""), label:v.label || ""})); });
+  Object.entries(doc.models || {}).forEach(([k, v]) => { v = v || {}; const inp = {};
+    Object.entries(v.inputs || {}).forEach(([a, x]) => { inp[a] = parseRef(x) ? "" : str(x); });
+    const n = addNode("model", {name:k, file:str(v.file ?? ""), inputs:inp}); Object.entries(v.inputs || {}).forEach(([a, x]) => pend.push([n.id, "i." + a, x])); put(1, n); });
   Object.entries(doc.derived || {}).forEach(([k, v]) => {
     if (v && typeof v === "object" && v.block){
       const n = addNode("builder", {name:k, block:v.block, take:v.take || "", args:{}});
@@ -1462,7 +1503,7 @@ function fromDoc(doc){
         const d = {name:k, label:e.label || "", P:str(e.P), terms: pm ? pm.terms.map(t => ({coef:t.coef, co:t.co})) : [], const: pm ? pm.const : "", raw: pm ? null : str(m)}; Object.assign(d, csvIn(e.csv), pulseIn(e.pulse));
         const n = addNode("load", d);
         if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
-        pend.push([n.id, "P", e.P]); put(3, n); return;
+        pend.push([n.id, "P", e.P]); if (e.csv && e.csv.series) pend.push([n.id, "ser", e.csv.series]); put(3, n); return;
       }
       const d = {name:k, type:e.type, one_sided:!!e.one_sided, label:e.label || "", source:e.source || "", fields:{}, extra:{}, terms:[], const:"", raw:null};
       const links = [];
@@ -1488,7 +1529,7 @@ function fromDoc(doc){
       Object.assign(d, csvIn(e.csv), pulseIn(e.pulse));
       const n = addNode("load", d);
       if (pm) pm.terms.forEach((t, i) => { const b = byName(t.body, "b"); if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); });
-      pend.push([n.id, "P", e.P]); put(3, n); return;
+      pend.push([n.id, "P", e.P]); if (e.csv && e.csv.series) pend.push([n.id, "ser", e.csv.series]); put(3, n); return;
     }
     const d = {name:k, type:e.type, axis:Array.isArray(e.direction) ? e.direction.map(String) : (e.direction || "x"), one_sided:!!e.one_sided, label:e.label || "", source:e.source || "", fields:{}, extra:{}};
     const pm = parseMeasure(e.measure, bodyNames);
@@ -1528,6 +1569,16 @@ function fromDoc(doc){
     if (f.metric){ const m = byName(f.metric, "o"); if (m) S.links.push({from:{node:m.id, key:"metric"}, to:{node:n.id, key:"metric"}, field:""}); }
     put(5, n);
   });
+  Object.entries((doc.ports || {}).outputs || {}).forEach(([k, o]) => { o = o || {};
+    const n = addNode("outport", {name:k, quantity:o.quantity || "position", unit:str(o.unit ?? ""), label:o.label || ""});
+    let src = null, key = "";
+    if (o.output){ src = byName(o.output, "o"); key = "metric"; }
+    else if (o.control){ src = byName(o.control, "k"); key = "out"; }
+    else if (o.part){ src = byName(o.part, "c"); key = "q." + (o.quantity || "current"); }
+    else if (o.element){ src = byName(o.element, "e"); key = "q." + (o.quantity || "force"); }
+    else if (o.body){ src = byName(o.body, "b"); key = "body"; }
+    if (src) S.links.push({from:{node:src.id, key}, to:{node:n.id, key:"src"}, field:""});
+    put(5, n); });
   pend.forEach(([nid, key, raw]) => {
     if (raw && typeof raw === "object" && raw.control !== undefined){ const c = byName(String(raw.control), "k"); if (!c) return;
       if (raw.init !== undefined && blank(c.data.init)) c.data.init = str(raw.init);
@@ -1535,7 +1586,7 @@ function fromDoc(doc){
       const tn = byId(nid); if (tn && tn.data.fields && key.startsWith("f.")) tn.data.fields[key.slice(2)] = "";
       S.links.push({from:{node:c.id, key:"out"}, to:{node:nid, key}, field:""}); return; }
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
-    S.links.push({from:{node:src.id, key:outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
+    S.links.push({from:{node:src.id, key: src.kind === "model" && r.field ? "o." + r.field : outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
   });
   const gs = (doc.study || {}).goal_seek;
   if (gs && gs.vary){ const n = addNode("goal", {name:"goal", target:str(gs.target ?? ""), tol:String(gs.tolerance ?? "0.1").replace("%", "").trim(),
@@ -1648,9 +1699,12 @@ const EL_DIM = {k:"stiffness", c:"damping", P:"force", F_c:"force", F_s:"force",
   target_altitude:"length", target_speed:"speed", tgo_freeze:"time",
   propellant:"mass", mode:"none", site_range:"length", target:"none", freeze:"time", schedule:"none", tau:"time",
   end_before:"time", stop_below:"length", contact_altitude:"length",
+  module:"length", face_width:"length", pressure_angle:"angle", backlash:"length", k_mesh:"stiffness", zeta:"none", teeth:"none",
+  internal:"none", nu:"none", size:"none", grade:"none", grip:"length", threaded:"length", preload:"force", torque:"torque",
+  nut_factor:"none", Sy:"stress", Su:"stress", elongation:"none", E_members:"stress", k_bolt:"stiffness", k_members:"stiffness", d:"length", pitch:"length",
   EI:"none", EIy:"none", EIz:"none", GJ:"none", end_mass:"none", hinge:"none", material:"none", rotary_inertia:"none", orient:"none", section:"none", rigid:"none", one_sided:"none", contact:"none"};
 const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"angle", impulse:"impulse",
-  friction_impulse:"impulse", drift:"none",
+  friction_impulse:"impulse", drift:"none", bending_stress:"stress", contact_stress:"stress", bolt_force:"force", clamp_force:"force", bolt_stress:"stress",
   force:"force", measure:"length", plastic_set:"length", absorbed_work:"energy", dissipated:"energy",
   current:"current", battery_current:"current", bus_voltage:"voltage", soc:"none", broken:"none",
   voltage:"voltage", power:"power", energy:"energy", state:"none", temperature:"none", heat:"energy",
@@ -1704,7 +1758,7 @@ function uvControl(key, value, dim, ph, extra){
 }
 // ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
 // Plugging a value in writes $name into the field; the text stays the single source of truth.
-const NO_FIELD_SOCK = new Set(["mraw","csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
+const NO_FIELD_SOCK = new Set(["pkind","def","mraw","csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
 function fieldKey(inp){
   if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
   const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
@@ -1930,7 +1984,7 @@ function inertiaIn(d, v){
     d.I6 = {Ixx:n(v[0][0]), Iyy:n(v[1][1]), Izz:n(v[2][2]), Pxy:String(-v[0][1]), Pxz:String(-v[0][2]), Pyz:String(-v[1][2])}; return true; }
   return false; }
 // ---- CSV load tables: file, what x is (time or the measure), units of both columns, interpolation
-function csvIn(c){ if (!c || typeof c !== "object") return {};
+function csvIn(c){ if (!c || typeof c !== "object" || c.series !== undefined) return {};
   return {csvOn:true, csvFile:str(c.file ?? ""), csvAgainst:c.against || "time", csvXu:c.x_unit || "", csvYu:c.y_unit || "",
     csvInterp:c.interpolation || "linear", csvXcol:str(c.x_col ?? ""), csvYcol:str(c.y_col ?? "")}; }
 function csvOut(n){ const d = n.data, o = {file:d.csvFile || ""};
@@ -2373,7 +2427,11 @@ function nodeHTML(n){
     b += termsHTML(n, ins);
     b += `<div class="sep"></div>`;
     b += `<div class="row"><label title="a constant force, a standard shape against time (pulse, ramp, oscillation), or a table in a CSV file">source</label><select data-k="srcSel">${sel_([["", "constant (P)"], ["pulse", "standard shape"], ["1", "CSV table"]], d.pulseOn ? "pulse" : (d.csvOn ? "1" : ""))}</select></div>`;
+    const ls = !d.pulseOn && !d.csvOn ? linkTo(n.id, "ser") : null;
+    if (!d.pulseOn && !d.csvOn) b += `<div class="row"><span class="sock in t-ser" data-s="ser" data-t="ser"></span><label title="a time series from an input port or a model block: the load follows it">series</label>` +
+      (ls ? `<span class="linked">← ${esc(refOf(ls))}</span>` : `<span class="hint" style="padding:0">optional: wire a time series</span>`) + `</div>`;
     if (d.pulseOn) b += pulseHTML(n);
+    else if (ls) {}
     else if (!d.csvOn) b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
     else b += csvHTML(n);
     b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
@@ -2394,6 +2452,30 @@ function nodeHTML(n){
     b += `<div class="mini"><button data-act="addlever">+ lever</button><button data-act="addsout">+ output</button>${(d.nv || 1) > 1 ? '<button data-act="dellever">− lever</button>' : ""}${(d.no || 1) > 1 ? '<button data-act="delsout">− output</button>' : ""}</div>`;
     b += `<div class="row"><label title="each lever runs once a little up and once a little down from its value">step</label><div class="uv"><input data-k="step" value="${esc(d.step || "1")}" placeholder="1"><span class="u" style="padding:0 6px">%</span></div></div>`;
     b += `<div class="hint">Press Study: every lever runs ${esc(d.step || "1")} % up and down (two runs each). The results rank which inputs move each output most.</div>`;
+  } else if (n.kind === "inport"){
+    b += `<div class="row"><label title="a value (a number with a unit) or a time series (a load against time)">kind</label><select data-k="pkind">${sel_([["value","value"],["series","time series"]], d.pkind)}</select></div>`;
+    b += `<div class="row"><label title="the unit it is given in (for a series: N, kN, N m)">unit</label><input data-k="unit" value="${esc(d.unit || "")}" placeholder="${d.pkind === "series" ? "N" : "e.g. m/s"}"></div>`;
+    if (d.pkind !== "series") b += `<div class="row"><label title="used when this model runs on its own; blank: whoever uses the model as a block must wire it">default</label><input data-k="def" value="${esc(d.def || "")}" placeholder="none: must be wired"></div>`;
+    b += `<div class="hint">${d.pkind === "series" ? "Wire it into a load's series socket. The block that uses this model supplies it." : "Use it like a value: $" + esc(d.name) + ". The block that uses this model supplies it."}</div>`;
+  } else if (n.kind === "outport"){
+    const l = linkTo(n.id, "src"), src = l && byId(l.from.node);
+    b += `<div class="row req"><span class="sock in t-port" data-s="src" data-t="port"></span><label>source</label>` +
+      (src ? `<span class="linked">← ${esc(src.data.name)}${l.from.key.startsWith("q.") ? "." + esc(l.from.key.slice(2)) : ""}</span>` : `<span class="hint" style="padding:0">an output (value) or a signal (series)</span>`) + `</div>`;
+    if (src && src.kind === "body") b += `<div class="row"><label>quantity</label><select data-k="quantity">${sel_((is3d() ? CAT.body_quantities_3d : (is2d() ? CAT.body_quantities_2d : CAT.body_quantities)).filter(q => q !== "kinetic_energy"), d.quantity)}</select></div>`;
+    if (src && l.from.key !== "metric") b += `<div class="row"><label title="the unit a user of this model sees (the series passes in SI)">unit</label><input data-k="unit" value="${esc(d.unit || "")}" placeholder="SI"></div>`;
+    b += `<div class="hint">${!src ? "Name what this model gives to the models that use it." : (l.from.key === "metric" ? "a value port: the output's result" : "a time series port: the whole history")}</div>`;
+  } else if (n.kind === "model"){
+    if (!d.info && d.file && !d._asking){ d._asking = true;
+      API.call("model_ports", d.file, filePath).then(r => { d.info = r; d._asking = false; render(); drawWires(); }).catch(() => { d._asking = false; }); }
+    b += `<div class="row"><label title="the model file this block runs (relative to this model's folder)">file</label><div class="uv"><input data-k="file" value="${esc(d.file || "")}" placeholder="other.yaml"><button data-act="mpick" title="Choose a model file" style="flex:0 0 auto;padding:0 8px">…</button></div></div>`;
+    if (d.info && !d.info.ok) b += `<div class="hint" style="color:var(--warn)">${esc(d.info.error || "cannot read the file")}</div>`;
+    if (d.info && d.info.ok) b += `<div class="hint">${esc(d.info.name)} · ${esc(d.info.dim)} · ${d.info.inputs.length} in, ${d.info.outputs.length} out${d.info.outputs.length ? "" : " (give it output ports)"}</div>`;
+    ins.forEach(s => { const pp = s.port || {};
+      if (s.type === "ser"){ const l = linkTo(n.id, s.key);
+        b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-ser" data-s="${esc(s.key)}" data-t="ser"></span><label>${esc(s.label)}</label>` +
+          (l ? `<span class="linked">← ${esc(refOf(l))}</span>` : `<span class="hint" style="padding:0">wire a series</span>`) + `</div>`; }
+      else b += fieldRow(n, s, (d.inputs || {})[s.key.slice(2)] ?? "", pp.default != null ? "default " + pp.default : (pp.unit ? "in " + pp.unit : "needed")); });
+    b += `<div class="mini"><button data-act="mopen" title="Open this model file">open</button><button data-act="mreload" title="Read its ports again (after you edit it)">reload ports</button></div>`;
   } else if (n.kind === "export"){
     b += exportHTML(n, ins);
   } else if (n.kind === "part"){
@@ -2637,7 +2719,7 @@ function sockPos(nid, key, dir){
   const r = el.getBoundingClientRect(), c = canvas.getBoundingClientRect();
   return {x:(r.left + r.width / 2 - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
 }
-const TYPE_COL = {val:"var(--s-val)", body:"var(--s-body)", sig:"var(--s-sig)", state:"var(--s-state)", metric:"var(--s-metric)", elec:"var(--s-elec)", ctl:"var(--s-ctl)"};
+const TYPE_COL = {val:"var(--s-val)", body:"var(--s-body)", sig:"var(--s-sig)", state:"var(--s-state)", metric:"var(--s-metric)", elec:"var(--s-elec)", ctl:"var(--s-ctl)", ser:"var(--s-sig)"};
 function curve(a, b){ const st = (SETTINGS || {}).wire || "curved";
   if (st === "straight") return `M${a.x},${a.y} L${b.x},${b.y}`;
   if (st === "right"){ const mx = b.x > a.x + 30 ? (a.x + b.x) / 2 : a.x + 20; return b.x > a.x + 30 ? `M${a.x},${a.y} H${mx} V${b.y} H${b.x}` : `M${a.x},${a.y} H${a.x + 20} V${(a.y + b.y) / 2} H${b.x - 20} V${b.y} H${b.x}`; }
@@ -2947,6 +3029,8 @@ world.addEventListener("change", e => { const hm = e.target.closest("[data-m]");
   const others = S.nodes.filter(x => x !== n && nodeName(x) === n.data.name && NS[x.kind] === NS[n.kind]); if (others.length) n.data.name = uniqueName(n.data.name, NS[n.kind]); changed(); } });
 function setField(n, k, v){ const d = n.data;
   if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v;
+  else if (n.kind === "model" && k === "file"){ d.file = v; d.info = null; }
+  else if (n.kind === "model" && k.startsWith("i.")){ d.inputs = d.inputs || {}; d.inputs[k.slice(2)] = v; }
   else if (n.kind === "part" && k.startsWith("e.")) d.esc[k.slice(2)] = v; else if (n.kind === "part" && k.startsWith("h.")) d.th[k.slice(2)] = v;
   else if (n.kind === "net" && k === "ground" && v){ S.nodes.forEach(x => { if (x.kind === "net") x.data.ground = false; }); d.ground = true; }
   else d[k] = v; }
@@ -2986,6 +3070,15 @@ world.addEventListener("click", async e => {
       else if (pp.ok && !pp.relative) status("", "Save the model first to keep its pictures in the model's folder; the full path is used for now."); }
     else if (!r.cancelled) status("bad", "Picking a picture needs the desktop app."); return; }
   if (act === "csvedit"){ csvOpen(n); return; }
+  if (act === "mpick"){ const r = await API.call("pick_file", "", "yaml");
+    if (r.ok){ const pp = await API.call("project_path", r.path, filePath, null); d.file = pp.ok ? pp.path : r.path; d.info = null;
+      if (!d.name || /^block(_\d+)?$/.test(d.name)) d.name = uniqueName(String(d.file).split(/[\\/]/).pop().replace(/\.ya?ml$/i, ""), "p");
+      changed(true); if (pp.ok && !pp.relative) status("", filePath ? "The model file is outside this model's folder: its full path is saved." : "Save this model to store the block's path relative to its folder."); }
+    else if (!r.cancelled) status("bad", "Type the model file path into the box (the file picker needs the desktop app)."); return; }
+  if (act === "mreload"){ d.info = null; render(); return; }
+  if (act === "mopen"){ if (!d.info || !d.info.ok){ status("bad", "The block's file could not be read."); return; }
+    if (dirty && !confirmLose()) return; const r = await API.call("open_path_text", d.info.path);
+    if (r.ok) loadText(r.text, r.path); else status("bad", "Could not open " + d.info.path + ": " + r.error); return; }
   if (act === "matview"){ matView(String(n.data.value || "")); return; }
   if (act === "csvpick"){ const r = await API.call("pick_file", "", "csv");
     if (r.ok){ const pp = await API.call("project_path", r.path, filePath, null); d.csvFile = pp.ok ? pp.path : r.path; d.csvOn = true; changed(true);
@@ -3011,6 +3104,9 @@ world.addEventListener("click", async e => {
   changed();
 });
 const NODE_INFO = {
+  model: ["Model block", null, "another model file run as one block, upstream of this one", "Pick a saved model file. Its input ports appear on the left (type a value or wire one in) and its output ports on the right. Wire an output port into any value field, a load's series socket, or another block's input. Before this model runs, every block runs in wire order (a block that reads another's output runs after it), and its results are listed with yours as block.output. Blocks are one-way: the downstream model cannot push back on the upstream one, and each keeps its own time step and dimension, so a 1D hit can feed a 3D frame. Runs are remembered: a block runs again only when its file or its inputs change, and a sweep or Monte Carlo here reruns each block with its new inputs. A canvas of only blocks is a sequence. For two models that must push on each other, put them in one model (a group) instead."],
+  inport: ["Input port", null, "a named input this model takes when it is used as a block", "A value port works like a value node: use it as $name in any field or wire it in. A time-series port feeds a load's series socket (the load follows it against time). Give a value port a default so the model also runs on its own; without one, it runs only as a block inside another model, which supplies the value."],
+  outport: ["Output port", null, "a named result this model gives when it is used as a block", "Wire an output node in for a value port (its result, e.g. a peak force or a final speed), or an element signal, body or control for a time-series port (its whole history, e.g. a contact force against time, for the next model's load)."],
   ctl: ["Control signal", null, "worked out every step from the running model; drives element fields", "A live signal: an expression, an if / else switch (with latch and hold time), a PID loop, a lag, a rate limit or an integrator. It reads bodies and elements as the model runs (lm.altitude, air.ambient_pressure, motor.current), other signals and the time t. Wire its output into an element field (a force, a throttle, a stiffness) and the field follows the signal; wire it into an Output to report it. Signals read the state each step ends in and set the fields the next step uses."],
   net: ["Net", null, "one voltage shared by every terminal on it", "A junction of wires. Every part terminal plugged into it sits at the same voltage. Tick ground on one net: it is 0 V and every other net is measured from it. Each net needs a path to ground through parts."],
   part: ["Circuit part", null, "a two-terminal electrical law", "Wire + and − into nets."],
@@ -3304,6 +3400,10 @@ function menuAll(){
   } else
   ["translation","rotation","ground"].forEach(t => add("Bodies", "Body · " + t, t === "ground" ? "fixed, never moves" : (t === "rotation" ? "one angle, inertia" : "one position, mass"), COL.body, () => ["body", {name: t === "ground" ? "floor" : "body", dof:t}], {words:"mass inertia rigid"}));
   Object.keys(CAT.element_types).filter(t => isGeo() || !(CAT.types_2d_only || []).includes(t)).forEach(t => add("Elements", "Element · " + t, "fields: " + CAT.element_types[t].fields.join(", "), COL.element, () => ["element", {name:t, type:t, terms: t === "drive" || t === "drag" || t === "force" ? [{coef:"1"}] : [{coef:"1"},{coef:"-1"}]}], {words:((CAT.element_info || {})[t] || {}).what || ""}));
+  add("Elements", "Gear mesh", "two shafts meshing (or a gear on a rack): tooth stiffness, backlash, bending and contact stress", COL.element,
+      () => ["element", {name:"mesh", type:"gear", fields:{module:"1 mm", teeth:"12, 36", face_width:"8 mm"}, terms:[{coef:"1"},{coef:"1"}]}], {words:"gear spur pinion wheel rack mesh tooth teeth transmission reduction gearbox lewis agma"});
+  add("Elements", "Bolted joint", "a preloaded bolt and the parts it clamps: load sharing, separation, yield, snapping", COL.element,
+      () => ["element", {name:"bolt", type:"bolt", fields:{size:"M5", grip:"6 mm", grade:"12.9", torque:"6 N m"}, terms:[{coef:"1"},{coef:"-1"}]}], {words:"bolt screw fastener preload torque clamp joint shcs cap screw thread separation"});
   add("Results", "Output", "reduce a signal: max, final, first time above…", COL.output, () => ["output", {name:"out"}], {words:"result peak maximum"});
   add("Results", "Expression output", "= arithmetic on params and outputs", COL.expr, () => ["expr", {name:"metric"}], {words:"safety factor formula"});
   add("Results", "Failure mode", "your limit on a metric, with its origin", COL.fail, () => ["failure", {name:"fails"}], {words:"limit criterion"});
@@ -3327,6 +3427,12 @@ function menuAll(){
    ["rate_limit","Rate limit","a signal that can change only so fast","slew ramp limit"],
    ["integrate","Integrator","the running integral of a signal","integral accumulate total"]].forEach(([t, lab, what, w]) =>
     add("Control", lab, what, COL.ctl, () => ["ctl", {name: t === "expr" ? "sig" : t, ctype:t}], {words:"control signal live " + w}));
+  add("Model blocks", "Model block", "another model file as one block: its input ports on the left, output ports on the right. Wired blocks run in order, upstream first", COL.model,
+      () => ["model", {name:"block"}], {words:"chain sequence sequencer subsystem stage import yaml model file block reuse pipeline"});
+  add("Model blocks", "Input port", "a named input this model takes when it is used as a block: a value or a time series", COL.inport,
+      () => ["inport", {name:"in"}], {words:"port input parameter interface chain block"});
+  add("Model blocks", "Output port", "a named result this model gives when it is used as a block: an output (value) or a signal (series)", COL.outport,
+      () => ["outport", {name:"port"}], {words:"port output result interface chain block series"});
   add("Modifiers", "Range of values", "plug into any input: one run per value", COL.sweep, () => ["sweep", {name:"range"}], {words:"sweep vary parametric study"});
   add("Modifiers", "Monte Carlo", "plug into any input: sampled between low and high", COL.mc, () => ["mc", {name:"mc"}], {words:"random uncertainty statistics"});
   add("Results", "Goal seek", "find the input value that brings an output to a target", COL.goal, () => ["goal", {name:"goal"}],
@@ -4461,6 +4567,18 @@ const GUIDE = [
   <tr><td>header</td><td><b>names [units]</b>: <code>Time [ms],F_hit [N]</code>. <b>plain</b>: <code>t_ms,F_hit_N</code>. <b>none</b>: numbers only.</td></tr>
   <tr><td>write on</td><td><b>Run</b>, or <b>Run + every study run</b> (one file per run, numbered)</td></tr></table>
   <p>The file is plain comma-separated text: time in the first column, one column per source. The default header (names with units in brackets) and the numbers paste straight into a spreadsheet or into the time vs value table of an FEA load. Choose <i>none</i> for tools that read numbers only.</p>`},
+ {id:"chains", grp:"Organising", t:"Model blocks and sequences", h:`
+  <p>A saved model can be <b>one block</b> on another model's canvas. Use it to run stages in order (a hit, then the frame it loads) or to reuse a model you already trust.</p>
+  <ol>
+   <li>In the model you want to reuse, add <b>Input port</b> nodes for what it takes (a value such as a speed, or a time series such as a load) and <b>Output port</b> nodes for what it gives (an output's result, or a signal's whole history). Use a value input like any value: <code>$v_in</code>. Wire a series input into a load's <b>series</b> socket. Save the file.</li>
+   <li>In the other model, add <b>Model block</b> and pick that file. Its inputs show on the left and its outputs on the right.</li>
+   <li>Wire them like any node. A block's value output goes into any field, a series output into a load's series socket or into another block's series input.</li>
+  </ol>
+  <p><b>Order comes from the wires.</b> Before this model runs, each block runs once, upstream first, and passes its values and series in memory. A loop is an error. Each block's outputs appear in Results as <code>block.output</code>. A canvas with only blocks is a <b>sequence</b>.</p>
+  <p><b>Blocks are one-way.</b> The downstream model cannot push back on the upstream one, so a block suits stages where the second barely changes the first (a frame that is much stiffer or heavier than the hammer, or a later phase of a flight). In return, each block keeps its own time step and dimension, so a 1D hit can feed a 3D frame. When the two must push on each other, put both in one model.</p>
+  <p><b>Studies cross the chain.</b> A Range or Monte Carlo on this model's values reruns every block whose inputs change. A block runs again only when its file or its inputs change, so live runs stay fast.</p>
+  <p>In YAML: <code>ports: {inputs: {v_in: {unit: m/s, default: 2 m/s}}, outputs: {F_out: {element: s, quantity: force}}}</code> in the reused model, and <code>models: {hit: {file: hit.yaml, inputs: {v_in: $v}}}</code> in the one that uses it. A load takes a series with <code>csv: {series: $hit.F_out}</code>.</p>
+  <p><b>Values from any CSV</b> (measured data, another tool): <code>{from_csv: data.csv, column: "Fz", pick: max}</code> anywhere a number goes. <code>pick</code> is final, first, max, min, max_abs, mean, or at (with <code>at: 5 ms</code>). A header written as <code>Fz [kN]</code> gives the column's unit, so every CSV export reads straight back in.</p>`},
  {id:"groups", grp:"Organising", t:"Groups and your library", h:`
   <p>Select nodes and press ${K("Ctrl+G")} (or <b>Group</b>) to fold them into one <b>group node</b>, like a weapon module or a drivetrain. On its face:</p>
   <ul><li>every <b>Value</b> inside is editable, with its own output socket;</li>
@@ -4609,7 +4727,7 @@ async function helpShow(id){
               k === "export" ? ["CSV export", null, "time histories to a file", "Writes element signals, states and body motion to CSV when you press Run. See the CSV export guide."] : NODE_INFO[k];
     h = `<div class="hk">Node</div><h2>${esc(I[0])}</h2>` + (I[1] ? `<div class="hfig"><svg viewBox="0 0 160 90"><use href="#fig-${esc(I[1])}"/></svg></div>` : "") +
         (I[2] ? `<div class="hlaw">${esc(I[2])}</div>` : "") + `<p>${esc(I[3])}</p>` +
-        `<p>${{group:'<a data-h="guide:groups">Groups and your library</a>', export:'<a data-h="guide:csv">CSV export guide</a>', sweep:'<a data-h="guide:studies">Studies</a>', mc:'<a data-h="guide:studies">Studies</a>', note:'<a data-h="guide:notes">Notes and LaTeX</a>', value:'<a data-h="guide:values">Values, units and expressions</a>', body:'<a data-h="guide:bodies">Bodies and measures</a>', load:'<a data-h="guide:loads">Loads</a>'}[k] || ""}</p>`; }
+        `<p>${{group:'<a data-h="guide:groups">Groups and your library</a>', export:'<a data-h="guide:csv">CSV export guide</a>', sweep:'<a data-h="guide:studies">Studies</a>', mc:'<a data-h="guide:studies">Studies</a>', note:'<a data-h="guide:notes">Notes and LaTeX</a>', value:'<a data-h="guide:values">Values, units and expressions</a>', body:'<a data-h="guide:bodies">Bodies and measures</a>', load:'<a data-h="guide:loads">Loads</a>', model:'<a data-h="guide:chains">Model blocks and sequences</a>', inport:'<a data-h="guide:chains">Model blocks and sequences</a>', outport:'<a data-h="guide:chains">Model blocks and sequences</a>'}[k] || ""}</p>`; }
   else if (id.startsWith("element:")){ const t = id.slice(8), e = (CAT.element_info || {})[t] || {}, et = CAT.element_types[t] || {fields:[], required:[]};
     h = `<div class="hk">Element type</div><h2>${esc(t)}</h2><div class="hfig"><svg viewBox="0 0 160 90"><use href="#el-${esc(t)}"/></svg></div>` +
         (e.law ? `<div class="hlaw">${esc(e.law)}</div>` : "") + `<p>${esc(e.what || "")}</p><h3>Fields</h3><table class="ht"><tr><th>field</th><th>needed</th><th>meaning</th></tr>` +
