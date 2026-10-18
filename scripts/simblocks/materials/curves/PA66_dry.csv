@@ -1,0 +1,9 @@
+# material: PA66_dry
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (Nylon 6/6 dry as molded (Zytel 101L) catalog) to elongation 0.250
+# measure: engineering
+# E_Pa: 3.1e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0264516,82
+0.25,82

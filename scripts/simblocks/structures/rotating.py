@@ -45,7 +45,9 @@ def bar_spin_root_stress(rho, omega, L, A=None, m_tip=0.0, r_hub=0.0):
     """Root tensile stress of a uniform bar of length L spinning about one end (or a hub at r_hub):
     sigma = rho w^2 (L^2/2 + r_hub L) + m_tip w^2 (r_hub + L) / A."""
     s = rho * omega ** 2 * (L * L / 2 + r_hub * L)
-    if m_tip and A:
+    if m_tip:
+        if not A:
+            raise ValueError("a tip mass needs the bar's cross-section area A (its pull is spread over A)")
         s += m_tip * omega ** 2 * (r_hub + L) / A
     return s
 

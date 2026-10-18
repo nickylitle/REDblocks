@@ -45,7 +45,7 @@ def expand_geo(doc, ctx):
         where = f"elements.{en}"
         if t == "beam":
             from .expand_beam import expand_beam
-            expand_beam(en, e, doc, ctx, bodies, new, groups)
+            expand_beam(en, e, out, ctx, bodies, new, groups)        # out: its mass record lands in the compiled file
             continue
         if e.get("segments") not in (None, 1, "1"):
             raise SpecError("in 2d and 3d, segments belongs to a beam (use type: beam)", where, line_of(e, "segments"), f)

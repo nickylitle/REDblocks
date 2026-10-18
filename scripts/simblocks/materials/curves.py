@@ -43,27 +43,63 @@ DEFAULT_TEMPER = {
 }
 
 
+_NAME_SKIP = {"bar", "sheet", "plate", "typical", "rod", "flat", "steel", "stainless", "structural", "the", "and"}
+_tok = lambda s: set(re.findall(r"[a-z0-9]+", s.lower()))
+_METALS = {"7075-T6", "6061-T6", "2024-T3", "5052-H32", "4130_normalized", "4140_QT_30HRC", "4340_QT_315C", "1018_CD",
+           "1045_CD", "17-4PH_H900", "304_annealed", "AR500", "S7_56HRC", "maraging_300", "Ti6Al4V", "Ti_Gr2"}
+
+
+def _hrc_of(key, name):
+    m = re.search(r"(\d{2})\s*hrc", (key + " " + name).lower())
+    return int(m.group(1)) if m else None
+
+
 @block("materials", "curves", "lookup", "name", kind="builder", source="alias table", tags=("temper", "resolve"))
 def resolve_material(text):
-    """Turn loose text ('yea it's 7075, best common temper', '4130 at 45 HRC') into a catalog key."""
+    """Turn loose text ('yea it's 7075, best common temper', '4130 at 45 HRC', 'hot rolled 1018') into a catalog key.
+    Order: the exact key; a key written as its own word; a hardness (45 HRC, HRC 45, 45 Rc) on a named alloy, which
+    picks that alloy's hardened entry or refuses when the catalog has none near it; every word of a catalog name in
+    any order; Shore hardness for urethanes; then the common-temper table (bare '7075' is 7075-T6)."""
     from . import _ALL
-    t = text.lower()
-    # exact catalog key or full name mentioned explicitly wins
-    for k, m in sorted(_ALL.items(), key=lambda kv: -len(kv[0])):
-        if k.lower() in t or getattr(m, "name", "").lower() in t:
+    t = str(text).lower().strip()
+    for k in _ALL:
+        if k.lower() == t:
             return k
+    for k in sorted(_ALL, key=lambda k: -len(k)):            # a key as its own word ('pc' is not in '2 pcs')
+        for form in {k.lower(), k.lower().replace("_", " ")}:       # 'a36_typical' or 'a36 typical'
+            if re.search(r"(?<![\w.-])" + re.escape(form) + r"(?![\w])", t):
+                return k
+    hrc = re.search(r"(?<![\d.])(\d{2})\s*(?:hrc|rc)\b", t) or re.search(r"\b(?:hrc|rc)\s*(\d{2})\b", t)
+    if hrc:
+        alloy = next((a for a in sorted(DEFAULT_TEMPER, key=len, reverse=True) if DEFAULT_TEMPER[a] in _METALS and
+                      re.search(r"(?<![\w.])" + re.escape(a) + r"(?![\w])", t)), None)
+        if alloy:
+            H = int(hrc.group(1))
+            cands = [(k, _hrc_of(k, getattr(m, "name", ""))) for k, m in _ALL.items() if k.lower().startswith(alloy)]
+            cands = [(k, h) for k, h in cands if h is not None]
+            best = min(cands, key=lambda kh: abs(kh[1] - H), default=None)
+            if best and abs(best[1] - H) <= 6:
+                return best[0]
+            have = ", ".join(f"{k} ({h} HRC)" for k, h in cands) or "no hardened entries"
+            raise KeyError(f"no {alloy} near {H} HRC in the catalog ({have}); add it as a custom material")
+    words = _tok(t); best = None
+    for k, m in _ALL.items():                                  # every word of the name, in any order
+        nm = re.sub(r"\(.*?\)", " ", getattr(m, "name", ""))
+        tk = re.findall(r"[a-z0-9]+", nm.lower())
+        need = {w for i, w in enumerate(tk) if w not in _NAME_SKIP and len(w) > 1 and (i == 0 or not w.isdigit())}
+        if need and need <= words and (best is None or len(need) > best[0]):
+            best = (len(need), k)
+    if best:
+        return best[1]
     shore = re.search(r"(\d{2})\s*a\b", t)
     if shore and ("urethane" in t or "polyurethane" in t or "tpu" in t):
         S = int(shore.group(1))
         pool = ["TPU95A_print", "TPU85A_print"] if "tpu" in t else \
             ["urethane_20A", "urethane_40A", "urethane_60A", "urethane_90A"]
         return min(pool, key=lambda k: abs(int(re.search(r"(\d{2})A", k).group(1)) - S))
-    hrc = re.search(r"(\d{2})\s*hrc", t)
-    if "4130" in t and hrc and int(hrc.group(1)) >= 40:
-        return "4130_45HRC"
-    for alias in sorted(DEFAULT_TEMPER, key=len, reverse=True):
-        if re.search(r"(?<![\w.])" + re.escape(alias) + r"(?![\w])", t):
-            return DEFAULT_TEMPER[alias]
+    hits = [a for a in DEFAULT_TEMPER if re.search(r"(?<![\w.])" + re.escape(a) + r"(?![\w])", t)]
+    if hits:                                   # the most specific: an alloy number or grade first, then the longest
+        return DEFAULT_TEMPER[max(hits, key=lambda a: (any(ch.isdigit() for ch in a), len(a)))]
     raise KeyError(f"could not resolve a material from {text!r}")
 
 

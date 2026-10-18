@@ -1,0 +1,9 @@
+# material: PETG_print
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PETG printed XY (Bambu PETG HF) catalog) to elongation 0.086
+# measure: engineering
+# E_Pa: 1.81e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0187845,34
+0.086,34

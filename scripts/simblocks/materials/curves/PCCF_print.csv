@@ -1,0 +1,9 @@
+# material: PCCF_print
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PC-CF printed XY (3DXTech CarbonX ezPC) catalog) to elongation 0.021
+# measure: engineering
+# E_Pa: 6.98e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0104585,73
+0.021,73

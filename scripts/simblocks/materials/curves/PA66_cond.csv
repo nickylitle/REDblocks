@@ -1,0 +1,9 @@
+# material: PA66_cond
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (Nylon 6/6 conditioned 50% RH (Zytel 101L) catalog) to elongation 0.500
+# measure: engineering
+# E_Pa: 1.4e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0392857,55
+0.5,55

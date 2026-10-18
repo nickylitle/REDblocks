@@ -34,6 +34,9 @@ def spec(doc, s):
     for k, r in vary.items():
         if not isinstance(ctx.get(k), (int, float)) or isinstance(ctx.get(k), bool):
             raise SpecError(f"optimize.vary: '{k}' is not a number value of this model", where)
+        if k not in (doc.get("params") or {}):
+            raise SpecError(f"optimize.vary: '{k}' is worked out from other values (derived), so it cannot be varied; "
+                            "vary the params it comes from", where)
         if not isinstance(r, list) or len(r) != 2:
             raise SpecError(f"optimize.vary.{k}: give a range [low, high]", where)
         lo, hi = (float(parse_quantity(x)) if isinstance(x, str) else float(x) for x in r)

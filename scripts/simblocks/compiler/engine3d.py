@@ -691,6 +691,13 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     for k in range(npart):
         for c in range(NOUT_C):
             CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
+    if npart > 0:      # t = 0+: the instant the circuit closes (capacitors are sources behind their ESR, inductors hold
+        p0 = cpst.copy(); o0 = np.zeros((npart, NOUT_C)); f0 = np.zeros(npart); s0c = st.copy()   # their current):
+        circuit_step(0.0, 1e-12, cnn, cpt, cna, cnb, cprm, p0, cth, o0, cmot, s0c, f0, cG, cI, cvn)  # an inrush peak
+        for k in range(npart):                                                               # is exact, any step
+            for c in range(3):
+                if o0[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = o0[k, c]
+                if o0[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = o0[k, c]
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0
@@ -746,9 +753,9 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     adapt = adp[0] > 0.5
     t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
     adsp = np.zeros(ne)
-    nlog = n // log_every + 2 if log_every > 0 else 1
+    nlog = n // log_every + 4 if log_every > 0 else 1
     if adapt and log_every > 0:
-        nlog = int(adp[5] / adp[7]) + 3
+        nlog = int(adp[5] / adp[7]) + 5
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * NOUT_C if npart > 0 else 1))
     LOGB = np.zeros((nlog, nb * NBQ)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
@@ -762,6 +769,13 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     done = n
     KEpk = KE0
     jacc = np.zeros(ne); jcnt = 0          # rigid impacts: force logged as the mean over each log interval
+    if log_every > 0:                      # row 0: the starting state at t = 0 (its forces are step 0's, below)
+        LOGT[0] = 0.0
+        for b in range(nb):
+            _body_q(X, V, W, th, wsp, rmode, b, BQ)
+            for k in range(NBQ):
+                LOGB[0, b * NBQ + k] = BQ[k]
+        j = 1
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -1545,19 +1559,30 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 for c in range(NOUT_C):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
+        if i == 0 and log_every > 0:       # the forces of the first step are the forces at t = 0
+            for k in range(nsig):
+                LOGS[0, k] = sig[k]
+            for e in range(ne):
+                LOGE[0, e * (2 + NAUX)] = Fe[e]; LOGE[0, e * (2 + NAUX) + 1] = se[e]
+                for k in range(NAUX):
+                    LOGE[0, e * (2 + NAUX) + 2 + k] = aux[e, k]
+            if npart > 0:
+                for k in range(npart):
+                    for c in range(NOUT_C):
+                        LOGC[0, k * NOUT_C + c] = cpout[k, c]
         if adapt:
-            logit = log_every > 0 and t >= tlog and j < nlog
+            logit = log_every > 0 and tn >= tlog and j < nlog - 1
             if logit:
-                while tlog <= t:
+                while tlog <= tn:
                     tlog += adp[7]
         else:
-            logit = log_every > 0 and i % log_every == 0 and j < nlog
+            logit = log_every > 0 and (i + 1) % log_every == 0 and j < nlog - 1
         if logit:
             if npart > 0:
                 for k in range(npart):
                     for c in range(NOUT_C):
                         LOGC[j, k * NOUT_C + c] = cpout[k, c]
-            LOGT[j] = t
+            LOGT[j] = tn                   # the state just reached; element forces are those of this step's start
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for b in range(nb):
@@ -1576,6 +1601,23 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             t = tn
     stop[1] = done
     adp[14] = t if adapt else done * dt
+    if log_every > 0 and j < nlog and LOGT[j - 1] < adp[14] * (1.0 - 1e-12):   # the final state is always a row
+        if npart > 0:
+            for k in range(npart):
+                for c in range(NOUT_C):
+                    LOGC[j, k * NOUT_C + c] = cpout[k, c]
+        LOGT[j] = adp[14]
+        for k in range(nsig):
+            LOGS[j, k] = sig[k]
+        for b in range(nb):
+            _body_q(X, V, W, th, wsp, rmode, b, BQ)
+            for k in range(NBQ):
+                LOGB[j, b * NBQ + k] = BQ[k]
+        for e in range(ne):
+            LOGE[j, e * (2 + NAUX)] = Fe[e]; LOGE[j, e * (2 + NAUX) + 1] = se[e]
+            for k in range(NAUX):
+                LOGE[j, e * (2 + NAUX) + 2 + k] = aux[e, k]
+        j += 1
     for b in range(nb):
         if mass[b] > 0.0:
             px, py, pz = _pt(X, R, b, com[b, 0], com[b, 1], com[b, 2])

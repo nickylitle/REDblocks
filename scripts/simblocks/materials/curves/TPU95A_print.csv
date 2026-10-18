@@ -1,0 +1,119 @@
+# material: TPU95A_print
+# source: ogden | Smith, L. & MacCurdy, R., Mechanical Characterization and Constitutive Modeling of 3D Printable Soft Materials, 3D Printing and Additive Manufacturing 11(3), 2024, doi:10.1089/3dp.2023.0010 | Eq. 1, Table 1 (Polymaker TPU90, listed 95A) | https://matterassembly.org/assets/pdf/preprints/2024_smith_modeling_softmaterials.pdf | tested: printed 95A TPU (Polymaker brand), ASTM D412 Die C, quasi-static, to ~550% | confidence: medium
+# measure: engineering
+# E_Pa: 2.90935e+07
+# fit_model: ogden
+# fit_params: {'mu_Pa': [11513800.0, -332390.0], 'alpha': [1.457, -7.8825]}
+# fit_strain_measure: stretch, uniaxial
+# fit_test_conditions: printed 95A TPU (Polymaker brand), ASTM D412 Die C, quasi-static, to ~550%
+# fit_citation: Smith, L. & MacCurdy, R., Mechanical Characterization and Constitutive Modeling of 3D Printable Soft Materials, 3D Printing and Additive Manufacturing 11(3), 2024, doi:10.1089/3dp.2023.0010
+# fit_url: https://matterassembly.org/assets/pdf/preprints/2024_smith_modeling_softmaterials.pdf
+# fit_location: Eq. 1, Table 1 (Polymaker TPU90, listed 95A)
+# fit_confidence: medium
+# fit_notes: Different 95A brand than the datasheet values (NinjaTek Cheetah); Cheetah's own fit is ill-conditioned. Cross-check: 9.9 MPa at 55% vs Cheetah yield 9 MPa at 55%. The negative-alpha term climbs far past real UTS at large stretch, so the curve is cut at datasheet UTS.
+# fit_applies: exact
+# TRUNCATED: curve stopped at datasheet UTS 39.0 MPa (strain 2.94) before the fit's end of range
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0291457,0.814125
+0.0582915,1.5678
+0.0874372,2.27009
+0.116583,2.92816
+0.145729,3.54785
+0.174874,4.13393
+0.20402,4.69035
+0.233166,5.22045
+0.262312,5.72709
+0.291457,6.21269
+0.320603,6.67938
+0.349749,7.129
+0.378894,7.5632
+0.40804,7.98341
+0.437186,8.39093
+0.466332,8.78691
+0.495477,9.1724
+0.524623,9.54833
+0.553769,9.91556
+0.582915,10.2749
+0.61206,10.627
+0.641206,10.9725
+0.670352,11.3121
+0.699497,11.6463
+0.728643,11.9757
+0.757789,12.3006
+0.786935,12.6215
+0.81608,12.939
+0.845226,13.2532
+0.874372,13.5646
+0.903518,13.8736
+0.932663,14.1804
+0.961809,14.4854
+0.990955,14.7888
+1.0201,15.0909
+1.04925,15.3919
+1.07839,15.6921
+1.10754,15.9917
+1.13668,16.2909
+1.16583,16.5899
+1.19497,16.8889
+1.22412,17.1881
+1.25327,17.4877
+1.28241,17.7878
+1.31156,18.0887
+1.3407,18.3903
+1.36985,18.693
+1.39899,18.9968
+1.42814,19.3019
+1.45729,19.6084
+1.48643,19.9164
+1.51558,20.2261
+1.54472,20.5375
+1.57387,20.8509
+1.60302,21.1662
+1.63216,21.4837
+1.66131,21.8034
+1.69045,22.1254
+1.7196,22.4498
+1.74874,22.7767
+1.77789,23.1062
+1.80704,23.4384
+1.83618,23.7734
+1.86533,24.1112
+1.89447,24.452
+1.92362,24.7959
+1.95276,25.1428
+1.98191,25.493
+2.01106,25.8464
+2.0402,26.2032
+2.06935,26.5634
+2.09849,26.9271
+2.12764,27.2944
+2.15678,27.6653
+2.18593,28.0399
+2.21508,28.4183
+2.24422,28.8005
+2.27337,29.1867
+2.30251,29.5768
+2.33166,29.971
+2.3608,30.3693
+2.38995,30.7717
+2.4191,31.1784
+2.44824,31.5894
+2.47739,32.0047
+2.50653,32.4245
+2.53568,32.8487
+2.56482,33.2774
+2.59397,33.7108
+2.62312,34.1488
+2.65226,34.5914
+2.68141,35.0389
+2.71055,35.4912
+2.7397,35.9483
+2.76884,36.4103
+2.79799,36.8774
+2.82714,37.3494
+2.85628,37.8266
+2.88543,38.3089
+2.91457,38.7964
+2.94372,39.2891

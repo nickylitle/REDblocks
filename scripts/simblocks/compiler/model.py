@@ -609,16 +609,19 @@ def _run_settings(M, doc, ctx):
     dt = run.get("dt", "auto")
     adaptive = isinstance(dt, str) and dt.strip().lower() == "adaptive"
     if adaptive:                                 # the free-motion limit: every element but the contacts
-        keep = (getattr(M, "dt_crit_beam", None), getattr(M, "dt_crit_other", None))
+        keep = (getattr(M, "dt_crit_beam", None), getattr(M, "dt_crit_other", None), getattr(M, "dt_damp", math.inf))
         M.contact_el = contact_mask(M)
         crit_free = critical_dt(M, M.contact_el) if M.contact_el.any() else M.dt_crit
         free_bo = (getattr(M, "dt_crit_beam", math.inf), getattr(M, "dt_crit_other", None))
-        M.dt_crit_beam, M.dt_crit_other = keep
+        free_damp = getattr(M, "dt_damp", math.inf)
+        M.dt_crit_beam, M.dt_crit_other, M.dt_damp = keep
     base = _step_share(M, M.dt_crit, getattr(M, "dt_crit_beam", math.inf), getattr(M, "dt_crit_other", None))
     if adaptive:
         # free flight under steady forces is first order in the step (semi-implicit Euler): a finer share of t_end
         # than the fixed automatic step uses keeps positions after a long flight within about 1 %
+        _dd = M.dt_damp; M.dt_damp = free_damp
         M.dt_auto_free = _step_caps(M, _step_share(M, crit_free, *free_bo))
+        M.dt_damp = _dd
         if M.contact_el.any():
             M.dt_auto_free = min(M.dt_auto_free, M.t_end / 20000.0)
     M.dt_auto = _step_caps(M, base)
@@ -665,6 +668,7 @@ def _step_share(M, crit, cb, other):
 
 
 ACCURACY = {"draft": 2.0, "normal": 1.0, "fine": 0.5}     # run.accuracy: the automatic step x this
+DAMP_SHARE = 0.01           # a damper decays its relative speed by c dt / m a step (first order): 1 % per step
 MOTOR_SHARE = 0.2           # five steps per motor time constant (the circuit's rule for its own transients): the
                             # motor's own response is exact at any step; this resolves the spin-up curve itself
 
@@ -680,6 +684,8 @@ def _step_caps(M, dt_auto):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import rotation_dt3d
         M.dt_auto = min(M.dt_auto, rotation_dt3d(M))
+    if math.isfinite(getattr(M, "dt_damp", math.inf)):     # a damper's own time constant m / c, to about 1 %
+        M.dt_auto = min(M.dt_auto, DAMP_SHARE * M.dt_damp)
     if math.isfinite(getattr(M, "dt_motor", math.inf)):    # a drive's time constant: resolved, not just stable
         M.dt_auto = min(M.dt_auto, MOTOR_SHARE * M.dt_motor)
     a2 = getattr(M, "arrays", None)
@@ -810,6 +816,25 @@ def contact_mask(M):
     return out
 
 
+_DAMP_SLOT = {1: 0, 2: 1, 9: 1, 11: 1, 30: 1, 31: 5}     # element type -> P column of its viscous c
+
+
+def damped_limit(k, c, inv):
+    """Stability limit of the semi-implicit (symplectic) Euler step for one spring-damper on an inverse mass inv:
+    dt < (2 / w) (sqrt(1 + z^2) - z), w = sqrt(k inv), z = c inv / (2 w); a pure damper: dt < 2 / (c inv)."""
+    if inv <= 0:
+        return math.inf
+    if k > 0:
+        w = math.sqrt(k * inv); z = c * inv / (2.0 * w) if c > 0 else 0.0
+        return 2.0 / w * (math.sqrt(1.0 + z * z) - z)
+    return 2.0 / (c * inv) if c > 0 else math.inf
+
+
+def elem_c(a, e):
+    t = int(a["typ"][e]); j = _DAMP_SLOT.get(t)
+    return float(a["P"][e, j]) if j is not None else 0.0
+
+
 def critical_dt(M, skip=None):
     """Stability limit of the explicit step. skip: elements to leave out (1 = skip), for the adaptive free step."""
     if getattr(M, "dim", "1d") == "2d":
@@ -818,7 +843,7 @@ def critical_dt(M, skip=None):
     if getattr(M, "dim", "1d") == "3d":
         from .model3d import critical_dt3d
         return critical_dt3d(M, skip)
-    a = M.arrays; best = math.inf; M.dt_motor = math.inf
+    a = M.arrays; best = math.inf; M.dt_motor = math.inf; M.dt_damp = math.inf
     for e in range(len(M.el_names)):
         if skip is not None and skip[e]:
             continue
@@ -840,8 +865,12 @@ def critical_dt(M, skip=None):
             continue
         if t in (30, 31) and a["P"][e, 6] > 0 and inv > 0:      # gear / bolt damping as a fraction of critical
             a["P"][e, 1 if t == 30 else 5] = 2.0 * a["P"][e, 6] * math.sqrt(k / inv)
-        if k > 0 and inv > 0:
-            best = min(best, 2.0 / math.sqrt(k * inv))
+        if t in (1, 5):
+            a["P"][e, 11] = inv                    # dashpot / friction: exact energy booking, the stick limit
+        c_ = elem_c(a, e)
+        best = min(best, damped_limit(k, c_, inv))
+        if c_ > 0 and inv > 0 and not a["one_sided"][e]:   # a lasting damper (not a brief contact): m / c to 1 %
+            M.dt_damp = min(getattr(M, "dt_damp", math.inf), 1.0 / (c_ * inv))
     return best if math.isfinite(best) else M.t_end / 100.0
 
 
@@ -937,8 +966,9 @@ def _crossings(M):
 
 
 # run.timeout: auto -> AUTO_FACTOR x the estimated run time (never under AUTO_MIN_S). The estimate is deliberately
-# rudimentary: steps x elements / RATE, where RATE (element-steps per second) is learned from finished runs.
-RATE = [5.0e6]
+# rudimentary: steps x elements / RATE, where RATE (element-steps per second) is learned from finished runs, one
+# per dimension (a 3D element-step costs about 200x a 1D one). The study passes its learned rates to each worker.
+RATE = {"1d": 5.0e6, "2d": 1.0e6, "3d": 2.5e4}
 AUTO_FACTOR = 5.0
 AUTO_MIN_S = 10.0
 
@@ -946,7 +976,7 @@ AUTO_MIN_S = 10.0
 def estimate_run_s(M, dt=None):
     """Rough wall-clock time of one run on this computer."""
     n = M.t_end / (dt or M.dt)
-    return n * max(1, len(M.el_names)) / RATE[0]
+    return n * max(1, len(M.el_names)) / RATE.get(getattr(M, "dim", "1d"), RATE["1d"])
 
 
 def auto_timeout(M, dt=None):
@@ -1058,7 +1088,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     timed_out = int(stop[1]) < n and int(stop[2]) == 0
     secs = _time.perf_counter() - t_run
     if secs > 0.05 and int(stop[1]) > 0:          # learn this computer's speed for the next estimate
-        RATE[0] = 0.5 * RATE[0] + 0.5 * int(stop[1]) * max(1, len(M.el_names)) / secs
+        d_ = getattr(M, "dim", "1d")
+        RATE[d_] = 0.5 * RATE.get(d_, RATE["1d"]) + 0.5 * int(stop[1]) * max(1, len(M.el_names)) / secs
     # energy ledger
     glob = (KE1 - KE0) + A.sum() - Wg
     internal = 0.0; inputs = max(Wg, 0.0)
@@ -1131,6 +1162,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                     val += 0.5 * float(np.dot(FB[i * NBQ + 9:i * NBQ + 12], Lw[i]))
                 elif a["rmode"][i] == 1 and a["Iax"][i] > 0:
                     val += 0.5 * FB[i * NBQ + 8] ** 2 / a["Iax"][i]
+            elif red in ("at", "time_of_max", "time_of_min"):
+                val = AT[name]; pk = AT.get("__range__" + name)
             elif red.startswith("first_time"):
                 val = tc[name]
             else:
@@ -1325,9 +1358,13 @@ def _at_values(M, LT, LB, LE, dim2, LS=None):
         if "control" in o:
             ser = LS[:, list(M.ctl["names"]).index(o["control"])]
         elif "element" in o:
-            e = M.el_names.index(o["element"]); base = QALIAS.get(qn, qn)
+            base = QALIAS.get(qn, qn); e = el_index(M, o["element"], base)   # a segmented element: its group row
             col = {"force": 0, "measure": 1}.get(base)
             ser = LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]]
+        elif getattr(M, "dim", "1d") == "3d":
+            from .model3d import body_slot3
+            _, k = body_slot3(M, o["body"], qn, f"outputs.{name}")
+            ser = LB[:, k]
         elif dim2:
             i = M.body_names.index(o["body"]); nq = 3 * len(M.body_names)
             if qn == "speed":

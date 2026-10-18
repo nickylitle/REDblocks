@@ -89,7 +89,7 @@ editor:
         ESC capacitors and two motors behind current-limited ESCs, all wired between nets. Both motors drive the flywheel through
         a 2:1 belt. Textbook check: top speed $\approx kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 \approx 13900$ rpm, a little
         less with sag and drag. While both ESCs hold 80 A the flywheel torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$
-        N m ($K_t = 1/kv$), about 690 rad/s gained every second. The peak pack current (about 540 A) is the inrush into the empty
+        N m ($K_t = 1/kv$), about 690 rad/s gained every second. The peak pack current (about 590 A) is the inrush into the empty
         ESC capacitors in the first 50 microseconds: the spark you see when plugging in. Set the caps v0 to 25 V to see the motors
         alone (about 160 A). The motors carry a thermal model; tick thermal on any other part to see it heat.'
       x: 30

@@ -1,0 +1,9 @@
+# material: PLA_print
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PLA printed XY (Bambu PLA Basic) catalog) to elongation 0.122
+# measure: engineering
+# E_Pa: 2.68e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0145522,39
+0.122,39

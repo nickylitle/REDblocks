@@ -1,0 +1,10 @@
+# material: HDPE
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (HDPE sheet (Proteus HDPE) catalog) to elongation 4.000
+# measure: engineering
+# E_Pa: 1.45e+09
+# nearest_published_fit: johnson_cook | Alhourani, Barsoum, Sheikh-Ahmad & Deveci, Proc. MCM'24, paper ICMIE 117, 2024 | Table 1 | NOT THIS CONDITION: pipe-grade HDPE, E 1.0 GPa, not sheet; 0.0033-2.2/s
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0218621,31.7
+4,31.7

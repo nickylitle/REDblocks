@@ -1,5 +1,7 @@
 """YAML loading with line numbers, and the validation rules for system files (format version 1).
 Every error names the file, the line and the field path, and says what was expected."""
+import re
+
 import yaml
 
 
@@ -143,16 +145,53 @@ EXPORT_ON = {"run", "study"}
 FAIL_KEYS = {"name", "metric", "limit", "fails_when", "demand", "capacity", "origin", "assumption", "reach_metric"}
 
 
+def _unit_ok(u, p, line, f):
+    """An output's or export column's unit must be one the program knows, said at load time with its path."""
+    if u in (None, ""):
+        return
+    from .units import unit_factor, UnitError
+    try:
+        unit_factor(str(u))
+    except UnitError as e:
+        raise SpecError(f"unknown unit '{u}' ({e})", p, line, f) from None
+
+
+_SECTION_KIND = {"params": dict, "derived": dict, "bodies": dict, "elements": dict, "outputs": dict, "run": dict,
+                 "circuit": dict, "control": dict, "uncertain": dict, "study": dict, "ports": dict, "models": dict,
+                 "budget": dict, "scenarios": dict, "knockouts": dict, "editor": dict, "failure": list,
+                 "exports": list, "limits": list}
+
+
 def check(doc):
     f = doc.get("__file__", "")
+    if not isinstance(doc, dict):
+        raise SpecError("a system file is a YAML mapping (key: value lines)", "", None, f)
     unknown = set(doc) - TOP - {"__file__"}
     for k in unknown:
         raise SpecError(f"unknown top-level key '{k}' (allowed: {', '.join(sorted(TOP))})", k, line_of(doc, k), f)
+    for k, kind in _SECTION_KIND.items():         # a section with the wrong shape: say so here, not as a crash later
+        v = doc.get(k)
+        if k in doc and v is not None and not isinstance(v, kind):
+            raise SpecError(f"'{k}' must be a {'mapping (name: value lines)' if kind is dict else 'list (- item lines)'}",
+                            k, line_of(doc, k), f)
+        if isinstance(v, dict):                    # YAML reads on / off / yes / no / 1 as true, false or a number
+            for kk in v:
+                if not isinstance(kk, str):
+                    raise SpecError(f"the name {kk!r} under '{k}' is read by YAML as {type(kk).__name__}: quote it "
+                                    "('on') or pick another name", k, line_of(doc, k), f)
+        if k in doc and v is None and k in ("bodies", "elements", "outputs", "run"):
+            doc[k] = {} if k != "run" else None
+    if doc.get("run") is None and "run" in doc:
+        raise SpecError("run needs t_end (run: {t_end: 1 s})", "run", line_of(doc, "run"), f)
     if doc.get("models"):                        # a sequence of model blocks needs no mechanics of its own
         doc.setdefault("dim", "1d"); doc.setdefault("outputs", {}); doc.setdefault("elements", {})
         if not doc.get("bodies"):
             doc["bodies"] = {"__ground__": {"ground": True}}
         doc.setdefault("run", {"t_end": 1e-6})
+    if isinstance(doc.get("budget"), dict) and doc["budget"].get("items") is not None \
+            and not isinstance(doc["budget"]["items"], dict):
+        raise SpecError("budget.items is a mapping: one part per line (wiring: 25 g)", "budget.items",
+                        line_of(doc["budget"], "items"), f)
     if isinstance(doc.get("budget"), dict) and "limit" in doc["budget"]:   # weight budget: two outputs of its own
         lim = doc["budget"]["limit"]
         u = str(lim).strip().split(None, 1)[1] if isinstance(lim, str) and len(str(lim).split()) > 1 else "kg"
@@ -258,6 +297,12 @@ def check(doc):
         for k in set(e) - ELEMENT_KEYS[t] - ELEMENT_COMMON:
             raise SpecError(f"'{k}' is not a field of a {t} element (allowed: "
                             f"{', '.join(sorted(ELEMENT_KEYS[t] | ELEMENT_COMMON))})", p, line_of(e, k), f)
+        if two and "mass" in e and "mass" not in ELEMENT_KEYS[t] and t != "beam" and "__" not in str(name):
+            # a 1D element lumps its own mass onto its bodies; a 2D / 3D element would need where along it the mass
+            # sits, so it is refused rather than ignored
+            raise SpecError("in 2D and 3D an element carries no mass of its own: add it to the bodies it joins (about "
+                            "half to each end) and list it in the weight budget's items if you track weight", p,
+                            line_of(e, "mass"), f)
         req = REQUIRED_ELEMENT[t] - ({"k", "k_rot"} if e.get("rigid") is True else set())
         if "rigid" in e and not isinstance(e["rigid"], bool):
             raise SpecError("rigid is true or false", p, line_of(e, "rigid"), f)
@@ -284,7 +329,7 @@ def check(doc):
         if e.get("one_sided") and t not in ("kelvin_voigt", "elastoplastic"):
             raise SpecError(f"one_sided applies to kelvin_voigt and elastoplastic only ({t} is "
                             f"{'always compression-only' if t == 'hertz' else 'two-sided'})", p, line_of(e, "one_sided"), f)
-        for tok in str(e["measure"]).replace("-", " ").replace("+", " ").replace("*", " ").split():
+        for tok in re.findall(r"(?<![$\w.])([A-Za-z_]\w*)\b", str(e["measure"])):     # parentheses and all
             if tok in bodies:
                 connected.add(tok)
     circ_parts = ((doc.get("circuit") or {}).get("parts") or {}) if isinstance(doc.get("circuit"), dict) else {}
@@ -307,6 +352,10 @@ def check(doc):
             raise SpecError("each output is a mapping", p, line_of(outs, name), f)
         for k in set(o) - OUTPUT_KEYS:
             raise SpecError(f"unknown output key '{k}'", p, line_of(o, k), f)
+        _unit_ok(o.get("unit"), p, line_of(o, "unit"), f)
+        if str(o.get("unit", "")).strip() == "Hz" and o.get("quantity") in ("omega", "wx", "wy", "wz", "velocity", "speed"):
+            raise SpecError("Hz is a frequency (1/s): a spin rate in revolutions per second is rps (or rpm, or rad/s)", p,
+                            line_of(o, "unit"), f)
         if "expr" in o:
             continue
         if sum(k in o for k in ("element", "body", "part", "control")) != 1:
@@ -401,12 +450,14 @@ def check_exports(doc):
                 raise ValueError
         except (TypeError, ValueError):
             raise SpecError("points must be a whole number of rows (2 or more) or 'all' (every time step)", p, line_of(x, "points"), f)
+        _unit_ok(x.get("time_unit"), p, line_of(x, "time_unit"), f)
         for j, c in enumerate(cols):
             q = f"{p}.columns[{j}]"
             if not isinstance(c, dict):
                 raise SpecError("a column is {element: name, quantity: force} or {body: name, quantity: velocity}", q, None, f)
             for k in set(c) - EXPORT_COLUMN_KEYS:
                 raise SpecError(f"unknown column key '{k}'", q, line_of(c, k), f)
+            _unit_ok(c.get("unit"), q, line_of(c, "unit"), f)
             if sum(k in c for k in ("element", "body", "part", "control")) != 1:
                 raise SpecError("a column names one element, body, circuit part or control signal", q, line_of(c, "__self__"), f)
             if "control" in c:

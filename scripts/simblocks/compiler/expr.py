@@ -26,6 +26,11 @@ class ExprError(ValueError):
     pass
 
 
+class ExprZeroDivision(ExprError, ZeroDivisionError):
+    """A division by zero in an expression: an ExprError with its place, and still a ZeroDivisionError for the
+    callers that turn it into infinity (a safety factor at zero demand)."""
+
+
 def _check(tree, allowed_names):
     for node in ast.walk(tree):
         if not isinstance(node, _ALLOWED):
@@ -49,9 +54,21 @@ def eval_numeric(text, params):
         raise ExprError(f"undefined parameter(s): {', '.join('$' + m for m in missing)}")
     src = _PARAM.sub(lambda m: _mangle(m.group(1)), src)
     names = {_mangle(k): v for k, v in params.items()}
-    tree = ast.parse(src, mode="eval")
+    try:
+        tree = ast.parse(src, mode="eval")
+    except SyntaxError as e:
+        raise ExprError(f"cannot read the expression '{text.strip()}': {e.msg}" +
+                        (f" near column {e.offset}" if e.offset else "")) from None
     _check(tree, set(names))
-    return eval(compile(tree, "<expr>", "eval"), {"__builtins__": {}}, {**FUNCS, **names})
+    try:
+        r = eval(compile(tree, "<expr>", "eval"), {"__builtins__": {}}, {**FUNCS, **names})
+        if isinstance(r, int) and not isinstance(r, bool):
+            r = float(r)                       # 2 ** 10000 overflows here, inside the try
+        return r
+    except ZeroDivisionError:
+        raise ExprZeroDivision(f"'{text.strip()}' divides by zero") from None
+    except (ArithmeticError, ValueError, TypeError) as e:
+        raise ExprError(f"cannot evaluate '{text.strip()}': {e}") from None
 
 
 class Lin:
@@ -103,9 +120,20 @@ def eval_measure(text, bodies, params):
     src = _PARAM.sub(lambda m: _mangle(m.group(1)), src)
     names = {_mangle(k): v for k, v in params.items()}
     names.update({b: Lin({b: 1.0}) for b in bodies})
-    tree = ast.parse(src, mode="eval")
+    try:
+        tree = ast.parse(src, mode="eval")
+    except SyntaxError as e:
+        raise ExprError(f"cannot read the measure '{str(text).strip()}': {e.msg}") from None
     _check(tree, set(names))
-    out = eval(compile(tree, "<measure>", "eval"), {"__builtins__": {}}, {**FUNCS, **names})
+    try:
+        out = eval(compile(tree, "<measure>", "eval"), {"__builtins__": {}}, {**FUNCS, **names})
+    except ExprError:
+        raise
+    except ZeroDivisionError:
+        raise ExprError(f"the measure '{str(text).strip()}' divides by zero") from None
+    except (ArithmeticError, ValueError, TypeError):
+        raise ExprError("a measure must be LINEAR in the body coordinates (sums of number x body, plus a constant): "
+                        f"'{str(text).strip()}' is not") from None
     if not isinstance(out, Lin):
         raise ExprError("a measure must contain at least one body name")
     return {k: v for k, v in out.coef.items() if v != 0.0}, out.const

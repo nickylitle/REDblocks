@@ -1,0 +1,9 @@
+# material: PACF_print
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PA6-CF printed XY dry (Bambu) catalog) to elongation 0.058
+# measure: engineering
+# E_Pa: 4.43e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0230248,102
+0.058,102

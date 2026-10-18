@@ -123,10 +123,12 @@ def expand(doc, ctx):
             if k in e:
                 law[k] = _num(e[k], ctx, f"{where}.{k}") * n
         nodes = [f"{en}__n{j}" for j in range(1, n)]
+        # nodes of a shaft between rotation bodies turn (their mass is an inertia); otherwise they slide
+        ndof = "rotation" if all((bodies[b] or {}).get("dof") == "rotation" for b in moving) else "translation"
         for j, nd in enumerate(nodes, start=1):
             fr = j / n
-            bodies[nd] = {"dof": "translation", "mass": m / n, "x0": eB + fr * (eA - eB), "v0": vB + fr * (vA - vB),
-                          "label": f"{en} node {j}", "__hidden__": True}
+            bodies[nd] = {"dof": ndof, ("inertia" if ndof == "rotation" else "mass"): m / n, "x0": eB + fr * (eA - eB),
+                          "v0": vB + fr * (vA - vB), "label": f"{en} node {j}", "__hidden__": True}
         chain = [endB] + nodes + [endA]
         segs = []
         for j in range(n):

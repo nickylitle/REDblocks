@@ -62,7 +62,7 @@ class Check:
 
 class Report:
     def __init__(self, spec):
-        self.spec = spec; self.checks = []; self.t0 = time.time(); self.runs = 0
+        self.spec = spec; self.checks = []; self.t0 = time.time(); self.runs = 0; self.timed_out = 0
 
     def add(self, *a, **k):
         self.checks.append(Check(*a, **k))
@@ -141,6 +141,8 @@ def _stage(i, done=0, total=0):
 def _call(spec, rep, params, dt):
     rep.runs += 1
     out = spec.run(dict(params), dt)
+    if out.get("_timed_out"):
+        rep.timed_out += 1                  # its numbers cover only the part that ran: reported, and failed in MC
     return {k: float(v) for k, v in out.items()}
 
 
@@ -253,6 +255,10 @@ def verify_all(spec, skip=()):
         r = _call(spec, rep, {**p0, **ov}, dt0)
         ch = {m: (r[m] - base[m]) / max(abs(base[m]), 1e-12) for m in names}
         dead = all(abs(x) < spec.knockout_dead_tol for x in ch.values())
+        if dead and getattr(spec, "idle", None) and spec.idle(kname):
+            rep.add(f"knockout:{kname}", SKIP, "never engaged in the nominal run (it carried no force, e.g. a contact "
+                    "that never touched): nothing to knock out")
+            continue
         wrong = [m for m, s in signs.items() if s in "+-" and ((s == "+" and ch[m] <= 0) or (s == "-" and ch[m] >= 0))]
         # a knockout that removes a load path can legitimately send an output to infinity (e.g. a safety
         # factor with zero demand): that proves the block is alive, so it is a WARN note, not a failure
@@ -293,6 +299,8 @@ def verify_all(spec, skip=()):
             okb = _finite(r) and all(lo <= r[m] <= hi for m, (lo, hi) in spec.bounds.items() if m in r)
             if "_ledger_rel" in r and abs(r["_ledger_rel"]) >= spec.ledger_tol:
                 okb = False
+            if r.get("_timed_out"):
+                okb = False
             if not okb:
                 nfail += 1
             X.append([s[k] for k in keys]); Y.append([r[m] for m in names]); outs.append(r)
@@ -330,6 +338,10 @@ def verify_all(spec, skip=()):
     for m, (val, tol, src) in spec.anchors.items():
         err = abs(base[m] - val) / max(abs(val), 1e-12)
         rep.add(f"anchor:{m}", PASS if err <= tol else FAIL, f"{base[m]:.4g} vs {val:.4g} ({src}), err {err*100:.2g}%")
+    if rep.timed_out:
+        rep.add("run_timeout", FAIL, f"{rep.timed_out} of {rep.runs} runs were stopped by the timeout, so their results "
+                "cover only part of the run and the checks above that used them are not valid. Raise run.timeout "
+                "(or set it off) and verify again.")
     return rep
 
 

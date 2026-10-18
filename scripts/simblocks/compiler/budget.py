@@ -17,8 +17,11 @@ def _unit(lim):
 
 
 def items(M, doc):
-    """[(name, kg, where it comes from)]."""
+    """[(name, kg, where it comes from)]. Every modelled mass once: the bodies you wrote, the mass of each element that
+    carries one (a 1D spring's or a segmented chain's, whatever it was split into), the hidden node bodies of an
+    expanded beam (counted under the beam), and the items you list. An inertia (kg m^2) is not a weight."""
     from .model import resolve, num
+    from .exports import element_is_rotational
     b = doc.get("budget") or {}
     out = []
     if b.get("bodies", True):
@@ -31,16 +34,26 @@ def items(M, doc):
                     out.append((name, num(resolve(bd["mass"], M.ctx, f"bodies.{name}.mass"), f"bodies.{name}.mass"), "body"))
         else:
             mass = M.arrays.get("mass")
+            beams = (getattr(M, "cdoc", None) or {}).get("__beam_mass__") or {}
+            ends = {}
+            for bm in beams.values():
+                for bn, x in bm["ends"].items():
+                    ends[bn] = ends.get(bn, 0.0) + x
             for i, name in enumerate(M.body_names):
-                if "__" in name:
+                if mass is None or float(mass[i]) <= 0 or "__" in name:   # a beam's node bodies: counted with the beam
                     continue
-                if mass is not None and float(mass[i]) > 0:
-                    out.append((name, float(mass[i]), "body"))
-        for en, info in (getattr(M, "el_info", None) or {}).items():
-            if "__" in en:
-                continue
-            if info.get("mass"):
-                out.append((en, float(info["mass"]), "element"))
+                own = float(mass[i]) - ends.get(name, 0.0)     # less the beam ends lumped onto it
+                if own > 0:
+                    out.append((name, own, "body"))
+            out += [(k, bm["total"], "element") for k, bm in beams.items() if bm["total"] > 0]
+        if getattr(M, "dim", "1d") == "1d":
+            udoc = getattr(M, "doc", None) or doc            # the file as written: a segmented element under its own name
+            for en, e in (udoc.get("elements") or {}).items():
+                if "__" in en or not isinstance(e, dict) or e.get("mass") in (None, ""):
+                    continue
+                if element_is_rotational(M, en):       # a shaft's 'mass' is its inertia
+                    continue
+                out.append((en, num(resolve(e["mass"], M.ctx, f"elements.{en}.mass"), f"elements.{en}.mass"), "element"))
     for k, v in (b.get("items") or {}).items():
         out.append((k, num(resolve(v, M.ctx, f"budget.items.{k}"), f"budget.items.{k}"), "item"))
     return out

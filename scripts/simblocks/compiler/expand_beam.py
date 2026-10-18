@@ -223,7 +223,8 @@ def expand_beam(en, e, doc, ctx, bodies, new, groups):
         new[sn] = dict(base, type="beam", measure=[chain[j], chain[j + 1]], __mseg__=mseg if mseg > 0 else None,
                        **({"__hidden__": True} if n > 1 else {}))
         segs.append(sn)
-    # the beam's end shares of mass go onto A and B at the attachment points
+    # the beam's end shares of mass go onto A and B at the attachment points; the weight budget reads this record
+    rec = doc.setdefault("__beam_mass__", {}).setdefault(en, {"total": float(m), "ends": {}})
     if m > 0 and e.get("end_mass", True):
         mend = mseg / 2.0
         for bn, loc in ((A, locA), (B, locB)):
@@ -235,6 +236,7 @@ def expand_beam(en, e, doc, ctx, bodies, new, groups):
             r = loc - com
             if "mass" in d:
                 d["mass"] = num(resolve(d["mass"], ctx, where_b + ".mass"), where_b) + mend
+                rec["ends"][bn] = rec["ends"].get(bn, 0.0) + mend
             if "inertia" in d:
                 if dim == "3d":
                     from .model3d import _inertia

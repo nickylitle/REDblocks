@@ -1,0 +1,9 @@
+# material: PPSCF_print
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PPS-CF printed XY (Bambu, not annealed) catalog) to elongation 0.016
+# measure: engineering
+# E_Pa: 8.23e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0105711,87
+0.0158566,87

@@ -30,23 +30,45 @@ def moment_curvature_polygon(curve, xy, kappa_max=None, n=120, n_fiber=400, meas
 
 
 def _mk(curve, wfun, ymin, ymax, kappa_max, n, n_fiber, measure):
-    if measure == "true":
-        es, ss = curve.true
-    else:
-        es, ss = curve.eng_strain, curve.eng_stress
+    """M(kappa) by fibre integration with the neutral axis placed where the axial force is zero.
+
+    measure="true" (default, finite strain): a fibre at y stretches by lam = 1 + kappa (y - y0); it carries the TRUE
+    stress at its log strain on its CURRENT area A0 / lam (plastic flow keeps volume), so tension and compression
+    fibres differ and the neutral axis y0 moves to keep N = 0. In tension that force is exactly sigma_eng A0.
+    measure="eng": engineering stress at engineering strain on the original area (the small-strain textbook form,
+    symmetric in tension and compression). Either way an elastic-perfectly-plastic section tends to Mp = sy Z."""
+    true = measure == "true"
+    es, ss = curve.true if true else (curve.eng_strain, curve.eng_stress)
     c = max(abs(ymin), abs(ymax))
     if kappa_max is None:
-        kappa_max = es[-1] / c
+        kappa_max = (np.expm1(es[-1]) if true else es[-1]) / c
     y = np.linspace(ymin, ymax, n_fiber + 1)
     ym = 0.5 * (y[1:] + y[:-1]); dy = np.diff(y)
-    wy = wfun(ym)
+    wy = wfun(ym) * dy
+
+    def fibres(k, y0):
+        e = k * (ym - y0)
+        if true:
+            lam = np.maximum(1.0 + e, 1e-6)
+            el = np.log(lam)
+            return np.sign(el) * np.interp(np.abs(el), es, ss, right=ss[-1]) * wy / lam
+        return np.sign(e) * np.interp(np.abs(e), es, ss, right=ss[-1]) * wy
+
     kap = np.concatenate([[0.0], np.geomspace(kappa_max * 1e-4, kappa_max, n - 1)])
-    M = np.empty(n)
+    M = np.empty(n); Y0 = np.zeros(n)
     for i, k in enumerate(kap):
-        eps = k * ym
-        sig = np.sign(eps) * np.interp(np.abs(eps), es, ss, right=ss[-1])
-        M[i] = np.sum(sig * ym * wy * dy)
-    return dict(kappa=kap, M=M, c=c, EI0=M[1] / kap[1] if kap[1] > 0 else np.nan)
+        if k == 0.0:
+            M[i] = 0.0; continue
+        lo, hi = ymin, ymax                         # N(y0) falls as the neutral axis rises: bisect for N = 0
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if fibres(k, mid).sum() > 0.0:
+                lo = mid
+            else:
+                hi = mid
+        y0 = 0.5 * (lo + hi); F = fibres(k, y0)
+        M[i] = float(np.sum(F * (ym - y0))); Y0[i] = y0
+    return dict(kappa=kap, M=M, c=c, EI0=M[1] / kap[1] if kap[1] > 0 else np.nan, y_neutral=Y0)
 
 
 @block("structures", "sections", "general", "moment_rotation", kind="builder",

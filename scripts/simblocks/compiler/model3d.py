@@ -686,7 +686,7 @@ def rotation_dt3d(M):
 
 
 def critical_dt3d(M, skip=None):
-    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names); M.dt_motor = math.inf
+    a = M.arrays; best = math.inf; bbest = math.inf; nb = len(M.body_names); M.dt_motor = math.inf; M.dt_damp = math.inf
     rot_inv = np.zeros(nb)
     for b in range(nb):
         if a["rmode"][b] == E3.R_SPIN:
@@ -747,7 +747,8 @@ def critical_dt3d(M, skip=None):
                 a["P"][e, 10] = inv
                 M.dt_motor = min(M.dt_motor, 0.5 * lim)
             continue
-        if k <= 0:
+        from .model import elem_c, damped_limit
+        if k <= 0 and elem_c(a, e) <= 0 and t != 5:
             continue
         if a["mk"][e] == E3.MK_TWIST:
             inv = twist_inv(e)
@@ -763,8 +764,11 @@ def critical_dt3d(M, skip=None):
                     inv += float(np.max(a["minv"][b])) + rot_inv[b] * M.reach[e] ** 2
         if t in (30, 31) and a["P"][e, 6] > 0 and inv > 0:      # gear / bolt damping as a fraction of critical
             a["P"][e, 1 if t == 30 else 5] = 2.0 * a["P"][e, 6] * math.sqrt(k / inv)
-        if inv > 0:
-            best = min(best, 2.0 / math.sqrt(k * inv))
+        if t in (1, 5):
+            a["P"][e, 11] = inv                    # dashpot / friction: exact energy booking, the stick limit
+        if elem_c(a, e) > 0 and inv > 0 and not a["one_sided"][e]:   # a lasting damper, not a brief contact
+            M.dt_damp = min(getattr(M, "dt_damp", math.inf), 1.0 / (elem_c(a, e) * inv))
+        best = min(best, damped_limit(k, elem_c(a, e), inv))
     # beams are kept stable at a larger share of their own limit (see _run_settings); contacts at the usual share
     M.dt_crit_beam = bbest; M.dt_crit_other = best if math.isfinite(best) else math.inf
     best_all = min(best, bbest)

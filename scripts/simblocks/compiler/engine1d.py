@@ -46,6 +46,8 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
         return F, 0.0, 0.0, 0.5 * p[0] * s * s
     if typ == 1:
         F = p[0] * sd
+        if p[11] > 0.0:                       # the energy this step really takes out: F times the mean slip speed
+            return F, F * (sd - 0.5 * F * p[11] * dt) * dt, 0.0, 0.0
         return F, F * sd * dt, 0.0, 0.0
     if typ == 2:
         if one_sided == 1:
@@ -54,7 +56,7 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
             F = p[0] * s + p[1] * sd
             if F < 0.0:
                 F = 0.0
-            return F, -1.0, 0.0, 0.0           # -1: dissipation = absorbed - stored (no independent law)
+            return F, -1.0, 0.0, 0.5 * p[0] * s * s   # -1: dissipation = absorbed - change in this stored energy
         F = p[0] * s + p[1] * sd
         return F, p[1] * sd * sd * dt, 0.0, 0.5 * p[0] * s * s
     if typ == 3:
@@ -85,13 +87,18 @@ def _force(typ, one_sided, p, s, sd, tab_k, tab_x, tab_F, st, aux, dt):
             F = 0.0
         if p[2] == 0.0:
             return F, 0.0, 0.0, p[0] * s ** (p[1] + 1.0) / (p[1] + 1.0)
-        return F, -1.0, 0.0, 0.0
+        return F, -1.0, 0.0, p[0] * s ** (p[1] + 1.0) / (p[1] + 1.0)
     if typ == 5:
         Fc = p[0]; ve = p[1]; Fs = p[2]; vs = p[3]
         mag = Fc
         if Fs > Fc and vs > 0.0:
             mag = Fc + (Fs - Fc) * math.exp(-(sd / vs) ** 2)
         F = mag * math.tanh(sd / ve)
+        if p[11] > 0.0 and dt > 0.0:          # stick limit: one step may at most stop the slip, never reverse it
+            cap = abs(sd) / (p[11] * dt)
+            if abs(F) > cap:
+                F = cap if F > 0.0 else -cap
+            return F, F * (sd - 0.5 * F * p[11] * dt) * dt, 0.0, 0.0   # the energy this step really takes out
         return F, F * sd * dt, 0.0, 0.0
     if typ == 6:
         F = p[0] * sd * abs(sd)
@@ -267,6 +274,13 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     for k in range(npart):
         for c in range(NOUT_C):
             CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
+    if npart > 0:      # t = 0+: the instant the circuit closes (capacitors are sources behind their ESR, inductors hold
+        p0 = cpst.copy(); o0 = np.zeros((npart, NOUT_C)); f0 = np.zeros(npart); s0c = st.copy()   # their current):
+        circuit_step(0.0, 1e-12, cnn, cpt, cna, cnb, cprm, p0, cth, o0, cmot, s0c, f0, cG, cI, cvn)  # an inrush peak
+        for k in range(npart):                                                               # is exact, any step
+            for c in range(3):
+                if o0[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = o0[k, c]
+                if o0[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = o0[k, c]
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0                     # pack starts full
@@ -290,9 +304,9 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     adapt = adp[0] > 0.5
     t = 0.0; tlog = 0.0; t_stop = adp[5] * (1.0 - 1e-13)
     adsp = np.zeros(ne); inc1 = np.zeros(ne, np.int64)
-    nlog = n // log_every + 2 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
+    nlog = n // log_every + 4 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
     if adapt and log_every > 0:
-        nlog = int(adp[5] / adp[7]) + 3
+        nlog = int(adp[5] / adp[7]) + 5
     LOGC = np.zeros((nlog if npart > 0 else 1, npart * NOUT_C if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nb)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
@@ -309,6 +323,11 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             nimp += 1
     cand = np.zeros(ne, np.int64); tauv = np.zeros(ne); tgt = np.zeros(ne); jn = np.zeros(ne); invn = np.zeros(ne)
     vst = np.zeros(nb); ucd = np.zeros(ne); u0d = np.zeros(ne); lst = np.zeros(ne); held = np.zeros(ne)
+    if log_every > 0:                          # row 0: the starting state at t = 0 (its forces are step 0's, below)
+        LOGT[0] = 0.0
+        for b in range(nb):
+            LOGB[0, 2 * b] = q[b]; LOGB[0, 2 * b + 1] = v[b]
+        j = 1
     for i in range(n):
         if (i & 4095) == 0 and stop[0] != 0:
             done = i
@@ -528,19 +547,30 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                 for c in range(NOUT_C):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
+        if i == 0 and log_every > 0:           # the forces of the first step are the forces at t = 0
+            for k in range(nsig):
+                LOGS[0, k] = sig[k]
+            for e in range(ne):
+                LOGE[0, e * (2 + NAUX)] = Fe[e]; LOGE[0, e * (2 + NAUX) + 1] = se[e]
+                for k in range(NAUX):
+                    LOGE[0, e * (2 + NAUX) + 2 + k] = aux[e, k]
+            if npart > 0:
+                for k in range(npart):
+                    for c in range(NOUT_C):
+                        LOGC[0, k * NOUT_C + c] = cpout[k, c]
         if adapt:
-            logit = log_every > 0 and t >= tlog and j < nlog
+            logit = log_every > 0 and tn >= tlog and j < nlog - 1
             if logit:
-                while tlog <= t:
+                while tlog <= tn:
                     tlog += adp[7]
         else:
-            logit = log_every > 0 and i % log_every == 0 and j < nlog
+            logit = log_every > 0 and (i + 1) % log_every == 0 and j < nlog - 1
         if logit:
             if npart > 0:
                 for k in range(npart):
                     for c in range(NOUT_C):
                         LOGC[j, k * NOUT_C + c] = cpout[k, c]
-            LOGT[j] = t
+            LOGT[j] = tn                       # the state just reached; element forces are those of this step's start
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for b in range(nb):
@@ -557,6 +587,21 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             t = tn
     stop[1] = done
     adp[14] = t if adapt else done * dt
+    if log_every > 0 and j < nlog and LOGT[j - 1] < adp[14] * (1.0 - 1e-12):   # the final state is always a row
+        if npart > 0:
+            for k in range(npart):
+                for c in range(NOUT_C):
+                    LOGC[j, k * NOUT_C + c] = cpout[k, c]
+        LOGT[j] = adp[14]
+        for k in range(nsig):
+            LOGS[j, k] = sig[k]
+        for b in range(nb):
+            LOGB[j, 2 * b] = q[b]; LOGB[j, 2 * b + 1] = v[b]
+        for e in range(ne):
+            LOGE[j, e * (2 + NAUX)] = Fe[e]; LOGE[j, e * (2 + NAUX) + 1] = se[e]
+            for k in range(NAUX):
+                LOGE[j, e * (2 + NAUX) + 2 + k] = aux[e, k]
+        j += 1
     for e in range(min(ne, cctlD.shape[0])):
         if cctlD[e] == 1:
             D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law

@@ -40,9 +40,9 @@ class System:
     def compile(self, overrides=None):
         return compile_model(self.doc, overrides) if overrides else self.nominal
 
-    def run(self, overrides=None, dt=None, history=False, n_log=800):
+    def run(self, overrides=None, dt=None, history=False, n_log=800, timeout="model"):
         M = self.compile(overrides)
-        r = run_model(M, dt=dt, history=history, n_log=n_log)
+        r = run_model(M, dt=dt, history=history, n_log=n_log, timeout=timeout)
         return _with_blocks(M, r, history)
 
     def run_with_exports(self, overrides=None, model_path=None, run="nominal", when="run", n_log=800):
@@ -54,7 +54,7 @@ class System:
         M = self.compile(overrides)
         n = int(round(M.t_end / M.dt))
         out, H = _with_blocks(M, run_model(M, history=True, n_log=max(n_log, X.log_points(self.doc, n))), True)
-        return out, H, X.write(self.doc, H, model_path or self.path, run=run, when=when)
+        return out, H, X.write(self.doc, H, model_path or self.path, run=run, when=when, M=M)
 
     def _si(self, v, where, key=None):
         if key is not None and isinstance(self.nominal.ctx.get(key), str):
@@ -130,14 +130,35 @@ class System:
         M = self.nominal
         metrics = [k for k in doc["outputs"] if not k.startswith("_")]
 
+        # Verify's runs (finer steps, knockouts, samples) are not cut short by the AUTO timeout, which is sized for one
+        # ordinary run; a limit the file sets still applies
+        tmo = None if M.timeout == "auto" else "model"
+
         def runner(p, dt):
-            return self.run(p, dt)
+            return self.run(p, dt, timeout=tmo)
 
         def crit(p):
             return compile_model(doc, p).dt_crit if p else M.dt_crit
-        return SimSpec(name=self.name, run=runner, params={}, dt=M.dt, metrics=metrics, uncertain=unc,
-                       knockouts=knock, limits=limits, bounds=bounds, critical_dt=crit,
-                       mc_n=int(mc_n or run.get("mc_n", 100)), failure_modes=self.failure_modes())
+        sp = SimSpec(name=self.name, run=runner, params={}, dt=M.dt, metrics=metrics, uncertain=unc,
+                     knockouts=knock, limits=limits, bounds=bounds, critical_dt=crit,
+                     mc_n=int(mc_n or run.get("mc_n", 100)), failure_modes=self.failure_modes())
+        seen = {}
+
+        def idle(kname):
+            """A knockout 'no <element>' of an element that carried no force at all in the nominal run (a contact
+            that never touched): removing it cannot change anything, which is not a wiring bug."""
+            en = kname[3:] if kname.startswith("no ") else None
+            if en is None or en not in doc["elements"]:
+                return False
+            if "H" not in seen:
+                try:
+                    seen["H"] = self.run(None, history=True)[1]
+                except Exception:
+                    seen["H"] = {}
+            f = seen["H"].get(f"{en}.force")
+            return f is not None and len(f) > 0 and float(np.max(np.abs(f))) == 0.0
+        sp.idle = idle
+        return sp
 
     def verify(self, mc_n=None):
         from ..diagnostics.verify import verify_all

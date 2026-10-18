@@ -257,7 +257,7 @@ class Api:
                             continue
                         walk(x.get(k, "<none>"), y.get(k, "<none>"), f"{path}.{k}" if path else str(k))
                 elif x != y:
-                    rows.append(dict(key=path, now=_short(x), other=_short(y)))
+                    rows.append(dict(key=path, now=_trunc(x), other=_trunc(y)))
             walk(dict(a), dict(b), "")
             out = dict(ok=True, changes=rows, other=other_path)
             if run:
@@ -469,7 +469,11 @@ class Api:
             if sp:
                 if not (sweeps or mc):
                     plan = [{}]                              # the nominal run the levers are measured from
-                sens = dict(start=len(plan), levers=sp[0], outs=sp[1], h=sp[2], sigma=_unc_sigma(s.doc, s.nominal.ctx))
+                    nom_i = 0
+                else:                                        # with sweeps / Monte Carlo: its own run of the model as written
+                    plan = plan + [{}]; nom_i = len(plan) - 1
+                sens = dict(start=len(plan), levers=sp[0], outs=sp[1], h=sp[2], sigma=_unc_sigma(s.doc, s.nominal.ctx),
+                            nominal=nom_i)
                 plan = plan + sens_plan(sp[0], sp[2])
         except Exception as exc:
             return _err(exc)
@@ -498,7 +502,9 @@ class Api:
                         job["results"][i] = _worker_run(ov, i); job["done"] += 1
                 else:
                     from concurrent.futures import ProcessPoolExecutor, as_completed
-                    with ProcessPoolExecutor(max_workers=w, initializer=_worker_init, initargs=(text, model_path)) as ex:
+                    from ..compiler.model import RATE as _RATE
+                    with ProcessPoolExecutor(max_workers=w, initializer=_worker_init,
+                                             initargs=(text, model_path, dict(_RATE))) as ex:
                         futs = {ex.submit(_worker_run, ov, i): i for i, ov in enumerate(plan)}
                         for f in as_completed(futs):
                             job["results"][futs[f]] = f.result(); job["done"] += 1
@@ -532,11 +538,11 @@ class Api:
             res = j["results"]; sn = j.get("sens")
             if sn:
                 out["sensitivity"] = sens_result(res, sn["start"], sn["levers"], sn["outs"], sn["h"], j["units"],
-                                                 sn.get("sigma"))
+                                                 sn.get("sigma"), sn.get("nominal", 0))
                 if not (j["sweeps"] or j["mc"]):
                     res = res[:1]                            # the lever runs are reported as levers, not as a sample
                 else:
-                    res = res[:sn["start"]]
+                    res = res[:sn.get("nominal", sn["start"])]  # the sweep / Monte Carlo rows; not the levers' nominal
             out.update(results=[r for r in res if r is not None], sweeps=j["sweeps"], mc=j["mc"],
                        units=j["units"], failure=j["failure"])
         return out
@@ -1373,6 +1379,21 @@ def _verify_hook(i, label, done, total):
 
 # ---------------------------------------------------------------------------------------------- one run (shared)
 def _run_payload(text, overrides=None, n_hist=600, model_path=None, export=False, track=False):
+    """One run. model_path (the saved file) is also where its relative CSV loads and model blocks are found."""
+    if model_path:
+        prev = os.environ.get("SIMBLOCKS_MODEL_DIR")
+        os.environ["SIMBLOCKS_MODEL_DIR"] = os.path.dirname(os.path.abspath(model_path))
+        try:
+            return _run_payload_in(text, overrides, n_hist, model_path, export, track)
+        finally:
+            if prev is None:
+                os.environ.pop("SIMBLOCKS_MODEL_DIR", None)
+            else:
+                os.environ["SIMBLOCKS_MODEL_DIR"] = prev
+    return _run_payload_in(text, overrides, n_hist, model_path, export, track)
+
+
+def _run_payload_in(text, overrides=None, n_hist=600, model_path=None, export=False, track=False):
     from ..compiler import load_system
     try:
         if track:
@@ -1494,7 +1515,7 @@ def sens_spec(doc, s):
     return [(v, float(ctx[v])) for v in vary], outs, h
 
 
-def _short(v):
+def _trunc(v):
     if v == "<none>":
         return "(not there)"
     t = v if isinstance(v, str) else json.dumps(v, default=str)
@@ -1529,11 +1550,19 @@ def goal_spec(doc, s):
     ctx = s.nominal.ctx
     if not isinstance(ctx.get(v), (int, float)) or isinstance(ctx.get(v), bool):
         raise ValueError(f"study.goal_seek.vary: '{v}' is not a number value")
+    if v not in (s.doc.get("params") or {}):
+        raise ValueError(f"study.goal_seek.vary: '{v}' is worked out from other values (derived): vary a param")
     if o not in s.doc["outputs"]:
         raise ValueError(f"study.goal_seek.output: no output named '{o}'")
     if g.get("target") in (None, ""):
         raise ValueError("study.goal_seek.target: the value the output should reach (in the output's unit)")
-    T = float(g["target"]) if not isinstance(g["target"], str) else float(str(g["target"]).split()[0])
+    T = g["target"]                     # in the output's unit; a target with its own unit is converted to it
+    if isinstance(T, str):
+        from ..compiler.units import unit_factor
+        u = s.doc["outputs"][o].get("unit") or ""
+        parts = T.strip().split(None, 1)
+        T = float(parse_quantity(T)) / (unit_factor(u) if u else 1.0) if len(parts) > 1 else float(parts[0])
+    T = float(T)
     tol = str(g.get("tolerance", "0.1 %")).strip()
     tol = float(tol.rstrip("%").strip()) / 100.0 if tol.endswith("%") else float(tol)
     rng = g.get("range")
@@ -1603,10 +1632,12 @@ def _unc_sigma(doc, ctx):
     return out
 
 
-def sens_result(results, start, levers, outs, h, units, sigma=None):
+def sens_result(results, start, levers, outs, h, units, sigma=None, nominal=0):
     """Each output's levers, ranked: what a +step change of each input does to it (central difference), the
-    derivative, the elasticity (% output per % input) and how lopsided the two sides are (a kink or a threshold)."""
-    nom = results[0]["outputs"] if results and results[0] and results[0].get("ok") else None
+    derivative, the elasticity (% output per % input) and how lopsided the two sides are (a kink or a threshold).
+    nominal: the index of the run of the model as written (the levers are measured from it)."""
+    r0 = results[nominal] if results and len(results) > nominal else None
+    nom = r0["outputs"] if r0 and r0.get("ok") else None
     table = {}
     for o in outs:
         rows = []
@@ -1642,9 +1673,12 @@ def sens_result(results, start, levers, outs, h, units, sigma=None):
 _WORKER = {}
 
 
-def _worker_init(text, model_path=None):
+def _worker_init(text, model_path=None, rates=None):
     from ..compiler import load_system
     from ..compiler.exports import wanted
+    if rates:                                    # the run speed the app already learned: AUTO timeouts fit this model
+        from ..compiler import model as _m
+        _m.RATE.update(rates)
     _WORKER["sys"] = load_system(text)
     _WORKER["path"] = model_path
     _WORKER["export"] = bool(wanted(_WORKER["sys"].doc, "study"))
@@ -1682,40 +1716,8 @@ def _material_params(doc):
     return out
 
 
-_Q_UNIT = {"moment": "N m", "torque": "N m", "shear": "N", "hinge_set": "rad", "impulse": "N s", "friction_impulse": "N s",
-           "drift": "m", "dissipated": "J", "current": "A", "battery_current": "A", "bus_voltage": "V", "soc": "",
-           "broken": "", "x": "m", "y": "m", "z": "m", "vx": "m/s", "vy": "m/s", "vz": "m/s", "speed": "m/s",
-           "angle": "rad", "omega": "rad/s", "wx": "rad/s", "wy": "rad/s", "wz": "rad/s"}
-
-
 def _hist_units(s, hist):
-    """SI unit of every time-history series, for the plot's axis."""
-    M = s.nominal; out = {"t": "s"}
-    bodies = list(getattr(M, "body_names", []) or []); dof = list(getattr(M, "dof", []) or [])
-    info = getattr(M, "el_info", {}) or {}
-    for k in hist:
-        if k == "t" or "." not in k:
-            continue
-        nm, q = k.split(".", 1)
-        if nm in bodies and q in ("position", "velocity"):
-            rot = dof[bodies.index(nm)] == "rotation" if bodies.index(nm) < len(dof) else False
-            b3 = (getattr(M, "b3", None) or {}).get(nm); b2 = (getattr(M, "b2", None) or {}).get(nm)
-            if b3 is not None:                       # a 3D body: position / velocity is its spin when that is all it does
-                rot = bool(b3.get("spin_only"))
-            elif b2 is not None:                     # a 2D body with one free coordinate: rz is a rotation
-                fr = list(b2.get("free") or []); rot = sum(map(bool, fr)) == 1 and len(fr) == 3 and bool(fr[2])
-            out[k] = ("rad" if rot else "m") if q == "position" else ("rad/s" if rot else "m/s"); continue
-        if q in _Q_UNIT:
-            out[k] = _Q_UNIT[q]; continue
-        if q in ("force", "measure", "plastic_set"):
-            mt = str((info.get(nm) or {}).get("measure", ""))
-            rot = any(w in mt for w in ("twist", ".angle", ".rz", "spin", ".theta"))
-            if not rot and getattr(M, "dim", "1d") == "1d" and nm in getattr(M, "el_names", []):
-                try:
-                    e = M.el_names.index(nm); row = M.arrays["C"][e]
-                    nz = [i for i in range(len(bodies)) if row[i] != 0.0]
-                    rot = bool(nz) and all(dof[i] == "rotation" for i in nz)
-                except Exception:
-                    pass
-            out[k] = ("N m" if rot else "N") if q == "force" else ("rad" if rot else "m")
-    return out
+    """SI unit of every time-history series, for the plot's axis (the same rule as the CSV export headers)."""
+    from ..compiler.exports import series_unit
+    M = s.nominal
+    return {k: series_unit(M, s.doc, k) for k in hist}

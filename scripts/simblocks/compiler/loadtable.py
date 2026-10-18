@@ -97,8 +97,13 @@ def _parse(path, where, ln=None, f=""):
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t ")
     except csv.Error:
         dialect = csv.excel
-    rows = list(csv.reader(lines, dialect))
-    rows = [[c.strip() for c in r if c.strip() != ""] for r in rows]
+    if getattr(dialect, "delimiter", ",") == " ":       # space separated: runs of spaces are one gap
+        rows = [ln_.split() for ln_ in lines]
+    else:                                              # cells keep their places: a blank cell stays blank
+        rows = [[c.strip() for c in r] for r in csv.reader(lines, dialect)]
+        for r in rows:
+            while r and r[-1] == "":
+                r.pop()                                # trailing separators only
     rows = [r for r in rows if r]
     if not rows:
         raise SpecError(f"the CSV '{path}' has no rows", where, ln, f)

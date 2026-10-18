@@ -157,7 +157,8 @@ class Series:
         return f"<series {self.label} {len(self.t)} points>"
 
     def key(self):
-        return (len(self.t), float(self.t[-1]) if len(self.t) else 0.0, float(np.sum(self.y)), float(np.sum(self.y * self.y)))
+        import hashlib                       # the content itself: two series with equal sums are not the same series
+        return (len(self.t), hashlib.sha1(self.t.tobytes() + self.y.tobytes()).hexdigest(), self.unit)
 
 
 def port_spec(doc):
@@ -173,6 +174,10 @@ def check_ports(doc):
         return
     if not isinstance(p, dict) or set(p) - {"inputs", "outputs"}:
         raise SpecError("ports has inputs: and outputs:", "ports", line_of(doc, "ports"), f)
+    for side in ("inputs", "outputs"):
+        if p.get(side) is not None and not isinstance(p[side], dict):
+            raise SpecError(f"ports.{side} is a mapping: one port per line (name: {{unit: ..., ...}})", f"ports.{side}",
+                            line_of(p, side), f)
     ins, outs = port_spec(doc)
     params = set(doc.get("params") or {}) | set(doc.get("derived") or {})
     for k, v in ins.items():
@@ -279,10 +284,18 @@ def run_block(path, inputs):
             vals[k] = float(v) * (uf(od["unit"]) if od.get("unit") else 1.0)      # back to SI
         else:
             c = {kk: vv for kk, vv in o.items() if kk not in ("unit", "label", "note")}
-            y, lab, u = column(doc, H, dict(c, unit=""))
+            y, lab, u = column(doc, H, dict(c, unit=""), M)
             ser[k] = Series(H["t"], y, o.get("unit") or "", lab)
-    outv = {k: v for k, v in R.items() if not k.startswith("_") and isinstance(v, (int, float))}
-    _RUNS[key] = (vals, ser, outv)
+    # the block's own outputs in SI, like its ports (R holds each in its display unit); the units say how to show them
+    outv, outu = {}, {}
+    for k, v in R.items():
+        if k.startswith("_") or not isinstance(v, (int, float)):
+            continue
+        u = ((doc.get("outputs") or {}).get(k) or {}).get("unit") or ""
+        outv[k] = float(v) * (uf(u) if u else 1.0); outu[k] = u
+    for k in vals:
+        outu[k] = (outs[k].get("unit") or "") if isinstance(outs.get(k), dict) else ""
+    _RUNS[key] = (vals, ser, outv, outu)
     if len(_RUNS) > 200:
         _RUNS.pop(next(iter(_RUNS)))
     return _RUNS[key]
@@ -321,7 +334,7 @@ def run_models(doc, ctx):
         hits = []
         for i in range(n):
             try:
-                vals, ser, outv = run_block(p, inp)
+                vals, ser, outv, outu = run_block(p, inp)
             except SpecError as exc:
                 raise SpecError(f"in block '{m}' ({os.path.basename(p)})" + (f", run {i + 1}" if n > 1 else "") +
                                 f": {exc}", w, line_of(models, m), f)
@@ -332,7 +345,7 @@ def run_models(doc, ctx):
                     raise SpecError(f"carry: '{op}' is not an output port of {os.path.basename(p)} (its ports: "
                                     f"{', '.join(src) or 'none'})", w, line_of(spec, "carry"), f)
                 inp[ip] = src[op]
-        ctx[m] = dict(outv, **vals, **ser)
+        ctx[m] = dict(outv, **vals, **ser); ctx["__units__" + m] = outu
         if n > 1:
             ctx["__hits__" + m] = hits
 
@@ -341,13 +354,27 @@ def block_results(M):
     """Every block's outputs and value ports, named block.output, for this model's results table."""
     out = {}
     for m in (M.doc.get("models") or {}):
+        U = M.ctx.get("__units__" + m) or {}
+        show = lambda k, v: float(v) / (unit_factor(U[k]) if U.get(k) else 1.0)   # SI in the model, its own unit here
         for k, v in (M.ctx.get(m) or {}).items():
             if isinstance(v, (int, float)):
-                out[f"{m}.{k}"] = float(v)
+                out[f"{m}.{k}"] = show(k, v)
         for i, h in enumerate(M.ctx.get("__hits__" + m) or [], start=1):     # a repeated block: every run
             for k, v in h.items():
                 if isinstance(v, (int, float)):
-                    out[f"{m}.{k}@{i}"] = float(v)
+                    out[f"{m}.{k}@{i}"] = show(k, v)
+    return out
+
+
+def block_units(doc, ctx):
+    """{block.output: display unit} for every model block, so the results table can label them."""
+    out = {}
+    for m in (doc.get("models") or {}):
+        U = ctx.get("__units__" + m) or {}
+        for k, u in U.items():
+            out[f"{m}.{k}"] = u
+            for i in range(1, len(ctx.get("__hits__" + m) or []) + 1):
+                out[f"{m}.{k}@{i}"] = u
     return out
 
 

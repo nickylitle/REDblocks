@@ -1,0 +1,19 @@
+# material: PC
+# source: johnson_cook | Dwivedi, Bradley & Casem, Mechanical Response of Polycarbonate with Strength Model Fits, ARL-TR-5899, 2012 | Eqs. 1-2 p.9, Table 2 p.10 | https://apps.dtic.mil/sti/pdfs/ADA566369.pdf | tested: Makrolon GP cast plate, compression 0.005/s-15000/s | confidence: high | scaled to the catalog sy
+# measure: engineering
+# E_Pa: 2.38e+09
+# fit_model: johnson_cook
+# fit_params: {'A_Pa': 80000000.0, 'B_Pa': 75000000.0, 'n': 2.0, 'C': 0.052001, 'm': 0.548, 'Tmelt_K': 562, 'Tref_K': 295, 'ref_rate': 1.0}
+# fit_strain_measure: true plastic
+# fit_test_conditions: Makrolon GP cast plate, compression 0.005/s-15000/s
+# fit_citation: Dwivedi, Bradley & Casem, Mechanical Response of Polycarbonate with Strength Model Fits, ARL-TR-5899, 2012
+# fit_url: https://apps.dtic.mil/sti/pdfs/ADA566369.pdf
+# fit_location: Eqs. 1-2 p.9, Table 2 p.10
+# fit_confidence: high
+# fit_notes: Fits high-rate adiabatic data better than low-rate. Compression-calibrated.
+# fit_applies: exact
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0260924,62.1
+0.0269228,60.0467

@@ -150,12 +150,17 @@ def helical_spring(d, D, n_active, G=79.3e9, ends="squared_ground", rho=7850.0, 
 @block("structures", "machine", "belt", "slip", source="Euler capstan F1/F2 = exp(mu theta / sin(beta/2)); "
        + SH + " sec. 17-2 (centrifugal tension)", tags=("pulley", "v-belt", "timing", "drive"))
 def belt_drive(Fi, d, wrap, mu=0.3, groove=math.pi, m_per_L=0.0, rpm=0.0):
-    """A friction belt on a pulley (pitch diameter d, wrap angle in rad, groove angle 180 deg = flat; a V-belt is
-    about 36-40 deg). Fi is the installed tension per strand. Returns dict(T_slip, F1, F2, ratio, Fc)."""
+    """A friction belt on a pulley (pitch diameter d, wrap angle in rad, groove angle in rad: pi = flat; a V-belt is
+    about 36-40 deg, 0.63-0.70 rad). Fi is the installed (static) tension per strand. Running, both strands also carry
+    the centrifugal tension Fc = m' v^2 (Shigley eq. 17-9: Fi = (F1 + F2) / 2 - Fc) and slip starts at
+    (F1 - Fc) / (F2 - Fc) = exp(mu wrap / sin(groove / 2)). Returns dict(T_slip, F1, F2, ratio, Fc)."""
+    if not 0.0 < groove <= math.pi + 1e-9:
+        raise ValueError("groove is the groove angle in radians: pi for a flat belt, about 0.63-0.70 rad (36-40 deg) "
+                         "for a V-belt")
     v = rpm * 2 * math.pi / 60 * d / 2
     Fc = m_per_L * v * v
     e = math.exp(mu * wrap / math.sin(groove / 2))
-    F1 = 2 * (Fi - Fc) * e / (e + 1) + Fc; F2 = 2 * (Fi - Fc) / (e + 1) + Fc
+    F1 = Fc + 2 * Fi * e / (e + 1); F2 = Fc + 2 * Fi / (e + 1)
     return dict(T_slip=(F1 - F2) * d / 2, F1=F1, F2=F2, ratio=e, Fc=Fc)
 
 

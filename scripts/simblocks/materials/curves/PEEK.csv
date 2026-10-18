@@ -1,0 +1,9 @@
+# material: PEEK
+# source: NO PUBLISHED FIT FOR THIS CONDITION -> elastic-perfectly-plastic (datasheet has yield = max stress, no hardening data) (PEEK unfilled (Victrex 450G) catalog) to elongation 0.250
+# measure: engineering
+# E_Pa: 4e+09
+# generated_by: simblocks.materials.curves ()
+strain,stress_MPa
+0,0
+0.0245,98
+0.25,98

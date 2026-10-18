@@ -401,6 +401,13 @@ def _kt(k, prm, th, pst):
 
 
 @njit(cache=True, nogil=True, inline="always")
+def _bdf2(pst, k, dt):
+    """Second-order BDF for this capacitor or inductor: once it has a step of history at this same step size.
+    pst[k, 2] is the state two steps back, pst[k, 3] the step it was taken with (0 before the first step)."""
+    return pst[k, 3] > 0.0 and abs(pst[k, 3] - dt) <= 1e-9 * dt
+
+
+@njit(cache=True, nogil=True, inline="always")
 def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
     """Norton companion of part k for this solve: (G, J) with i = G v - J (passive sign, i from first to
     second net). flg carries the part's switching state for this pass."""
@@ -410,11 +417,17 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
     rf = _rf(k, th, pst)
     if tp == 1:
         return 1.0 / (prm[k, 0] * rf), 0.0
-    if tp == 2:                                        # v = ESR i + v_c, i = C (v_c - v_prev)/dt (+ leak)
-        Z = prm[k, 2] * rf + dt / prm[k, 0]
+    if tp == 2:                                        # v = ESR i + v_c (+ leak); BDF2: i = C (3 v_c - 4 v1 + v2) / 2dt
         gl = 1.0 / prm[k, 1] if prm[k, 1] > 0.0 else 0.0
+        if _bdf2(pst, k, dt):
+            Z = prm[k, 2] * rf + 2.0 * dt / (3.0 * prm[k, 0])
+            return 1.0 / Z + gl, ((4.0 * pst[k, 0] - pst[k, 2]) / 3.0) / Z
+        Z = prm[k, 2] * rf + dt / prm[k, 0]           # backward Euler: the first step, or after the step changed
         return 1.0 / Z + gl, pst[k, 0] / Z
-    if tp == 3:                                        # v = R i + L (i - i_prev)/dt
+    if tp == 3:                                        # v = R i + L di/dt; BDF2: di/dt = (3 i - 4 i1 + i2) / 2dt
+        if _bdf2(pst, k, dt):
+            Z = prm[k, 1] * rf + 1.5 * prm[k, 0] / dt
+            return 1.0 / Z, -(prm[k, 0] / (2.0 * dt)) * (4.0 * pst[k, 0] - pst[k, 2]) / Z
         Z = prm[k, 1] * rf + prm[k, 0] / dt
         return 1.0 / Z, -(prm[k, 0] / dt) * pst[k, 0] / Z
     if tp == 4:                                        # v = V - R (-i)  ->  i = (v - V)/R
@@ -574,10 +587,16 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
         elif tp == 1 or tp == 7 or tp == 8 or tp == 9:
             heat = v * i
         elif tp == 2:
-            pst[k, 0] += i * dt / prm[k, 0]
-            heat = prm[k, 2] * rf * i * i
+            gl = 1.0 / prm[k, 1] if prm[k, 1] > 0.0 else 0.0
+            ic = i - gl * v                                  # the capacitor branch (the leak runs beside it)
+            if _bdf2(pst, k, dt):
+                vc = 2.0 * dt * ic / (3.0 * prm[k, 0]) + (4.0 * pst[k, 0] - pst[k, 2]) / 3.0
+            else:
+                vc = pst[k, 0] + ic * dt / prm[k, 0]
+            pst[k, 2] = pst[k, 0]; pst[k, 0] = vc; pst[k, 3] = dt
+            heat = prm[k, 2] * rf * ic * ic + gl * v * v
         elif tp == 3:
-            pst[k, 0] = i
+            pst[k, 2] = pst[k, 0]; pst[k, 0] = i; pst[k, 3] = dt
             heat = prm[k, 1] * rf * i * i
         elif tp == 6:
             iout = -i

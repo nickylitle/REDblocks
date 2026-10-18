@@ -62,6 +62,8 @@ def _jsonable(x):
         return [_jsonable(v) for v in x]
     if isinstance(x, np.ndarray):
         return _jsonable(x.tolist())
+    if isinstance(x, (np.bool_, bool)):                 # before the numbers: bool is an int in Python
+        return bool(x)
     if isinstance(x, (np.floating, float)):
         v = float(x)
         return v if math.isfinite(v) else None
@@ -159,14 +161,39 @@ def run_batch(job_path, workers=None, n=None, out=None, resume=True, chunk=None,
     name = job.get("name", "study")
     out = out or os.path.join(os.path.dirname(job["_job_path"]), f"{name}_results.zip")
     partial = out + ".partial.jsonl"
+    import hashlib                                   # what the finished rows were run from: the job and the sim code
+    try:
+        sim_src = open(job["_sim_path"], "rb").read()
+    except OSError:
+        sim_src = b""
+    sig = hashlib.sha1(json.dumps(_jsonable([tasks, job.get("entry", "batch_record")]), sort_keys=True).encode() +
+                       sim_src).hexdigest()
     done = {}
+    want = {t[0]: t for t in tasks}
     if resume and os.path.exists(partial):
+        rows, head = [], None
         with open(partial) as fh:
             for line in fh:
                 try:
-                    r = json.loads(line); done[r["key"]] = r
+                    r = json.loads(line)
                 except json.JSONDecodeError:
-                    pass                                  # a line cut off by an interrupt
+                    continue                              # a line cut off by an interrupt
+                if "__job__" in r:
+                    head = r["__job__"]
+                else:
+                    rows.append(r)
+        if head != sig:                               # the job or the sim changed: those rows are not this study's
+            os.replace(partial, partial + ".stale")
+            print(f"{os.path.basename(job['_job_path'])}: the job or its sim changed since the partial results were "
+                  "written; starting over (old rows kept in .partial.jsonl.stale)", flush=True)
+        else:
+            for r in rows:
+                t = want.get(r.get("key"))
+                if t is not None and r.get("params") == _jsonable(t[1]) and r.get("dt") == t[2]:
+                    done[r["key"]] = r
+    if not os.path.exists(partial):
+        with open(partial, "w") as fh:
+            fh.write(json.dumps({"__job__": sig}) + "\n")
     todo = [t for t in tasks if t[0] not in done]
     workers = int(workers or os.cpu_count() or 1)
     log = (lambda *a: None) if quiet else (lambda *a: print(*a, flush=True))

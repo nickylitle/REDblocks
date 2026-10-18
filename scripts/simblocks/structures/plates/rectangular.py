@@ -77,6 +77,11 @@ def rect_ss_point_at(mat, a, b, t, x0, y0, patch=(0.0, 0.0)):
     """SS rectangle (0..a, 0..b), load at (x0, y0), optionally over a u x v patch. Stiffness at the load."""
     D = flexural_rigidity(mat.E, t, mat.nu)
     u, v = patch
+    if not (0.0 <= x0 <= a and 0.0 <= y0 <= b):
+        raise ValueError(f"the load point ({x0:g}, {y0:g}) is off the plate (0..{a:g}, 0..{b:g}): check units and a / b")
+    if u > 0 and v > 0 and not (x0 - u / 2 >= -1e-12 and x0 + u / 2 <= a + 1e-12 and y0 - v / 2 >= -1e-12 and
+                                y0 + v / 2 <= b + 1e-12):
+        raise ValueError(f"the {u:g} x {v:g} patch at ({x0:g}, {y0:g}) runs off the plate (0..{a:g}, 0..{b:g})")
     load = ("patch", 1.0, u, v) if u > 0 and v > 0 else ("point", 1.0)
     w = _navier(a, b, D, load, x0, y0, x0, y0, 81)
     return dict(k=1 / w, D=D)

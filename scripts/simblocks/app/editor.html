@@ -961,7 +961,9 @@ function qv(num, unit){ const t = String(num ?? "").trim(); if (!t) return ""; i
 function vecOut(a, b, unit){ const x = qv(a, unit), y = qv(b, unit); return [x === "" ? 0 : x, y === "" ? 0 : y]; }
 function commonUnit(vals, dim){   // [raw values] -> {nums, unit} when they share one unit, else raw strings and no unit
   const qs = vals.map(v => splitQ(str(v ?? ""))); const us = [...new Set(qs.filter(q => q.num !== "" && !q.text && q.unit).map(q => q.unit))];
-  if (qs.every(q => !q.text) && us.length <= 1) return {nums:qs.map(q => q.num), unit: us[0] || SI[dim] || ""};
+  // a bare number next to numbers with a unit is in SI (0.2 beside 50 mm is 0.2 m): only zero can share the unit
+  const bare = qs.some(q => q.num !== "" && !q.text && !q.unit && parseFloat(q.num) !== 0);
+  if (qs.every(q => !q.text) && us.length <= 1 && !(us.length === 1 && bare)) return {nums:qs.map(q => q.num), unit: us[0] || SI[dim] || ""};
   return {nums:vals.map(v => str(v ?? "")), unit:""};
 }
 function vecIn(key, v, dim){ if (typeof v === "string" && !["x","y","z","-x","-y","-z"].includes(v.trim())) v = v.replace(/^[\[(]|[\])]$/g, "").split(","); if (!Array.isArray(v)) v = [v, 0, 0];
@@ -1258,6 +1260,38 @@ function gravFrom(gv){
   if (Array.isArray(gv)) return {gmode:"vector", vec:gv.map(str).join(", ")};
   const t = str(gv); return /^\s*\[/.test(t) ? {gmode:"vector", vec:t.replace(/^\s*\[|\]\s*$/g, "")} : {gmode:"uniform", g:t};
 }
+// notes and bookkeeping the canvas does not edit (note, source, knockout, reach_metric, assumption; a ground body's or an
+// export's label): read with the file, written back to the same entry by name, never over something the canvas wrote
+const ANNO = ["note", "source", "knockout", "reach_metric", "assumption", "label"];
+function collectAnno(doc){
+  const A = {}, take = (sec, name, o) => { if (!o || typeof o !== "object" || Array.isArray(o)) return;
+    const k = {}; ANNO.forEach(a => { if (o[a] !== undefined) k[a] = o[a]; }); if (Object.keys(k).length) A[sec + "|" + name] = k; };
+  ["bodies", "elements", "outputs", "control"].forEach(sec => Object.entries(doc[sec] || {}).forEach(([nm, o]) => take(sec, nm, o)));
+  ["failure", "exports"].forEach(sec => (Array.isArray(doc[sec]) ? doc[sec] : []).forEach(o => o && o.name && take(sec, o.name, o)));
+  if (doc.circuit && typeof doc.circuit === "object"){ take("circuit", "", doc.circuit); Object.entries(doc.circuit.parts || {}).forEach(([nm, o]) => take("parts", nm, o)); }
+  if (doc.gravity && typeof doc.gravity === "object") take("gravity", "", doc.gravity);
+  return A;
+}
+function putAnno(doc){
+  Object.entries(S.meta.anno || {}).forEach(([key, k]) => { const [sec, nm] = key.split("|"); let t = null;
+    if (["bodies", "elements", "outputs", "control"].includes(sec)) t = (doc[sec] || {})[nm];
+    else if (sec === "failure" || sec === "exports") t = (doc[sec] || []).find(o => o && o.name === nm);
+    else if (sec === "circuit") t = doc.circuit; else if (sec === "parts") t = ((doc.circuit || {}).parts || {})[nm];
+    else if (sec === "gravity") t = doc.gravity;
+    if (!t || typeof t !== "object" || Array.isArray(t)) return;
+    Object.entries(k).forEach(([a, v]) => { if (t[a] !== undefined) return;
+      if (a === "label" && !((sec === "bodies" && t.ground) || sec === "exports")) return;   // labels the canvas edits itself
+      t[a] = v; }); });
+}
+// an output's body quantity after the model's dim changed: the one it had in that dim before, else the nearest one
+function bodyQuantityFor(d, ql, dim, src){
+  const back = (d._q || {})[dim]; if (back && ql.includes(back)) return back;
+  const q = d.quantity, rot = src && (src.data.dof === "rotation" || src.data.dof === "spin" || (Array.isArray(src.data.dof) && src.data.dof.length === 1 && ["rz", "spin"].includes(src.data.dof[0])));
+  const pos = ["position", "x", "y", "z", "angle"], vel = ["velocity", "vx", "vy", "vz", "omega", "speed", "wx", "wy", "wz"];
+  const want = pos.includes(q) ? (ql.includes("position") && dim === "1d" ? "position" : (rot ? "angle" : "x")) :
+               vel.includes(q) ? (ql.includes("velocity") && dim === "1d" ? "velocity" : (rot ? "omega" : "vx")) : q;
+  return ql.includes(want) ? want : (ql.includes(q) ? q : ql.find(x => x !== "kinetic_energy") || ql[0]);
+}
 function toDoc(){
   const doc = {simblocks:1, name:S.meta.name || "model"};
   if (S.meta.question) doc.question = S.meta.question;
@@ -1270,7 +1304,7 @@ function toDoc(){
   const withNote = (n, v) => n.data.note ? {value:v, note:n.data.note} : v;
   S.nodes.filter(n => n.kind === "value").forEach(n => {
     const v = n.data.value; if (blank(v) || (typeof v === "string" && !v.trim())) return;      // a row still being filled in
-    if (typeof v === "string" && v.trim().startsWith("=")) derived[n.data.name] = v.trim();
+    if (typeof v === "string" && v.trim().startsWith("=")){ if (n.data.note) params[n.data.name] = {value:v.trim(), note:n.data.note}; else derived[n.data.name] = v.trim(); }
     else params[n.data.name] = withNote(n, lit(v));
   });
   S.nodes.filter(n => n.kind === "builder").forEach(n => {
@@ -1340,11 +1374,12 @@ function toDoc(){
   });
   const sweep = {}, mcr = {}; let mcn = 0;
   const wu = (x, u) => lit(joinQ(x, u));
-  S.nodes.filter(n => n.kind === "sweep").forEach(n => { const d = n.data, u = d.unit || "", t = String(d.values || "").trim();
-    const vals = t.includes(":") && !t.includes(",") ? t.split(":").map((x, i) => i < 2 && u ? x.trim() + " " + u : x.trim()).join(":")
+  const shownUnit = n => n.data.unit || (feedDim(n) ? defUnit(feedDim(n)) : "");        // the unit its node shows
+  S.nodes.filter(n => n.kind === "sweep").forEach(n => { const d = n.data, u = shownUnit(n), t = String(d.values || "").trim();
+    const vals = t.includes(":") && !t.includes(",") ? t.split(":").map((x, i) => i < 2 && u ? joinQ(x, u) : x.trim()).join(":")
                                                      : t.split(",").map(x => x.trim()).filter(Boolean).map(x => joinQ(x, u)).join(", ");
     sweep[d.name] = vals; params[d.name] = withNote(n, d.nominal ? wu(d.nominal, u) : lit(midOfValues(vals))); });
-  S.nodes.filter(n => n.kind === "mc").forEach(n => { const d = n.data, u = d.unit || "", r = [wu(d.lo, u), wu(d.hi, u)];
+  S.nodes.filter(n => n.kind === "mc").forEach(n => { const d = n.data, u = shownUnit(n), r = [wu(d.lo, u), wu(d.hi, u)];
     params[d.name] = withNote(n, d.nominal ? wu(d.nominal, u) : lit(midValue(joinQ(d.lo, u), joinQ(d.hi, u)))); uncertain[d.name] = r;
     if (parseInt(d.n) > 0){ mcr[d.name] = r; mcn = Math.max(mcn, parseInt(d.n)); } });
   Object.assign(uncertain, S.meta.unc_extra || {});
@@ -1365,6 +1400,7 @@ function toDoc(){
     exps.push(x); });
   const study = {};
   if (Object.keys(sweep).length) study.sweep = sweep;
+  Object.entries(S.meta.mc_extra || {}).forEach(([k, r]) => { if (mcr[k] === undefined && params[k] !== undefined){ mcr[k] = r; mcn = Math.max(mcn, S.meta.mc_n_extra || 0); } });
   if (Object.keys(mcr).length && mcn > 0) study.monte_carlo = {n: mcn, ranges: mcr};
   const gn = S.nodes.find(n => n.kind === "goal");
   if (gn){ const lv = linkTo(gn.id, "v"), lo_ = linkTo(gn.id, "o"), sv = lv && byId(lv.from.node), so = lo_ && byId(lo_.from.node);
@@ -1447,9 +1483,13 @@ function toDoc(){
   if (imgs.length) ed.images = imgs;
   if ((S.meta.overlays || []).length) ed.overlays = S.meta.overlays;
   if (S.nodes.length) doc.editor = ed;
+  putAnno(doc);
   return doc;
 }
-const nodeKey = n => NS[n.kind] + ":" + n.data.name;
+// a node's key in the saved layout and groups: kind namespace and name; a note or an image has no name, so its place in
+// the editor.notes / editor.images list (the order they are written and read back in)
+const nodeKey = n => (n.kind === "note" || n.kind === "image") ? n.kind + "#" + S.nodes.filter(x => x.kind === n.kind).indexOf(n)
+                                                                : NS[n.kind] + ":" + n.data.name;
 // a result socket's output name: an output node's own name, or the budget node's mass_total / mass_margin
 const mname = (src, key) => src && src.kind === "budget" ? String(key).slice(2) : (src ? src.data.name : "");
 function msrc(name){ const b = S.nodes.find(n => n.kind === "budget");
@@ -1503,12 +1543,17 @@ function fromDoc(doc){
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
   ["t_end","dt","dt_min","dt_max","mc_n","timeout","accuracy"].forEach(k => delete run[k]); S.meta.run_extra = run;
   const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor","ports","models","budget","scenarios"];
+  // everything the canvas does not edit (limits, knockouts, report, assumptions, notes...) is kept and written back unchanged
+  S.meta.extra = Object.fromEntries(Object.entries(doc).filter(([k]) => !known.includes(k) && !k.startsWith("__")));
+  S.meta.anno = collectAnno(doc);
   S.meta.gravity = str(doc.gravity ?? "");
   S.meta.units = ["SI","mm","US"].includes(doc.units) ? doc.units : "SI";
   S.meta.dim = doc.dim || "1d";
   const st = doc.study || {}, swp = st.sweep || {}, mcr = Object.assign({}, doc.uncertain || {}, (st.monte_carlo || {}).ranges || {});
   const mcN = String((st.monte_carlo || {}).n || "");
-  S.meta.unc_extra = {}; Object.entries(doc.uncertain || {}).forEach(([k, r]) => { if ((doc.params || {})[k] === undefined) S.meta.unc_extra[k] = r; });
+  S.meta.unc_extra = {}; Object.entries(doc.uncertain || {}).forEach(([k, r]) => { if ((doc.params || {})[k] === undefined || swp[k] !== undefined) S.meta.unc_extra[k] = r; });
+  S.meta.mc_extra = {}; S.meta.mc_n_extra = 0;      // a swept value can also carry a Monte Carlo range: kept as written
+  Object.entries((st.monte_carlo || {}).ranges || {}).forEach(([k, r]) => { if (swp[k] !== undefined){ S.meta.mc_extra[k] = r; S.meta.mc_n_extra = parseInt(mcN) || 0; } });
   const pend = [];   // [nodeId, socketKey, rawValue] resolved once every node exists
   const col = [], put = (c, n) => { col[c] = (col[c] || 40); n.x = 40 + c * 300; n.y = col[c]; col[c] += 70 + 26 * (sockets(n).ins.length + sockets(n).outs.length); };
   const pnotes = {};
@@ -1777,7 +1822,7 @@ const UNITS = {
   force:["N","kN","lbf"], length:["mm","m","in","cm","um","ft","km"], mass:["kg","g","lb","oz"],
   time:["s","ms","us","min","h","ns"], stiffness:["N/m","kN/m","N/mm","lbf/in"], damping:["N s/m","N s/mm","kN s/m","lbf s/in"],
   inertia:["kg m^2","kg mm^2","g mm^2","lb in^2"], speed:["m/s","mm/s","km/h","ft/s","in/s"],
-  rotation:["rpm","rad/s","rps","Hz"], angle:["deg","rad"], stress:["MPa","GPa","Pa","kPa","ksi","psi"],
+  rotation:["rpm","rad/s","rps"], angle:["deg","rad"], stress:["MPa","GPa","Pa","kPa","ksi","psi"],
   energy:["J","kJ","Wh"], power:["W","kW","mW"], torque:["N m","N mm","lbf in"], voltage:["V","mV","kV"], current:["A","mA","kA","uA"],
   resistance:["mohm","ohm","kohm","Mohm","uohm"], capacity:["mAh","Ah"], capacitance:["uF","mF","nF","pF","farad"], kv:["rpm/V"],
   inductance:["uH","mH","nH","H"], frequency:["Hz","kHz","MHz"], kt:["N m/A"], heat_cap:["J/K"], th_res:["K/W"], tempco:["1/K"], vtempco:["V/K","mV/K"],
@@ -1835,7 +1880,9 @@ const OUT_DIM = {moment:"torque", torque:"torque", shear:"force", hinge_set:"ang
 const NUMRE = /^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*(.*)$/;
 function splitQ(v){ const t = String(v ?? "").trim(); if (!t) return {num:"", unit:"", text:false};
   const m = t.match(NUMRE); if (m) return {num:m[1], unit:m[2].trim(), text:false}; return {num:t, unit:"", text:true}; }
-function joinQ(num, unit){ num = String(num).trim(); return num ? (unit ? num + " " + unit : num) : ""; }
+function joinQ(num, unit){ num = String(num).trim(); if (!num) return "";
+  const q = splitQ(num); if (q.unit || q.text) return num;            // it carries its own unit (or is an expression): as typed
+  return unit ? num + " " + unit : num; }
 function isRotationTarget(n){ // a body field on a rotation body, or an element acting on a rotation body only
   if (n.kind === "body") return n.data.dof === "rotation"; return false; }
 function fieldDim(n, key){
@@ -2106,10 +2153,13 @@ function inertiaIn(d, v){
 // ---- CSV load tables: file, what x is (time or the measure), units of both columns, interpolation
 function csvIn(c){ if (!c || typeof c !== "object" || c.series !== undefined) return {};
   return {csvOn:true, csvFile:str(c.file ?? ""), csvAgainst:c.against || "time", csvXu:c.x_unit || "", csvYu:c.y_unit || "",
-    csvInterp:c.interpolation || "linear", csvXcol:str(c.x_col ?? ""), csvYcol:str(c.y_col ?? "")}; }
-function csvOut(n){ const d = n.data, o = {file:d.csvFile || ""};
+    csvInterp:c.interpolation || "linear", csvXcol:str(c.x_col ?? ""), csvYcol:str(c.y_col ?? ""),
+    csvInline: Array.isArray(c.x) && Array.isArray(c.y) ? {x:c.x, y:c.y} : null}; }      // a table written in the file itself
+function csvOut(n){ const d = n.data, o = {};
+  if (d.csvInline && !String(d.csvFile || "").trim()){ o.x = d.csvInline.x; o.y = d.csvInline.y; } else o.file = d.csvFile || "";
   if (d.csvAgainst === "measure") o.against = "measure";
-  o.x_unit = d.csvXu || (d.csvAgainst === "measure" ? (rotOnly(n) ? "rad" : "m") : "s"); o.y_unit = d.csvYu || "N";
+  // a unit only when one is set: otherwise the CSV header's own units ('t [ms]', 'F [kN]') apply, or SI
+  if (d.csvXu) o.x_unit = d.csvXu; if (d.csvYu) o.y_unit = d.csvYu;
   if (d.csvInterp && d.csvInterp !== "linear") o.interpolation = d.csvInterp;
   if (String(d.csvXcol || "").trim()) o.x_col = lit(d.csvXcol); if (String(d.csvYcol || "").trim()) o.y_col = lit(d.csvYcol);
   return o; }
@@ -2317,8 +2367,9 @@ function csvHTML(n){
   let b = `<div class="row req"><label title="path to the CSV; relative paths are read from the model's folder">file</label><div class="vxy" style="grid-template-columns:minmax(0,1fr) auto auto"><input data-k="csvFile" value="${esc(d.csvFile || "")}" placeholder="loads/hit.csv"><button class="mini" data-act="csvpick" title="Pick the file">…</button><button class="mini" data-act="csvedit" title="${d.csvFile ? "Edit the table and see its plot" : "Make a new table"}">${d.csvFile ? "edit" : "new"}</button></div></div>`;
   b += csvMini(n);
   b += `<div class="row"><label title="time: the force follows the clock. measure: the force follows this load's measure (a load-deflection curve)">x is</label><select data-k="csvAgainst">${sel_([["time","time"],["measure","the measure (s)"]], ag)}</select></div>`;
-  b += `<div class="row"><label title="unit of the x column">x unit</label><select data-k="csvXu">${sel_(xs, xu)}</select></div>`;
-  b += `<div class="row"><label title="unit of the y column: a force, or a torque for a rotation">y unit</label><select data-k="csvYu">${sel_(ys, yu)}</select></div>`;
+  const auto = [["", "from the file (or SI)"]];
+  b += `<div class="row"><label title="unit of the x column. 'from the file' reads it from the header ('t [ms]'), else s or m">x unit</label><select data-k="csvXu">${sel_(auto.concat(xs.map(u => [u, u])), d.csvXu || "")}</select></div>`;
+  b += `<div class="row"><label title="unit of the y column: a force, or a torque for a rotation. 'from the file' reads the header ('F [kN]'), else N">y unit</label><select data-k="csvYu">${sel_(auto.concat(ys.map(u => [u, u])), d.csvYu || "")}</select></div>`;
   b += `<div class="row"><label title="linear between rows (default); step holds each value; smooth is a monotone cubic with no overshoot">between rows</label><select data-k="csvInterp">${sel_([["linear","linear"],["step","step (hold)"],["smooth","smooth (PCHIP)"]], d.csvInterp || "linear")}</select></div>`;
   b += `<div class="row"><label title="column number (1 = first) or header text; blank = first two columns">columns</label><div class="vxy" style="grid-template-columns:1fr 1fr"><input data-k="csvXcol" value="${esc(d.csvXcol || "")}" placeholder="x: 1"><input data-k="csvYcol" value="${esc(d.csvYcol || "")}" placeholder="y: 2"></div></div>`;
   b += `<div class="hint">positive pushes along +s; held at the end values outside the table</div>`;
@@ -2501,7 +2552,13 @@ function nodeHTML(n){
   } else if (n.kind === "output"){
     const l = linkTo(n.id, "src"), src = l ? byId(l.from.node) : null;
     b += sockRow(n, ins[0]);
-    if (src && src.kind === "body"){ const ql = is3d() ? CAT.body_quantities_3d : (is2d() ? CAT.body_quantities_2d : CAT.body_quantities); if (!ql.includes(d.quantity)) d.quantity = ql[0];
+    if (src && src.kind === "body"){ const ql = is3d() ? CAT.body_quantities_3d : (is2d() ? CAT.body_quantities_2d : CAT.body_quantities);
+      const dimNow = S.meta.dim || "1d"; d._q = d._q || {}; d._u = d._u || {};
+      if (d._auto && d.quantity === d._auto && d._q[dimNow] && d._q[dimNow] !== d.quantity && ql.includes(d._q[dimNow])){
+        d.quantity = d._q[dimNow]; d.unit = d._u[dimNow] ?? d.unit; d._auto = null;     // back in a dim it was set up in
+      }
+      if (!ql.includes(d.quantity)){ d.quantity = bodyQuantityFor(d, ql, dimNow, src); d._auto = d.quantity; }   // the nearest, not the first
+      d._q[dimNow] = d.quantity;
       b += `<div class="row"><label>quantity</label><select data-k="quantity">${sel_(ql, d.quantity)}</select></div>`; }
     const PRED = ["final","max","min","max_abs"]; if (src && src.kind === "part" && !PRED.includes(d.reduce)) d.reduce = "max";
     if (!(src && src.kind === "body" && d.quantity === "kinetic_energy"))
@@ -2510,7 +2567,10 @@ function nodeHTML(n){
     if (d.reduce === "at") b += `<div class="row req"><label title="the time to read the quantity at">at time</label><input data-k="value" value="${esc(d.value)}" placeholder="e.g. 162 s"></div>`;
     const qn = src ? (src.kind === "body" ? d.quantity : l.from.key.slice(2)) : "force";
     const od = (d.reduce.startsWith("first_time") || d.reduce.startsWith("time_of")) ? "time" : (src ? quantityDim(src, qn) : (OUT_DIM[qn] || null));
-    if (od && od !== "none" && (!d.unit || !(UNITS[od] || []).includes(d.unit))) d.unit = defUnit(od);
+    if (od && od !== "none"){   // keep any unit the file gives (kN m, deg/s): reset it only when it is plainly another kind of quantity
+      const other = !(UNITS[od] || []).includes(d.unit) && Object.keys(UNITS).some(k => k !== od && (UNITS[k] || []).includes(d.unit));
+      if (!d.unit || other) d.unit = defUnit(od); }
+    if (src && src.kind === "body" && d._u) d._u[S.meta.dim || "1d"] = d.unit;
     if (od === "none") d.unit = "";
     const uo = od === "none" ? null : unitOptions(od, d.unit || "");
     if (uo !== null) b += `<div class="row"><label>unit</label><select data-k="unit">${uo}</select></div>`;
@@ -3214,7 +3274,7 @@ world.addEventListener("input", e => {
   }
   if (el.dataset.k === "lo" || el.dataset.k === "hi"){ const row = el.closest(".row"), nx = row.nextElementSibling;
     if (nx && nx.classList.contains("xp")) nx.remove(); const hint = expandHint(el.value.trim()); if (hint) row.insertAdjacentHTML("afterend", hint); }
-  if (k === "name"){ d.name = v.replace(/[^A-Za-z0-9_]/g, "_"); changed(false); return; }
+  if (k === "name"){ if (n._nameWas === undefined) n._nameWas = d.name; d.name = v.replace(/[^A-Za-z0-9_]/g, "_"); changed(false); return; }
   setField(n, k, v);
   const rerender = ["dof","type","mode","reduce","quantity"].includes(k) || (el.tagName === "SELECT" && !el.dataset.part) || el.type === "checkbox";
   changed(rerender);
@@ -3223,7 +3283,20 @@ world.addEventListener("input", e => {
 world.addEventListener("change", e => { const hm = e.target.closest("[data-m]");
   if (e.target.dataset.k === "name" && (!hm || hm.classList.contains("vt"))){ const n = byId(hm ? hm.dataset.m : e.target.closest(".node").dataset.id); if (!n) return;
     n.data.name = String(n.data.name || "").trim().replace(/[^A-Za-z0-9_]/g, "_") || "p";
-  const others = S.nodes.filter(x => x !== n && nodeName(x) === n.data.name && NS[x.kind] === NS[n.kind]); if (others.length) n.data.name = uniqueName(n.data.name, NS[n.kind]); changed(); } });
+  const others = S.nodes.filter(x => x !== n && nodeName(x) === n.data.name && NS[x.kind] === NS[n.kind]); if (others.length) n.data.name = uniqueName(n.data.name, NS[n.kind]);
+    const was = n._nameWas; delete n._nameWas;
+    if (was && was !== n.data.name && (NS[n.kind] === "p" || NS[n.kind] === "o")) renameEverywhere(was, n.data.name, NS[n.kind], n);
+    changed(); } });
+// a value or output renamed: every '$old' typed or plugged into a field elsewhere follows it
+function renameEverywhere(was, now, ns, self){
+  const ren = {p:{}, o:{}, b:{}}; ren[ns][was] = now; let hits = 0;
+  const walk = (o, top) => { if (!o || typeof o !== "object") return;
+    Object.keys(o).forEach(k => { if (top && ["name", "label", "note", "text"].includes(k)) return;
+      if (typeof o[k] === "string"){ const t = renameRefs(o[k], ren); if (t !== o[k]){ o[k] = t; hits++; } }
+      else if (o[k] && typeof o[k] === "object") walk(o[k], false); }); };
+  S.nodes.forEach(x => { if (x !== self) walk(x.data, true); });
+  if (hits) status("ok", `Renamed $${was} to $${now} in ${hits} field${hits === 1 ? "" : "s"}.`);
+}
 function setField(n, k, v){ const d = n.data;
   if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v;
   else if (n.kind === "model" && k === "file"){ d.file = v; d.info = null; }
@@ -3530,13 +3603,17 @@ function renameRefs(text, ren){ if (typeof text !== "string") return text;
   return text; }
 function insertFragment(fr, dx, dy){
   const idMap = {}, ren = {p:{}, o:{}, b:{}}, added = [];
-  fr.nodes.forEach(n0 => { const n = JSON.parse(JSON.stringify(n0)); const old = n.id; n.id = uid(); idMap[old] = n.id;
+  fr.nodes.forEach(n0 => { if (n0.kind === "grav" && S.nodes.some(x => x.kind === "grav")) return;   // a model has one gravity
+    const n = JSON.parse(JSON.stringify(n0)); const old = n.id; n.id = uid(); idMap[old] = n.id;
     const ns = NS[n.kind], was = n.data.name; if (ns && byName(was, ns)){ n.data.name = uniqueName(was, ns); if (ren[ns]) ren[ns][was] = n.data.name; }
     n.x += dx; n.y += dy; S.nodes.push(n); added.push(n); });
   added.forEach(n => { const d = n.data;
-    ["value","P","mass","inertia","x0","v0","expr","demand","capacity","limit"].forEach(k => { if (typeof d[k] === "string") d[k] = renameRefs(d[k], ren); });
-    ["args","fields"].forEach(k => { if (d[k]) Object.keys(d[k]).forEach(f => d[k][f] = renameRefs(d[k][f], ren)); });
-    if (typeof d.raw === "string"){ d.raw = renameRefs(d.raw, ren); Object.entries(ren.b).forEach(([a, b]) => { d.raw = d.raw.replace(new RegExp("(^|[^\\w$])" + a + "\\b", "g"), "$1" + b); }); } });
+    // every $ref in the copy points at the copies: walk all of its fields (vectors, terms, features, ports, pulses, ranges)
+    const walk = (o, top) => { if (!o || typeof o !== "object") return;
+      Object.keys(o).forEach(k => { if (top && ["name", "label", "note", "text"].includes(k)) return;
+        if (typeof o[k] === "string") o[k] = renameRefs(o[k], ren); else if (o[k] && typeof o[k] === "object") walk(o[k], false); }); };
+    walk(d, true);
+    if (typeof d.raw === "string") Object.entries(ren.b).forEach(([a, b]) => { d.raw = d.raw.replace(new RegExp("(^|[^\\w$])" + a + "\\b", "g"), "$1" + b); }); });
   const same = fr.doc === docToken;
   fr.links.forEach(l => { const to = idMap[l.to.node]; if (!to) return;
     const from = idMap[l.from.node] || (same && byId(l.from.node) ? l.from.node : null); if (!from) return;
@@ -4627,7 +4704,7 @@ const GUIDE = [
   <li><b>A circuit</b> drawn as parts between nets: the <b>battery</b> (cells, capacity, R0 and an R1 C1 branch for the voltage sag), a <b>fuse</b> (rating and blow time), a <b>resistor</b> for the leads, a <b>capacitor</b> for the ESC caps, and two <b>motor</b> parts, each behind an ESC with an 80 A current limit and a <b>thermal</b> mass.</li>
   <li>Each motor part names the body it turns (<code>measure: flywheel</code>) and its <b>gear</b> (the belt). The circuit sets each motor's torque from its current; the flywheel's speed sets each motor's back-EMF.</li></ul>
   <h3>What to look at</h3>
-  <p><i>I_pack_peak</i> (about 540 A) is the inrush into the empty ESC capacitors in the first 50 microseconds: the spark you see when plugging in. The motors then draw their 80 A limits while the flywheel is slow, and the current falls as the back-EMF rises. <i>T_motor_max</i> is the hottest winding temperature.</p>
+  <p><i>I_pack_peak</i> (about 590 A) is the inrush into the empty ESC capacitors the instant the circuit closes (worked out exactly at t = 0+, so it does not depend on the time step): the spark you see when plugging in. The motors then draw their 80 A limits while the flywheel is slow, and the current falls as the back-EMF rises. <i>T_motor_max</i> is the hottest winding temperature.</p>
   <h3>Check it against the textbook</h3>
   <p>Top speed is about $kv \cdot V / \text{belt} = 1100 \times 25.2 / 2 = 13{,}900$ rpm; the model ends at 13,480 rpm (sag and drag take the rest). While both ESCs hold 80 A the flywheel torque is $2 \cdot \text{belt} \cdot K_t I_{max} = 2.8$ N m ($K_t = 1/kv$), so it gains about 690 rad/s every second.</p>
   <h3>Things to try</h3>
@@ -5412,6 +5489,7 @@ async function settingsShow(){
   document.getElementById("utName").value = user ? th.name : th.name + " (mine)";
   document.getElementById("utRename").disabled = !user; document.getElementById("utRemove").disabled = !user;
   const t = Object.assign({}, THEMES.blueprint.t, th.t || {}), val = k => own[k] || t[k];
+  if (!t["s-elec"]) t["s-elec"] = t.pass;            // derived at apply time from the pass colour: show that, not black
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
     list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
