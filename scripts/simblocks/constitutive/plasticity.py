@@ -160,3 +160,35 @@ def hinge_to_spring_table(hinge):
         if a > out_t[-1]:
             out_t.append(a); out_m.append(max(b, out_m[-1]))
     return k0, np.array(out_t), np.array(out_m)
+
+
+@block("constitutive", "plasticity", "spring_1d", "series_tables", kind="builder",
+       source="compliance addition at equal force (two elastoplastic springs in series, isotropic hardening)",
+       tags=("series", "dent", "indentation", "local", "combine", "elastoplastic spring"))
+def elastoplastic_series(a, b, n=400):
+    """Two elastoplastic springs in series (a tooth's surface indentation and the sheet's local dishing, a pad on a
+    bracket): one table with the same force at every deflection. k = 1 / (1/k_a + 1/k_b); it yields at the weaker
+    one's first yield; the plastic travel at force F is the sum of each spring's own plastic travel at F. Once one
+    of them stops hardening (a flat end to its table) the pair flows at that force. a, b: dicts with k, acc_tab,
+    F_tab (from any elastoplastic builder). Returns dict(k, acc_tab, F_tab, F_cap)."""
+    import numpy as np
+
+    def inv(t, F):
+        """Plastic travel of table t at force F (0 below its yield; the far end of a flat stretch)."""
+        x = np.asarray(t["acc_tab"], float); y = np.maximum.accumulate(np.asarray(t["F_tab"], float))
+        if F <= y[0]:
+            return 0.0
+        if F >= y[-1]:
+            return float(x[-1])
+        j = int(np.searchsorted(y, F, side="right"))
+        y0, y1 = y[j - 1], y[j]
+        return float(x[j - 1] + (x[j] - x[j - 1]) * (F - y0) / (y1 - y0)) if y1 > y0 else float(x[j])
+    ka, kb = float(a["k"]), float(b["k"])
+    Fa, Fb = np.asarray(a["F_tab"], float), np.asarray(b["F_tab"], float)
+    F0 = min(Fa[0], Fb[0]); Fcap = min(Fa.max(), Fb.max())
+    Fs = np.unique(np.concatenate([np.linspace(F0, Fcap, n), Fa[(Fa > F0) & (Fa < Fcap)], Fb[(Fb > F0) & (Fb < Fcap)]]))
+    acc = np.array([inv(a, F) + inv(b, F) for F in Fs])
+    acc = np.maximum.accumulate(acc - acc[0])
+    keep = np.concatenate([[True], np.diff(acc) > 0])            # the tabular return needs travel that grows
+    return dict(k=1.0 / (1.0 / ka + 1.0 / kb), acc_tab=np.ascontiguousarray(acc[keep]),
+                F_tab=np.ascontiguousarray(Fs[keep]), F_cap=float(Fcap))

@@ -11,12 +11,13 @@ from ...registry import block
 @block("structures", "plates", "strip_root", "plastic_hinge", kind="builder",
        source="Roark 7e Table 8.1 case 1a (k = 3EI/L as a root rotation) + fibre-integrated M(kappa) plastic hinge",
        tags=("wedge face", "plow", "bend", "root hinge", "elastoplastic spring", "moment rotation"))
-def plate_root_hinge(material, width, t, L, hinge_len=None, clamp_factor=1.0, rate_factor=1.0):
+def plate_root_hinge(material, width, t, L, hinge_len=None, clamp_factor=1.0, rate_factor=1.0, k_factor=1.0):
     """Moment-rotation spring (k, acc_tab, F_tab) for a plate strip of the given width and thickness t that bends at
     its root. L = free length from root to the loaded edge (sets the elastic stiffness k = 3 E I / L).
     hinge_len defaults to t. clamp_factor scales the plastic moments for extra edge support (1 = a plain cantilever
     strip; about 2.2 for a face also held along two side edges). rate_factor scales the stress-strain curve for
-    strain-rate hardening. For a rotational element on the face's spin coordinate: 'force' is a moment (N m),
+    strain-rate hardening. k_factor scales the elastic stiffness (the side clamps stiffen it too; an FEA unit load
+    on the real face gives the factor). For a rotational element on the face's spin coordinate: 'force' is a moment (N m),
     'measure' a rotation (rad). Returns dict(k, acc_tab, F_tab, M_y, Mp, source)."""
     from ...materials import get, load_curve
     from ...materials.curves import resolve_material, Curve
@@ -25,7 +26,7 @@ def plate_root_hinge(material, width, t, L, hinge_len=None, clamp_factor=1.0, ra
     key = resolve_material(material); mat = get(key); c0 = load_curve(key)
     c = Curve(c0.name, c0.eng_strain, c0.eng_stress * rate_factor, mat.E, c0.source + f" x {rate_factor:g} (rate)")
     I = width * t ** 3 / 12.0
-    k = 3.0 * mat.E * I / L
+    k = 3.0 * mat.E * I / L * k_factor
     mk = moment_curvature_rect(c, width, t, kappa_max=0.6 / t)
     _, th, M = hinge_to_spring_table(hinge_table(mk, hinge_len or t))
     M = np.ascontiguousarray(M * clamp_factor, float)

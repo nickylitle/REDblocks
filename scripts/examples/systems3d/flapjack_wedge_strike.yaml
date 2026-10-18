@@ -1,0 +1,209 @@
+simblocks: 1
+name: Flapjack wedge, 600 J horizontal spinner strike (3D, CAD geometry)
+question: "A 600 J horizontal spinner (113 m/s tip) meets Flapjack's 58.8 deg plow head-on at 3 m/s closing. How far does the face fold (tip drop), how deep does the tooth dig, and what loads go into the root and mounts?"
+dim: 3d
+units: SI
+gravity: 9.81 m/s^2
+
+# Built fresh from the CAD numbers, not from the earlier 1D sim. What is modelled, and why:
+#  - Both robots are free rigid bodies on the floor (skid and wheels / attacker skids), so the hit pushes, lifts and
+#    turns them instead of meeting a wall. The attacker's blade turns on an exact bearing in its own chassis, so the
+#    blade's gyroscopic stiffness and the attacker's recoil are in.
+#  - The tooth is a rounded corner meeting the face plane. Two local laws act in series at the contact: the tooth
+#    indenting the surface (Hertz, then plastic flow 3 Y x contact area, the area growing until the tooth's tip face,
+#    blade thickness x tip length, is fully in) and the 1.7 mm sheet dishing under it
+#    (Jones' rigid-plastic plate with membrane stiffening, P = pi sy t^2 (1 + W / t), elastic start from the plate's
+#    own point-load stiffness over the distance to the nearest edge). The softer one governs, which on a thin sheet
+#    is the dishing. Coulomb sliding acts along the face. Where it lands (height on the face, angle across it) comes from the
+#    geometry at first contact, not from a set lever arm.
+#  - The face folds about its root as a plastic hinge from the steel's own stress-strain curve, with the yield-line
+#    capacity of a plate clamped on three edges (root plus the two side bends into the wings): m_p (b_e + 2 L_slant),
+#    b_e = 2 L (45 deg spread from the lip to the root). That is a factor of 2.0 on the plain strip.
+#  - Strain rate: Johnson-Cook C = 0.014 (hardened low-alloy steel, 4340 class) at about 500 /s gives x1.09 on the
+#    flow stress. The mild-steel Cowper-Symonds constants would give about x2.6 here and badly overstate a 45 HRC
+#    steel, so they are not used.
+#  - The chassis stops the face once it folds to vertical (the theoretical 5.0 mm-class tip drop limit).
+
+params:
+  # wedge, from the CAD (Part43 Flapjack.STEP)
+  alpha: {value: 58.8 deg, note: attack face angle from horizontal}
+  L: {value: 37 mm, note: slant length, lip to the support}
+  t: {value: 1.7 mm, note: sheet thickness}
+  width: {value: 164 mm, note: face width}
+  z_lip: {value: 1 mm, note: "assumption: lip height above the floor"}
+  material: {value: 4130_45HRC, note: hardened 4130 (the plow as built)}
+  E_w: {value: 205 GPa, note: wedge E (4130)}
+  nu_w: {value: 0.29}
+  sy_w: {value: 1400 MPa, note: wedge yield (4130 at 45 HRC)}
+  su_w: {value: 1500 MPa, note: wedge ultimate}
+  rho_w: {value: 7850 kg/m^3}
+  k_factor: {value: 1.0, note: "elastic stiffness of the face over a 74 mm strip; the side clamps raise it. Replace with an Ansys unit load on the face (k = M / rotation)"}
+  rate: {value: 1.087, note: "Johnson-Cook strain-rate factor 1 + 0.014 ln(500 /s)"}
+  # attacker: the 600 J reference spinner
+  R: {value: 90 mm, note: tooth radius}
+  w0: {value: 1257 rad/s, note: blade speed (12,000 rpm, 113 m/s tip)}
+  I_blade: {value: 7.56e-4 kg m^2, note: "blade inertia about its spin axis: 597 J at w0"}
+  m_blade: {value: 280 g}
+  r_tooth: {value: 1.5 mm, note: "assumption: tooth corner radius"}
+  T_tooth: {value: 6.35 mm, note: blade thickness (the tooth face height, a horizontal spinner)}
+  l_tooth: {value: 3 mm, note: "assumption: length of the tooth tip that bears on the face"}
+  m_bot: {value: 1361 g, note: each robot, 3 lb class}
+  v_close: {value: 3 m/s, note: closing speed (both robots together)}
+  mu_tooth: {value: 0.2, note: tooth sliding on the face}
+  # where the tooth lands
+  u_phase: {value: 0.7, note: "random blade phase at first contact, 0 to 1 (uniform): sets the strike angle"}
+  z_tooth: {value: 12 mm, note: "assumption: tooth height above the floor"}
+
+derived:
+  delta: = 120 * $v_close / ($w0 * 60 / (2 * pi) * 2 * $R)
+  phi0: = -acos(1 - $delta * $u_phase)
+  Estar: = 1 / ((1 - $nu_w**2) / $E_w + (1 - 0.29**2) / 205e9)
+  b_e: = min($width, 2 * $L)
+  kappa: = ($b_e + 2 * $L) / $b_e
+  m_face: = $rho_w * $width * $L * $t
+  bend: {block: plate_root_hinge, material: $material, width: $b_e, t: $t, L: $L, clamp_factor: $kappa, rate_factor: $rate, k_factor: $k_factor}
+  s_lip: = ($z_tooth - $z_lip) / sin($alpha)
+  a_loc: = max(min($s_lip, $L - $s_lip), 3 * $t)
+  indent: {block: plastic_indentation_table, R: $r_tooth, Y: = $sy_w * $rate, Estar: $Estar, depth_max: 6 mm,
+           A_max: = $T_tooth * $l_tooth}
+  dish: {block: plate_plastic_membrane, t: $t, sy: $sy_w, rate_factor: $rate, shape: circular, edge: clamped, a: $a_loc,
+         E: $E_w, nu: $nu_w}
+  gouge: {block: elastoplastic_series, a: $indent, b: $dish}
+  F_plug: = 2 * ($T_tooth + $l_tooth) * $t * 0.6 * $su_w * $rate
+  # first contact: the tooth sits just short of the face plane
+  tx: = $R * cos($phi0)
+  ty: = $R * sin($phi0)
+  x_lip: = $tx + 2e-5 - ($z_tooth - $z_lip) / tan($alpha)
+  x_root: = $x_lip + $L * cos($alpha)
+  z_root: = $z_lip + $L * sin($alpha)
+  fj_x: = $x_root + 0.06
+  fj_z: 0.025
+  mid_x: = -0.5 * $L * cos($alpha)
+  mid_z: = -0.5 * $L * sin($alpha)
+  lip_x: = -$L * cos($alpha)
+  lip_z: = -$L * sin($alpha)
+  nx: = -sin($alpha)
+  nz: = cos($alpha)
+  ux: = cos($alpha)
+  uz: = sin($alpha)
+  v_half: = 0.5 * $v_close
+  m_chassis: = $m_bot - $m_blade - $m_face
+
+bodies:
+  floor:
+    ground: true
+    planes: {top: {at: [0, 0, 0], normal: [0, 0, 1]}}
+  attacker:
+    dof: free
+    mass: = $m_bot - $m_blade
+    inertia: [3e-3, 4e-3, 6e-3]
+    at: [-0.07, 0, 0.025]
+    v0: [$v_half, 0, 0]
+    points: {hub: [0.07, 0, = $z_tooth - 0.025], skid_l: [0.02, 0.07, -0.025], skid_r: [0.02, -0.07, -0.025],
+             rear: [-0.06, 0, -0.025]}
+    label: Attacker chassis
+  blade:
+    dof: free
+    mass: $m_blade
+    inertia: [2.2e-5, 7.56e-4, $I_blade]
+    at: [0, 0, $z_tooth]
+    orient0: {axis: [0, 0, 1], angle: $phi0}
+    v0: [$v_half, 0, 0]
+    omega0: [0, 0, $w0]
+    points: {hub: [0, 0, 0], tooth: [$R, 0, 0]}
+    label: Attacker blade (horizontal spinner)
+  flapjack:
+    dof: free
+    mass: $m_chassis
+    inertia: [4e-3, 5e-3, 7e-3]
+    at: [$fj_x, 0, $fj_z]
+    v0: [= -$v_half, 0, 0]
+    points: {root: [= $x_root - $fj_x, 0, = $z_root - $fj_z], skid: [-0.03, 0, -0.025],
+             wheel_l: [0.11, 0.09, -0.025], wheel_r: [0.11, -0.09, -0.025]}
+    planes: {stop: {at: [= $x_root - $fj_x - 0.001, 0, = $z_root - $fj_z - 0.5 * $L], normal: [-1, 0, 0], u: [0, 0, 1],
+                    size: [$L, $width]}}
+    label: Flapjack chassis
+  face:
+    dof: free
+    mass: $m_face
+    inertia: [= $m_face * $width**2 / 12, = $m_face * $L**2 / 12, = $m_face * $width**2 / 12]
+    at: [$x_root, 0, $z_root]
+    com: [$mid_x, 0, $mid_z]
+    v0: [= -$v_half, 0, 0]
+    points: {root: [0, 0, 0], lip: [$lip_x, 0, $lip_z]}
+    planes: {front: {at: [$mid_x, 0, $mid_z], normal: [$nx, 0, $nz], u: [$ux, 0, $uz], size: [$L, $width], depth: 20 mm}}
+    label: Plow face (folds about its root)
+
+elements:
+  bearing: {type: hinge, rigid: true, axis: z, measure: [attacker.hub, blade.hub], label: Blade bearing}
+  root: {type: hinge, rigid: true, axis: y, measure: [flapjack.root, face.root], label: Face root (fold line)}
+  bend:
+    type: elastoplastic
+    table: $bend
+    measure: {twist: [flapjack, face], axis: y}
+    label: Root fold, 3-edge clamped plastic hinge
+  gouge:
+    type: elastoplastic
+    table: $gouge
+    measure: {contact: [blade.tooth, face.front]}
+    label: Tooth dent / gouge
+  slide: {type: contact_friction, contact: gouge, mu: $mu_tooth, v_eps: 0.05 m/s, label: Tooth sliding on the face}
+  backstop: {type: kelvin_voigt, one_sided: true, k: 5e6 N/m, c: 200 N s/m, measure: {contact: [face.lip, flapjack.stop]},
+             label: Face folds onto the chassis}
+  fj_skid: {type: kelvin_voigt, one_sided: true, k: 2e5 N/m, c: 40 N s/m, measure: {contact: [flapjack.skid, floor.top]}}
+  fj_wl: {type: kelvin_voigt, one_sided: true, k: 5e4 N/m, c: 20 N s/m, measure: {contact: [flapjack.wheel_l, floor.top]}}
+  fj_wr: {type: kelvin_voigt, one_sided: true, k: 5e4 N/m, c: 20 N s/m, measure: {contact: [flapjack.wheel_r, floor.top]}}
+  fj_skid_f: {type: contact_friction, contact: fj_skid, mu: 0.2, v_eps: 0.05 m/s}
+  fj_wl_f: {type: contact_friction, contact: fj_wl, mu: 1.67, v_eps: 0.05 m/s}
+  fj_wr_f: {type: contact_friction, contact: fj_wr, mu: 1.67, v_eps: 0.05 m/s}
+  at_l: {type: kelvin_voigt, one_sided: true, k: 1e5 N/m, c: 30 N s/m, measure: {contact: [attacker.skid_l, floor.top]}}
+  at_r: {type: kelvin_voigt, one_sided: true, k: 1e5 N/m, c: 30 N s/m, measure: {contact: [attacker.skid_r, floor.top]}}
+  at_b: {type: kelvin_voigt, one_sided: true, k: 1e5 N/m, c: 30 N s/m, measure: {contact: [attacker.rear, floor.top]}}
+
+outputs:
+  bend_set: {element: bend, quantity: plastic_set, reduce: max_abs, unit: deg, label: Permanent fold of the face}
+  bend_rad: {element: bend, quantity: plastic_set, reduce: max_abs}
+  gouge_mm: {element: gouge, quantity: plastic_set, reduce: max, unit: mm, label: Dent / gouge depth}
+  gouge_m: {element: gouge, quantity: plastic_set, reduce: max}
+  F_contact: {element: gouge, quantity: force, reduce: max, unit: kN, label: Peak tooth force (normal to the face)}
+  F_slide: {element: slide, quantity: force, reduce: max_abs, unit: kN, label: Peak sliding force}
+  M_root: {element: bend, quantity: force, reduce: max_abs, unit: N m, label: Peak root moment}
+  F_root: {element: root, quantity: force, reduce: max, unit: kN, label: Peak root reaction (into the mounts)}
+  F_stop: {element: backstop, quantity: force, reduce: max, unit: kN, label: Peak force of the face on the chassis}
+  w_end: {body: blade, quantity: wz, reduce: final}
+  fj_vx: {body: flapjack, quantity: vx, reduce: final, unit: m/s, label: Flapjack speed after (+ = knocked back)}
+  fj_vz: {body: flapjack, quantity: vz, reduce: max, unit: m/s, label: Flapjack hop}
+  atk_vz: {body: attacker, quantity: vz, reduce: max, unit: m/s, label: Attacker hop}
+  E_blade: {expr: "0.5 * $I_blade * ($w0**2 - $w_end**2)", unit: J, label: Blade energy taken out}
+  tip_drop_mm: {expr: "1000 * $L * (sin(min($alpha + $bend_rad, pi / 2)) - sin($alpha))", label: Permanent tip drop (mm)}
+  F_contact_N: {element: gouge, quantity: force, reduce: max}
+  plug_ratio: {expr: "$F_contact_N / $F_plug", label: Peak tooth force / shear-plug (punch-through) capacity}
+
+failure:
+  - {name: tip drop, metric: tip_drop_mm, limit: 5, fails_when: above, origin: "Nicky: the wedge fails at a permanent 5 mm tip drop"}
+  - {name: puncture, metric: plug_ratio, limit: 1, fails_when: above, origin: "Nicky: puncture counts as failure",
+     assumption: "punch-through when the tooth force reaches the shear-plug capacity 2 (T + l) t 0.6 su around the tooth tip"}
+
+uncertain:
+  u_phase: [0, 1]
+  z_tooth: [6 mm, 20 mm]
+
+scenarios:
+  steel_1p7: {}
+  ti_gr5_3p2: {material: Ti6Al4V, t: 3.2 mm, E_w: 113.8 GPa, nu_w: 0.342, sy_w: 880 MPa, su_w: 950 MPa, rho_w: 4430 kg/m^3}
+  slow_close_1p5: {v_close: 1.5 m/s}
+  worst_phase: {u_phase: 1}
+
+exports:
+  - name: ansys_loads
+    columns:
+      - {element: gouge, quantity: force, unit: N, label: F_normal}
+      - {element: slide, quantity: force, unit: N, label: F_slide}
+      - {element: bend, quantity: force, unit: N m, label: M_root}
+      - {element: root, quantity: force, unit: N, label: F_root}
+    time_unit: us
+    points: 2000
+
+run:
+  t_end: 0.5 ms
+  mc_n: 64

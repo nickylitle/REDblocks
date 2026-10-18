@@ -66,11 +66,15 @@ def flat_punch_stiffness(a, Estar):
        source=("flat-punch stiffness 2 a E* (Johnson eq. 3.38) then fully plastic mean pressure 3Y over "
                "a^2 = 2 R delta_p (Johnson, Contact Mechanics ch. 6), contact radius capped at R"),
        tags=("tooth", "dent", "gouge", "plastic contact"))
-def plastic_indentation_table(R, Y, Estar, depth_max=0.03, n=301):
+def plastic_indentation_table(R, Y, Estar, depth_max=0.03, n=301, A_max=None):
     """Elastoplastic contact spring for a rounded tooth (corner radius R) pressing into a surface of yield Y:
-    k = 2 R E*, yield force F(dp) = 3 Y pi min(2 R dp, R^2). Returns dict(k, acc_tab, F_tab, F_flat)."""
+    k = 2 R E*, yield force F(dp) = 3 Y A(dp), contact area A = pi min(2 R dp, R^2). A_max (optional): the tooth's
+    whole bearing face (say tip length x blade thickness); the contact keeps growing past the corner, at the same
+    rate, until that face is fully in. Without it the force stops rising once the corner is buried.
+    Returns dict(k, acc_tab, F_tab, F_flat)."""
     import numpy as np
     acc = np.linspace(0.0, depth_max, n)
-    a2 = np.minimum(2.0 * R * acc, R * R)
+    cap = R * R if A_max is None else max(float(A_max) / math.pi, R * R)
+    a2 = np.minimum(2.0 * R * acc, cap)
     F = 3.0 * Y * math.pi * np.maximum(a2, (0.1 * R) ** 2)
     return dict(k=2.0 * R * Estar, acc_tab=acc, F_tab=np.ascontiguousarray(F), F_flat=3.0 * Y * math.pi * R * R)

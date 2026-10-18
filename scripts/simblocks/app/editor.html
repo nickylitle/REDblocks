@@ -4495,7 +4495,7 @@ const GUIDE = [
  {id:"ex-overview", grp:"Examples", t:"The examples", h:`
   <p>Eleven small teaching models show how blocks connect, from one spring to a motor-driven robot arm. The <b>Apollo 11 showcase</b> puts whole missions together: the Saturn V climb to orbit and the lunar landing, checked against NASA's records. All of them are in the <b>Examples</b> menu (top bar); the two Apollo canvases are at the end of the list. Each one opens with a note at the top saying what it models and a number to compare against. Run it, then change one thing at a time.</p>
   <table class="ht"><tr><th></th><th>Simple</th><th>Medium</th><th>Advanced</th><th>More</th></tr>
-  <tr><td><b>1D</b></td><td><a data-h="guide:ex-1d1">Mass on a spring and damper</a></td><td><a data-h="guide:ex-1d2">Shock isolation (CSV load)</a></td><td><a data-h="guide:ex-1d3">Motor, gearbox and flywheel</a></td><td><a data-h="guide:ex-1d4">Battery, ESCs and two motors (circuit)</a><br><a data-h="guide:ex-1d5">Cruise control (PID)</a></td></tr>
+  <tr><td><b>1D</b></td><td><a data-h="guide:ex-1d1">Mass on a spring and damper</a></td><td><a data-h="guide:ex-1d2">Shock isolation (shock pulse)</a></td><td><a data-h="guide:ex-1d3">Motor, gearbox and flywheel</a></td><td><a data-h="guide:ex-1d4">Battery, ESCs and two motors (circuit)</a><br><a data-h="guide:ex-1d5">Cruise control (PID)</a></td></tr>
   <tr><td><b>2D</b></td><td><a data-h="guide:ex-2d1">Pendulum on a hinge</a></td><td><a data-h="guide:ex-2d2">Ball bouncing down a ramp</a></td><td><a data-h="guide:ex-2d3">Four-bar linkage</a></td><td></td></tr>
   <tr><td><b>3D</b></td><td><a data-h="guide:ex-3d1">Spinning top</a></td><td><a data-h="guide:ex-3d2">Drone arm (beam)</a></td><td><a data-h="guide:ex-3d3">Robot arm</a></td><td></td></tr>
   <tr><td><b>Showcase</b></td><td colspan="4"><a data-h="guide:ex-apollo">Apollo 11: Saturn V ascent and lunar landing</a></td></tr></table>
@@ -4520,14 +4520,14 @@ const GUIDE = [
   <ul><li>Set c to 40 N s/m ($\\zeta = 1$, critical damping): it creeps back with no overshoot.</li>
   <li>Plug a <b>Range of values</b> node into k (100 to 1600 N/m) and press <b>Study</b> to see how the swing changes.</li>
   <li>Give the spring its own <b>mass</b> (0.2 kg) and <b>segments</b> (8): the spring now vibrates along its length too.</li></ul>`},
- {id:"ex-1d2", grp:"Examples", t:"1D-2 Shock isolation (CSV load)", h:`
+ {id:"ex-1d2", grp:"Examples", t:"1D-2 Shock isolation (shock pulse)", h:`
   <p class="exopen"><button data-ex="1D-2 Instrument on isolation mounts, hit by a shock pulse">Open this example</button></p>
   <h3>What it models</h3>
   <p>A 20 kg instrument sits on rubber mounts. A short, hard shock hits it: 2 kN for 5 ms. The question is how much of that force reaches the floor, and how far the instrument moves. This is how equipment is protected from impacts, drops and machinery nearby.</p>
   <h3>The blocks and why they connect that way</h3>
   <ul><li><b>One body</b>, the instrument, free to move along x.</li>
   <li><b>A kelvin_voigt element</b> for the mounts: a spring and a damper side by side in one block ($F = k x + c v$). Its measure is the instrument's position, because the floor does not move. The force in this element is what the floor feels.</li>
-  <li><b>A load node set to CSV table</b> for the shock. The file <code>data/shock_pulse.csv</code> lists force (kN) against time (ms). The load node knows the units of both columns and joins the rows with a smooth curve. A CSV load is how you bring in a measured or designed load history. The small plot on the node shows the load; click it (or <b>edit</b>) to open the table editor, change a few values, add or delete rows, and see the curve and its impulse update before you save. <b>new</b> starts a table next to a saved model.</li>
+  <li><b>A load node set to standard shape</b> for the shock: a half sine, 2 kN peak, 5 ms long. The standard shapes (half sine, haversine, triangle, ramp, step, sine, sweep and more) each take a few numbers. For a measured or designed load history, set the source to <b>CSV table</b> instead: it reads force against time from a file, and its table editor shows the curve and its impulse.</li>
   <li><b>A failure mode</b> on the travel: the mounts bottom out at 15 mm.</li></ul>
   <h3>What to look at</h3>
   <p><i>peak_shock_kN</i> is about 2 kN, but <i>peak_floor_N</i> is under 200 N. The shock is over (5 ms) long before the mounts can push back (their period is 200 ms), so the instrument simply leaves with the shock's momentum and the mounts slow it down gently.</p>

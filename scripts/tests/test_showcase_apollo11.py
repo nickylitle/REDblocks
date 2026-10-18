@@ -54,3 +54,14 @@ def test_storable_propellant_chemistry_matches_cantera():
     r = ideal_performance("A50", 1.6, 110 * 6894.757, 47.5, "N2O4")
     assert r["Tc"] == pytest.approx(3059.98, abs=0.5)
     assert 320 < r["Isp_vac"] < 345
+
+
+def test_showcase_ships_with_the_installed_app():
+    """The packaged app copies the showcase into simblocks/app/examples/showcase: pyproject must ship that folder."""
+    import os, tomllib
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, "..", "pyproject.toml"), "rb") as fh:
+        pd = tomllib.load(fh)["tool"]["setuptools"]["package-data"]["simblocks"]
+    assert "app/examples/showcase/*" in pd
+    bat = open(os.path.join(here, "..", "packaging", "build_exes.bat")).read()
+    assert "examples\\showcase\\apollo11\\*.yaml simblocks\\app\\examples\\showcase" in bat

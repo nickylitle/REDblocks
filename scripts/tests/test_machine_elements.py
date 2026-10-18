@@ -47,3 +47,25 @@ def test_belt_chain_crack_notch_bond():
     assert j["peak_factor"] == pytest.approx(x / 2 / math.tanh(x / 2), rel=1e-9)     # balanced Volkersen
     s = set_screw_holding(0.25 * 0.0254, 0.01)
     assert s["F"] == pytest.approx(1000 * 4.448222)
+
+
+def test_elastoplastic_series_adds_compliance_at_equal_force():
+    import numpy as np
+    from simblocks.constitutive.plasticity import elastoplastic_series
+    a = dict(k=1e6, acc_tab=np.array([0, 1e-3]), F_tab=np.array([100.0, 300.0]))
+    b = dict(k=4e6, acc_tab=np.array([0, 1e-3]), F_tab=np.array([200.0, 400.0]))
+    r = elastoplastic_series(a, b)
+    assert r["k"] == pytest.approx(0.8e6)
+    F = 250.0
+    xa = (F - 100) / 200 * 1e-3; xb = (F - 200) / 200 * 1e-3
+    assert np.interp(F, r["F_tab"], r["acc_tab"]) == pytest.approx(xa + xb, rel=1e-6)
+    assert r["F_cap"] == 300.0
+
+
+def test_flapjack_wedge_model_runs_and_balances():
+    from simblocks.compiler import load_system
+    import os
+    p = os.path.join(os.path.dirname(__file__), "..", "examples", "systems3d", "flapjack_wedge_strike.yaml")
+    o = load_system(p).run()
+    assert abs(o["_ledger_rel"]) < 1e-3
+    assert 0 < o["gouge_mm"] < 5 and o["E_blade"] > 0 and o["tip_drop_mm"] < 5
