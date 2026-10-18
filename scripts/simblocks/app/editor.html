@@ -85,6 +85,7 @@ textarea{width:100%;resize:vertical}
 #top label{font:10px var(--mono);color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
 #top select{font:12px var(--sans);padding:4px 4px}
 #canvas{position:relative;overflow:hidden;background-color:var(--bg);cursor:default}
+#minimap{position:absolute;right:12px;bottom:52px;width:190px;height:124px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--edge);border-radius:6px;z-index:6;cursor:pointer;box-shadow:0 4px 14px var(--shadow)}
 #bgLayer{position:absolute;inset:0;pointer-events:none;background-position:center;display:none}
 #gridLayer{position:absolute;inset:0;pointer-events:none;
   background-image:linear-gradient(var(--gridM) 1px,transparent 1px),linear-gradient(90deg,var(--gridM) 1px,transparent 1px),
@@ -427,6 +428,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <select id="bRecent" title="Recently opened or saved models"><option value="">Recent</option></select>
       <button id="bSave" title="Save (Ctrl+S)">Save</button>
       <button id="bSaveAs" title="Save as (Ctrl+Shift+S)">Save as</button>
+      <button id="bCompare" title="Compare this model with another model file: what changed, and both runs' outputs side by side">Compare</button>
       <select id="bEx" title="Open a bundled example"><option value="">Examples</option></select>
       <button id="bMat" title="Connect folders of your own materials and blocks">Folders</button>
     </div>
@@ -442,6 +444,8 @@ label.cpick button{padding:0 6px;font-size:12px}
       <label class="live" title="Re-run on every edit. Range and Monte Carlo inputs use their middle value; CSV exports are only written by Run."><input type="checkbox" id="bLive" checked>live<span id="liveNote"></span></label>
       <button id="bRun" class="primary" title="Run once at the nominal values and write CSV exports (F5)">Run</button>
       <button id="bStudy" title="Run every sweep value x Monte Carlo sample on the chosen cores">Study</button>
+      <button id="bModes" title="Natural frequencies and mode shapes, about the position the model settles to under its loads">Modes</button>
+      <button id="bStatic" title="Where the model settles under its loads and gravity, solved directly (no run), with every output there">Static</button>
       <button id="bVerify" title="Full verification battery">Verify</button>
       <button id="bReport" title="Verify, then write a PDF and HTML report: next to the saved file, or in your home folder (simblocks/out) if it is not saved">Report</button>
     </div>
@@ -473,6 +477,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <div id="bgLayer"></div><div id="gridLayer"></div>
     <div id="legend" aria-label="What the canvas colours mean"><div class="lh" id="legendHd" title="Show or hide the canvas key"><span>Canvas key</span><button id="legendTog" aria-label="Collapse">&#8722;</button></div><div class="lb" id="legendBody"></div></div>
     <div id="world"><svg id="wires" width="1" height="1"></svg><svg id="wiresTop" width="1" height="1"></svg></div>
+    <canvas id="minimap" title="Overview: click or drag to move the view" hidden></canvas>
     <div id="pcard" role="status" aria-live="polite"><div class="pt"><b id="pcTitle">Running</b><span id="pcTime"></span></div><div class="pst" id="pcStages"></div>
       <div class="pbrow"><img id="pcGif" alt="" hidden><div class="pbar"><i id="pcBar"></i></div></div><div class="pl"><span id="pcLabel"></span><b id="pcEta"></b></div><div id="pcBtns"></div></div>
     <div id="menu"><input id="mq" placeholder="Search nodes and blocks: typos are fine (beem defelction)">
@@ -541,7 +546,8 @@ label.cpick button{padding:0 6px;font-size:12px}
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="auto: plain, with an exponent past a million or below 0.001. engineering: 12.3 k, 4.56 m. scientific: 1.23e+04">Numbers <select id="sNum"><option value="auto">auto</option><option value="eng">engineering (k, M, m, µ)</option><option value="sci">scientific</option></select></label></div>
   <h3 class="dsub">Canvas and files</h3>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">Wires <select id="sWire"><option value="curved">curved</option><option value="straight">straight</option><option value="right">right angles</option></select></label>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Nodes you drag land on the grid"><input type="checkbox" id="sSnap">Snap to a grid when dragging</label><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">grid <input id="sSnapGrid" style="width:46px" placeholder="20"> px</label></div>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Nodes you drag land on the grid"><input type="checkbox" id="sSnap">Snap to a grid when dragging</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small overview of the whole canvas in the corner (shown once a model has more than a dozen nodes)"><input type="checkbox" id="sMini">Minimap</label><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">grid <input id="sSnapGrid" style="width:46px" placeholder="20"> px</label></div>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sOpenLast">Open the last file when the app starts</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A recovery copy of unsaved work, offered back if the app closes before you save">Recovery copy every <select id="sAuto"><option value="0">off</option><option value="1">1 min</option><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option></select></label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sRepOpen">Open the report when it is written</label></div>
@@ -623,13 +629,13 @@ const API = {
   }
 };
 // ------------------------------------------------------------------------------------------------ model
-let SETTINGS = {recent:[]};          // this computer's settings (loaded at start); declared first: everything reads it
+let SETTINGS = {recent:[]}, LASTCHECK = null, OVL = {};          // this computer's settings (loaded at start); declared first: everything reads it
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
   export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)", goal:"var(--c-sweep)",
-  inport:"var(--c-value)", outport:"var(--c-output)", model:"var(--c-group)"};
+  inport:"var(--c-value)", outport:"var(--c-output)", model:"var(--c-group)", opt:"var(--c-sweep)", budget:"var(--c-output)", scen:"var(--c-sweep)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek", inport:"input port", outport:"output port", model:"model block"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers", goal:"goal seek", inport:"input port", outport:"output port", model:"model block", opt:"optimizer", budget:"weight budget", scen:"scenarios"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], gear:["bending_stress","contact_stress"],
   bolt:["bolt_force","clamp_force","bolt_stress","plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
@@ -682,7 +688,7 @@ let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
 // names live in separate YAML sections, so uniqueness is per namespace: p params+derived, b bodies, e elements, o outputs, f failure
-const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z", inport:"p", model:"p", outport:"q"};
+const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y", goal:"z", inport:"p", model:"p", outport:"q", opt:"w", budget:"u", scen:"v"};
 const byName = (nm, ns) => S.nodes.find(n => nodeName(n) === nm && (!ns || ns.includes(NS[n.kind])));
 function nodeName(n){ return n.data.name; }
 function uniqueName(base, ns){
@@ -717,7 +723,10 @@ function defaults(kind){
     case "goal": return {name:"goal", target:"", tol:"0.1", lo:"", hi:""};
     case "inport": return {name:"in", pkind:"value", unit:"", def:"", label:""};
     case "outport": return {name:"port", quantity:"position", unit:"", label:""};
-    case "model": return {name:"block", file:"", inputs:{}, info:null};
+    case "model": return {name:"block", file:"", inputs:{}, info:null, repeat:"", carry:{}};
+    case "budget": return {name:"budget", limit:"3 lb", bodies:true, items:[{name:"wiring", mass:""}]};
+    case "scen": return {name:"scenarios", nv:1, names:["scenario_1", "scenario_2"], cells:[[""], [""]]};
+    case "opt": return {name:"optimize", goal:"minimize", nv:1, nc:1, ranges:[{lo:"", hi:""}], cons:[{side:"max", value:""}], fm:true, max:"150"};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
                            custom:"", time_unit:"s", points:"1000", header:"units", when:"run"};
   }
@@ -781,6 +790,12 @@ function sockets(n){
     for (let i = 0; i < (d.nv || 1); i++) ins.push({key:"v" + i, label:"lever " + (i + 1), type:"val", req:i === 0});
     for (let i = 0; i < (d.no || 1); i++) ins.push({key:"o" + i, label:"output " + (i + 1), type:"metric", req:false}); }
   if (n.kind === "goal"){ ins.push({key:"v", label:"change", type:"val", req:true}); ins.push({key:"o", label:"until", type:"metric", req:true}); }
+  if (n.kind === "budget"){ outs.push({key:"m.mass_total", label:"mass_total", type:"metric"}, {key:"m.mass_margin", label:"mass_margin", type:"metric"}); }
+  if (n.kind === "scen") for (let i = 0; i < (d.nv || 1); i++) ins.push({key:"v" + i, label:"value " + (i + 1), type:"val", req:i === 0});
+  if (n.kind === "opt"){
+    for (let i = 0; i < (d.nv || 1); i++) ins.push({key:"v" + i, label:"vary " + (i + 1), type:"val", req:i === 0});
+    ins.push({key:"obj", label:d.goal === "maximize" ? "maximize" : "minimize", type:"metric", req:true});
+    for (let i = 0; i < (d.nc || 0); i++) ins.push({key:"c" + i, label:"limit " + (i + 1), type:"metric"}); }
   if (n.kind === "inport") outs.push({key:"out", label: d.pkind === "series" ? "series" : "value", type: d.pkind === "series" ? "ser" : "val"});
   if (n.kind === "outport") ins.push({key:"src", label:"source", type:"port", req:true});
   if (n.kind === "model"){ const inf = d.info && d.info.ok ? d.info : {inputs:Object.keys(d.inputs || {}).map(k => ({name:k, kind:"value"})), outputs:[]};
@@ -1041,7 +1056,7 @@ function measureOf(n){
 // A part is a two-terminal law (+ / -); each terminal wires into a net block, and one net is ground (0 V).
 // Motors also take a shaft body: the circuit drives it, and its speed makes the back-EMF.
 const PART_NAME = {resistor:"resistor", capacitor:"capacitor", inductor:"inductor", voltage_source:"voltage source", current_source:"current source", current_load:"current load",
-  battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor"};
+  battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor", wire:"wire"};
 const PART_INFO = {
   resistor:["v = R i", "An ideal resistor."],
   capacitor:["i = C dv/dt", "A capacitor with optional series ESR (equivalent series resistance, default 0) and leakage resistance R_leak (0 = none). v0 is its starting voltage."],
@@ -1053,13 +1068,15 @@ const PART_INFO = {
   diode:["on: v = Vf + R_on i", "Conducts from + (anode) to − (cathode) once forward biased past Vf; off it leaks through R_off."],
   switch:["R_on or R_off", "Closed (R_on) from on_at to off_at. With pwm_freq it chops at duty (0 to 1)."],
   fuse:["blows when ∫(i/I_rating)² dt > t_blow", "Heats with (i/I_rating)²; opens once that has gone on for t_blow at the rating, or at once above I_trip."],
+  wire:["R = ρ L / A + connectors", "A wire run: gauge (awg) or copper area, the total length (out and back), and its connectors (XT30, XT60, XT90). It is a resistor; thermal: on fills in the copper's heat capacity and free convection, so only the ambient is needed."],
   motor:["v = R i + L di/dt + Kt ω, τ = Kt i", "A DC (or lumped brushless) motor. Give kv or Kt, not both. Its shaft is the body plugged in; gear is motor turns per shaft turn. ESC (optional) chops the supply at throttle and limits current to I_max; regen lets it push current back."]};
 const PART_PH = {I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
   cells:"e.g. 6", capacity:"e.g. 1300", R0:"pack R", R1:"sag R", C1:"sag C", soc0:"1 = full", V_full:"4.2 /cell", V_empty:"3.3 /cell",
   Vf:"0.7 V", R_on:"default 1 mohm", R_off:"open", on_at:"0 s", off_at:"never", pwm_freq:"0 = no PWM", duty:"1", phase:"0",
   I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
   throttle:"1 = full", I_max:"no limit", C_th:"heat cap.", R_th:"to ambient", T_amb_C:"25 °C", T0_C:"= ambient", alpha:"0 (Cu 0.00393)",
-  T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002"};
+  T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002", awg:"e.g. 14 (or area)", area:"or e.g. 2 mm^2", length:"total run, out and back",
+  material:"copper", connectors:"e.g. XT60, XT60", R_contact:"other contacts", I0:"no-load current", t_sw:"e.g. 100 ns", f_sw:"e.g. 24 kHz"};
 // what each part field means (the library pages)
 const PART_MEAN = {R:"resistance", C:"capacitance", ESR:"equivalent series resistance", R_leak:"leakage resistance (0 = none)",
   v0:"voltage at the start", L:"inductance", i0:"current at the start", V:"voltage", I:"current", I_load:"a fixed current drawn across it (its part is <name>__load)",
@@ -1071,7 +1088,10 @@ const PART_MEAN = {R:"resistance", C:"capacitance", ESR:"equivalent series resis
   J_rotor:"rotor inertia (added to the shaft through the gear)", throttle:"ESC duty limit (0 to 1)", I_max:"ESC current limit",
   regen:"let it push current back into the supply", C_th:"heat capacity", R_th:"thermal resistance to ambient", T_amb_C:"ambient temperature",
   T0_C:"temperature at the start", T_max_C:"fails open above this", alpha:"resistance temperature coefficient",
-  kt_tempco:"Kt temperature coefficient", vf_tempco:"Vf temperature coefficient"};
+  kt_tempco:"Kt temperature coefficient", vf_tempco:"Vf temperature coefficient", awg:"wire gauge (AWG)", area:"conductor cross-section",
+  length:"total length of the run", material:"copper or aluminum", connectors:"connectors in the run (contact resistance each)",
+  R_contact:"other contact resistance", I0:"no-load current: iron and bearing loss as a drag torque Kt I0", t_sw:"ESC switching time (rise + fall)",
+  f_sw:"ESC PWM frequency"};
 // schematic symbols for the library pages: + terminal left, - right
 const PART_SYM = (() => {
   const W = `stroke="currentColor" stroke-width="1.6" fill="none"`, A = `style="stroke:var(--acc);fill:none" stroke-width="1.6"`;
@@ -1091,19 +1111,22 @@ const PART_SYM = (() => {
     diode: ends(66, 94) + `<polygon points="66,32 66,58 92,45" style="fill:var(--soft);stroke:currentColor" stroke-width="1.4"/><line x1="94" y1="31" x2="94" y2="59" ${W}/>`,
     switch: ends(62, 98) + `<line x1="62" y1="45" x2="94" y2="28" ${W}/><circle cx="62" cy="45" r="2.2" fill="currentColor"/><circle cx="98" cy="45" r="2.2" fill="currentColor"/>`,
     fuse: ends(56, 104) + `<rect x="56" y="37" width="48" height="16" rx="3" ${W}/><line x1="56" y1="45" x2="104" y2="45" stroke="currentColor"/>`,
+    wire: ends(40, 120) + `<rect x="40" y="39" width="14" height="12" rx="2" ${W}/><rect x="106" y="39" width="14" height="12" rx="2" ${W}/><line x1="54" y1="45" x2="106" y2="45" stroke="currentColor" stroke-width="3"/>`,
     motor: ends(62, 98) + `<circle cx="80" cy="45" r="18" ${W}/><text x="74" y="50" font-size="13" fill="currentColor">M</text><line x1="80" y1="27" x2="80" y2="10" stroke="currentColor" stroke-width="3"/><text x="86" y="16" font-size="8" fill="currentColor">shaft</text>`};
 })();
 // fields in the order a datasheet gives them
 const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty","I_load"],
   capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R","I_load"], current_source:["I"], current_load:["I"], resistor:["R"],
-  diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
-  esc:["throttle","I_max"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
+  wire:["awg","area","length","material","connectors","R_contact"], diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
+  esc:["throttle","I_max","R_on","t_sw","f_sw","C_th","R_th","T_amb_C"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
 const byOrder = (list, ord) => list.slice().sort((a, b) => ((ord || []).indexOf(a) + 1 || 99) - ((ord || []).indexOf(b) + 1 || 99));
 const PART_DIM = {I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
   cells:"none", capacity:"capacity", R0:"resistance", R1:"resistance", C1:"capacitance", soc0:"none", V_full:"voltage", V_empty:"voltage",
   Vf:"voltage", R_on:"resistance", R_off:"resistance", on_at:"time", off_at:"time", pwm_freq:"frequency", duty:"none", phase:"none",
-  I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia"};
-const ESC_DIM = {throttle:"none", I_max:"current"};
+  I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia", I0:"current",
+  awg:"none", area:"area", length:"length", material:"none", connectors:"none", R_contact:"resistance"};
+const ESC_DIM = {throttle:"none", I_max:"current", R_on:"resistance", t_sw:"time", f_sw:"frequency", C_th:"heat_cap", R_th:"th_res", T_amb_C:"none"};
+const ESC_LOSS = ["R_on","t_sw","f_sw","C_th","R_th","T_amb_C"];          // optional: shown only with "ESC losses" ticked
 const TH_DIM = {C_th:"heat_cap", R_th:"th_res", T_amb_C:"none", T0_C:"none", alpha:"tempco", T_max_C:"none", kt_tempco:"tempco", vf_tempco:"vtempco"};
 const TH_FOR = {kt_tempco:["motor"], vf_tempco:["diode"]};       // only these parts have them
 function partDim(key){ const f = key.slice(2);
@@ -1111,16 +1134,17 @@ function partDim(key){ const f = key.slice(2);
   return null; }
 function partQuantities(d){ const q = ["current","voltage","power","energy","heat"];
   if (d.ptype === "battery") q.push("soc"); if (d.ptype === "motor") q.push("torque"); if (d.thOn) q.push("temperature");
+  if (d.ptype === "motor" && d.escOn && d.escLossOn) q.push("esc_temperature", "esc_heat");
   q.push("state"); return q; }
 const PART_Q_HELP = {current:"current + to −", voltage:"v(+) − v(−)", power:"absorbed (− = delivering)", energy:"absorbed so far", soc:"charge 0-1",
   state:"fuse 1 = blown; switch, diode 1 = on; motor ESC duty; else 1 = intact", torque:"motor shaft torque", temperature:"°C", heat:"J lost in its resistance"};
 function partSockets(n, ins, outs){
   const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
   if (d.ptype === "motor"){ if (!String(d.mraw || "").trim()) ins.push({key:"t0", label:"shaft", type:"body", req:true}); ins.push({key:"t1", label:"frame", type:"body"}); }
-  byOrder(ct.fields, PART_ORDER[d.ptype]).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
-  if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen"), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
+  byOrder(ct.fields, PART_ORDER[d.ptype]).filter(f => !(f === "I0" && !d.ioOn)).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
+  if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen" && (d.escLossOn || !ESC_LOSS.includes(f))), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
-    .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:f === "C_th" || f === "R_th"}));
+    .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:(f === "C_th" || f === "R_th") && d.ptype !== "wire"}));
   outs.push({key:"pa", label:"+ terminal", type:"elec", tip:"wire to a net: the first net (current flows + to − through the part)"}, {key:"pb", label:"− terminal", type:"elec", tip:"wire to a net"});
   partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig", tip:PART_Q_HELP[q]}));
 }
@@ -1145,6 +1169,7 @@ function circuitOut(){
     sockets(n).ins.forEach(s => { const v = inVal(n, s.key, fieldValue(n, s.key)); if (blank(v) || !/^[feh]\./.test(s.key)) return;
       const f = s.key.slice(2); if (s.key[0] === "f") o[f] = v; else if (s.key[0] === "e") (o.esc = o.esc || {})[f] = v; else (o.thermal = o.thermal || {})[f] = v; });
     if (d.ptype === "motor"){ o.measure = motorMeasure(n); if (d.escOn){ o.esc = o.esc || {}; if (d.regen) o.esc.regen = true; } }
+    if (d.thOn && !o.thermal) o.thermal = {};             // a wire fills its own thermal values in
     if (d.label) o.label = d.label; P[d.name] = o; });
   return {ground: g ? g.data.name : "gnd", parts:P};
 }
@@ -1155,7 +1180,8 @@ function circuitIn(doc, pend, put){
   net(gnd);
   Object.entries(c.parts || {}).forEach(([k, e]) => { if (!e || typeof e !== "object") return;
     const d = {name:k, ptype:String(e.type || "resistor"), fields:{}, esc:{}, th:{}, escOn:e.esc !== undefined, regen:!!(e.esc && e.esc.regen === true),
-               thOn:e.thermal !== undefined, label:e.label || "", axis:"z", mraw:""};
+               thOn:e.thermal !== undefined, label:e.label || "", axis:"z", mraw:"",
+               escLossOn:!!(e.esc && ESC_LOSS.some(k => e.esc[k] !== undefined)), ioOn:e.I0 !== undefined};
     Object.entries(e).forEach(([f, v]) => { if (!["type","between","esc","thermal","measure","label"].includes(f)) d.fields[f] = str(v); });
     Object.entries(e.esc || {}).forEach(([f, v]) => { if (f !== "regen") d.esc[f] = str(v); });
     Object.entries(e.thermal || {}).forEach(([f, v]) => { d.th[f] = str(v); });
@@ -1185,11 +1211,14 @@ function partHTML(n, ins){
     b += `<div class="hint">give kv or Kt, one of them</div>`;
   }
   b += `<div class="sep"></div>`;
-  ins.filter(s => s.key.startsWith("f.")).forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
+  ins.filter(s => s.key.startsWith("f.") && s.key !== "f.I0").forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
   if (d.ptype === "motor"){
     b += `<div class="row"><label title="chop the supply at a throttle and limit the current, like a speed controller">ESC</label><input type="checkbox" data-k="escOn"${d.escOn ? " checked" : ""} style="justify-self:start"></div>`;
     if (d.escOn){ ins.filter(s => s.key.startsWith("e.")).forEach(s => b += fieldRow(n, s, d.esc[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
-      b += `<div class="row"><label title="let the motor push current back into the supply when it is driven faster than the throttle asks">regen</label><input type="checkbox" data-k="regen"${d.regen ? " checked" : ""} style="justify-self:start"></div>`; }
+      b += `<div class="row"><label title="let the motor push current back into the supply when it is driven faster than the throttle asks">regen</label><input type="checkbox" data-k="regen"${d.regen ? " checked" : ""} style="justify-self:start"></div>`;
+      b += `<div class="row"><label title="optional: the bridge's MOSFET resistance and switching loss, and the ESC's own temperature">ESC losses</label><input type="checkbox" data-k="escLossOn"${d.escLossOn ? " checked" : ""} style="justify-self:start"></div>`; }
+    b += `<div class="row"><label title="optional: the no-load current I0 from the datasheet, as an iron and bearing drag Kt I0 on the shaft">no-load loss</label><input type="checkbox" data-k="ioOn"${d.ioOn ? " checked" : ""} style="justify-self:start"></div>`;
+    if (d.ioOn){ const s0 = ins.find(s => s.key === "f.I0"); if (s0) b += fieldRow(n, s0, d.fields.I0 ?? "", PART_PH.I0); }
   }
   if (ct.thermal){
     b += `<div class="row"><label title="advanced: the part heats with its losses, cools to ambient, and its resistance (and a motor's Kt, a diode's Vf) shift with temperature">thermal</label><input type="checkbox" data-k="thOn"${d.thOn ? " checked" : ""} style="justify-self:start"></div>`;
@@ -1279,7 +1308,7 @@ function toDoc(){
     if (n.data.label) o.label = n.data.label; if (n.data.unit) o.unit = n.data.unit; outputs[n.data.name] = o; });
   S.nodes.filter(n => n.kind === "failure").forEach(n => {
     const d = n.data, o = {name:d.name};
-    if (d.mode === "metric"){ const l = linkTo(n.id, "metric"); if (l) o.metric = byId(l.from.node).data.name;
+    if (d.mode === "metric"){ const l = linkTo(n.id, "metric"); if (l) o.metric = mname(byId(l.from.node), l.from.key);
       o.limit = lit(d.limit); o.fails_when = d.fails_when; }
     else { o.demand = d.demand; o.capacity = d.capacity; }
     o.origin = d.origin; if (d.assumption) o.assumption = d.assumption; failure.push(o);
@@ -1314,14 +1343,23 @@ function toDoc(){
   if (Object.keys(mcr).length && mcn > 0) study.monte_carlo = {n: mcn, ranges: mcr};
   const gn = S.nodes.find(n => n.kind === "goal");
   if (gn){ const lv = linkTo(gn.id, "v"), lo_ = linkTo(gn.id, "o"), sv = lv && byId(lv.from.node), so = lo_ && byId(lo_.from.node);
-    if (sv && so && String(gn.data.target || "").trim()){ const g = {vary:sv.data.name, output:so.data.name, target:lit(String(gn.data.target).trim()),
+    if (sv && so && String(gn.data.target || "").trim()){ const g = {vary:sv.data.name, output:mname(so, lo_.from.key), target:lit(String(gn.data.target).trim()),
       tolerance:(String(gn.data.tol || "0.1").trim() || "0.1") + " %"};
       if (String(gn.data.lo || "").trim() && String(gn.data.hi || "").trim()) g.range = [lit(gn.data.lo), lit(gn.data.hi)];
       study.goal_seek = g; } }
+  const on = S.nodes.find(n => n.kind === "opt");
+  if (on){ const d = on.data, vary = {}, cons = [];
+    for (let i = 0; i < (d.nv || 1); i++){ const l = linkTo(on.id, "v" + i), src = l && byId(l.from.node), r = (d.ranges || [])[i] || {};
+      if (src && String(r.lo || "").trim() && String(r.hi || "").trim()) vary[src.data.name] = [lit(r.lo), lit(r.hi)]; }
+    const lo_ = linkTo(on.id, "obj"), so = lo_ && byId(lo_.from.node);
+    for (let i = 0; i < (d.nc || 0); i++){ const l = linkTo(on.id, "c" + i), src = l && byId(l.from.node), c = (d.cons || [])[i] || {};
+      if (src && String(c.value || "").trim()){ const o = {output:mname(src, l.from.key)}; o[c.side === "min" ? "min" : "max"] = lit(c.value); cons.push(o); } }
+    if (so && Object.keys(vary).length){ const o = {vary}; o[d.goal === "maximize" ? "maximize" : "minimize"] = mname(so, lo_.from.key);
+      if (cons.length) o.subject_to = cons; if (d.fm) o.failure_modes = true; if (parseInt(d.max)) o.max_runs = parseInt(d.max); study.optimize = o; } }
   const sn = S.nodes.find(n => n.kind === "sens");
   if (sn){ const vary = [], of = [];
     for (let i = 0; i < (sn.data.nv || 1); i++){ const l = linkTo(sn.id, "v" + i), src = l && byId(l.from.node); if (src && !vary.includes(src.data.name)) vary.push(src.data.name); }
-    for (let i = 0; i < (sn.data.no || 1); i++){ const l = linkTo(sn.id, "o" + i), src = l && byId(l.from.node); if (src && !of.includes(src.data.name)) of.push(src.data.name); }
+    for (let i = 0; i < (sn.data.no || 1); i++){ const l = linkTo(sn.id, "o" + i), src = l && byId(l.from.node); if (src && !of.includes(mname(src, l.from.key))) of.push(mname(src, l.from.key)); }
     if (vary.length){ study.sensitivity = {vary}; if (of.length) study.sensitivity.of = of; study.sensitivity.step = (String(sn.data.step || "1").trim() || "1") + " %"; } }
   const pin = {}, pout = {}, models = {};
   S.nodes.filter(n => n.kind === "inport").forEach(n => { const d = n.data, o = {};
@@ -1336,9 +1374,21 @@ function toDoc(){
     if (l.from.key !== "metric" && String(d.unit || "").trim()) o.unit = d.unit.trim(); if (d.label) o.label = d.label; pout[d.name] = o; });
   S.nodes.filter(n => n.kind === "model").forEach(n => { const d = n.data, o = {file:d.file || ""}, inp = {};
     sockets(n).ins.forEach(s => { const k = s.key.slice(2), v = inVal(n, s.key, (d.inputs || {})[k]); if (!blank(v) && String(v).trim() !== "") inp[k] = v; });
-    if (Object.keys(inp).length) o.inputs = inp; models[d.name] = o; });
+    if (Object.keys(inp).length) o.inputs = inp;
+    const rp = parseInt(d.repeat); if (rp > 1){ o.repeat = rp; const cr = Object.fromEntries(Object.entries(d.carry || {}).filter(([, v]) => v)); if (Object.keys(cr).length) o.carry = cr; }
+    models[d.name] = o; });
   if (Object.keys(pin).length || Object.keys(pout).length){ doc.ports = {}; if (Object.keys(pin).length) doc.ports.inputs = pin; if (Object.keys(pout).length) doc.ports.outputs = pout; }
   if (Object.keys(models).length) doc.models = models;
+  const bn = S.nodes.find(n => n.kind === "budget");
+  if (bn && String(bn.data.limit || "").trim()){ const o = {limit:lit(bn.data.limit)}; if (bn.data.bodies === false) o.bodies = false;
+    const its = {}; (bn.data.items || []).forEach(it => { if (String(it.name || "").trim() && String(it.mass || "").trim()) its[it.name.trim().replace(/[^A-Za-z0-9_]/g, "_")] = lit(it.mass); });
+    if (Object.keys(its).length) o.items = its; doc.budget = o; }
+  const scn = S.nodes.find(n => n.kind === "scen");
+  if (scn){ const d = scn.data, sc = {};
+    (d.names || []).forEach((nm, j) => { const o = {}; for (let i = 0; i < (d.nv || 1); i++){ const l = linkTo(scn.id, "v" + i), src = l && byId(l.from.node), v = ((d.cells || [])[j] || [])[i];
+        if (src && String(v || "").trim()) o[src.data.name] = lit(v); }
+      if (String(nm || "").trim()) sc[String(nm).trim().replace(/[^A-Za-z0-9_]/g, "_")] = o; });
+    if (Object.keys(sc).length) doc.scenarios = sc; }
   Object.assign(doc, {params, derived, bodies, elements});
   const circ = circuitOut(); if (circ) doc.circuit = circ;
   const ctl = {}; S.nodes.filter(n => n.kind === "ctl").forEach(n => { ctl[n.data.name] = ctlOut(n); });
@@ -1370,10 +1420,16 @@ function toDoc(){
   const imgs = S.nodes.filter(n => n.kind === "image").map(n => Object.assign({path:n.data.path || "", x:Math.round(n.x), y:Math.round(n.y), width:+n.data.w || 360},
     n.data.caption ? {caption:n.data.caption} : {}));
   if (imgs.length) ed.images = imgs;
+  if ((S.meta.overlays || []).length) ed.overlays = S.meta.overlays;
   if (S.nodes.length) doc.editor = ed;
   return doc;
 }
 const nodeKey = n => NS[n.kind] + ":" + n.data.name;
+// a result socket's output name: an output node's own name, or the budget node's mass_total / mass_margin
+const mname = (src, key) => src && src.kind === "budget" ? String(key).slice(2) : (src ? src.data.name : "");
+function msrc(name){ const b = S.nodes.find(n => n.kind === "budget");
+  if (b && (name === "mass_total" || name === "mass_margin")) return {node:b.id, key:"m." + name};
+  const o = byName(name, "o"); return o ? {node:o.id, key:"metric"} : null; }
 // ------------------------------------------------------------------------------------------------ YAML import
 function flow(v){ if (Array.isArray(v)) return "[" + v.map(flow).join(", ") + "]";
   if (v && typeof v === "object") return "{" + Object.entries(v).map(([k, x]) => k + ": " + flow(x)).join(", ") + "}"; return String(v); }
@@ -1421,7 +1477,7 @@ function fromDoc(doc){
   const to = run.timeout; S.meta.toMode = (to === undefined || String(to).toLowerCase() === "auto") ? "auto" : (["none","off","never"].includes(String(to).toLowerCase()) ? "off" : "limit");
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
   ["t_end","dt","dt_min","dt_max","mc_n","timeout","accuracy"].forEach(k => delete run[k]); S.meta.run_extra = run;
-  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor","ports","models"];
+  const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor","ports","models","budget","scenarios"];
   S.meta.gravity = str(doc.gravity ?? "");
   S.meta.units = ["SI","mm","US"].includes(doc.units) ? doc.units : "SI";
   S.meta.dim = doc.dim || "1d";
@@ -1452,7 +1508,7 @@ function fromDoc(doc){
     put(0, addNode("inport", {name:k, pkind:v.kind === "series" ? "series" : "value", unit:str(v.unit ?? ""), def:str(v.default ?? ""), label:v.label || ""})); });
   Object.entries(doc.models || {}).forEach(([k, v]) => { v = v || {}; const inp = {};
     Object.entries(v.inputs || {}).forEach(([a, x]) => { inp[a] = parseRef(x) ? "" : str(x); });
-    const n = addNode("model", {name:k, file:str(v.file ?? ""), inputs:inp}); Object.entries(v.inputs || {}).forEach(([a, x]) => pend.push([n.id, "i." + a, x])); put(1, n); });
+    const n = addNode("model", {name:k, file:str(v.file ?? ""), inputs:inp, repeat:str(v.repeat ?? ""), carry:Object.assign({}, v.carry || {})}); Object.entries(v.inputs || {}).forEach(([a, x]) => pend.push([n.id, "i." + a, x])); put(1, n); });
   Object.entries(doc.derived || {}).forEach(([k, v]) => {
     if (v && typeof v === "object" && v.block){
       const n = addNode("builder", {name:k, block:v.block, take:v.take || "", args:{}});
@@ -1566,7 +1622,7 @@ function fromDoc(doc){
     if (f.metric !== undefined){ Object.assign(d, {mode:"metric", limit:str(f.limit), fails_when:f.fails_when || "above"}); }
     else Object.assign(d, {mode:"dc", demand:str(f.demand), capacity:str(f.capacity)});
     const n = addNode("failure", d);
-    if (f.metric){ const m = byName(f.metric, "o"); if (m) S.links.push({from:{node:m.id, key:"metric"}, to:{node:n.id, key:"metric"}, field:""}); }
+    if (f.metric){ const m = msrc(f.metric); if (m) S.links.push({from:m, to:{node:n.id, key:"metric"}, field:""}); }
     put(5, n);
   });
   Object.entries((doc.ports || {}).outputs || {}).forEach(([k, o]) => { o = o || {};
@@ -1588,19 +1644,34 @@ function fromDoc(doc){
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
     S.links.push({from:{node:src.id, key: src.kind === "model" && r.field ? "o." + r.field : outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
   });
+  if (doc.budget && typeof doc.budget === "object"){ const B = doc.budget;
+    put(5, addNode("budget", {name:"budget", limit:str(B.limit ?? ""), bodies:B.bodies !== false, items:Object.entries(B.items || {}).map(([k, v]) => ({name:k, mass:str(v)}))})); }
+  if (doc.scenarios && typeof doc.scenarios === "object"){ const sc = doc.scenarios, names = Object.keys(sc), keys = [...new Set(names.flatMap(nm => Object.keys(sc[nm] || {})))];
+    const n = addNode("scen", {name:"scenarios", nv:Math.max(1, keys.length), names, cells:names.map(nm => keys.map(k => str((sc[nm] || {})[k] ?? "")))});
+    keys.forEach((k, i) => { const src = byName(k, "p"); if (src) S.links.push({from:{node:src.id, key:"out"}, to:{node:n.id, key:"v" + i}, field:""}); });
+    put(6, n); }
+  const op = (doc.study || {}).optimize;
+  if (op && op.vary){ const vk = Object.keys(op.vary), sub = op.subject_to || [];
+    const n = addNode("opt", {name:"optimize", goal:op.maximize !== undefined ? "maximize" : "minimize", nv:Math.max(1, vk.length), nc:sub.length,
+      ranges:vk.map(k => ({lo:str(op.vary[k][0]), hi:str(op.vary[k][1])})), cons:sub.map(c => ({side:c.min !== undefined ? "min" : "max", value:str(c.min ?? c.max)})),
+      fm:!!op.failure_modes, max:str(op.max_runs ?? "150")});
+    vk.forEach((k, i) => { const src = byName(k, "p"); if (src) S.links.push({from:{node:src.id, key:"out"}, to:{node:n.id, key:"v" + i}, field:""}); });
+    const ob = msrc(op.maximize ?? op.minimize); if (ob) S.links.push({from:ob, to:{node:n.id, key:"obj"}, field:""});
+    sub.forEach((c, i) => { const src = msrc(c.output); if (src) S.links.push({from:src, to:{node:n.id, key:"c" + i}, field:""}); });
+    put(6, n); }
   const gs = (doc.study || {}).goal_seek;
   if (gs && gs.vary){ const n = addNode("goal", {name:"goal", target:str(gs.target ?? ""), tol:String(gs.tolerance ?? "0.1").replace("%", "").trim(),
       lo:gs.range ? str(gs.range[0]) : "", hi:gs.range ? str(gs.range[1]) : ""});
-    const sv_ = byName(gs.vary, "p"), so_ = byName(gs.output, "o");
+    const sv_ = byName(gs.vary, "p"), so_ = msrc(gs.output);
     if (sv_) S.links.push({from:{node:sv_.id, key:"out"}, to:{node:n.id, key:"v"}, field:""});
-    if (so_) S.links.push({from:{node:so_.id, key:"metric"}, to:{node:n.id, key:"o"}, field:""});
+    if (so_) S.links.push({from:so_, to:{node:n.id, key:"o"}, field:""});
     put(6, n); }
   const sv = (doc.study || {}).sensitivity;
   if (sv && (sv.vary || []).length){
     const vary = sv.vary || [], of = sv.of || [];
     const n = addNode("sens", {name:"levers", step:String(sv.step ?? "1").replace("%", "").trim(), nv:Math.max(1, vary.length), no:Math.max(1, of.length)});
     vary.forEach((v, i) => { const src = byName(v, "p"); if (src) S.links.push({from:{node:src.id, key:"out"}, to:{node:n.id, key:"v" + i}, field:""}); });
-    of.forEach((o, i) => { const src = byName(o, "o"); if (src) S.links.push({from:{node:src.id, key:"metric"}, to:{node:n.id, key:"o" + i}, field:""}); });
+    of.forEach((o, i) => { const src = msrc(o); if (src) S.links.push({from:src, to:{node:n.id, key:"o" + i}, field:""}); });
     put(6, n);
   }
   (doc.exports || []).forEach(x => {
@@ -1619,6 +1690,7 @@ function fromDoc(doc){
     Object.entries(ed.layout).forEach(([k, xy]) => { const n = byKey(k); if (n && Array.isArray(xy)){ n.x = +xy[0] || 0; n.y = +xy[1] || 0; hit++; } });
     S.meta.hasLayout = hit > 0; }
   (ed.notes || []).forEach(t => { const n = addNode("note", Object.assign({text:String(t.text ?? "")}, t.width ? {w:String(t.width)} : {}), +t.x || 0, +t.y || 0); });
+  S.meta.overlays = Array.isArray(ed.overlays) ? ed.overlays.map(String) : []; OVL = {};
   (ed.images || []).forEach(t => { addNode("image", {path:String(t.path ?? ""), w:String(t.width ?? 360), caption:String(t.caption ?? "")}, +t.x || 0, +t.y || 0); });
   (ed.groups || []).forEach((g, i) => { const members = (g.members || []).map(byKey).filter(Boolean).map(n => n.id); if (!members.length) return;
     const expose = {}; Object.entries(g.expose || {}).forEach(([k, v]) => { const [mk, key] = k.split("|"); const m = byKey(mk); if (m) expose[m.id + "|" + key] = !!v; });
@@ -1627,7 +1699,28 @@ function fromDoc(doc){
 // ------------------------------------------------------------------------------------------------ view
 const canvas = document.getElementById("canvas"), world = document.getElementById("world"), wires = document.getElementById("wires");
 let view = {x:0, y:0, k:1}, sel = null;
-function applyView(){ world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; drawGrid(); }
+function applyView(){ world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; drawGrid(); if (typeof drawMinimap === "function") drawMinimap(); }
+// ---- minimap: every node as a small block in its kind's colour, the view as a frame; click or drag to move there
+let MM = null;
+function drawMinimap(){
+  const cv = document.getElementById("minimap"); if (!cv) return;
+  const els = [...world.querySelectorAll(".node,.gframe")];
+  const on = (SETTINGS.minimap ?? true) && els.length > 12; cv.hidden = !on; if (!on){ MM = null; return; }
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const c = canvas.getBoundingClientRect(), vx0 = -view.x / view.k, vy0 = -view.y / view.k, vw = c.width / view.k, vh = c.height / view.k;
+  let x0 = vx0, y0 = vy0, x1 = vx0 + vw, y1 = vy0 + vh;
+  els.forEach(el => { x0 = Math.min(x0, el.offsetLeft); y0 = Math.min(y0, el.offsetTop); x1 = Math.max(x1, el.offsetLeft + el.offsetWidth); y1 = Math.max(y1, el.offsetTop + el.offsetHeight); });
+  const pad = 6, k = Math.min((W - 2 * pad) / (x1 - x0 || 1), (H - 2 * pad) / (y1 - y0 || 1)), ox = pad - x0 * k, oy = pad - y0 * k;
+  els.forEach(el => { const n = byId(el.dataset.id), col = n ? String(COL[n.kind] || "var(--edge)") : "var(--c-group)", m = col.match(/var\(--([^)]+)\)/);
+    g.fillStyle = m ? tok(m[1]) : col; g.globalAlpha = 0.85; g.fillRect(ox + el.offsetLeft * k, oy + el.offsetTop * k, Math.max(2, el.offsetWidth * k), Math.max(2, el.offsetHeight * k)); });
+  g.globalAlpha = 1; g.strokeStyle = tok("acc"); g.lineWidth = 1.5; g.strokeRect(ox + vx0 * k, oy + vy0 * k, vw * k, vh * k);
+  MM = {k, ox, oy, vw, vh}; }
+(() => { const cv = document.getElementById("minimap"); let drag = false;
+  const go = e => { if (!MM) return; const r = cv.getBoundingClientRect(), wx = (e.clientX - r.left - MM.ox) / MM.k, wy = (e.clientY - r.top - MM.oy) / MM.k;
+    view.x = -(wx - MM.vw / 2) * view.k; view.y = -(wy - MM.vh / 2) * view.k; applyView(); drawWires(); };
+  cv.addEventListener("mousedown", e => { drag = true; go(e); e.stopPropagation(); e.preventDefault(); });
+  window.addEventListener("mousemove", e => { if (drag) go(e); }); window.addEventListener("mouseup", () => { drag = false; }); })();
 // the grid lives in canvas units: it pans and zooms with the nodes. Minor lines every 24 units, major every 5 minors;
 // when zoomed far out the minor spacing steps up by 5 so the grid never turns into a smear
 // camera: Home (or H) goes back to the origin at 100 % zoom; F fits every node on screen
@@ -1758,7 +1851,7 @@ function uvControl(key, value, dim, ph, extra){
 }
 // ---- field sockets: every typed field a value can feed gets its own input socket (a small dot at its left edge).
 // Plugging a value in writes $name into the field; the text stays the single source of truth.
-const NO_FIELD_SOCK = new Set(["pkind","def","mraw","csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
+const NO_FIELD_SOCK = new Set(["pkind","def","max","goal","limit","mraw","csvXcol","csvYcol","name","label","take","folder","custom","csvFile","file","path","note","sh.kind","sh.src","dof","rot3","type","mk","inForm","csvOn","srcSel","pl.kind","csvAgainst","reduce","quantity","unit"]);
 function fieldKey(inp){
   if (inp.dataset.feat !== undefined) return ["name","unit","kind"].includes(inp.dataset.fk) ? null : "@F" + inp.dataset.feat + "." + inp.dataset.fk;
   const k = inp.dataset.k; if (!k || NO_FIELD_SOCK.has(k) || inp.dataset.part === "unit" || k.startsWith("f3_") || k.startsWith("free_")) return null;
@@ -2452,6 +2545,42 @@ function nodeHTML(n){
     b += `<div class="mini"><button data-act="addlever">+ lever</button><button data-act="addsout">+ output</button>${(d.nv || 1) > 1 ? '<button data-act="dellever">− lever</button>' : ""}${(d.no || 1) > 1 ? '<button data-act="delsout">− output</button>' : ""}</div>`;
     b += `<div class="row"><label title="each lever runs once a little up and once a little down from its value">step</label><div class="uv"><input data-k="step" value="${esc(d.step || "1")}" placeholder="1"><span class="u" style="padding:0 6px">%</span></div></div>`;
     b += `<div class="hint">Press Study: every lever runs ${esc(d.step || "1")} % up and down (two runs each). The results rank which inputs move each output most.</div>`;
+  } else if (n.kind === "budget"){
+    const B = LASTCHECK && LASTCHECK.budget;
+    b += `<div class="row req"><label title="the class limit, with its unit (3 lb, 1.36 kg)">limit</label><input data-k="limit" value="${esc(d.limit || "")}" placeholder="e.g. 3 lb"></div>`;
+    b += `<div class="row"><label title="count every modelled body's mass (a 1D spinning body has an inertia, not a mass: list it below)">bodies</label><input type="checkbox" data-k="bodies"${d.bodies !== false ? " checked" : ""} style="justify-self:start"></div>`;
+    (d.items || []).forEach((it, i) => { b += `<div class="row"><input data-bi="${i}" data-bf="name" value="${esc(it.name)}" placeholder="part" style="max-width:110px"><input data-bi="${i}" data-bf="mass" value="${esc(it.mass)}" placeholder="e.g. 25 g"></div>`; });
+    b += `<div class="mini"><button data-act="addbi">+ item</button>${(d.items || []).length ? '<button data-act="delbi">− item</button>' : ""}</div>`;
+    if (B && !B.error){ const over = B.margin < 0;
+      b += `<table class="res" style="margin-top:6px">` + B.items.map(x => `<tr><td>${esc(x.name)}${x.source !== "item" ? ` <span class="u">(${esc(x.source)})</span>` : ""}</td><td class="v">${fmt(x.mass)}</td><td class="u">${esc(B.unit)}</td></tr>`).join("") +
+        `<tr><td><b>total</b></td><td class="v"><b>${fmt(B.total)}</b></td><td class="u">${esc(B.unit)}</td></tr><tr><td>margin</td><td class="v" style="color:var(--${over ? "fail" : "pass"})">${fmt(B.margin)}</td><td class="u">${esc(B.unit)}</td></tr></table>`;
+      const pct = Math.max(0, Math.min(1, B.total / B.limit));
+      b += `<div style="height:6px;border-radius:3px;background:var(--panel3);margin:6px 0"><div style="height:6px;border-radius:3px;width:${(100 * pct).toFixed(1)}%;background:var(--${over ? "fail" : (pct > 0.95 ? "warn" : "pass")})"></div></div>`; }
+    else if (B && B.error) b += `<div class="hint" style="color:var(--warn)">${esc(B.error)}</div>`;
+    else b += `<div class="hint">The breakdown appears once the model checks.</div>`;
+  } else if (n.kind === "scen"){
+    d.names = d.names || []; d.cells = d.cells || [];
+    b += `<div class="scgrid" style="display:grid;grid-template-columns:auto repeat(${d.names.length}, minmax(70px, 1fr));gap:4px;align-items:center;margin:4px 0">`;
+    b += `<span></span>` + d.names.map((nm, j) => `<input data-sn="${j}" value="${esc(nm)}" title="scenario name" style="font-weight:600">`).join("");
+    ins.forEach((s, i) => { const l = linkTo(n.id, s.key), src = l ? byId(l.from.node) : null;
+      b += `<span class="row" style="margin:0"><span class="sock in t-val" data-s="${s.key}" data-t="val"></span><label>${src ? esc(src.data.name) : "plug a value"}</label></span>` +
+        d.names.map((_, j) => `<input data-sc="${j}" data-si="${i}" value="${esc((d.cells[j] || [])[i] || "")}" placeholder="${src ? esc(String(src.data.value || "")) : ""}">`).join(""); });
+    b += `</div><div class="mini"><button data-act="addsv">+ value</button><button data-act="addsn">+ scenario</button>${(d.nv || 1) > 1 ? '<button data-act="delsv">− value</button>' : ""}${d.names.length > 1 ? '<button data-act="delsn">− scenario</button>' : ""}</div>`;
+    b += `<div class="mini"><button data-act="scenrun" class="primary">Run all scenarios</button></div><div class="hint">Each scenario runs once with its values (blank cells keep the model's own), side by side with the model as written.</div>`;
+  } else if (n.kind === "opt"){
+    d.ranges = d.ranges || []; d.cons = d.cons || [];
+    ins.forEach(s => { const l = linkTo(n.id, s.key), src = l ? byId(l.from.node) : null;
+      b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-${s.type}" data-s="${s.key}" data-t="${s.type}"></span><label>${esc(s.label)}</label>` +
+           (src ? `<span class="linked">← ${esc(src.data.name)}</span>` : `<span class="hint" style="padding:0">${s.type === "val" ? "plug a value" : (s.key === "obj" ? "plug the output to optimize" : "plug an output to keep in limits")}</span>`) + `</div>`;
+      if (s.key.startsWith("v")){ const i = +s.key.slice(1), r = d.ranges[i] = d.ranges[i] || {lo:"", hi:""};
+        b += `<div class="row req"><label title="the range it may take (with units: 1 mm, 6 mm)">range</label><div class="vxy" style="grid-template-columns:1fr 1fr"><input data-ov="${i}" data-of="lo" value="${esc(r.lo)}" placeholder="low"><input data-ov="${i}" data-of="hi" value="${esc(r.hi)}" placeholder="high"></div></div>`; }
+      if (s.key === "obj") b += `<div class="row"><label>goal</label><select data-k="goal">${sel_([["minimize","minimize"],["maximize","maximize"]], d.goal)}</select></div>`;
+      if (s.key.startsWith("c")){ const i = +s.key.slice(1), c = d.cons[i] = d.cons[i] || {side:"max", value:""};
+        b += `<div class="row"><label title="in the output's own unit">keep</label><div class="vxy" style="grid-template-columns:auto 1fr"><select data-oc="${i}" data-of="side">${sel_([["max","at most"],["min","at least"]], c.side)}</select><input data-oc="${i}" data-of="value" value="${esc(c.value)}" placeholder="limit"></div></div>`; } });
+    b += `<div class="mini"><button data-act="addov">+ value</button><button data-act="addoc">+ limit</button>${(d.nv || 1) > 1 ? '<button data-act="delov">− value</button>' : ""}${(d.nc || 0) > 0 ? '<button data-act="deloc">− limit</button>' : ""}</div>`;
+    b += `<div class="row"><label title="every failure mode in the model must pass (safety factor at least 1)">failure modes</label><input type="checkbox" data-k="fm"${d.fm ? " checked" : ""} style="justify-self:start" title="every failure mode must pass"></div>`;
+    b += `<div class="row"><label title="the most runs it may take">max runs</label><input data-k="max" value="${esc(d.max || "150")}"></div>`;
+    b += `<div class="hint">Press Study: it varies every plugged value at once (COBYLA, no derivatives needed) to ${d.goal === "maximize" ? "maximize" : "minimize"} the output while keeping the limits, and keeps the best run that meets them all.</div>`;
   } else if (n.kind === "inport"){
     b += `<div class="row"><label title="a value (a number with a unit) or a time series (a load against time)">kind</label><select data-k="pkind">${sel_([["value","value"],["series","time series"]], d.pkind)}</select></div>`;
     b += `<div class="row"><label title="the unit it is given in (for a series: N, kN, N m)">unit</label><input data-k="unit" value="${esc(d.unit || "")}" placeholder="${d.pkind === "series" ? "N" : "e.g. m/s"}"></div>`;
@@ -2475,6 +2604,9 @@ function nodeHTML(n){
         b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-ser" data-s="${esc(s.key)}" data-t="ser"></span><label>${esc(s.label)}</label>` +
           (l ? `<span class="linked">← ${esc(refOf(l))}</span>` : `<span class="hint" style="padding:0">wire a series</span>`) + `</div>`; }
       else b += fieldRow(n, s, (d.inputs || {})[s.key.slice(2)] ?? "", pp.default != null ? "default " + pp.default : (pp.unit ? "in " + pp.unit : "needed")); });
+    b += `<div class="row"><label title="run the block this many times in a row (repeated hits); 1 or blank: once">repeat</label><input data-k="repeat" value="${esc(d.repeat || "")}" placeholder="1"></div>`;
+    if ((parseInt(d.repeat) || 1) > 1 && d.info && d.info.ok){ d.carry = d.carry || {};
+      d.info.inputs.forEach(p => { b += `<div class="row"><label title="what this input takes from the run before (the first run uses its wire or value)">${esc(p.name)} ⟲</label><select data-k="carry.${esc(p.name)}">${sel_([["", "not carried"], ...d.info.outputs.filter(o => o.kind === p.kind).map(o => [o.name, "← last run's " + o.name])], d.carry[p.name] || "")}</select></div>`; }); }
     b += `<div class="mini"><button data-act="mopen" title="Open this model file">open</button><button data-act="mreload" title="Read its ports again (after you edit it)">reload ports</button></div>`;
   } else if (n.kind === "export"){
     b += exportHTML(n, ins);
@@ -2485,6 +2617,7 @@ function nodeHTML(n){
   } else if (n.kind === "ctl"){
     b += ctlHTML(n, ins);
   }
+  if (n.kind === "body" && d.dof !== "ground") b += `<div class="mini"><button data-act="cadmass" title="Paste the mass properties report from SolidWorks, Onshape or Fusion: mass, centre of mass and inertia fill in">Paste CAD mass properties…</button></div>`;
   outs.forEach(s => b += outRow(s));
   const title = `<input class="nm" data-k="name" value="${esc(d.name)}" spellcheck="false">`;
   const color = COL[n.kind];
@@ -2513,11 +2646,11 @@ function render(){
     el.dataset.id = g.id; el.style.left = g.x + "px"; el.style.top = g.y + "px";
     el.innerHTML = groupHTML(g); world.appendChild(el);
   }
-  drawFrames(); paintSel(); syncMeta(); renderYaml(); renderGroupPanel(); watchSizes();
+  drawFrames(); paintSel(); syncMeta(); renderYaml(); renderGroupPanel(); watchSizes(); drawMinimap();
 }
 function countValues(v){ const t = String(v || "").trim(); if (!t) return 0;
   if (t.includes(":") && !t.includes(",")) return parseInt(t.split(":")[2]) || 0; return t.split(",").filter(x => x.trim()).length; }
-const KIND_COL = {value:0, builder:1, sweep:1, mc:1, body:2, element:3, load:3, part:3, net:4, output:5, expr:5, failure:6, export:6, sens:6, goal:6};
+const KIND_COL = {value:0, builder:1, sweep:1, mc:1, inport:0, model:1, body:2, element:3, load:3, part:3, net:4, output:5, expr:5, failure:6, export:6, sens:6, goal:6, opt:6, outport:6};
 function arrange(){
   // columns by role, stacked with the real rendered heights so nothing overlaps; a closed group moves as one block,
   // an open group keeps its members together in its own band
@@ -2637,7 +2770,7 @@ function orgUnits(all){
       move:(x, y) => { const dx = x - x0, dy = y + 34 - y0; g.members.forEach(id => { const n = byId(id); if (n){ n.x += dx; n.y += dy; } }); } }); });
   return {units, scoped};
 }
-const ORG_KIND = {value:0, sweep:1, mc:1, builder:2, body:3, element:4, load:4, ctl:4.5, expr:5, output:6, failure:6, export:7, sens:7, goal:7, group:8, note:9};
+const ORG_KIND = {value:0, inport:0, sweep:1, mc:1, model:1.5, builder:2, body:3, element:4, load:4, ctl:4.5, expr:5, output:6, failure:6, export:7, outport:7, sens:7, goal:7, opt:7, group:8, note:9};
 const gsnap = (v, g = 10) => Math.round(v / g) * g;
 function placeGrid(cells, ox, oy, gx = 24, gy = 20){
   // cells: [{u, c, r}] -> per-column widths and per-row heights, so different-sized nodes never overlap
@@ -2967,6 +3100,11 @@ world.addEventListener("input", e => {
   const holder = el.closest("[data-m]"), n = byId(holder ? holder.dataset.m : nodeEl.dataset.id); if (!n) return;
   const d = n.data, k = el.dataset.k;
   if (el.dataset.col !== undefined){ d.cols[+el.dataset.col][el.dataset.ck] = el.value; changed(el.dataset.ck !== "label" || false); return; }
+  if (el.dataset.bi !== undefined){ d.items[+el.dataset.bi][el.dataset.bf] = el.value; changed(false); return; }
+  if (el.dataset.sn !== undefined){ d.names[+el.dataset.sn] = el.value.replace(/[^A-Za-z0-9_ -]/g, "_"); changed(false); return; }
+  if (el.dataset.sc !== undefined){ const j = +el.dataset.sc, i = +el.dataset.si; d.cells[j] = d.cells[j] || []; d.cells[j][i] = el.value; changed(false); return; }
+  if (el.dataset.ov !== undefined){ d.ranges[+el.dataset.ov][el.dataset.of] = el.value; changed(false); return; }
+  if (el.dataset.oc !== undefined){ d.cons[+el.dataset.oc][el.dataset.of] = el.value; changed(el.tagName === "SELECT"); return; }
   if (el.dataset.term !== undefined){ d.terms[+el.dataset.term].coef = el.value; changed(false); refreshMeasure(n); return; }
   if (el.dataset.tco !== undefined){ d.terms[+el.dataset.tco].co = el.value; changed(true); return; }
   if (el.dataset.feat !== undefined){ const f = feats(d)[+el.dataset.feat]; if (!f) return; const fk = el.dataset.fk;
@@ -3030,6 +3168,7 @@ world.addEventListener("change", e => { const hm = e.target.closest("[data-m]");
 function setField(n, k, v){ const d = n.data;
   if (k.startsWith("a.")) d.args[k.slice(2)] = v; else if (k.startsWith("f.")) d.fields[k.slice(2)] = v;
   else if (n.kind === "model" && k === "file"){ d.file = v; d.info = null; }
+  else if (n.kind === "model" && k.startsWith("carry.")){ d.carry = d.carry || {}; if (v) d.carry[k.slice(6)] = v; else delete d.carry[k.slice(6)]; }
   else if (n.kind === "model" && k.startsWith("i.")){ d.inputs = d.inputs || {}; d.inputs[k.slice(2)] = v; }
   else if (n.kind === "part" && k.startsWith("e.")) d.esc[k.slice(2)] = v; else if (n.kind === "part" && k.startsWith("h.")) d.th[k.slice(2)] = v;
   else if (n.kind === "net" && k === "ground" && v){ S.nodes.forEach(x => { if (x.kind === "net") x.data.ground = false; }); d.ground = true; }
@@ -3056,6 +3195,18 @@ world.addEventListener("click", async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const n = byId(b.closest(".node").dataset.id); if (!n) return; const d = n.data, act = b.dataset.act;
   if (act === "addlever"){ d.nv = (d.nv || 1) + 1; changed(); return; }
+  if (act === "addbi"){ d.items = d.items || []; d.items.push({name:"", mass:""}); changed(); return; }
+  if (act === "delbi"){ d.items.pop(); changed(); return; }
+  if (act === "addsv"){ d.nv = (d.nv || 1) + 1; changed(); return; }
+  if (act === "delsv"){ const i = (d.nv || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "v" + i)); d.nv = i; d.cells.forEach(c => { c.length = Math.min(c.length, i); }); changed(); return; }
+  if (act === "addsn"){ d.names.push("scenario_" + (d.names.length + 1)); d.cells.push([]); changed(); return; }
+  if (act === "delsn"){ d.names.pop(); d.cells.pop(); changed(); return; }
+  if (act === "scenrun"){ runScenarios(); return; }
+  if (act === "cadmass"){ cadMassDialog(n); return; }
+  if (act === "addov"){ d.nv = (d.nv || 1) + 1; changed(); return; }
+  if (act === "addoc"){ d.nc = (d.nc || 0) + 1; changed(); return; }
+  if (act === "delov"){ const i = (d.nv || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "v" + i)); d.nv = i; d.ranges.length = i; changed(); return; }
+  if (act === "deloc"){ const i = (d.nc || 0) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "c" + i)); d.nc = i; d.cons.length = i; changed(); return; }
   if (act === "addsout"){ d.no = (d.no || 1) + 1; changed(); return; }
   if (act === "dellever"){ const i = (d.nv || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "v" + i)); d.nv = i; changed(); return; }
   if (act === "delsout"){ const i = (d.no || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "o" + i)); d.no = i; changed(); return; }
@@ -3104,6 +3255,9 @@ world.addEventListener("click", async e => {
   changed();
 });
 const NODE_INFO = {
+  budget: ["Weight budget", null, "every mass against the class limit", "Counts the mass of every body in the model (2D and 3D bodies, and any element's own mass) plus the items you list, and compares the total with the limit. Its mass_total and mass_margin are outputs: plug them into a failure mode or the optimizer. A 1D spinning body has an inertia, not a mass, so list its mass as an item."],
+  scen: ["Scenarios", null, "named sets of values, side by side", "Plug in the values that change between cases and give each scenario (a column) its values; blank cells keep the model's own. Run all scenarios runs each once, plus the model as written, and lists every output side by side."],
+  opt: ["Optimizer", null, "the best values for an output, within limits", "Plug in the values it may change (each with a range), the output to minimize or maximize, and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Press Study: it runs the model again and again, moving every value at once (COBYLA: Powell's constrained method, which needs no derivatives, so a contact that starts or a part that yields does not stall it), and keeps the best run that meets every limit. Use these values writes them back into the model."],
   model: ["Model block", null, "another model file run as one block, upstream of this one", "Pick a saved model file. Its input ports appear on the left (type a value or wire one in) and its output ports on the right. Wire an output port into any value field, a load's series socket, or another block's input. Before this model runs, every block runs in wire order (a block that reads another's output runs after it), and its results are listed with yours as block.output. Blocks are one-way: the downstream model cannot push back on the upstream one, and each keeps its own time step and dimension, so a 1D hit can feed a 3D frame. Runs are remembered: a block runs again only when its file or its inputs change, and a sweep or Monte Carlo here reruns each block with its new inputs. A canvas of only blocks is a sequence. For two models that must push on each other, put them in one model (a group) instead."],
   inport: ["Input port", null, "a named input this model takes when it is used as a block", "A value port works like a value node: use it as $name in any field or wire it in. A time-series port feeds a load's series socket (the load follows it against time). Give a value port a default so the model also runs on its own; without one, it runs only as a block inside another model, which supplies the value."],
   outport: ["Output port", null, "a named result this model gives when it is used as a block", "Wire an output node in for a value port (its result, e.g. a peak force or a final speed), or an element signal, body or control for a time-series port (its whole history, e.g. a contact force against time, for the next model's load)."],
@@ -3409,7 +3563,7 @@ function menuAll(){
   add("Results", "Failure mode", "your limit on a metric, with its origin", COL.fail, () => ["failure", {name:"fails"}], {words:"limit criterion"});
   add("Results", "CSV export", "write time histories to a CSV file (time vs value tables)", COL.export, () => ["export", {name:"csv"}], {words:"table file save history tabular"});
   if (CAT.circuit){
-    const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current", current_load:"load sink draw amps constant current",
+    const EW = {resistor:"ohm load bleed", capacitor:"cap esr bank filter", inductor:"coil choke", voltage_source:"supply psu dc", current_source:"constant current", current_load:"load sink draw amps constant current", wire:"wire cable lead awg gauge xt60 xt30 xt90 connector harness copper loss",
       battery:"lipo pack cells mah", diode:"rectifier flyback freewheel", switch:"relay contactor pwm mosfet", fuse:"breaker protection", motor:"dc brushless bldc kv esc spinner weapon"};
     Object.keys(CAT.circuit.types).forEach(t => add("Electrical", "Part · " + PART_NAME[t], (PART_INFO[t] || [""])[0], "var(--s-elec)", () => ["part", {name:t === "voltage_source" ? "supply" : (t === "battery" ? "pack" : t), ptype:t}], {words:"circuit electrical " + (EW[t] || "")}));
     add("Electrical", "Part · motor with ESC", "a motor behind a speed controller: throttle and current limit", "var(--s-elec)", () => ["part", {name:"motor", ptype:"motor", escOn:true, esc:{throttle:"1"}}], {words:"circuit electrical esc speed controller weapon drive bldc"});
@@ -3437,6 +3591,12 @@ function menuAll(){
   add("Modifiers", "Monte Carlo", "plug into any input: sampled between low and high", COL.mc, () => ["mc", {name:"mc"}], {words:"random uncertainty statistics"});
   add("Results", "Goal seek", "find the input value that brings an output to a target", COL.goal, () => ["goal", {name:"goal"}],
       {words:"goal seek solve target find inverse optimize size thickness what value"});
+  add("Results", "Weight budget", "every body's mass plus the parts you list, against a limit (3 lb): total and margin as outputs", COL.budget, () => ["budget", {name:"budget"}],
+      {words:"weight mass budget limit class 3 lb beetleweight total margin"});
+  add("Results", "Scenarios", "named sets of values (arena hit, drop test, worst case) run side by side", COL.scen, () => ["scen", {name:"scenarios"}],
+      {words:"scenario case cases load case compare side by side what if"});
+  add("Results", "Optimizer", "vary several values at once to minimize or maximize an output, keeping limits and failure modes", COL.opt, () => ["opt", {name:"optimize"}],
+      {words:"optimize optimise optimization minimize maximize lightest cheapest best design size constraint cobyla"});
   add("Results", "Levers (sensitivity)", "which inputs move an output most: each nudged up and down a little", COL.sens, () => ["sens", {name:"levers"}],
       {words:"sensitivity derivative gradient levers influence elasticity tornado ranking what matters"});
   add("Notes", "Note", "free text on the canvas, with LaTeX ($...$, $$...$$)", COL.note, () => ["note", {text:""}], {words:"comment text latex equation"});
@@ -3629,6 +3789,8 @@ async function check(){
   const r = await API.call("check", yamlText);
   const prev = errNode; errNode = null;
   if (r.ok){ lastDt = r; syncTimeBar();
+    const hadB = JSON.stringify((LASTCHECK || {}).budget || null); LASTCHECK = r;
+    if (JSON.stringify(r.budget || null) !== hadB){ const bn = S.nodes.find(n => n.kind === "budget"); if (bn){ const el = world.querySelector(`.node[data-id="${bn.id}"]`); if (el){ el.innerHTML = nodeHTML(bn); fieldSockets(el, bn); drawWires(); } } }
     status("ok", `OK · ${r.bodies.length} ${r.bodies.length === 1 ? "body" : "bodies"}, ${r.elements.length} element${r.elements.length === 1 ? "" : "s"} · time step ${niceTime(r.dt).join(" ")} (${S.meta.dtMode || "auto"}) · ${S.meta.dtMode === "adaptive" ? "up to " : ""}${r.steps.toLocaleString()} steps`);
     liveRun(); }
   else {
@@ -3757,7 +3919,7 @@ function showRun(r, isLive){
     const ch = P0 && typeof v === "number" && typeof pv === "number" ? (pv !== 0 ? `${v - pv >= 0 ? "+" : ""}${(100 * (v - pv) / Math.abs(pv)).toFixed(2)} %` : (v === pv ? "0" : fmt(v - pv))) : "";
     h += `<tr><td>${esc(k)}</td><td class="v">${esc(fmt(v))}</td><td class="u">${esc(r.units[k] || "")}</td>` + (P0 ? `<td class="v" style="color:var(--ink2)">${pv === undefined ? "—" : esc(fmt(pv))}</td><td class="v" style="color:${ch.startsWith("+") ? "var(--p1)" : (ch.startsWith("-") ? "var(--p2)" : "var(--ink3)")}">${ch}</td>` : "") + `</tr>`; });
   h += `<tr><td style="color:var(--ink3)">energy ledger</td><td class="v">${(100 * r.outputs._ledger_rel).toFixed(3)}</td><td class="u">%</td>${P0 ? "<td></td><td></td>" : ""}</tr></table>`;
-  h += `<h3>Time history</h3><canvas id="plot"></canvas><div class="series" id="series"></div><div class="mini" style="margin-top:6px"><button id="bPlotPng" title="Save the plot as a PNG picture">Save plot as PNG</button>${P0 ? '<span class="hint" style="padding:0 0 0 8px">pinned run dashed</span>' : ""}</div>`;
+  h += `<h3>Time history</h3><canvas id="plot"></canvas><div class="series" id="series"></div><div class="mini" style="margin-top:6px"><button id="bPlotPng" title="Save the plot as a PNG picture">Save plot as PNG</button><button id="bFft" title="Frequency content of the first ticked history">FFT</button><button id="bSrs" title="Shock response spectrum of the first ticked history (a velocity is differentiated to an acceleration)">Shock spectrum</button><button id="bOvl" title="Draw measured data from a CSV (time in the first column) over the run, dashed">Overlay CSV</button>${(S.meta.overlays || []).length ? '<button id="bOvlX">Clear overlays</button>' : ""}${P0 ? '<span class="hint" style="padding:0 0 0 8px">pinned run dashed</span>' : ""}</div>`;
   pane.innerHTML = h; pane.scrollTop = keep;
   const keys = Object.keys(r.history).filter(k => k !== "t");
   const want = plotKeys && plotKeys.some(k => keys.includes(k)) ? plotKeys : keys.filter(k => /\.(force|velocity)$/.test(k)).slice(0, 2);
@@ -3770,6 +3932,10 @@ function showRun(r, isLive){
   const up = document.getElementById("bUnpin"); if (up) up.onclick = () => { pinnedRun = null; showRun(r, isLive); };
   document.getElementById("bCopyRes").onclick = () => { const rows = Object.entries(r.outputs).filter(([k]) => !k.startsWith("_")).map(([k, v]) => [k, fmt(v), r.units[k] || ""].concat(pinnedRun ? [fmt(pinnedRun.outputs[k])] : []).join("\t"));
     copyText((pinnedRun ? "output\tnow\tunit\tpinned\n" : "output\tvalue\tunit\n") + rows.join("\n")); };
+  document.getElementById("bFft").onclick = () => doSpectrum("fft"); document.getElementById("bSrs").onclick = () => doSpectrum("srs");
+  document.getElementById("bOvl").onclick = overlayAdd;
+  const ox = document.getElementById("bOvlX"); if (ox) ox.onclick = () => { S.meta.overlays = []; OVL = {}; changed(false); showRun(r, isLive); };
+  (S.meta.overlays || []).filter(f => !OVL[f]).forEach(f => overlayLoad(f).then(plot));
   document.getElementById("bPlotPng").onclick = () => savePng(document.getElementById("plot"), (S.meta.name || "plot").replace(/\W+/g, "_") + "_plot.png");
 }
 let pinnedRun = null;
@@ -3803,6 +3969,8 @@ function plot(){
   const HU = lastRun.hist_units || {}, us = [...new Set(ks.map(k => HU[k] ?? ""))];
   const L = 62, R = 10, T = 10, B = 30;
   let lo = Infinity, hi = -Infinity; ks.forEach(k => lastRun.history[k].forEach(v => { if (isFinite(v)){ lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+  const ovs = (S.meta.overlays || []).flatMap(f => OVL[f] || []);
+  ovs.forEach(o => o.y.forEach((v, i) => { if (isFinite(v) && o.t[i] >= t[0] && o.t[i] <= t[t.length - 1]){ lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
   if (!ks.length || !isFinite(lo)){ lo = 0; hi = 1; } if (hi === lo){ hi += 1; lo -= 1; }
   const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
   const t0 = t[0], t1 = t[t.length - 1] || 1, X = v => L + (v - t0) / (t1 - t0 || 1) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
@@ -3818,6 +3986,9 @@ function plot(){
     lastRun.history[k].forEach((v, i) => { const x = X(t[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
     const ph = pinnedRun && pinnedRun.history[k], pt = pinnedRun && pinnedRun.history.t;      // the pinned run, dashed
     if (ph && pt){ g.setLineDash([5, 4]); g.globalAlpha = 0.7; g.beginPath(); ph.forEach((v, i) => { const x = X(pt[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; } });
+  ovs.forEach((o, j) => { g.strokeStyle = PCOL[(ks.length + j) % PCOL.length]; g.lineWidth = 1.4; g.setLineDash([2, 3]); g.beginPath(); let on = false;
+    o.t.forEach((tt, i) => { if (tt < t0 || tt > t1 || !isFinite(o.y[i])) return; const x = X(tt), y = Y(o.y[i]); on ? g.lineTo(x, y) : g.moveTo(x, y); on = true; }); g.stroke(); g.setLineDash([]);
+    g.fillStyle = PCOL[(ks.length + j) % PCOL.length]; g.textAlign = "right"; g.fillText("┄ " + o.label, W - R - 4, T + 12 + 12 * j); });
   document.querySelectorAll("#series label").forEach(l => { const k = l.querySelector("input").value, j = ks.indexOf(k);
     l.style.color = j >= 0 ? PCOL[j % PCOL.length] : ""; });
 }
@@ -3846,6 +4017,125 @@ async function doReport(){
   pane.querySelectorAll("button[data-open]").forEach(b => b.onclick = () => API.call("open_path", b.dataset.open));
   if (SETTINGS.reportOpen && r.paths && (r.paths.html || r.paths.pdf)) API.call("open_path", r.paths.html || r.paths.pdf);
 }
+async function doCompare(){
+  const r0 = await API.call("pick_file", "", "yaml"); if (!r0.ok){ if (!r0.cancelled) status("bad", "Picking a file needs the desktop app."); return; }
+  await renderYaml(); status("busy", "Comparing with " + r0.path.split(/[\\/]/).pop() + " (running both)…");
+  const r = await API.call("diff_models", yamlText, r0.path, true); if (!r.ok){ status("bad", r.error); return; }
+  const other = r.other.split(/[\\/]/).pop();
+  let h = `<p>This model against <b>${esc(other)}</b>.</p>`;
+  h += r.changes.length ? `<h3>What differs</h3><div style="max-height:260px;overflow:auto"><table class="res"><tr><td style="color:var(--ink3)">setting</td><td style="color:var(--ink3)">this model</td><td style="color:var(--ink3)">${esc(other)}</td></tr>` +
+    r.changes.map(c => `<tr><td>${esc(c.key)}</td><td class="u" style="text-align:left">${esc(c.now)}</td><td class="u" style="text-align:left">${esc(c.other)}</td></tr>`).join("") + `</table></div>` : `<p>The two files hold the same model.</p>`;
+  if (r.outputs) h += `<h3>Outputs</h3><div style="max-height:260px;overflow:auto"><table class="res"><tr><td style="color:var(--ink3)">output</td><td class="v" style="color:var(--ink3)">this</td><td class="v" style="color:var(--ink3)">${esc(other)}</td><td class="v" style="color:var(--ink3)">change</td></tr>` +
+    r.outputs.map(o => { const d = (typeof o.now === "number" && typeof o.other === "number" && o.now !== 0) ? (100 * (o.other - o.now) / Math.abs(o.now)) : null;
+      return `<tr><td>${esc(o.key)}</td><td class="v">${fmt(o.now)}</td><td class="v">${fmt(o.other)}</td><td class="v">${d === null ? "" : (d >= 0 ? "+" : "") + d.toFixed(2) + " %"}</td></tr>`; }).join("") + `</table></div>`;
+  if (r.run_error) h += `<p class="hint" style="color:var(--warn)">Could not run both: ${esc(r.run_error)}</p>`;
+  status("ok", `${r.changes.length} difference${r.changes.length === 1 ? "" : "s"} with ${other}.`);
+  document.getElementById("mdNo").style.display = "none"; await ask("Compare models", h, "Close"); document.getElementById("mdNo").style.display = ""; }
+document.getElementById("bCompare").onclick = doCompare;
+// ---- CAD mass properties: SolidWorks, Onshape and Fusion reports pasted as text
+const MASS_U = {kg:1, kilograms:1, kilogram:1, g:1e-3, grams:1e-3, gram:1e-3, lb:0.45359237, lbs:0.45359237, lbm:0.45359237, pounds:0.45359237, pound:0.45359237, oz:0.028349523, ounces:0.028349523};
+const LEN_U = {m:1, meters:1, meter:1, mm:1e-3, millimeters:1e-3, millimeter:1e-3, cm:1e-2, centimeters:1e-2, in:0.0254, inches:0.0254, inch:0.0254};
+function parseMassProps(t){
+  const N = "([-+]?\\d*\\.?\\d+(?:[eE][-+]?\\d+)?)", out = {};
+  const m = t.match(new RegExp("mass\\s*[=:]?\\s*" + N + "\\s*(kilograms?|kg|grams?|g|lbm|lbs?|pounds?|oz|ounces)\\b", "i"));
+  if (m) out.mass = +m[1] * MASS_U[m[2].toLowerCase()];
+  const ci = t.search(/cent(er|re) of mass/i);
+  if (ci >= 0){ const seg = t.slice(ci, ci + 400), lu = (seg.match(/\b(millimeters?|mm|meters?|cm|centimeters?|inch(es)?|in)\b/i) || [])[1];
+    const f = lu ? LEN_U[lu.toLowerCase()] : 1e-3, c = {};
+    ["X","Y","Z"].forEach(a => { const r = seg.match(new RegExp("\\b" + a + "\\s*[=:]?\\s*" + N, "i")); if (r) c[a.toLowerCase()] = +r[1] * f; });
+    if (Object.keys(c).length) out.com = c; }
+  // the inertia about the centre of mass (SolidWorks 'Lxx', Fusion and Onshape 'Ixx')
+  let ii = t.search(/(taken at the cent(er|re) of mass|inertia at cent(er|re) of mass|about the cent(er|re) of mass|at cent(er|re) of mass)/i);
+  if (ii < 0) ii = t.search(/moments? of inertia/i);
+  if (ii >= 0){ const seg = t.slice(Math.max(0, ii - 160), ii + 700);
+    const um = seg.match(/\(?\s*(kilograms?|kg|grams?|g|lbm?s?|pounds?)\s*[*·x]?\s*(square\s+)?(millimeters?|mm|meters?|m|inch(es)?|in|cm)\s*(\^?\s*2|²)?/i);
+    const f = um ? MASS_U[um[1].toLowerCase().replace(/s$/, "")] * (LEN_U[um[3].toLowerCase()] ?? 1) ** 2 : 1, I = {};
+    const re = new RegExp("\\b[LI](xx|yy|zz|xy|xz|yz)\\s*[=:]?\\s*" + N, "gi"); let r;
+    while ((r = re.exec(seg))) { const k = r[1].toLowerCase(); if (I[k] === undefined) I[k] = +r[2] * (f || 1); }
+    if (Object.keys(I).length) out.I = I; }
+  return out; }
+async function cadMassDialog(n){
+  const h = `<p>Paste the mass properties report from SolidWorks (Evaluate > Mass Properties > Copy), Onshape or Fusion. Mass, centre of mass and the inertia about the centre of mass fill in.</p>
+    <textarea id="cadTxt" style="width:100%;height:220px;font:12px var(--mono)" placeholder="Mass = 452.49 grams&#10;Center of mass: ( millimeters ) X = 1.2 ..."></textarea>
+    <p class="hint">Products of inertia are read as the integrals of x y dm, as those tools print them. Values go in SI.</p>`;
+  if (!(await ask("CAD mass properties", h, "Fill in"))) return;
+  const P = parseMassProps(document.getElementById("cadTxt").value || ""), d = n.data, got = [];
+  if (!P.mass && !P.I){ status("bad", "No mass or inertia found in that text."); return; }
+  const sv = x => String(+x.toPrecision(6));
+  if (P.mass && (is3d() || is2d() || d.dof === "translation")){ d.mass = sv(P.mass) + " kg"; got.push("mass"); }
+  if (P.com && (is3d() || is2d())){ d.comu = "mm"; ["x","y","z"].forEach(a => { if (P.com[a] !== undefined && (is3d() || a !== "z")) d["com" + a] = sv(P.com[a] * 1000); }); got.push("centre of mass"); }
+  if (P.I){ const I = P.I;
+    if (is3d()){ d.inForm = "cad"; d.I6 = {Ixx:sv(I.xx || 0) + " kg m^2", Iyy:sv(I.yy || 0) + " kg m^2", Izz:sv(I.zz || 0) + " kg m^2",
+        Pxy:sv(I.xy || 0) + " kg m^2", Pxz:sv(I.xz || 0) + " kg m^2", Pyz:sv(I.yz || 0) + " kg m^2"}; got.push("inertia tensor"); }
+    else if (is2d() && I.zz !== undefined){ d.inertia = sv(I.zz) + " kg m^2"; got.push("inertia (Izz)"); }
+    else if (d.dof === "rotation"){ const ax = ["x","y","z"].includes(d.axis) ? d.axis : "z", v = I[ax + ax]; if (v !== undefined){ d.inertia = sv(v) + " kg m^2"; got.push("inertia (I" + ax + ax + ")"); } } }
+  changed(); status(got.length ? "ok" : "bad", got.length ? `Filled in ${got.join(", ")} for ${d.name}.` : "Nothing in that text fits this body."); }
+async function runScenarios(){
+  if (!needCheck()) return; await renderYaml(); status("busy", "Running every scenario…"); tab("pRes");
+  const r = await API.call("scenarios_run", yamlText); if (!r.ok){ status("bad", r.error); return; }
+  const keys = Object.keys(r.rows[0].outputs).filter(k => !k.startsWith("_"));
+  let h = `<h3>Scenarios</h3><div style="overflow-x:auto"><table class="res"><tr><td style="color:var(--ink3)">output</td>${r.rows.map(x => `<td class="v" style="color:var(--ink3)">${esc(x.name)}</td>`).join("")}<td class="u"></td></tr>`;
+  keys.forEach(k => { h += `<tr><td>${esc(k)}</td>${r.rows.map(x => `<td class="v">${x.error ? "error" : fmt(x.outputs[k])}</td>`).join("")}<td class="u">${esc(r.units[k] || "")}</td></tr>`; });
+  h += `</table></div>`; r.rows.filter(x => x.error).forEach(x => { h += `<div class="hint" style="color:var(--warn)">${esc(x.name)}: ${esc(x.error)}</div>`; });
+  document.getElementById("pRes").innerHTML = h; status("ok", `${r.rows.length - 1} scenarios run.`); }
+// ---- modes and static solve: linearised through the solver itself (compiler/linear.py)
+const isAngleDof = lab => /\.(rz|rx|ry|spin)$/.test(lab) || (S.nodes.find(n => n.kind === "body" && n.data.name === lab) || {data:{}}).data.dof === "rotation";
+async function doModes(){
+  if (!needCheck()) return; await renderYaml(); status("busy", "Settling the model, then finding its natural frequencies…"); tab("pRes");
+  const r = await API.call("modes", yamlText, "equilibrium"); if (!r.ok){ status("bad", r.error); return; }
+  let h = `<h3>Natural frequencies</h3><div class="hint" style="padding:0 0 6px">About the ${esc(r.about)} · ${r.dofs.length} coordinates${r.rigid ? ` · ${r.rigid} free (rigid-body) motion${r.rigid > 1 ? "s" : ""} at 0 Hz` : ""}${r.constraint ? ` · ${r.constraint} exact-joint direction${r.constraint > 1 ? "s" : ""} set aside` : ""}. A mode near a running speed (motor, weapon, wheel) resonates.</div>`;
+  if (!r.modes.length) h += `<div class="empty">No vibration modes: nothing in the model is held by a stiffness.</div>`;
+  else h += `<table class="res"><tr><td style="color:var(--ink3)">mode</td><td class="v" style="color:var(--ink3)">Hz</td><td class="v" style="color:var(--ink3)">rpm</td><td style="color:var(--ink3)">what moves (shape)</td></tr>` +
+    r.modes.map((m, i) => `<tr><td>${i + 1}</td><td class="v">${fmt(m.f_hz)}</td><td class="v">${fmt(m.rpm)}</td><td class="u" style="text-align:left">${Object.entries(m.shape).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 4).map(([k, v]) => esc(k) + " " + (+v).toFixed(2)).join(" · ")}</td></tr>`).join("") + `</table>`;
+  if (r.n_found > r.modes.length) h += `<div class="hint">${r.n_found - r.modes.length} higher modes not shown.</div>`;
+  if (r.note) h += `<div class="hint">${esc(r.note)}</div>`;
+  document.getElementById("pRes").innerHTML = h; status("ok", r.modes.length ? `Lowest mode ${fmt(r.modes[0].f_hz)} Hz (${fmt(r.modes[0].rpm)} rpm)` : "No vibration modes."); }
+async function doStatic(){
+  if (!needCheck()) return; await renderYaml(); status("busy", "Solving for the settled position…"); tab("pRes");
+  const r = await API.call("static_solve", yamlText); if (!r.ok){ status("bad", r.error); return; }
+  const st = r.converged ? `<span class="chip PASS">settled</span>` : `<span class="chip WARN">no equilibrium</span>`;
+  let h = `<h3>Static solve</h3><div class="chk">${st}<div><div>${r.converged ? `Equilibrium in ${r.iterations} Newton steps` : (r.free.length ? "Free to move: " + esc(r.free.join(", ")) + " (nothing holds it against the load)" : "It did not settle: the loads keep it moving")}</div><div class="d">Loads and drives as they are at t = 0, gravity included, no time stepping.</div></div></div>`;
+  h += `<h3>Outputs at rest</h3><table class="res">` + Object.entries(r.outputs).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="v">${fmt(v)}</td><td class="u">${esc(r.units[k] || "")}</td></tr>`).join("") + `</table>`;
+  h += `<h3>How far each coordinate moved</h3><table class="res">` + Object.entries(r.moved).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="v">${fmt(isAngleDof(k) ? v * 180 / Math.PI : v * 1000)}</td><td class="u">${isAngleDof(k) ? "deg" : "mm"}</td></tr>`).join("") + `</table>`;
+  if (r.note) h += `<div class="hint">${esc(r.note)}</div>`;
+  document.getElementById("pRes").innerHTML = h; status(r.converged ? "ok" : "bad", r.converged ? "Static: settled." : "Static: no equilibrium."); }
+document.getElementById("bModes").onclick = doModes; document.getElementById("bStatic").onclick = doStatic;
+// ---- spectra of a history: FFT and shock response spectrum, on a full-resolution run
+function logPlot(cv, f, a, xl, yl){ const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr); const L = 64, R = 12, T = 10, B = 32;
+  const pts = f.map((x, i) => [x, a[i]]).filter(([x, y]) => x > 0 && y > 0); if (!pts.length) return;
+  const lx0 = Math.log10(pts[0][0]), lx1 = Math.log10(pts[pts.length - 1][0]); let ly0 = Infinity, ly1 = -Infinity;
+  pts.forEach(([, y]) => { ly0 = Math.min(ly0, Math.log10(y)); ly1 = Math.max(ly1, Math.log10(y)); }); ly0 = Math.max(ly0, ly1 - 6) - 0.1; ly1 += 0.1;
+  const X = x => L + (Math.log10(x) - lx0) / (lx1 - lx0 || 1) * (W - L - R), Y = y => T + (ly1 - Math.log10(Math.max(y, 1e-300))) / (ly1 - ly0) * (H - T - B);
+  g.font = "10px JetBrains Mono, monospace"; g.strokeStyle = tok("hair"); g.fillStyle = tok("ink3");
+  const ticks = (l0, l1) => { const out = []; const span = l1 - l0, mult = span < 1.2 ? [1, 2, 5] : [1];      // decades, or 1-2-5 when the range is short
+    for (let e = Math.floor(l0); e <= Math.ceil(l1); e++) mult.forEach(m => { const v = m * 10 ** e, lv = Math.log10(v); if (lv >= l0 && lv <= l1) out.push(v); }); return out; };
+  ticks(lx0, lx1).forEach(v => { const x = X(v); g.beginPath(); g.moveTo(x, T); g.lineTo(x, H - B); g.stroke(); g.textAlign = "center"; g.fillText(fmt(v), x, H - 18); });
+  ticks(ly0, ly1).forEach(v => { const y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke(); g.textAlign = "right"; g.fillText(fmt(v), L - 4, y + 3); });
+  g.fillStyle = tok("ink2"); g.textAlign = "center"; g.fillText(xl, (L + W - R) / 2, H - 4); g.save(); g.translate(11, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText(yl, 0, 0); g.restore();
+  g.strokeStyle = PCOLS()[0]; g.lineWidth = 1.6; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))); g.stroke(); }
+async function doSpectrum(kind){
+  const k = [...document.querySelectorAll("#series input:checked")].map(x => x.value)[0];
+  if (!k){ status("bad", "Tick one history under the plot first."); return; }
+  status("busy", (kind === "fft" ? "Frequency content of " : "Shock response spectrum of ") + k + " (a full-resolution run)…");
+  const r = await API.call("spectrum", yamlText, k, kind, 0.05); if (!r.ok){ status("bad", r.error); return; }
+  const u = (lastRun && lastRun.hist_units || {})[k] || "";
+  const head = kind === "fft" ? `<p>Peak <b>${fmt(r.peak_amp)} ${esc(u)}</b> at <b>${fmt(r.peak_f)} Hz</b>. Resolution ${fmt(r.df)} Hz (1 / run length), up to ${fmt(r.f_max)} Hz.</p>`
+    : `<p>${esc(r.what)}: the peak response of a part with natural frequency f on this mount (5 % damping, maximax). At high frequency it tends to the input's own peak, ${fmt(r.peak_input)}.</p>`;
+  status("ok", kind === "fft" ? `FFT of ${k}: peak at ${fmt(r.peak_f)} Hz` : `Shock spectrum of ${k}`);
+  document.getElementById("mdNo").style.display = "none";
+  const shown = ask(kind === "fft" ? "Frequency content (FFT)" : "Shock response spectrum", head + `<canvas id="specCv" style="width:100%;height:300px"></canvas>`, "Close");
+  setTimeout(() => logPlot(document.getElementById("specCv"), r.f, r.amp, "frequency (Hz)", kind === "fft" ? "amplitude" + (u ? " (" + u + ")" : "") : "peak response" + (r.what.includes("acceleration") ? " (m/s^2)" : (u ? " (" + u + ")" : ""))), 30);
+  await shown; document.getElementById("mdNo").style.display = ""; }
+// ---- measured data on the plot: CSV columns drawn dashed over the run (header units are read: 'Fz [kN]')
+async function overlayAdd(){ const r = await API.call("pick_file", "", "csv"); if (!r.ok){ if (!r.cancelled) status("bad", "Picking a CSV needs the desktop app."); return; }
+  const pp = await API.call("project_path", r.path, filePath, null); const f = pp.ok ? pp.path : r.path;
+  S.meta.overlays = (S.meta.overlays || []).filter(x => x !== f).concat([f]); await overlayLoad(f); changed(false); plot(); }
+async function overlayLoad(f){ const r = await API.call("read_csv_table", f, filePath); if (!r.ok){ status("bad", r.error); return; }
+  const hdr = r.header || [], cols = (r.rows[0] || []).length, unitOf = h => { const m = String(h || "").match(/\[([^\]]*)\]\s*$/); return m ? m[1].trim() : ""; };
+  const fx = unitOf(hdr[0]) ? (unitFactor(unitOf(hdr[0])) || 1) : 1, xs = r.rows.map(row => +row[0] * fx);
+  OVL[f] = []; for (let j = 1; j < cols; j++){ const u = unitOf(hdr[j]), fy = u ? (unitFactor(u) || 1) : 1;
+    OVL[f].push({label:(hdr[j] || "column " + (j + 1)).replace(/\s*\[[^\]]*\]\s*$/, "") + " (" + f.split(/[\\/]/).pop() + ")", t:xs, y:r.rows.map(row => +row[j] * fy)}); } }
 document.getElementById("bRun").onclick = doRun; document.getElementById("bVerify").onclick = doVerify; document.getElementById("bReport").onclick = doReport;
 // ------------------------------------------------------------------------------------------------ studies
 function ask(title, html, yes){
@@ -3865,8 +4155,8 @@ async function doStudy(){
   await renderYaml(); status("busy", "Sizing the study…");
   const e = await API.call("study_estimate", yamlText, cores());
   if (!e.ok){ status("bad", e.error); return; }
-  if (!e.sweeps.length && !e.mc.length && !(e.sens || []).length && !e.goal){ status("bad", "Nothing varies yet: plug a Range of values or Monte Carlo node into an input, plug values into a Levers node, or press Run for one run."); return; }
-  const what = `<p><b>${e.runs.toLocaleString()} runs</b>${e.sweeps.length ? " · sweeps: " + esc(e.sweeps.join(", ")) : ""}${e.mc.length ? " · Monte Carlo: " + esc(e.mc.join(", ")) : ""}${(e.sens || []).length ? " · levers: " + esc(e.sens.join(", ")) : ""}${e.goal ? " (at most) · goal seek on " + esc(e.goal) : ""}</p>
+  if (!e.sweeps.length && !e.mc.length && !(e.sens || []).length && !e.goal && !(e.optimize || []).length){ status("bad", "Nothing varies yet: plug a Range of values or Monte Carlo node into an input, plug values into a Levers node, or press Run for one run."); return; }
+  const what = `<p><b>${e.runs.toLocaleString()} runs</b>${e.sweeps.length ? " · sweeps: " + esc(e.sweeps.join(", ")) : ""}${e.mc.length ? " · Monte Carlo: " + esc(e.mc.join(", ")) : ""}${(e.sens || []).length ? " · levers: " + esc(e.sens.join(", ")) : ""}${e.goal ? " (at most) · goal seek on " + esc(e.goal) : ""}${(e.optimize || []).length ? " (at most) · optimizing " + esc(e.optimize.join(", ")) : ""}</p>
     <p>One run takes ${e.one_run_s.toFixed(2)} s, so this is about <b>${dur(e.est_s)}</b> on ${e.workers} core${e.workers > 1 ? "s" : ""}.</p>`;
   const chosen = cores();
   if (chosen > e.runs && !(await ask("More cores than runs",
@@ -3901,7 +4191,25 @@ function goalHTML(G){
   h += `<div style="margin-top:8px"><button id="bGoalUse" title="Write this value into the model (as an SI number)">Use ${esc(g.vary)} = ${fmt(G.x)}</button></div>`;
   return h;
 }
+function optHTML(O){
+  const sp = O.spec, b = O.best, st = O.found ? `<span class="chip PASS">found</span>` : `<span class="chip WARN">no feasible run</span>`;
+  let h = `<h3>Optimizer · ${esc(sp.goal)} ${esc(sp.objective)}</h3><div class="chk">${st}<div><div>${b ? `<b>${esc(sp.objective)} = ${fmt(b.objective)}</b>` : "no run finished"}</div>` +
+          `<div class="d">${O.runs.length} runs${O.reason && !O.found ? " · " + esc(O.reason) : ""}${sp.cons.length ? " · limits: " + sp.cons.map(c => esc(c.output) + (c.side === "min" ? " ≥ " : " ≤ ") + fmt(c.value)).join(", ") : ""}${sp.failure_modes ? " · every failure mode passes" : ""}</div></div></div>`;
+  if (b){ h += `<table class="res"><tr><td style="color:var(--ink3)">value</td><td class="v" style="color:var(--ink3)">best (SI)</td><td class="v" style="color:var(--ink3)">start</td><td class="v" style="color:var(--ink3)">range</td></tr>` +
+    sp.vary.map(v => `<tr><td>${esc(v.name)}</td><td class="v">${fmt(b.values[v.name])}</td><td class="v">${fmt(v.start)}</td><td class="u">${fmt(v.lo)} to ${fmt(v.hi)}</td></tr>`).join("") + `</table>`;
+    h += `<h3>Outputs at the best run</h3><table class="res">` + Object.entries(b.outputs).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="v">${fmt(v)}</td></tr>`).join("") + `</table>`;
+    if (O.found) h += `<div style="margin-top:8px"><button id="bOptUse" title="Write these values into the model (each in its own unit)">Use these values</button></div>`; }
+  return h; }
+function useValue(name, x){ const n = byName(name, "p"); if (!n || n.kind !== "value") return false;
+  const u = splitQ(n.data.value).unit, f = u ? unitFactor(u) : 1; n.data.value = u && isFinite(f) && f ? joinQ(String(+(x / f).toPrecision(6)), u) : String(+x.toPrecision(6)); return true; }
 function showStudy(p){
+  if (p.optimize){ const O = p.optimize; studyStale = false; lastStudy = p;
+    status(O.found ? "ok" : "bad", O.found ? `Optimizer: ${O.spec.objective} = ${fmt(O.best.objective)} after ${O.runs.length} runs` : `Optimizer: ${O.reason}`);
+    if (O.found) confetti();
+    document.getElementById("pRes").innerHTML = optHTML(O);
+    const ub = document.getElementById("bOptUse"); if (ub) ub.onclick = () => { const miss = O.spec.vary.filter(v => !useValue(v.name, O.best.values[v.name])).map(v => v.name);
+      changed(); status(miss.length ? "bad" : "ok", miss.length ? "Not on the canvas as plain values: " + miss.join(", ") : "Best values written into the model."); };
+    return; }
   if (p.goal){ const G = p.goal; studyStale = false; lastStudy = p;
     status(G.found ? "ok" : "bad", G.found ? `Goal seek: ${G.spec.vary} = ${fmt(G.x)} gives ${G.spec.output} = ${fmt(G.y)} (${G.runs.length} runs)` : `Goal seek: ${G.reason}`);
     if (G.found) confetti();
@@ -4567,6 +4875,17 @@ const GUIDE = [
   <tr><td>header</td><td><b>names [units]</b>: <code>Time [ms],F_hit [N]</code>. <b>plain</b>: <code>t_ms,F_hit_N</code>. <b>none</b>: numbers only.</td></tr>
   <tr><td>write on</td><td><b>Run</b>, or <b>Run + every study run</b> (one file per run, numbered)</td></tr></table>
   <p>The file is plain comma-separated text: time in the first column, one column per source. The default header (names with units in brackets) and the numbers paste straight into a spreadsheet or into the time vs value table of an FEA load. Choose <i>none</i> for tools that read numbers only.</p>`},
+ {id:"analysis", grp:"Results", t:"Modes, static and spectra", h:`
+  <p><b>Modes</b> (top bar) gives the natural frequencies and mode shapes. It first settles the model under its loads and gravity, so preloads count: a hanging pendulum's pin tension is what makes it swing. Then it linearises through the solver itself, one step from rest for each coordinate nudged a hair either way. Every element, joint, beam, contact and gear is included exactly as a run sees it. The table gives Hz and rpm, so a mode near a motor, weapon or wheel speed stands out. A free motion (nothing holds it) is a rigid-body mode at 0 Hz. Exact (rigid) joints are kept, and the directions they forbid are set aside. One-sided contacts count as they are at the start, touching or not.</p>
+  <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
+  <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
+  <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>`},
+ {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
+  <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
+  <p><b>Scenarios</b>: named sets of values (arena hit, drop test, worst case). Plug in the values that change and fill one column per scenario; blank cells keep the model's own. Run all scenarios lists every output side by side. In YAML: <code>scenarios: {arena: {v: 8 m/s}, drop: {v: 3 m/s}}</code>.</p>
+  <p><b>Weight budget</b>: every body's mass, any element's own mass, and the parts you list, against the limit. Its <code>mass_total</code> and <code>mass_margin</code> are outputs, so a failure mode or the optimizer can use them. A 1D spinning body has an inertia, not a mass: list its mass as an item.</p>
+  <p><b>Compare</b> (top bar) checks this model against another file: every value and setting that differs, then both runs' outputs side by side with the change in %.</p>
+  <p><b>Paste CAD mass properties</b> on a body reads a SolidWorks, Onshape or Fusion report: mass, centre of mass and the inertia about the centre of mass.</p>`},
  {id:"chains", grp:"Organising", t:"Model blocks and sequences", h:`
   <p>A saved model can be <b>one block</b> on another model's canvas. Use it to run stages in order (a hit, then the frame it loads) or to reuse a model you already trust.</p>
   <ol>
@@ -4578,6 +4897,7 @@ const GUIDE = [
   <p><b>Blocks are one-way.</b> The downstream model cannot push back on the upstream one, so a block suits stages where the second barely changes the first (a frame that is much stiffer or heavier than the hammer, or a later phase of a flight). In return, each block keeps its own time step and dimension, so a 1D hit can feed a 3D frame. When the two must push on each other, put both in one model.</p>
   <p><b>Studies cross the chain.</b> A Range or Monte Carlo on this model's values reruns every block whose inputs change. A block runs again only when its file or its inputs change, so live runs stay fast.</p>
   <p>In YAML: <code>ports: {inputs: {v_in: {unit: m/s, default: 2 m/s}}, outputs: {F_out: {element: s, quantity: force}}}</code> in the reused model, and <code>models: {hit: {file: hit.yaml, inputs: {v_in: $v}}}</code> in the one that uses it. A load takes a series with <code>csv: {series: $hit.F_out}</code>.</p>
+  <p><b>Repeated hits.</b> A block can run several times in a row (repeat), each run starting from the last one's ending state: map an input port to the output port that feeds it (carry). An elastoplastic part takes <code>set0</code>, its permanent set from before; start the body at that set too (<code>x0</code>) when the part keeps its new shape. Results list every run as <code>block.output@1</code>, <code>@2</code> and so on.</p>
   <p><b>Values from any CSV</b> (measured data, another tool): <code>{from_csv: data.csv, column: "Fz", pick: max}</code> anywhere a number goes. <code>pick</code> is final, first, max, min, max_abs, mean, or at (with <code>at: 5 ms</code>). A header written as <code>Fz [kN]</code> gives the column's unit, so every CSV export reads straight back in.</p>`},
  {id:"groups", grp:"Organising", t:"Groups and your library", h:`
   <p>Select nodes and press ${K("Ctrl+G")} (or <b>Group</b>) to fold them into one <b>group node</b>, like a weapon module or a drivetrain. On its face:</p>
@@ -5095,7 +5415,7 @@ document.getElementById("setLoaderFile").addEventListener("change", e => { const
 // ---- simulation, canvas and file settings
 const SIM_SET = [["sDefDt","defDt","auto"],["sDefAcc","defAcc","normal"],["sDefTo","defTo","auto"],["sDefToVal","defToVal",""],["sLiveDelay","liveDelay",""],
   ["sSig","sig","4"],["sNum","numfmt","auto"],["sWire","wire","curved"],["sSnapGrid","snapGrid",""],["sAuto","autosave","2"],["sVol","volume",80]];
-const SIM_CHK = [["sSnap","snap",false],["sOpenLast","openLast",false],["sRepOpen","reportOpen",false]];
+const SIM_CHK = [["sSnap","snap",false],["sOpenLast","openLast",false],["sRepOpen","reportOpen",false],["sMini","minimap",true]];
 function syncSimSettings(){
   SIM_SET.forEach(([id, k, def]) => { const el = document.getElementById(id); if (el) el.value = SETTINGS[k] ?? def; });
   SIM_CHK.forEach(([id, k, def]) => { const el = document.getElementById(id); if (el) el.checked = SETTINGS[k] ?? def; }); }
@@ -5104,7 +5424,7 @@ SIM_SET.forEach(([id, k]) => { const el = document.getElementById(id); if (!el) 
     SETTINGS[k] = el.type === "range" ? +el.value : el.value; settingsSave();
     if (["sig","numfmt","wire"].includes(k)){ render(); if (lastRun) showRun(lastRun, false); }
     if (k === "autosave") autosaveArm(); }); });
-SIM_CHK.forEach(([id, k]) => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => { SETTINGS[k] = el.checked; settingsSave(); }); });
+SIM_CHK.forEach(([id, k]) => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => { SETTINGS[k] = el.checked; settingsSave(); if (k === "minimap") drawMinimap(); }); });
 // ---- recovery copy: unsaved work every few minutes, offered back on the next start
 let _autoT = null;
 function autosaveArm(){ clearInterval(_autoT); const m = parseInt(SETTINGS.autosave ?? 2); if (!m) return;

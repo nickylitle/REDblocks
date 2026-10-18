@@ -813,7 +813,12 @@ NO_FIGURE = {"formula", "lookup", "groups", "check", "report"}     # generic sta
 
 def figure_for(b):
     """A figure for a registry block from its taxonomy path, or None when no drawing says anything about it."""
-    f = _figure_for(b)
+    if b.category in ("machine", "fracture") or b.geometry in ("notch", "adhesive", "weld"):
+        return None                              # no drawing on file yet: better none than a stand-in
+    try:
+        f = _figure_for(b)
+    except KeyError:
+        return None
     return None if f in NO_FIGURE else f
 
 

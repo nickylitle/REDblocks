@@ -557,6 +557,9 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             P[e, 1] = gg("break_at", math.inf)
             from .model import strain_rate_params
             P[e, 2:5] = strain_rate_params(d, ctx, where, f)
+            from .model import softening_factor
+            tF = tF * softening_factor(d, ctx, where, f)       # Johnson-Cook: a hot part yields lower
+            P[e, 5] = gg("set0", 0.0); P[e, 6] = gg("acc0", abs(P[e, 5]))      # carried in: set and its plastic travel
         elif t in ("gear", "bolt"):               # machine.py worked these out from the gear or bolt's geometry
             P[e, :len(d["__P__"])] = d["__P__"]
         elif t == "hertz":

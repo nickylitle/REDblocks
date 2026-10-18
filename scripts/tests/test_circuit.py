@@ -207,3 +207,78 @@ run: {t_end: 36 s}
 """).run()
     assert o["ip"] == pytest.approx(-10.0) and o["il"] == pytest.approx(10.0) and o["isup"] == pytest.approx(-2.0)
     assert o["soc"] == pytest.approx(0.9, rel=1e-6)
+
+
+def test_esc_losses_and_temperature():
+    """ESC with R_on: two FETs in the path add 2 R_on to the motor's; at stall I = V / (R + 2 R_on); the ESC
+    heats at I^2 2 R_on into C_th, R_th (first-order rise)."""
+    Ron = 0.005; Cth, Rth = 5.0, 10.0
+    pe = [0.01, 0.1, 0, 1, 1.0, 1e9, 0, 0, 2 * Ron, 0.0, Cth, Rth]
+    po, ps, st = _run([(4, "a", "gnd", [12, 1e-6], []), (11, "a", "gnd", pe, [0, 298.15, 298.15])], N2, 20.0, 1e-3)
+    I = 12 / (0.1 + 2 * Ron)
+    assert st[0, 1] == pytest.approx(I, rel=1e-4)
+    P = I * I * 2 * Ron
+    assert po[1, 9] == pytest.approx(P * 20.0, rel=1e-3)                       # ESC heat, J
+    assert po[1, 8] == pytest.approx(25 + P * Rth * (1 - math.exp(-20 / (Rth * Cth))), rel=2e-3)
+
+
+def test_wire_part_resistance_and_connectors():
+    from simblocks.compiler.circuit import compile_circuit
+    from simblocks.compiler.model import build_context
+    from simblocks.compiler.loader import load
+    doc = load("""simblocks: 1
+name: w
+dim: 1d
+circuit:
+  ground: gnd
+  parts:
+    src: {type: voltage_source, between: [a, gnd], V: 12}
+    lead: {type: wire, between: [a, b], awg: 14, length: 0.5 m, connectors: [XT60, XT60]}
+    load: {type: resistor, between: [b, gnd], R: 1}
+outputs:
+  I: {part: load, quantity: current, reduce: final}
+run: {t_end: 1 ms}
+""")
+    circ, _ = compile_circuit(doc, build_context(doc))
+    k = circ["names"].index("lead")
+    d14 = 0.127e-3 * 92 ** (22 / 39)
+    R = 1.724e-8 * 0.5 / (math.pi * d14 ** 2 / 4) + 2 * 0.55e-3
+    assert circ["arrays"]["prm"][k, 0] == pytest.approx(R, rel=1e-9)
+    assert R == pytest.approx(0.004127 + 0.0011, rel=0.01)          # 14 AWG: 8.25 mOhm/m
+    o = load_system(doc["__file__"] if False else """simblocks: 1
+name: w
+dim: 1d
+circuit:
+  ground: gnd
+  parts:
+    src: {type: voltage_source, between: [a, gnd], V: 12}
+    lead: {type: wire, between: [a, b], awg: 14, length: 0.5 m, connectors: [XT60, XT60], thermal: {}}
+    load: {type: resistor, between: [b, gnd], R: 1}
+outputs:
+  I: {part: load, quantity: current, reduce: final}
+  T: {part: lead, quantity: temperature, reduce: final}
+run: {t_end: 1 ms}
+""").run()
+    assert o["I"] == pytest.approx(12 / (1 + R + 1e-4), rel=1e-4)
+
+
+def test_motor_no_load_current_is_a_drag():
+    """I0: at free speed the motor draws I0 more than an ideal one (Kt I0 of drag on the shaft)."""
+    m = """simblocks: 1
+name: m
+dim: 1d
+bodies:
+  rotor: {dof: rotation, inertia: 1e-5 kg m^2}
+circuit:
+  ground: gnd
+  parts:
+    src: {type: voltage_source, between: [a, gnd], V: 12}
+    mot: {type: motor, between: [a, gnd], Kt: 0.01, R: 0.1, measure: rotor%s}
+outputs:
+  I: {part: mot, quantity: current, reduce: final}
+  w: {body: rotor, quantity: velocity, reduce: final}
+run: {t_end: 2 s}
+"""
+    o = load_system(m % ", I0: 2 A").run()
+    assert o["I"] == pytest.approx(2.0, rel=0.02)                         # steady current = the no-load current
+    assert o["w"] == pytest.approx((12 - 0.1 * 2.0) / 0.01, rel=0.01)

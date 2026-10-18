@@ -123,3 +123,35 @@ run: {t_end: 30 ms}
     assert N.nominal.ctx["v_last"] == pytest.approx(h["v"] / 1000, rel=1e-6)          # mm/s output vs m/s column
     assert N.nominal.ctx["F_pk"] == pytest.approx(h["F"] * 1000, rel=1e-6)             # kN column -> N
     assert o["vb"] == pytest.approx((2.0 - h["v"] / 1000) / 2.0, rel=1e-3)             # impulse from the table
+
+
+def test_repeated_hits_carry_the_set(tmp_path):
+    """A dent that keeps its set: each hit starts from the last one's permanent set (and shape)."""
+    (tmp_path / "dent.yaml").write_text("""simblocks: 1
+name: dent
+dim: 1d
+ports:
+  inputs:
+    set_in: {unit: m, default: 0}
+  outputs:
+    set_out: {output: set}
+bodies:
+  a: {dof: translation, mass: 1 kg, x0: $set_in}
+elements:
+  push: {type: force, measure: a, pulse: {kind: half_sine, peak: 900 N, duration: 20 ms}}
+  bar: {type: elastoplastic, measure: a, set0: $set_in, table: {k: 1e6, acc_tab: [0, 0.01], F_tab: [500, 900]}}
+  damp: {type: dashpot, measure: a, c: 3000}
+outputs:
+  set: {element: bar, quantity: plastic_set, reduce: final}
+run: {t_end: 60 ms}
+""")
+    (tmp_path / "seq.yaml").write_text("""simblocks: 1
+name: hits
+models:
+  hits: {file: dent.yaml, repeat: 3, carry: {set_in: set_out}}
+""")
+    o = load_system(str(tmp_path / "seq.yaml")).run()
+    s1, s2, s3 = o["hits.set@1"], o["hits.set@2"], o["hits.set@3"]
+    assert 0 < s1 < s2 < s3                      # every hit adds a little more set
+    assert s3 - s2 < s2 - s1                     # and less each time: the bar has hardened
+    assert o["hits.set"] == s3

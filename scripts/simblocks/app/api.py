@@ -214,7 +214,7 @@ class Api:
                         bodies=[b for b in M.body_names if '__' not in b], elements=list(M.doc['elements']), dt=M.dt, dt_crit=M.dt_crit,
                         dt_auto=getattr(M, "dt_auto", M.dt),
                         dt_free=(M.dt_free if getattr(M, "adaptive", False) else None),
-                        t_end=M.t_end, steps=int(round(M.t_end / M.dt)))
+                        t_end=M.t_end, steps=int(round(M.t_end / M.dt)), budget=_budget(M, s.doc))
         except Exception as exc:
             return _err(exc)
 
@@ -222,6 +222,92 @@ class Api:
         """One run at the nominal values. export=True also writes the model's CSV exports (Run button);
         live runs pass export=False so typing never writes files. track=True reports stages to progress()."""
         return _run_payload(text, overrides, n_hist, model_path, export, track)
+
+    def scenarios_run(self, text):
+        """Every scenario (a named set of values) run once, side by side with the model as written."""
+        try:
+            from ..compiler import load_system
+            s = load_system(text)
+            sc = scenarios_spec(s.doc)
+            if not sc:
+                return dict(ok=False, error="no scenarios: add a Scenarios node and give each scenario its values")
+            rows = [dict(name="as written", values={}, outputs=_clean(s.run()), error=None)]
+            for name, ov in sc.items():
+                try:
+                    rows.append(dict(name=name, values=_clean(ov), outputs=_clean(s.run(ov)), error=None))
+                except Exception as exc:
+                    rows.append(dict(name=name, values=_clean(ov), outputs={}, error=f"{type(exc).__name__}: {exc}"))
+            return dict(ok=True, rows=rows, units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()})
+        except Exception as exc:
+            return _err(exc)
+
+    def diff_models(self, text, other_path, run=True):
+        """Compare this model with another file: changed values and settings, and (run=True) both runs' outputs."""
+        try:
+            from ..compiler.loader import load
+            from ..compiler import load_system
+            a = load(text); b = load(other_path)
+            skip = {"editor", "__file__", "lines"}
+            rows = []
+
+            def walk(x, y, path):
+                if isinstance(x, dict) and isinstance(y, dict):
+                    for k in sorted(set(x) | set(y), key=str):
+                        if path == "" and k in skip:
+                            continue
+                        walk(x.get(k, "<none>"), y.get(k, "<none>"), f"{path}.{k}" if path else str(k))
+                elif x != y:
+                    rows.append(dict(key=path, now=_short(x), other=_short(y)))
+            walk(dict(a), dict(b), "")
+            out = dict(ok=True, changes=rows, other=other_path)
+            if run:
+                try:
+                    ra = load_system(text).run(); rb = load_system(other_path).run()
+                    keys = [k for k in ra if not k.startswith("_")] + [k for k in rb if not k.startswith("_") and k not in ra]
+                    out["outputs"] = [dict(key=k, now=ra.get(k), other=rb.get(k)) for k in keys]
+                except Exception as exc:
+                    out["run_error"] = f"{type(exc).__name__}: {exc}"
+            return _clean(out)
+        except Exception as exc:
+            return _err(exc)
+
+    def modes(self, text, about="equilibrium"):
+        """Natural frequencies and mode shapes (compiler/linear.py)."""
+        try:
+            from ..compiler.linear import modes
+            s = self._system(text)
+            return dict(ok=True, **_clean(modes(s.nominal, about=about)))
+        except Exception as exc:
+            return _err(exc)
+
+    def static_solve(self, text):
+        """Equilibrium under the model's loads and gravity, with every output read there (compiler/linear.py)."""
+        try:
+            from ..compiler.linear import static
+            s = self._system(text)
+            r = static(s.nominal)
+            return dict(ok=True, units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()}, **_clean(r))
+        except Exception as exc:
+            return _err(exc)
+
+    def spectrum(self, text, key, kind="fft", damping=0.05):
+        """FFT or shock response spectrum of one history (element.force, body.velocity ...) from a full-resolution run."""
+        try:
+            from ..compiler.spectra import fft, srs
+            s = self._system(text)
+            from ..compiler.model import run_model
+            M = s.nominal
+            n = int(round(M.t_end / M.dt))
+            _, H = run_model(M, history=True, n_log=min(max(n, 2), 200000))
+            if key not in H:
+                return dict(ok=False, error=f"no history '{key}'")
+            t = np.asarray(H["t"], float); y = np.asarray(H[key], float); what = key
+            if kind == "srs" and key.split(".")[-1] in ("velocity", "vx", "vy", "vz", "omega", "wx", "wy", "wz"):
+                y = np.gradient(y, t); what = key + " (differentiated: acceleration)"
+            r = fft(t, y) if kind == "fft" else srs(t, y, zeta=float(damping))
+            return dict(ok=True, kind=kind, key=key, what=what, **_clean(r))
+        except Exception as exc:
+            return _err(exc)
 
     def progress(self):
         """What the current Run / Verify / Report is doing, for the progress card."""
@@ -317,6 +403,12 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            from ..compiler.optimize import spec as opt_spec
+            O = opt_spec(s.doc, s)
+            if O:
+                s.run(); t0 = time.time(); s.run(); one = time.time() - t0
+                return dict(ok=True, runs=O["max_runs"], sweeps=[], mc=[], sens=[], goal=None, optimize=[v[0] for v in O["vary"]],
+                            one_run_s=one, workers=1, est_s=one * O["max_runs"], ask=O["max_runs"] * one > ASK_SECONDS)
             G = goal_spec(s.doc, s)
             if G:
                 s.run(); t0 = time.time(); s.run(); one = time.time() - t0
@@ -343,6 +435,21 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            from ..compiler.optimize import spec as opt_spec, optimize as opt_run
+            O = opt_spec(s.doc, s)
+            if O:                                        # optimizer: one run after another, in this thread
+                job = self._job = dict(running=True, done=0, total=O["max_runs"], results=[], cancel=False, sweeps=[], mc=[],
+                                       t0=time.time(), error=None, opt=None, goal_log=[], job_limit=None, timed_out=False,
+                                       units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()}, failure=[])
+                def go_opt():
+                    try:
+                        job["opt"] = _clean(opt_run(s, O, cancel=lambda: job["cancel"], log=job["goal_log"]))
+                    except Exception as exc:
+                        job["error"] = f"{type(exc).__name__}: {exc}"
+                    finally:
+                        job["running"] = False; job["elapsed"] = time.time() - job["t0"]
+                threading.Thread(target=go_opt, daemon=True).start()
+                return dict(ok=True, total=O["max_runs"], workers=1, optimize=True)
             G = goal_spec(s.doc, s)
             if G:                                        # goal seek: one run after another, in this thread
                 job = self._job = dict(running=True, done=0, total=G["max_runs"], results=[], cancel=False, sweeps=[], mc=[],
@@ -419,7 +526,7 @@ class Api:
                    timed_out=j.get("timed_out", False), job_limit=j.get("job_limit"),
                    elapsed=time.time() - j["t0"])
         if not j["running"] and "goal_log" in j:
-            out.update(goal=j.get("goal"), results=[], sweeps=[], mc=[], units=j["units"], failure=[])
+            out.update(goal=j.get("goal"), optimize=j.get("opt"), results=[], sweeps=[], mc=[], units=j["units"], failure=[])
             return out
         if not j["running"]:
             res = j["results"]; sn = j.get("sens")
@@ -1385,6 +1492,31 @@ def sens_spec(doc, s):
     if not 0 < h < 0.5:
         raise ValueError("study.sensitivity.step is a small fraction: 1 % (default), 0.5 %, 0.02")
     return [(v, float(ctx[v])) for v in vary], outs, h
+
+
+def _short(v):
+    if v == "<none>":
+        return "(not there)"
+    t = v if isinstance(v, str) else json.dumps(v, default=str)
+    return t if len(t) <= 160 else t[:157] + "..."
+
+
+def _budget(M, doc):
+    if not doc.get("budget"):
+        return None
+    try:
+        from ..compiler.budget import summary
+        return _clean(summary(M, doc))
+    except Exception as exc:
+        return dict(error=str(exc))
+
+
+def scenarios_spec(doc):
+    """scenarios: {name: {param: value, ...}}: each a named set of values run side by side."""
+    sc = doc.get("scenarios") or {}
+    if not isinstance(sc, dict):
+        raise ValueError("scenarios is {name: {param: value}}")
+    return {str(k): dict(v or {}) for k, v in sc.items()}
 
 
 def goal_spec(doc, s):

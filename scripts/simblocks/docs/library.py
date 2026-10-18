@@ -57,7 +57,7 @@ ELEMENTS = [
               "rattle and impact loads come out of the run. Gives the tangential tooth load (force), the Lewis root "
               "bending stress (Ft / (b m Y), the weaker gear) and the Hertz contact stress at the pitch point (AGMA form, "
               "no extra factors: the run supplies the dynamic load).",
-         yaml="mesh:\n  type: gear\n  measure: pinion + wheel\n  module: 1 mm\n  teeth: [12, 36]\n  face_width: 8 mm\n  backlash: 0.05 mm\n  material: 4140_annealed"),
+         yaml="mesh:\n  type: gear\n  measure: pinion + wheel\n  module: 1 mm\n  teeth: [12, 36]\n  face_width: 8 mm\n  backlash: 0.05 mm\n  material: 4140_normalized"),
     dict(name="bolt", law="Fb = Fi + k_b s (yields at Sy At, hardens to Su, then breaks); Fm = max(Fi - k_m s, 0); F = Fb - Fm",
          fields="size (M5, #10-32, 1/4-20) or d and pitch, grip, threaded, preload or torque (+ nut_factor 0.2), grade or Sy, Su, elongation, E, E_members, k_bolt, k_members, c or zeta (0.02)",
          what="A preloaded bolted joint along its axis (Shigley ch. 8). The bolt and the clamped parts share an opening "

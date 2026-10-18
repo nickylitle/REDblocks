@@ -4,7 +4,7 @@
 gear: two shafts meshing (or a gear on a rack)
 
     mesh: {type: gear, measure: pinion + wheel, module: 1 mm, teeth: [12, 36], face_width: 8 mm,
-           backlash: 0.05 mm, material: 4140_annealed}
+           backlash: 0.05 mm, material: 4140_normalized}
 
   measure        the two shafts, gear 1 first (in 2d: pinion.rz + wheel.rz). The signs written do not matter: an
                  external mesh turns the shafts opposite ways, internal: true is a ring gear (same way). A rack is

@@ -26,7 +26,7 @@ AUX = {"plastic_set": 0, "broken": 2, "rate_factor": 3, "current": 0, "battery_c
        # landing guidance: altitude (0), forward speed over the ground, climb rate, throttle level (3)
        "speed_forward": 1, "speed_up": 2,
        # gear: Lewis bending and Hertz contact stress; bolt: permanent set (plastic_set, 0), bolt and clamp force, stress
-       "bending_stress": 0, "contact_stress": 1, "bolt_force": 1, "bolt_stress": 3, "clamp_force": 4}
+       "accumulated_set": 1, "bending_stress": 0, "contact_stress": 1, "bolt_force": 1, "bolt_stress": 3, "clamp_force": 4}
 QALIAS = {"pitch": "force", "thrust": "force", "drag": "force", "dropped": "force", "downrange": "measure",
           "thrust_command": "force", "range_to_site": "measure", "propellant": "measure"}
 KNOCK = "__knock__"          # override prefix: element switched off
@@ -204,6 +204,8 @@ def build_context(doc, overrides=None):
     ctx = {}
     params = doc.get("params", {}) or {}
     ov = dict(overrides or {})
+    if doc.get("budget"):
+        ctx["__mass_total"] = ctx["__mass_margin"] = 0.0      # filled in once the bodies are compiled
     if doc.get("ports"):                       # input ports: values the using model wires in (chain.py)
         _chain.input_values(doc, ctx, ov)
     for k, v in params.items():
@@ -515,6 +517,8 @@ def _compile_model(doc, overrides=None):
                 tF = tF * 0 + 1e30
             P[e, 1] = g("break_at", math.inf)
             P[e, 2:5] = strain_rate_params(d, ctx, where, f)
+            tF = tF * softening_factor(d, ctx, where, f)       # Johnson-Cook: a hot part yields lower
+            P[e, 5] = g("set0", 0.0); P[e, 6] = g("acc0", abs(P[e, 5]))      # carried in: set and its plastic travel
         elif t in ("gear", "bolt"):               # machine.py worked these out from the gear or bolt's geometry
             P[e, :len(d["__P__"])] = d["__P__"]
         elif t == "hertz":
@@ -592,6 +596,11 @@ def _compile_model(doc, overrides=None):
 
 
 def _run_settings(M, doc, ctx):
+    if doc.get("budget"):                        # weight budget from the compiled masses (shapes included)
+        from .budget import summary
+        from .units import unit_factor as _uf
+        b = summary(M, doc); f_ = _uf(b["unit"])
+        ctx["__mass_total"] = b["total"] * f_; ctx["__mass_margin"] = b["margin"] * f_
     run = doc["run"]
     M.t_end = num(resolve(run["t_end"], ctx, "run.t_end"), "run.t_end")
     M.dt_crit = critical_dt(M)
@@ -684,6 +693,65 @@ def _step_caps(M, dt_auto):
         if math.isfinite(M.dt_circ):
             M.dt_auto = min(M.dt_auto, 0.2 * M.dt_circ)
     return M.dt_auto
+
+
+# Johnson-Cook thermal softening by family: (melting point K, exponent m). Johnson & Cook 1983/85 and the usual
+# fits: 4340 / 1006 steel (1793 K, m 1.0-1.03), 2024 / 6061 / 7075 aluminum (~900 K, m 1.0-1.34), Ti-6Al-4V (1878 K,
+# m 0.8-1.1), OFHC copper (1356 K, m 1.09), tungsten alloy (1723 K, m 1.0), AZ31 magnesium (905 K, m 1.5)
+JC_FAMILY = {"steel": (1793.0, 1.0), "aluminum": (900.0, 1.0), "titanium": (1878.0, 0.8), "copper": (1356.0, 1.09),
+             "tungsten": (1723.0, 1.0), "magnesium": (905.0, 1.5)}
+
+
+def temperature(v, ctx, where):
+    """A temperature in kelvin: '150 C', '300 F', '420 K', or a plain number (Celsius)."""
+    if isinstance(v, str):
+        t = v.strip()
+        m_ = re.fullmatch(r"([-+0-9.eE]+)\s*(°?\s*C|degC|°?\s*F|degF|K)?", t)
+        if m_:
+            x = float(m_.group(1)); u = (m_.group(2) or "C").replace("°", "").replace(" ", "")
+            return x + 273.15 if u in ("C", "degC") else ((x - 32.0) * 5.0 / 9.0 + 273.15 if u in ("F", "degF") else x)
+        if t.startswith("$") or t.startswith("="):
+            return float(resolve(t, ctx, where)) + 273.15      # a value from elsewhere: Celsius, like a plain number
+        raise SpecError(f"'{v}' is not a temperature (150 C, 300 F, 420 K)", where)
+    return float(v) + 273.15
+
+
+def softening_factor(d, ctx, where, f=""):
+    """An elastoplastic element's softening: {T: 150 C, material: 4140} or {T: ..., T_melt: 1793 K, m: 1.0}: the
+    yield table is scaled by the Johnson-Cook factor 1 - T*^m, T* = (T - T_room) / (T_melt - T_room). T is the part's
+    temperature during the event (a value or an input port); T_room 20 C by default. Returns the factor (1 = off)."""
+    sv = d.get("softening")
+    if not sv:
+        return 1.0
+    if not isinstance(sv, dict) or "T" not in sv:
+        raise SpecError("softening is {T: 150 C, material: 4140_normalized} (or T_melt and m instead of material)", where,
+                        line_of(d, "softening"), f)
+    g = lambda k, dflt=None: num(resolve(sv[k], ctx, f"{where}.softening.{k}"), f"{where}.softening.{k}") if k in sv else dflt
+    Tm, m = None, None
+    if "material" in sv:
+        from ..materials import get
+        key = str(resolve(sv["material"], ctx, where + ".softening.material"))
+        try:
+            fam = getattr(get(key), "family", "")
+        except KeyError:
+            raise SpecError(f"material '{key}' is not in the catalog", where, line_of(d, "softening"), f)
+        if fam not in JC_FAMILY and not ("T_melt" in sv and "m" in sv):
+            raise SpecError(f"no Johnson-Cook softening on file for {fam or key}: give T_melt and m", where,
+                            line_of(d, "softening"), f)
+        Tm, m = JC_FAMILY.get(fam, (None, None))
+    if "T_melt" in sv:
+        Tm = temperature(sv["T_melt"], ctx, where + ".softening.T_melt")
+    m = g("m", m)
+    if Tm is None or m is None:
+        raise SpecError("softening needs material (a catalog metal) or T_melt and m", where, line_of(d, "softening"), f)
+    T = temperature(sv["T"], ctx, where + ".softening.T")
+    Tr = temperature(sv["T_room"], ctx, where + ".softening.T_room") if "T_room" in sv else 293.15
+    ts = (T - Tr) / (Tm - Tr)
+    if ts <= 0.0:
+        return 1.0
+    if ts >= 1.0:
+        raise SpecError("softening: T is at or above the melting point", where, line_of(d, "softening"), f)
+    return 1.0 - ts ** m
 
 
 def strain_rate_params(d, ctx, where, f=""):
@@ -779,7 +847,7 @@ def critical_dt(M, skip=None):
 
 # ------------------------------------------------------------------------------------------- run
 CIRC_COL = {"current": 0, "voltage": 1, "power": 2, "energy": 3, "soc": 4, "state": 4, "torque": 5,
-            "temperature": 6, "heat": 7}
+            "temperature": 6, "heat": 7, "esc_temperature": 8, "esc_heat": 9}
 
 
 def circuit_args(M):
@@ -801,11 +869,12 @@ def _ctl_history(M, H, LS):
 
 def _circ_history(M, H, LC):
     c = getattr(M, "circ", None)
-    if not c or LC.shape[1] < 8:
+    from .circuit import NOUT
+    if not c or LC.shape[1] < NOUT:
         return
     for k, pn in enumerate(c["names"]):
         for q, col in CIRC_COL.items():
-            H[f"{pn}.{q}"] = LC[:, k * 8 + col]
+            H[f"{pn}.{q}"] = LC[:, k * NOUT + col]
 
 
 def _group_history(M, H):

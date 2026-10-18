@@ -14,8 +14,8 @@ def _with_blocks(M, r, history):
     """Add each model block's results (block.output) to the outputs."""
     if not M.doc.get("models"):
         return r
-    from .chain import block_results
     out = r[0] if history else r
+    from .chain import block_results
     for k, v in block_results(M).items():
         out.setdefault(k, v)
     return r

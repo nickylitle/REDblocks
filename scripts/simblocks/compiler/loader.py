@@ -62,7 +62,7 @@ def line_of(d, key):
 # ---------------------------------------------------------------------------------------------- schema
 TOP = {"simblocks", "name", "question", "dim", "units", "params", "derived", "bodies", "elements", "outputs",
        "failure", "uncertain", "limits", "knockouts", "run", "report", "notes", "assumptions", "sources",
-       "directions", "angles", "study", "exports", "editor", "gravity", "circuit", "control", "ports", "models"}
+       "directions", "angles", "study", "exports", "editor", "gravity", "circuit", "control", "ports", "models", "budget", "scenarios"}
 REQUIRED_TOP = {"simblocks", "name", "dim", "bodies", "elements", "outputs", "run"}
 BODY_KEYS = {"dof", "mass", "inertia", "shape", "x0", "v0", "ground", "label", "note", "__hidden__"}
 BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0", "angle0", "v0", "omega0", "points", "spheres",
@@ -70,7 +70,7 @@ BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0
 BODY_KEYS_2D = {"dof", "mass", "inertia", "shape", "at", "com", "angle0", "v0", "omega0", "points", "circles", "lines", "ground",
                 "label", "note"}
 ELEMENT_KEYS = {
-    "spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table", "break_at", "strain_rate"},
+    "spring": {"k"}, "dashpot": {"c"}, "kelvin_voigt": {"k", "c"}, "elastoplastic": {"table", "break_at", "strain_rate", "set0", "acc0", "softening"},
     "hertz": {"K", "n", "alpha"}, "friction": {"F_c", "v_eps", "F_s", "v_s"}, "drag": {"K"},
     "force": {"P", "csv", "pulse"}, "drive": {"kv", "R", "I_max", "gear", "cells", "R0", "R1", "C1", "capacity", "throttle",
                               "J_rotor"},
@@ -116,7 +116,7 @@ ELEMENT_QUANTITIES = {"force", "measure", "plastic_set", "rate_factor", "absorbe
                       "drag", "dynamic_pressure", "mach", "air_density", "ambient_pressure",
                       "thrust", "mass_flow", "back_pressure", "vehicle_mass", "throttle", "dropped",
                       "thrust_command", "range_to_site", "speed_forward", "speed_up", "propellant",
-                      "bending_stress", "contact_stress", "bolt_force", "clamp_force", "bolt_stress"}
+                      "bending_stress", "contact_stress", "bolt_force", "clamp_force", "bolt_stress", "accumulated_set"}
 BODY_QUANTITIES = {"position", "velocity", "kinetic_energy"}
 BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz", "position",
                       "velocity", "kinetic_energy"}
@@ -125,7 +125,7 @@ REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_bel
 EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
 EXPORT_COLUMN_KEYS = {"element", "body", "part", "control", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
-STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken", "rate_factor"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
+STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken", "rate_factor", "accumulated_set"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
                  "dc_motor": {"current"},
                  "gear": {"bending_stress", "contact_stress"},
                  "bolt": {"bolt_force", "clamp_force", "bolt_stress", "plastic_set", "broken"},
@@ -153,6 +153,14 @@ def check(doc):
         if not doc.get("bodies"):
             doc["bodies"] = {"__ground__": {"ground": True}}
         doc.setdefault("run", {"t_end": 1e-6})
+    if isinstance(doc.get("budget"), dict) and "limit" in doc["budget"]:   # weight budget: two outputs of its own
+        lim = doc["budget"]["limit"]
+        u = str(lim).strip().split(None, 1)[1] if isinstance(lim, str) and len(str(lim).split()) > 1 else "kg"
+        outs_ = doc.get("outputs")
+        if outs_ is None:
+            outs_ = doc["outputs"] = {}
+        outs_.setdefault("mass_total", {"expr": "$__mass_total", "unit": u, "label": "weight total"})
+        outs_.setdefault("mass_margin", {"expr": "$__mass_margin", "unit": u, "label": "weight margin (limit - total)"})
     if "elements" not in doc and doc.get("circuit"):
         doc["elements"] = {}                     # a circuit-only model: the motors are the elements
     if not doc.get("bodies") and doc.get("circuit"):

@@ -427,7 +427,7 @@ Both are measure elements, so they work in 1d, 2d and 3d.
 
 ```yaml
 mesh: {type: gear, measure: pinion + wheel, module: 1 mm, teeth: [12, 36], face_width: 8 mm,
-       backlash: 0.05 mm, material: 4140_annealed}         # 2d: pinion.rz + wheel.rz, 3d: .spin
+       backlash: 0.05 mm, material: 4140_normalized}         # 2d: pinion.rz + wheel.rz, 3d: .spin
 hold: {type: bolt, measure: lid - frame, size: M5, grip: 6 mm, grade: "12.9", torque: 6 N m}
 ```
 
@@ -464,6 +464,18 @@ models:
 - Blocks are one-way (no feedback from downstream). Each keeps its own `dim` and time step.
 
 **Values from a CSV** anywhere a number goes: `{from_csv: out/csv/hit_loads.csv, column: va, pick: final}`. `pick` is final, first, max, min, max_abs, mean, or at (with `at: 5 ms`); `unit` overrides the header. A header cell `name [unit]` (every export writes these) gives the column's unit. A force table picks columns by header text, with or without the unit, and takes its `x_unit` and `y_unit` from the header when they are left out.
+
+## Analysis, design studies and extras
+
+- **Modes and static** (editor buttons; `compiler/linear.py`): linearised through the solver itself, about the settled position. Natural frequencies in Hz and rpm, mode shapes, rigid-body modes at 0 Hz. Static: Newton's method on the solver's forces, loads as at t = 0, every output read at rest.
+- **Spectra** (`compiler/spectra.py`): FFT amplitude spectrum, and the maximax shock response spectrum (Smallwood, 5 % damping) of any history.
+- **Optimizer** `study.optimize: {vary: {p: [lo, hi]}, minimize | maximize: output, subject_to: [{output, min | max}], failure_modes: true, max_runs: 150}`. COBYLA; the best feasible run is kept.
+- **Scenarios** `scenarios: {name: {param: value}}`, run side by side.
+- **Weight budget** `budget: {limit: 3 lb, bodies: true, items: {name: mass}}` adds outputs `mass_total` and `mass_margin` in the limit's unit.
+- **Model blocks, repeated**: `models: {hits: {file: dent.yaml, repeat: 5, carry: {set_in: set_out}}}`; results `hits.out@1` and onwards.
+- **Elastoplastic extras**: `set0` / `acc0` (permanent set and plastic travel carried in from an earlier hit), and `softening: {T: 150 C, material: 4140_normalized}` (Johnson-Cook 1 - T*^m on the yield table; or give T_melt and m). Temperatures read 150 C, 300 F or 420 K; a plain number is Celsius.
+- **Circuit extras**: `wire` part (awg or area, length, material, `connectors: [XT60, XT60]` with makers' contact resistance, R_contact), with `thermal: {}` filling in the copper's heat capacity and convection; motor `I0` (no-load current: a drag torque Kt I0 on the shaft); ESC losses `esc: {R_on, t_sw, f_sw, C_th, R_th, T_amb_C}` with part outputs `esc_temperature` and `esc_heat`.
+- **Machine-element blocks** (`structures/machine_elements.py`): shaft critical speed (Rayleigh and Dunkerley), bearing L10 life and static s0, press fit (Lame), key, set screw, clamp collar, helical spring (Wahl, surge, solid length), belt slip (capstan) and chain, crack check (K_IC), notch sensitivity (Kf), Volkersen lap joint, fillet weld.
 
 ## What the compiler checks before running
 

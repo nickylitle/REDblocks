@@ -21,7 +21,13 @@ Another model uses it as a block:
 Each block runs before this model compiles, in wire order (a block that reads $hit.x runs after hit). Its value
 ports and its outputs are then numbers here: $hit.v_out (also inside an "=" expression); its series ports feed
 force tables: csv: {series: $hit.F_out}. Results of every block are listed with this model's own (hit.v_out ...).
-A model can be only blocks (no bodies of its own): that is a sequence. Studies work across the chain: a sweep or
+A model can be only blocks (no bodies of its own): that is a sequence. A block can run several times in a row,
+each run starting from the last one's ending state (repeated hits):
+
+    models:
+      hits: {file: hit.yaml, repeat: 5, inputs: {set_in: 0}, carry: {set_in: set_out, x_in: set_out}}
+
+Results list the last run as hits.peak and every run as hits.peak@1 ... hits.peak@5. Studies work across the chain: a sweep or
 Monte Carlo on this model's values reruns each block whose inputs changed. Blocks are one-way (the downstream
 model cannot push back on the upstream one); each keeps its own time step and dimension.
 
@@ -137,7 +143,7 @@ def csv_value(spec, where):
 # ---------------------------------------------------------------------------------------------- ports and blocks
 PORT_IN_KEYS = {"kind", "unit", "default", "label", "note"}
 PORT_OUT_KEYS = {"output", "element", "body", "part", "control", "quantity", "unit", "label", "note"}
-MODEL_KEYS = {"file", "inputs", "label", "note"}
+MODEL_KEYS = {"file", "inputs", "repeat", "carry", "label", "note"}
 _RUNS = {}                        # (path, mtime, inputs) -> (values, series, outputs): reruns only what changed
 
 
@@ -304,11 +310,31 @@ def run_models(doc, ctx):
         if not os.path.exists(p):
             raise SpecError(f"model file '{spec['file']}' does not exist (looked in {base})", w, line_of(models, m), f)
         inp = {k: resolve(v, ctx, f"{w}.inputs.{k}") for k, v in (spec.get("inputs") or {}).items()}
-        try:
-            vals, ser, outv = run_block(p, inp)
-        except SpecError as exc:
-            raise SpecError(f"in block '{m}' ({os.path.basename(p)}): {exc}", w, line_of(models, m), f)
+        n = spec.get("repeat", 1)
+        n = int(round(float(resolve(n, ctx, f"{w}.repeat")))) if not isinstance(n, int) else n
+        if not 1 <= n <= 500:
+            raise SpecError("repeat is how many times the block runs in a row, 1 to 500", w, line_of(spec, "repeat"), f)
+        carry = spec.get("carry") or {}
+        if not isinstance(carry, dict):
+            raise SpecError("carry maps an input port to the output port that feeds it on the next run: "
+                            "{set_in: set_out}", w, line_of(spec, "carry"), f)
+        hits = []
+        for i in range(n):
+            try:
+                vals, ser, outv = run_block(p, inp)
+            except SpecError as exc:
+                raise SpecError(f"in block '{m}' ({os.path.basename(p)})" + (f", run {i + 1}" if n > 1 else "") +
+                                f": {exc}", w, line_of(models, m), f)
+            hits.append(dict(outv, **vals))
+            src = dict(vals, **ser)
+            for ip, op in carry.items():           # this run's ending state starts the next one (another hit)
+                if op not in src:
+                    raise SpecError(f"carry: '{op}' is not an output port of {os.path.basename(p)} (its ports: "
+                                    f"{', '.join(src) or 'none'})", w, line_of(spec, "carry"), f)
+                inp[ip] = src[op]
         ctx[m] = dict(outv, **vals, **ser)
+        if n > 1:
+            ctx["__hits__" + m] = hits
 
 
 def block_results(M):
@@ -318,6 +344,10 @@ def block_results(M):
         for k, v in (M.ctx.get(m) or {}).items():
             if isinstance(v, (int, float)):
                 out[f"{m}.{k}"] = float(v)
+        for i, h in enumerate(M.ctx.get("__hits__" + m) or [], start=1):     # a repeated block: every run
+            for k, v in h.items():
+                if isinstance(v, (int, float)):
+                    out[f"{m}.{k}@{i}"] = float(v)
     return out
 
 

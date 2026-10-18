@@ -35,7 +35,7 @@ from .loader import SpecError, line_of
 # part types
 R_, C_, L_, VS, IS, BAT, DIODE, SW, FUSE, MOT, ESC = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 TYPES = {"resistor": R_, "capacitor": C_, "inductor": L_, "voltage_source": VS, "current_source": IS, "current_load": IS,
-         "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT}
+         "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT, "wire": R_}
 FIELDS = {
     "resistor": {"R"}, "capacitor": {"C", "v0", "R_leak", "ESR"}, "inductor": {"L", "R", "i0"},
     "voltage_source": {"V", "R", "I_load"}, "current_source": {"I"}, "current_load": {"I"},
@@ -43,21 +43,24 @@ FIELDS = {
     "diode": {"Vf", "R_on", "R_off"},
     "switch": {"R_on", "R_off", "on_at", "off_at", "pwm_freq", "duty", "phase"},
     "fuse": {"R", "I_rating", "t_blow", "I_trip"},
-    "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor"},
+    "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor", "I0"},
+    "wire": {"awg", "area", "length", "material", "connectors", "R_contact"},
 }
 REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": {"V"},
             "current_source": {"I"}, "current_load": {"I"}, "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
-            "fuse": {"I_rating"}, "motor": {"R", "measure"}}
-ESC_FIELDS = {"throttle", "I_max", "regen"}
+            "fuse": {"I_rating"}, "motor": {"R", "measure"}, "wire": {"length"}}
+ESC_FIELDS = {"throttle", "I_max", "regen", "R_on", "t_sw", "f_sw", "C_th", "R_th", "T_amb_C"}
 COMMON = {"type", "between", "label", "note", "source", "thermal"}
-QUANTITIES = {"current", "voltage", "power", "energy", "soc", "state", "torque", "temperature", "heat"}
+QUANTITIES = {"current", "voltage", "power", "energy", "soc", "state", "torque", "temperature", "heat", "esc_temperature",
+              "esc_heat"}
 THERMAL = {"C_th", "R_th", "T_amb_C", "T0_C", "alpha", "T_max_C", "kt_tempco", "vf_tempco"}
-HAS_THERMAL = {"resistor", "capacitor", "inductor", "battery", "diode", "switch", "fuse", "motor"}
+HAS_THERMAL = {"resistor", "capacitor", "inductor", "battery", "diode", "switch", "fuse", "motor", "wire"}
 # typical temperature coefficients when a thermal model is on and none is given
 ALPHA_DEFAULT = {"motor": 0.00393, "inductor": 0.00393}
 KT_TEMPCO_DEFAULT = -0.0011          # NdFeB magnets: about -0.11 % per K
 VF_TEMPCO_DEFAULT = -0.002           # silicon diode: about -2 mV per K
-NPRM = 12; NST = 6; NOUT = 8       # out: current, voltage, power, energy, soc / state, torque, T (C), heat
+NPRM = 12; NST = 6; NOUT = 10      # out: current, voltage, power, energy, soc / state, torque, T (C), heat,
+                                   # ESC temperature (C), ESC heat (J)
 
 
 def compile_circuit(doc, ctx):
@@ -91,6 +94,8 @@ def compile_circuit(doc, ctx):
             else:
                 p2[pn] = d
         parts = p2
+    if any(isinstance(d, dict) and d.get("type") == "wire" for d in parts.values()):
+        parts = {pn: (_wire(pn, d, ctx, f) if isinstance(d, dict) and d.get("type") == "wire" else d) for pn, d in parts.items()}
     nets = {gnd: 0}
     names = list(parts)
     npart = len(names)
@@ -183,6 +188,13 @@ def compile_circuit(doc, ctx):
                 P[4] = num(resolve(esc.get("throttle", 1.0), ctx, where + ".esc.throttle"), where + ".esc.throttle")
                 P[5] = num(resolve(esc.get("I_max", 1e9), ctx, where + ".esc.I_max"), where + ".esc.I_max")
                 P[6] = 1.0 if esc.get("regen") is True else 0.0
+                ge = lambda key, dflt: num(resolve(esc[key], ctx, f"{where}.esc.{key}"), f"{where}.esc.{key}") if key in esc else dflt
+                # optional losses: R_on per MOSFET (a BLDC bridge has two in the current path), switching t_sw at f_sw
+                P[8] = 2.0 * ge("R_on", 0.0); P[9] = ge("t_sw", 0.0) * ge("f_sw", 0.0)
+                if ("C_th" in esc) != ("R_th" in esc):
+                    raise SpecError("the ESC's thermal model needs both C_th (J/K) and R_th (K/W)", where, line_of(d, "esc"), f)
+                P[10] = ge("C_th", 0.0); P[11] = ge("R_th", 0.0)
+                pst[k, 1] = pst[k, 2] = ge("T_amb_C", 25.0) + 273.15
                 if not 0.0 <= P[4] <= 1.0:
                     raise SpecError("throttle is a fraction of full duty, 0 to 1", where, line_of(esc, "throttle"), f)
             P[7] = len(motors)
@@ -192,6 +204,13 @@ def compile_circuit(doc, ctx):
             if "J_rotor" in d:
                 el["J_rotor"] = d["J_rotor"]
             extra[f"__circ_{pn}"] = el
+            if "I0" in d:                              # no-load current: iron and bearing loss as a drag torque Kt I0
+                I0 = g("I0")
+                if I0 < 0:
+                    raise SpecError("I0 (the no-load current) is >= 0", where, line_of(d, "I0"), f)
+                extra[f"__circ_{pn}__iron"] = {"type": "friction", "measure": d["measure"], "F_c": float(P[3] * Kt * I0),
+                                                "v_eps": float(0.5 / max(P[3], 1e-9)), "__hidden__": True,
+                                                "label": f"{pn} iron and bearing loss"}
         ptype[k] = tp
         pst[k, 4] = 298.15
         thd = d.get("thermal")
@@ -236,6 +255,56 @@ def compile_circuit(doc, ctx):
     circ = dict(names=names, nets=nets, ground=gnd, motors=motors, types=[str(parts[p_]["type"]) for p_ in names],
                 arrays=dict(ptype=ptype, na=na, nb=nb, prm=prm, pst0=pst, th=th, nn=nn))
     return circ, extra
+
+
+# contact resistance per mated pair, from the makers' data: Amass XT30 0.70 mOhm and XT90 0.30 mOhm (Amass product
+# pages, via TME), XT60 0.55 mOhm (Amass XT60 datasheet). Others: give R_contact.
+CONNECTORS = {"XT30": 0.70e-3, "XT60": 0.55e-3, "XT90": 0.30e-3}
+WIRE_MATERIAL = {"copper": (1.724e-8, 0.00393, 8960.0, 385.0), "aluminum": (2.82e-8, 0.00403, 2700.0, 897.0)}
+
+
+def _wire(pn, d, ctx, f):
+    """A wire run: R = rho L / A plus its connectors, as a resistor. With thermal: {} the copper's own heat capacity
+    and free convection from its insulation (h about 10 W/m^2 K on 1.5x the conductor diameter) are filled in."""
+    from .model import resolve, num
+    where = f"circuit.parts.{pn}"
+    g = lambda key, dflt=None: (num(resolve(d[key], ctx, f"{where}.{key}"), f"{where}.{key}") if key in d else dflt)
+    for key in set(d) - FIELDS["wire"] - COMMON:
+        raise SpecError(f"'{key}' is not a field of a wire (allowed: {', '.join(sorted(FIELDS['wire'] | COMMON))})",
+                        where, line_of(d, key), f)
+    if ("awg" in d) == ("area" in d):
+        raise SpecError("a wire needs awg (a gauge number, e.g. 14) or area (the copper cross-section, e.g. 2 mm^2)",
+                        where, line_of(d, "type"), f)
+    if "awg" in d:
+        n = g("awg"); dia = 0.127e-3 * 92.0 ** ((36.0 - n) / 39.0); A = math.pi * dia * dia / 4
+    else:
+        A = g("area"); dia = math.sqrt(4 * A / math.pi)
+    mat = str(d.get("material", "copper")).lower()
+    if mat not in WIRE_MATERIAL:
+        raise SpecError(f"wire material is copper or aluminum, not '{mat}'", where, line_of(d, "material"), f)
+    rho, alpha, dens, cp = WIRE_MATERIAL[mat]
+    L = g("length")
+    if L <= 0 or A <= 0:
+        raise SpecError("a wire needs a positive length and cross-section", where, line_of(d, "length"), f)
+    Rc = g("R_contact", 0.0)
+    cons = d.get("connectors") or []
+    if isinstance(cons, str):
+        cons = [x for x in cons.replace(";", ",").split(",") if x.strip()]
+    for c in cons:
+        key = str(c).upper().replace(" ", "")
+        if key not in CONNECTORS:
+            raise SpecError(f"no contact resistance on file for '{c}' (known: {', '.join(CONNECTORS)}); give R_contact",
+                            where, line_of(d, "connectors"), f)
+        Rc += CONNECTORS[key]
+    out = {k: v for k, v in d.items() if k in COMMON}
+    out["type"] = "resistor"; out["R"] = rho * L / A + Rc
+    if "thermal" in d:
+        thd = dict(d.get("thermal") or {})
+        thd.setdefault("C_th", dens * cp * A * L)
+        thd.setdefault("R_th", 1.0 / (10.0 * math.pi * 1.5 * dia * L))
+        thd.setdefault("alpha", alpha)
+        out["thermal"] = thd
+    return out
 
 
 def circuit_tau(circ):
@@ -384,7 +453,7 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
         d = flg[k]
         if d <= 0.0:
             return 0.0, 0.0
-        Z = prm[k, 1] * rf + prm[k, 2] / dt
+        Z = prm[k, 1] * rf + prm[k, 8] + prm[k, 2] / dt
         Gm = 1.0 / Z
         # i_m = Gm (d v - emf + (L/dt) i_prev); bus current i = d i_m
         return d * d * Gm, d * Gm * (emf - (prm[k, 2] / dt) * pst[k, 0])
@@ -394,7 +463,7 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
 @njit(cache=True, nogil=True)
 def _motor_i(k, ptype, prm, pst, th, flg, dt, emf, v):
     """Winding current of motor part k for terminal (or bus, behind an ESC) voltage v."""
-    Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 2] / dt
+    Z = prm[k, 1] * _rf(k, th, pst) + (prm[k, 8] if ptype[k] == 11 else 0.0) + prm[k, 2] / dt
     d = 1.0 if ptype[k] == 10 else flg[k]
     return (d * v - emf + (prm[k, 2] / dt) * pst[k, 0]) / Z
 
@@ -443,7 +512,7 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                     flg[k] = want; changed = True
             elif tp == 11 and pst[k, 5] < 0.5:
                 d = flg[k]
-                Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 2] / dt
+                Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 8] + prm[k, 2] / dt
                 im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z
                 Imax = prm[k, 5]
                 if im > Imax * 1.000001 and v > 0.0:
@@ -531,9 +600,9 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 im = i; vm = v
             else:
                 d = flg[k]
-                Z = prm[k, 1] * rf + prm[k, 2] / dt
+                Z = prm[k, 1] * rf + prm[k, 8] + prm[k, 2] / dt
                 im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z if d > 0.0 else 0.0
-                vm = d * v
+                vm = d * v - prm[k, 8] * im                    # what reaches the winding, past the bridge
             if pst[k, 5] > 0.5:
                 im = 0.0
             pst[k, 0] = im
@@ -544,6 +613,14 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             kg = prm[k, 3] * kt
             st[e, 4] = kg * kg * cdamp[k] if (pst[k, 5] < 0.5 and im != 0.0) else 0.0   # back-EMF damping, N m s
             heat = prm[k, 1] * rf * im * im
+            if tp == 11:                                         # the ESC's own losses and temperature (optional)
+                qe = prm[k, 8] * im * im
+                if flg[k] > 0.0 and flg[k] < 0.999:
+                    qe += abs(v * im) * prm[k, 9]                # switching: V I t_sw f_sw while it chops
+                pst[k, 3] += qe * dt
+                if prm[k, 10] > 0.0:
+                    pst[k, 2] += dt * (qe - (pst[k, 2] - pst[k, 1]) / prm[k, 11]) / prm[k, 10]
+                pout[k, 8] = pst[k, 2] - 273.15; pout[k, 9] = pst[k, 3]
             pout[k, 4] = (flg[k] if tp == 11 else 1.0) if pst[k, 5] < 0.5 else 0.0
             pout[k, 5] = kt * im                                 # torque on the motor shaft
         elif tp == 7 or tp == 8:

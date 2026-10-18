@@ -27,7 +27,7 @@ import math
 import numpy as np
 from numba import njit
 
-from .circuit import circuit_step
+from .circuit import circuit_step, NOUT as NOUT_C
 from .control import control_step
 from .adaptive import pick_dt
 
@@ -261,15 +261,17 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     st = np.zeros((ne, 5))
     # electrical circuit (optional): parts solved each step, motors read their speed and set their torque
     npart = cpt.shape[0]
-    cpst = cpst0.copy(); cpout = np.zeros((npart, 8)); cflg = np.zeros(npart)
+    cpst = cpst0.copy(); cpout = np.zeros((npart, NOUT_C)); cflg = np.zeros(npart)
     cG = np.zeros((cnn, cnn)); cI = np.zeros(cnn); cvn = np.zeros(cnn + 1)
-    CTR = np.empty((npart, 16))
+    CTR = np.empty((npart, 2 * NOUT_C))
     for k in range(npart):
-        for c in range(8):
+        for c in range(NOUT_C):
             CTR[k, 2 * c] = 1e300; CTR[k, 2 * c + 1] = -1e300
     for e in range(ne):
         if typ[e] == 8:
             st[e, 3] = 1.0                     # pack starts full
+        if typ[e] == 3:                        # elastoplastic: a permanent set carried in from an earlier hit
+            st[e, 0] = P[e, 5]; st[e, 1] = P[e, 6]
     aux = np.zeros((ne, NAUX))
     A = np.zeros(ne); D = np.zeros(ne); IN = np.zeros(ne); S0 = np.zeros(ne); S1 = np.zeros(ne)
     Fe = np.zeros(ne); se = np.zeros(ne)
@@ -291,7 +293,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
     nlog = n // log_every + 2 if log_every > 0 else 1      # no history: no log arrays (was n rows of zeros)
     if adapt and log_every > 0:
         nlog = int(adp[5] / adp[7]) + 3
-    LOGC = np.zeros((nlog if npart > 0 else 1, npart * 8 if npart > 0 else 1))
+    LOGC = np.zeros((nlog if npart > 0 else 1, npart * NOUT_C if npart > 0 else 1))
     LOGB = np.zeros((nlog, 2 * nb)); LOGE = np.zeros((nlog, ne * (2 + NAUX))); LOGT = np.zeros(nlog); j = 0
     LOGS = np.zeros((nlog if nsig > 0 else 1, nsig if nsig > 0 else 1))
     KE0 = 0.0
@@ -523,7 +525,7 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
                     st[e, 2] = u_
             circuit_step(tn, dt, cnn, cpt, cna, cnb, cprm, cpst, cth, cpout, cmot, st, cflg, cG, cI, cvn)
             for k in range(npart):
-                for c in range(8):
+                for c in range(NOUT_C):
                     if cpout[k, c] < CTR[k, 2 * c]: CTR[k, 2 * c] = cpout[k, c]
                     if cpout[k, c] > CTR[k, 2 * c + 1]: CTR[k, 2 * c + 1] = cpout[k, c]
         if adapt:
@@ -536,8 +538,8 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
         if logit:
             if npart > 0:
                 for k in range(npart):
-                    for c in range(8):
-                        LOGC[j, k * 8 + c] = cpout[k, c]
+                    for c in range(NOUT_C):
+                        LOGC[j, k * NOUT_C + c] = cpout[k, c]
             LOGT[j] = t
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
