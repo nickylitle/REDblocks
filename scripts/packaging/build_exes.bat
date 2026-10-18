@@ -19,7 +19,9 @@ copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul
 if not exist simblocks\app\examples\showcase mkdir simblocks\app\examples\showcase
 copy /y examples\showcase\apollo11\*.yaml simblocks\app\examples\showcase\ >nul
 copy /y examples\showcase\apollo11\apollo11.html simblocks\app\examples\showcase\ >nul
-python -m pip install ".[app,mcp]" pyinstaller || goto :err
+REM the YAML format reference, for AI assistants connected through MCP
+if exist ..\references\system_file.md copy /y ..\references\system_file.md simblocks\docs\ >nul
+python -m pip install ".[app,mcp]" "mcp[cli]" pyinstaller || goto :err
 REM Help shows every block's Python source; the one-file exe has no .py files, so save the sources first
 python -c "from simblocks.app.api import write_block_sources; print(write_block_sources('simblocks/app/block_sources.json'))" || goto :err
 python -m pip install --no-deps --force-reinstall . || goto :err
@@ -37,6 +39,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File packaging\install.ps1 || got
 pause
 exit /b 0
 :err
-echo BUILD FAILED. Check that Python 3.10-3.12 is installed and on PATH.
+echo BUILD FAILED: the real error is in the lines above. (It also needs Python 3.10-3.12 from python.org on PATH.)
 pause
 exit /b 1

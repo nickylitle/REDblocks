@@ -4,6 +4,7 @@ build/
 dist/
 *.spec
 scripts/simblocks/app/examples/
+scripts/simblocks/docs/system_file.md
 scripts/simblocks/app/block_sources.json
 # Python and numba caches
 __pycache__/
