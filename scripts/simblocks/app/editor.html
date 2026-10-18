@@ -557,6 +557,9 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sOpenLast">Open the last file when the app starts</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A recovery copy of unsaved work, offered back if the app closes before you save">Recovery copy every <select id="sAuto"><option value="0">off</option><option value="1">1 min</option><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option></select></label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sRepOpen">Open the report when it is written</label></div>
+  <h3 class="dsub">AI assistant (MCP)</h3>
+  <div class="sub">Let an AI assistant read, edit, run, sweep, verify and plot your models on this computer. REDblocks is an MCP server, the open standard Claude and many other assistants use, so each person connects their own assistant and account. The editor reloads an open file when the assistant changes it. Every edit is checked first, and the file before it is kept as <code>.bak</code>.</div>
+  <div id="mcpBox" class="sub">Checking…</div>
   <h3 class="dsub">Default themes</h3><div class="cards" id="setThemes"></div>
   <h3 class="dsub">User themes</h3><div class="cards" id="setUser"></div>
   <div class="utrow"><input type="text" id="utName" placeholder="theme name" aria-label="Theme name"><button id="utNew" title="Save the theme you are using now, with your changes, as a new user theme">New from current</button><button id="utCopy" title="Duplicate the selected theme (built-in or yours) under the name in the box">Copy</button><button id="utRename" title="Rename the selected user theme to the name in the box">Rename</button><button id="utRemove" title="Delete the selected user theme and its folder">Remove</button></div>
@@ -4016,12 +4019,14 @@ async function renderYaml(){
   document.getElementById("yamlOut").textContent = yamlText;
 }
 function changed(rerender = true){
+  if (!diskWarned) diskNote = "";
   pruneNets(); histSoon(); studyStale = true;
   dirty = true; document.getElementById("fname").textContent = (filePath ? filePath.split(/[\\/]/).pop() : "untitled") + " •";
   if (rerender) render(); else { drawWires(); renderYaml(); }
   clearTimeout(checkTimer); checkTimer = setTimeout(check, Math.max(100, parseInt((SETTINGS || {}).liveDelay) || 450));
 }
-function status(cls, msg){ const s = document.getElementById("status"); s.className = cls + (SETTINGS.loader ? " has-gif" : ""); document.getElementById("smsg").textContent = msg;
+function status(cls, msg){ if (diskNote && cls !== "busy" && !String(msg).includes(diskNote)) msg += " · " + diskNote;   // a reload or disk warning stays readable
+  const s = document.getElementById("status"); s.className = cls + (SETTINGS.loader ? " has-gif" : ""); document.getElementById("smsg").textContent = msg;
   const g = document.getElementById("stGif"); if (g) g.hidden = !(SETTINGS.loader && cls === "busy"); }
 function applyLoader(){ ["pcGif","stGif"].forEach(id => { const g = document.getElementById(id); if (!g) return;
     if (SETTINGS.loader){ if (g.src !== SETTINGS.loader) g.src = SETTINGS.loader; } else g.removeAttribute("src"); });
@@ -4616,15 +4621,26 @@ document.getElementById("bRecent").addEventListener("change", async e => { const
 async function refreshRecent(){ const r = await API.call("load_settings"); SETTINGS = r || {recent:[]};
   document.getElementById("bRecent").innerHTML = `<option value="">Recent</option>` + (SETTINGS.recent || []).map(p => `<option value="${esc(p)}">${esc(p.split(/[\\/]/).pop())}</option>`).join(""); }
 // ------------------------------------------------------------------------------------------------ files
-async function loadText(text, path, dataDir){
+async function loadText(text, path, dataDir, keepView){
   const r = await API.call("import_yaml", text);
   if (!r.ok){ status("bad", "Could not read that file: " + r.error); return; }
+  const v0 = keepView ? Object.assign({}, view) : null;
   // relative files (CSV loads, pictures) are read from the model's folder; an example's from where it ships
   MATP = new Set(r.mats || []); fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
-  render(); if (!S.meta.hasLayout) arrange(); else unOverlap(); fitView(); histReset();
+  render(); if (!S.meta.hasLayout) arrange(); else unOverlap(); if (v0){ view = v0; applyView(); } else fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();
+  stampNow();
 }
+// the open file changed on disk (an AI assistant through REDblocks MCP, or another program): reload it in place
+let diskStamp = null, diskWarned = false, diskNote = "";
+async function stampNow(){ diskStamp = null; diskWarned = false; diskNote = ""; if (!filePath) return; const r = await API.call("file_stamp", filePath); if (r && r.ok) diskStamp = r.mtime; }
+setInterval(async () => {
+  if (!filePath || diskStamp === null || document.hidden) return;
+  const r = await API.call("file_stamp", filePath); if (!r || !r.ok || r.mtime === diskStamp) return;
+  if (dirty){ if (!diskWarned){ diskWarned = true; diskNote = "the file changed on disk: your unsaved edits are still here (Save overwrites it, Open loads it)"; status("bad", "Changed on disk"); } return; }
+  const t = await API.call("open_path_text", filePath); if (!t || !t.ok) return;
+  const was = filePath; await loadText(t.text, was, null, true); diskNote = "reloaded " + was.split(/[\\/]/).pop() + ": it changed on disk"; status("ok", "Reloaded"); }, 1500);
 async function openFile(){
   if (window.pywebview){ const r = await API.call("open_file"); if (r.ok){ loadText(r.text, r.path); refreshRecent(); } else if (!r.cancelled) status("bad", r.error); return; }
   document.getElementById("fileIn").click();
@@ -4634,7 +4650,7 @@ document.getElementById("fileIn").addEventListener("change", e => { const f = e.
 async function save(asNew){
   await renderYaml();
   if (window.pywebview){ const r = await API.call("save_file", yamlText, filePath, !!asNew || !filePath);
-    if (r.ok){ filePath = r.path; API.call("set_model_dir", filePath); dirty = false; refreshRecent(); API.call("recovery_clear"); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); return true; }
+    if (r.ok){ filePath = r.path; API.call("set_model_dir", filePath); dirty = false; refreshRecent(); API.call("recovery_clear"); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); stampNow(); return true; }
     if (!r.cancelled) status("bad", r.error); return false; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([yamlText], {type:"text/yaml"}));
   a.download = (S.meta.name || "model").replace(/\W+/g, "_") + ".yaml"; a.click(); dirty = false; return true;
@@ -5251,6 +5267,7 @@ simblocks run    model.yaml      # one run (+ CSV exports); --out folder also wr
 simblocks verify model.yaml      # the verification battery (--mc N samples, --out folder for verify.md)
 simblocks report model.yaml      # verify + PDF/HTML report</pre>
   <p><b>Installing on Windows:</b> run <code>packaging\build_exes.bat</code> once. It builds the app and offers to install it for you, with no administrator rights: press the Windows key and type <i>Simblocks</i>, then right-click it and choose <b>Pin to taskbar</b>. Model files can open straight into it (right-click a <code>.yaml</code> &gt; Open with &gt; Simblocks &gt; Always), <kbd>Win+R</kbd> <code>simblocks</code> starts it, and it uninstalls from Settings &gt; Apps. Re-run the .bat to update; your settings and saved groups are kept.</p>
+  <p><b>AI assistant (MCP):</b> REDblocks is an MCP server, so Claude (desktop or Claude Code) or any other assistant that speaks MCP can read, edit, run, sweep, verify and plot your models on this computer, on that person's own account. Open <b>Settings &gt; AI assistant</b>: <b>Add REDblocks to Claude desktop</b> writes the connection for you (restart Claude after), and the box shows the one-line Claude Code command and the JSON block for other assistants. From a terminal it is <code>python -m simblocks mcp</code>. Every edit is compiled first (a broken edit is refused) and the previous file is kept as <code>.bak</code>. Keep the model open here and the canvas reloads when the assistant changes it; if you have unsaved edits it warns instead.</p>
   <p>Settings (recent files, cores, units, live, folders) live in <code>~/.simblocks/app.json</code>; saved groups in <code>~/.simblocks/groups</code>. Custom folders also apply to the command line through <code>SIMBLOCKS_MATERIALS</code> and <code>SIMBLOCKS_BLOCKS</code>.</p>`},
  {id:"keys", grp:"Files", t:"Keyboard shortcuts", h:`
   <table class="ht">
@@ -5609,7 +5626,25 @@ function themeCard(id, th){
   const pic = isUserTheme(id) && USER_THEMES[id.slice(2)].img ? `<span class="hint" style="padding:0">has a background picture</span>` : "";
   return `<button class="card thc${id === themeId() ? " on" : ""}" data-th="${id}"><span class="sws" style="background:${t.bg};border-color:${t.edge}">${sw}</span><b>${esc(th.name)}</b>${esc(th.note || "")}${pic}</button>`;
 }
+async function mcpShow(){
+  const box = document.getElementById("mcpBox"); if (!box) return;
+  const r = await API.call("mcp_status"); if (!r || !r.ok){ box.textContent = "Not available in this build."; return; }
+  const pre = (id, t) => `<div style="display:flex;gap:6px;align-items:flex-start;margin:4px 0"><pre class="code" id="${id}" style="flex:1;min-width:0;margin:0;white-space:pre-wrap;word-break:break-all;font-size:11px">${esc(t)}</pre><button data-copy="${id}">Copy</button></div>`;
+  let h = "";
+  if (!r.have_mcp) h += `<div style="margin:4px 0"><b>Step 1:</b> this Python needs the <code>mcp</code> package. <button id="mcpPip">Install it</button></div>`;
+  h += `<div style="margin:6px 0"><b>Claude desktop:</b> ${r.desktop_linked ? "connected. Restart Claude if you just added it." : `<button id="mcpLink"${r.have_mcp ? "" : " disabled"}>Add REDblocks to Claude desktop</button> then restart Claude.`}</div>`;
+  h += `<div style="margin:6px 0 2px"><b>Claude Code:</b> run this once in a terminal:</div>` + pre("mcpCC", r.claude_code);
+  h += `<div style="margin:6px 0 2px"><b>Any other MCP assistant:</b> add this server to its MCP settings:</div>` + pre("mcpJson", r.json);
+  box.innerHTML = h;
+  box.querySelectorAll("button[data-copy]").forEach(b => b.onclick = async () => { const t = document.getElementById(b.dataset.copy).textContent;
+    try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch(e){ const rg = document.createRange(); rg.selectNodeContents(document.getElementById(b.dataset.copy)); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(rg); } });
+  const pip = document.getElementById("mcpPip"); if (pip) pip.onclick = async () => { pip.disabled = true; pip.textContent = "Installing…";
+    const q = await API.call("mcp_install_package"); if (q && q.ok){ status("ok", "Installed the mcp package."); mcpShow(); } else { pip.disabled = false; pip.textContent = "Install it"; status("bad", "pip failed: " + ((q && q.error) || "")); } };
+  const ln = document.getElementById("mcpLink"); if (ln) ln.onclick = async () => { const q = await API.call("mcp_link_claude_desktop");
+    if (q && q.ok){ status("ok", "Added REDblocks to " + q.path + ". Restart Claude desktop to use it."); mcpShow(); } else status("bad", "Could not edit the Claude config: " + ((q && q.error) || "")); };
+}
 async function settingsShow(){
+  mcpShow();
   const d = document.getElementById("setDlg"), {id, th, user, look, own} = curLook();
   document.getElementById("setThemes").innerHTML = Object.entries(THEMES).map(([k, t]) => themeCard(k, t)).join("");
   const us = Object.entries(USER_THEMES);

@@ -386,6 +386,84 @@ class Api:
         st["recent"] = [path] + rec[:9]
         self.save_settings(st)
 
+    # ------------------------------------------------------------------ AI assistants (MCP)
+    def _mcp_command(self):
+        """How an MCP client starts this copy of REDblocks as a server."""
+        import sys
+        if getattr(sys, "frozen", False):                  # the Windows build: the exe itself takes "mcp"
+            return sys.executable, ["mcp"]
+        return sys.executable, ["-m", "simblocks", "mcp"]
+
+    def _claude_desktop_config(self):
+        import sys
+        home = os.path.expanduser("~")
+        if sys.platform == "win32":
+            cands = [os.path.join(os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming")), "Claude", "claude_desktop_config.json")]
+            pk = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Packages")          # the Microsoft Store build
+            if os.path.isdir(pk):
+                cands += [os.path.join(pk, d, "LocalCache", "Roaming", "Claude", "claude_desktop_config.json")
+                          for d in os.listdir(pk) if d.lower().startswith("claude")]
+        elif sys.platform == "darwin":
+            cands = [os.path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")]
+        else:
+            cands = [os.path.join(home, ".config", "Claude", "claude_desktop_config.json")]
+        return next((c for c in cands if os.path.isdir(os.path.dirname(c))), cands[0])
+
+    def mcp_status(self):
+        """What Settings shows: is the mcp package here, the command clients run, the JSON block and the Claude Code
+        command to paste, and whether Claude desktop already lists REDblocks."""
+        import json, shlex, sys, importlib.util
+        cmd, args = self._mcp_command()
+        have = getattr(sys, "frozen", False) or importlib.util.find_spec("mcp") is not None
+        block = {"mcpServers": {"redblocks": {"command": cmd, "args": args}}}
+        cfg = self._claude_desktop_config(); linked = False
+        try:
+            with open(cfg, encoding="utf-8") as f:
+                linked = "redblocks" in (json.load(f).get("mcpServers") or {})
+        except Exception:
+            pass
+        q = (lambda x: '"' + x + '"' if " " in x else x) if sys.platform == "win32" else shlex.quote
+        return dict(ok=True, have_mcp=have, command=cmd, args=args, json=json.dumps(block, indent=2),
+                    claude_code="claude mcp add redblocks -- " + " ".join(q(x) for x in [cmd] + args),
+                    desktop_config=cfg, desktop_found=os.path.isdir(os.path.dirname(cfg)), desktop_linked=linked)
+
+    def mcp_install_package(self):
+        """pip install the mcp package into the Python this app runs on (not needed in the Windows build)."""
+        import subprocess, sys
+        try:
+            r = subprocess.run([sys.executable, "-m", "pip", "install", "mcp>=1.2"], capture_output=True, text=True, timeout=600)
+            return dict(ok=r.returncode == 0, error=(r.stderr or r.stdout)[-600:] if r.returncode else "")
+        except Exception as exc:
+            return _err(exc)
+
+    def mcp_link_claude_desktop(self):
+        """Add REDblocks to Claude desktop's MCP servers (the old file is kept as .bak). Restart Claude to load it."""
+        import json
+        try:
+            cfg = self._claude_desktop_config()
+            data = {}
+            if os.path.exists(cfg):
+                with open(cfg, encoding="utf-8") as f:
+                    txt = f.read()
+                data = json.loads(txt) if txt.strip() else {}
+                with open(cfg + ".bak", "w", encoding="utf-8") as f:
+                    f.write(txt)
+            os.makedirs(os.path.dirname(cfg), exist_ok=True)
+            cmd, args = self._mcp_command()
+            data.setdefault("mcpServers", {})["redblocks"] = {"command": cmd, "args": args}
+            with open(cfg, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            return dict(ok=True, path=cfg)
+        except Exception as exc:
+            return _err(exc)
+
+    def file_stamp(self, path):
+        """When the file last changed, so the editor can reload a model an assistant (MCP) or another program edited."""
+        try:
+            return dict(ok=True, mtime=os.path.getmtime(path))
+        except Exception as exc:
+            return _err(exc)
+
     def open_path_text(self, path):
         try:
             with open(path, encoding="utf-8") as fh:

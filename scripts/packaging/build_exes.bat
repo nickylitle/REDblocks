@@ -19,11 +19,11 @@ copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul
 if not exist simblocks\app\examples\showcase mkdir simblocks\app\examples\showcase
 copy /y examples\showcase\apollo11\*.yaml simblocks\app\examples\showcase\ >nul
 copy /y examples\showcase\apollo11\apollo11.html simblocks\app\examples\showcase\ >nul
-python -m pip install ".[app]" pyinstaller || goto :err
+python -m pip install ".[app,mcp]" pyinstaller || goto :err
 REM Help shows every block's Python source; the one-file exe has no .py files, so save the sources first
 python -c "from simblocks.app.api import write_block_sources; print(write_block_sources('simblocks/app/block_sources.json'))" || goto :err
 python -m pip install --no-deps --force-reinstall . || goto :err
-set COMMON=--noconfirm --collect-all simblocks --collect-submodules numba --collect-data llvmlite --hidden-import scipy.stats._qmc --hidden-import yaml --collect-submodules matplotlib.backends
+set COMMON=--noconfirm --collect-all simblocks --collect-all mcp --collect-submodules numba --collect-data llvmlite --hidden-import scipy.stats._qmc --hidden-import yaml --collect-submodules matplotlib.backends
 pyinstaller %COMMON% --onedir --windowed --icon packaging\simblocks.ico --collect-all webview --name Simblocks packaging\simblocks_runner.py || goto :err
 pyinstaller %COMMON% --onefile --icon packaging\simblocks.ico --name simblocks_runner packaging\simblocks_runner.py || goto :err
 echo.

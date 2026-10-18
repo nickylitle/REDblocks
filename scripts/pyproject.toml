@@ -12,11 +12,13 @@ dependencies = ["numpy>=1.24", "numba>=0.58", "scipy>=1.10", "matplotlib>=3.7", 
 
 [project.optional-dependencies]
 app = ["pywebview>=5.0"]
+mcp = ["mcp>=1.2"]
 
 [project.scripts]
 simblocks = "simblocks.cli:main"
 simblocks-runner = "simblocks.runner_app:main"
 simblocks-app = "simblocks.app.main:main"
+redblocks-mcp = "simblocks.mcp_server:main"
 
 [tool.setuptools.packages.find]
 include = ["simblocks*"]

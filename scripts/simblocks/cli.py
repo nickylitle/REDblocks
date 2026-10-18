@@ -74,7 +74,11 @@ def main(argv=None):
     p.add_argument("--out", default=None, help="results zip (default: <name>_results.zip next to the job)")
     p.add_argument("--fresh", action="store_true", help="ignore a partial run and start over")
     p = sub.add_parser("batch-info"); p.add_argument("results")
+    sub.add_parser("mcp", help="run as an MCP server (stdio) so an AI assistant can read, edit, run and verify models")
     a = ap.parse_args(argv)
+    if a.cmd == "mcp":
+        from .mcp_server import main as mcp_main
+        return mcp_main()
     if a.cmd == "app":
         from .app.main import main as app_main
         return app_main([a.file] if a.file else [])

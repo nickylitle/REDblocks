@@ -12,7 +12,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 COPIES = [("examples/learn/*.yaml", "simblocks/app/examples"),
           ("examples/learn/data/*.csv", "simblocks/app/examples/data"),
           ("examples/showcase/apollo11/*.yaml", "simblocks/app/examples/showcase"),
-          ("examples/showcase/apollo11/apollo11.html", "simblocks/app/examples/showcase")]
+          ("examples/showcase/apollo11/apollo11.html", "simblocks/app/examples/showcase"),
+          ("../references/system_file.md", "simblocks/docs")]       # the YAML reference, for the MCP server
 
 
 class BuildWithExamples(build_py):

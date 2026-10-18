@@ -6,6 +6,9 @@ import os
 import sys
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "mcp":       # an AI assistant starts REDblocks as an MCP server
+        from simblocks.mcp_server import main
+        sys.exit(main())
     if "runner" not in os.path.basename(sys.argv[0]).lower():
         from simblocks.app.main import main
     else:

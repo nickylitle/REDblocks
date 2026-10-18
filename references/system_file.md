@@ -371,7 +371,8 @@ work that is not its own law: its element check is skipped, the global ledger st
 ### circuit (optional lumped electrical circuit)
 
 Parts wired between named nets; `ground` is the 0 V net (default `gnd`). Solved every step by nodal analysis
-(backward-Euler companions for C, L and the battery's RC branch; diodes, ESC current limits and freewheeling settled
+(BDF2 companions for C and L, second order with almost no numerical damping, backward Euler on the first step and
+for the battery's RC branch; diodes, ESC current limits and freewheeling settled
 by re-solving). Motors couple to the mechanics like a drive: torque `gear Kt i` on their measure, back-EMF
 `gear Kt ds/dt`. Sign: a part's current flows from its first net to its second through the part; `voltage` is
 v(first) - v(second); `power` is absorbed (negative while delivering). The part powers sum to zero every step
@@ -393,14 +394,28 @@ circuit:
 | `resistor` | **R** | v = R i |
 | `capacitor` | **C**, ESR (0), R_leak (0 = none), v0 | i = C dv/dt behind ESR |
 | `inductor` | **L**, R, i0 | v = L di/dt + R i |
-| `voltage_source` | **V**, R (0.1 mohm), I_load (a fixed draw, A) | v = V - R i, + is the first net |
-| `current_source` | **I** | drives I out of + into the circuit (its current reads negative) |
-| `current_load` | **I** | draws a fixed I in at + (supply side), out at − (its current reads positive) |
-| `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3), I_load (a fixed draw across it, A; its part is `<name>__load`) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
+| `voltage_source` | **V** (or wave), R (0.1 mohm), I_load (a fixed draw, A, or a wave), wave | v = V - R i, + is the first net |
+| `current_source` | **I** (or wave), wave | drives I out of + into the circuit (its current reads negative) |
+| `current_load` | **I** (or wave), wave | draws I in at + (supply side), out at − (its current reads positive) |
+| `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3), I_load (a fixed draw across it, A, or a wave; its part is `<name>__load`) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
 | `diode` | Vf (0.7 V), R_on (10 mohm), R_off (10 Mohm) | conducts first net to second past Vf |
 | `switch` | R_on, R_off, on_at, off_at, pwm_freq, duty, phase | closed from on_at to off_at, chopped at duty with pwm_freq |
 | `fuse` | **I_rating**, t_blow (1 s), I_trip, R | opens once integral (i/I_rating)^2 dt > t_blow, or at once above I_trip |
 | `motor` | **R**, **measure**, kv or Kt, L, gear, J_rotor, esc {throttle, I_max, regen} | v = R i + L di/dt + gear Kt ds/dt |
+
+Function generator: `wave:` on a voltage source, current source or current load (and `I_load:` given as the same
+dict on a battery or voltage source) drives it with a waveform. Output = offset + amplitude x shape(t).
+
+```yaml
+    sig: {type: current_load, between: [bus, gnd], wave: {shape: square, amplitude: 5 A, offset: 5 A, frequency: 10 Hz, duty: 0.25}}
+    ac:  {type: voltage_source, between: [a, gnd], wave: {shape: sine, amplitude: 10 V, frequency: 50 Hz, phase: 90 deg}}
+    pack: {type: battery, between: [bat, gnd], cells: 6, capacity: 2200 mAh, I_load: {shape: pulse, amplitude: 20 A, frequency: 5 Hz, duty: 0.2}}
+```
+
+Keys: `shape` (sine, square, triangle, sawtooth, pulse = 0 to amplitude, step, ramp), `amplitude`, `offset`
+(default: the part's V or I), `frequency` or `period` (periodic shapes), `phase`, `duty` (0 to 1, square and pulse),
+`start` (offset before it), `stop` (offset after it), `rise` (ramp: time to climb by the amplitude). The auto step
+takes about 50 steps per period.
 
 `thermal` (optional on every part except sources): `{C_th: J/K, R_th: K/W, T_amb_C: 25, T0_C, alpha: 1/K,
 T_max_C, kt_tempco, vf_tempco}`. The part heats with its losses and cools to ambient through R_th. Its resistance
