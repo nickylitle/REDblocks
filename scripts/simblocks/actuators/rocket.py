@@ -10,6 +10,14 @@ exit area that sets how thrust grows as the outside pressure falls: F = F_vac - 
 Species thermodynamics: NASA 7-coefficient polynomials (McBride, Gordon & Reno, NASA TM-4513; the GRI / NASA
 thermo set as distributed with Cantera, 200-6000 K). Equilibrium: Gibbs energy minimised by the element-potential
 Newton iteration of Gordon & McBride, NASA RP-1311 (1994), chapter 2.
+
+Propellants enter at their tank enthalpy. That is right for every cycle: the pumps' work and the cooling jacket's heat
+come from the propellants' own energy and go back into the chamber, so the injector-inlet enthalpies of a staged
+engine (warmer LOX, hot preburner gas) would count that energy twice.
+
+Checked against the Space Shuttle Main Engine (RS-25) at 104.5 % power (cryo-rocket.com SSME station data,
+tests/test_rocket_rs25.py): tank enthalpies within 2 and 22 kJ/kg, chamber temperature 3609 K vs 3589 K, water
+fraction 0.69 vs 0.67, and from its vacuum rating (491,900 lbf, 452 s) the sea-level thrust and Isp within 0.7 %.
 """
 import functools
 import math
@@ -226,7 +234,8 @@ def ideal_performance(fuel, OF, Pc, eps, oxidizer="LOX"):
 @block("actuators", "rocket", "liquid", "equilibrium", kind="builder",
        source="NASA RP-1311 (Gordon & McBride 1994) equilibrium method; NASA TM-4513 thermodynamic data",
        tags=("rocket", "engine", "thrust", "Isp", "nozzle", "combustion", "F-1", "J-2", "Merlin", "RP-1", "LOX",
-             "hydrogen", "methane", "CEA", "N2O4", "Aerozine", "hydrazine", "UDMH", "MMH", "storable", "DPS", "LM"))
+             "hydrogen", "methane", "CEA", "N2O4", "Aerozine", "hydrazine", "UDMH", "MMH", "storable", "DPS", "LM",
+             "RS-25", "SSME", "Space Shuttle", "staged combustion"))
 def rocket_engine(fuel, OF, Pc, eps, mdot=None, Isp_sl=None, Isp_vac=None, F_vac=None, efficiency=None,
                   eta_cstar=0.98, n=1, oxidizer="LOX"):
     """Liquid rocket engine from its propellants: thrust against outside pressure F = F_vac - p_amb A_e.
