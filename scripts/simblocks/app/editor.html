@@ -600,9 +600,9 @@ const API = {
 // ------------------------------------------------------------------------------------------------ model
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
-  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)"};
+  export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)"};
 const KIND_LABEL = {value:"value", builder:"builder", body:"body", element:"element", output:"output", expr:"expression",
-  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control"};
+  failure:"failure", sweep:"range", mc:"monte carlo", load:"load", export:"csv export", group:"group", note:"note", image:"image", part:"part", net:"net", ctl:"control", sens:"levers"};
 const SIG_Q = ["force","measure","absorbed_work","dissipated"];
 const STATE_Q = {elastoplastic:["plastic_set","broken"], drive:["current","battery_current","bus_voltage","soc"], dc_motor:["current"],
   beam:["moment","torque","shear","hinge_set"], impact:["impulse","friction_impulse"],
@@ -644,7 +644,7 @@ let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
 // names live in separate YAML sections, so uniqueness is per namespace: p params+derived, b bodies, e elements, o outputs, f failure
-const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k"};
+const NS = {value:"p", builder:"p", sweep:"p", mc:"p", body:"b", element:"e", load:"e", output:"o", expr:"o", failure:"f", export:"x", part:"c", net:"n", ctl:"k", sens:"y"};
 const byName = (nm, ns) => S.nodes.find(n => nodeName(n) === nm && (!ns || ns.includes(NS[n.kind])));
 function nodeName(n){ return n.data.name; }
 function uniqueName(base, ns){
@@ -675,6 +675,7 @@ function defaults(kind){
                         kp:"", ki:"", kd:"", min:"", max:"", d_filter:"", bias:"", input:"", tau:"", rate:"", init:"", cap:"", start:"", label:""};
     case "note": return {text:""};
     case "image": return {path:"", w:"360", caption:""};
+    case "sens": return {name:"levers", step:"1", nv:2, no:1};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
                            custom:"", time_unit:"s", points:"1000", header:"units", when:"run"};
   }
@@ -734,6 +735,9 @@ function sockets(n){
     if (!d.csvOn && !d.pulseOn) ins.push({key:"P", label:"force", type:"val", req:true});
     SIG_Q.forEach(q => outs.push({key:"q." + q, label:q, type:"sig"}));
   }
+  if (n.kind === "sens"){
+    for (let i = 0; i < (d.nv || 1); i++) ins.push({key:"v" + i, label:"lever " + (i + 1), type:"val", req:i === 0});
+    for (let i = 0; i < (d.no || 1); i++) ins.push({key:"o" + i, label:"output " + (i + 1), type:"metric", req:false}); }
   if (n.kind === "export") d.cols.forEach((c, i) => ins.push({key:"c" + i, label:"column " + (i + 1), type:"any", col:i, req:i === 0}));
   if (n.kind === "part") partSockets(n, ins, outs);
   if (n.kind === "net") netPins(n).forEach(k => ins.push({key:k, label:"pin", type:"elec"}));
@@ -1258,6 +1262,11 @@ function toDoc(){
   const study = {};
   if (Object.keys(sweep).length) study.sweep = sweep;
   if (Object.keys(mcr).length && mcn > 0) study.monte_carlo = {n: mcn, ranges: mcr};
+  const sn = S.nodes.find(n => n.kind === "sens");
+  if (sn){ const vary = [], of = [];
+    for (let i = 0; i < (sn.data.nv || 1); i++){ const l = linkTo(sn.id, "v" + i), src = l && byId(l.from.node); if (src && !vary.includes(src.data.name)) vary.push(src.data.name); }
+    for (let i = 0; i < (sn.data.no || 1); i++){ const l = linkTo(sn.id, "o" + i), src = l && byId(l.from.node); if (src && !of.includes(src.data.name)) of.push(src.data.name); }
+    if (vary.length){ study.sensitivity = {vary}; if (of.length) study.sensitivity.of = of; study.sensitivity.step = (String(sn.data.step || "1").trim() || "1") + " %"; } }
   Object.assign(doc, {params, derived, bodies, elements});
   const circ = circuitOut(); if (circ) doc.circuit = circ;
   const ctl = {}; S.nodes.filter(n => n.kind === "ctl").forEach(n => { ctl[n.data.name] = ctlOut(n); });
@@ -1491,6 +1500,14 @@ function fromDoc(doc){
     const r = parseRef(raw); if (!r) return; const src = byName(r.name, "p"); if (!src) return;
     S.links.push({from:{node:src.id, key:outKeyFor(src, r.field)}, to:{node:nid, key}, field:r.field});
   });
+  const sv = (doc.study || {}).sensitivity;
+  if (sv && (sv.vary || []).length){
+    const vary = sv.vary || [], of = sv.of || [];
+    const n = addNode("sens", {name:"levers", step:String(sv.step ?? "1").replace("%", "").trim(), nv:Math.max(1, vary.length), no:Math.max(1, of.length)});
+    vary.forEach((v, i) => { const src = byName(v, "p"); if (src) S.links.push({from:{node:src.id, key:"out"}, to:{node:n.id, key:"v" + i}, field:""}); });
+    of.forEach((o, i) => { const src = byName(o, "o"); if (src) S.links.push({from:{node:src.id, key:"metric"}, to:{node:n.id, key:"o" + i}, field:""}); });
+    put(6, n);
+  }
   (doc.exports || []).forEach(x => {
     const known_ = ["{model}_{name}","{model}_{name}_{date}_{time}","{name}","{name}_{date}_{time}","{model}_{name}_{run}"];
     const nm = x.naming || "{model}_{name}";
@@ -2316,6 +2333,13 @@ function nodeHTML(n){
     else if (!d.csvOn) b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 250 N (pushes along +s)");
     else b += csvHTML(n);
     b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
+  } else if (n.kind === "sens"){
+    ins.forEach(s => { const l = linkTo(n.id, s.key), src = l ? byId(l.from.node) : null;
+      b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-${s.type}" data-s="${s.key}" data-t="${s.type}"></span><label>${esc(s.label)}</label>` +
+           (src ? `<span class="linked">← ${esc(src.data.name)}</span>` : `<span class="hint" style="padding:0">${s.type === "val" ? "plug a value" : "plug an output (blank = all outputs)"}</span>`) + `</div>`; });
+    b += `<div class="mini"><button data-act="addlever">+ lever</button><button data-act="addsout">+ output</button>${(d.nv || 1) > 1 ? '<button data-act="dellever">− lever</button>' : ""}${(d.no || 1) > 1 ? '<button data-act="delsout">− output</button>' : ""}</div>`;
+    b += `<div class="row"><label title="each lever runs once a little up and once a little down from its value">step</label><div class="uv"><input data-k="step" value="${esc(d.step || "1")}" placeholder="1"><span class="u" style="padding:0 6px">%</span></div></div>`;
+    b += `<div class="hint">Press Study: every lever runs ${esc(d.step || "1")} % up and down (two runs each). The results rank which inputs move each output most.</div>`;
   } else if (n.kind === "export"){
     b += exportHTML(n, ins);
   } else if (n.kind === "part"){
@@ -2357,7 +2381,7 @@ function render(){
 }
 function countValues(v){ const t = String(v || "").trim(); if (!t) return 0;
   if (t.includes(":") && !t.includes(",")) return parseInt(t.split(":")[2]) || 0; return t.split(",").filter(x => x.trim()).length; }
-const KIND_COL = {value:0, builder:1, sweep:1, mc:1, body:2, element:3, load:3, part:3, net:4, output:5, expr:5, failure:6, export:6};
+const KIND_COL = {value:0, builder:1, sweep:1, mc:1, body:2, element:3, load:3, part:3, net:4, output:5, expr:5, failure:6, export:6, sens:6};
 function arrange(){
   // columns by role, stacked with the real rendered heights so nothing overlaps; a closed group moves as one block,
   // an open group keeps its members together in its own band
@@ -2475,7 +2499,7 @@ function orgUnits(all){
       move:(x, y) => { const dx = x - x0, dy = y + 34 - y0; g.members.forEach(id => { const n = byId(id); if (n){ n.x += dx; n.y += dy; } }); } }); });
   return {units, scoped};
 }
-const ORG_KIND = {value:0, sweep:1, mc:1, builder:2, body:3, element:4, load:4, ctl:4.5, expr:5, output:6, failure:6, export:7, group:8, note:9};
+const ORG_KIND = {value:0, sweep:1, mc:1, builder:2, body:3, element:4, load:4, ctl:4.5, expr:5, output:6, failure:6, export:7, sens:7, group:8, note:9};
 const gsnap = (v, g = 10) => Math.round(v / g) * g;
 function placeGrid(cells, ox, oy, gx = 24, gy = 20){
   // cells: [{u, c, r}] -> per-column widths and per-row heights, so different-sized nodes never overlap
@@ -2869,6 +2893,10 @@ world.addEventListener("click", async e => {
     return; }
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const n = byId(b.closest(".node").dataset.id); if (!n) return; const d = n.data, act = b.dataset.act;
+  if (act === "addlever"){ d.nv = (d.nv || 1) + 1; changed(); return; }
+  if (act === "addsout"){ d.no = (d.no || 1) + 1; changed(); return; }
+  if (act === "dellever"){ const i = (d.nv || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "v" + i)); d.nv = i; changed(); return; }
+  if (act === "delsout"){ const i = (d.no || 1) - 1; S.links = S.links.filter(l => !(l.to.node === n.id && l.to.key === "o" + i)); d.no = i; changed(); return; }
   if (act === "tablify"){ const g = valTable([n.id], "values"); if (!g) return;
     const m = addNode("value", {name:"p", value:""}, g.x, g.y); g.members.push(m.id); changed();
     setTimeout(() => { const el = world.querySelector(`.node[data-id="${g.id}"] [data-m="${m.id}"] input.vn`); if (el){ el.focus(); el.select(); } }, 30); return; }
@@ -2908,6 +2936,7 @@ const NODE_INFO = {
   ctl: ["Control signal", null, "worked out every step from the running model; drives element fields", "A live signal: an expression, an if / else switch (with latch and hold time), a PID loop, a lag, a rate limit or an integrator. It reads bodies and elements as the model runs (lm.altitude, air.ambient_pressure, motor.current), other signals and the time t. Wire its output into an element field (a force, a throttle, a stiffness) and the field follows the signal; wire it into an Output to report it. Signals read the state each step ends in and set the fields the next step uses."],
   net: ["Net", null, "one voltage shared by every terminal on it", "A junction of wires. Every part terminal plugged into it sits at the same voltage. Tick ground on one net: it is 0 V and every other net is measured from it. Each net needs a path to ground through parts."],
   part: ["Circuit part", null, "a two-terminal electrical law", "Wire + and − into nets."],
+  sens: ["Levers (sensitivity)", null, "d output / d input for the values you pick", "Plug in the values to test (levers) and the outputs to watch. Press Study: each lever runs a little up and a little down from its value (step, 1 % by default), and the results rank the levers for each output by how much they move it: the change for +step, the % change per % change (elasticity) and the derivative. Lopsided up and down changes flag a kink or a threshold near the nominal point."],
   export: ["CSV export", null, "time histories to a CSV file on Run", "Writes element signals, element states and body motion to a CSV file each time you press Run (live runs never write). Pick the folder, a naming scheme, the time unit, rows and the header style (names with units, plain, or none). Optional: models without one write nothing."],
   note: ["Note", null, "LaTeX: $...$ inline, $$...$$ display", "Free text for the people reading the model: assumptions, sources, equations. It connects to nothing and never changes the results. Click to edit, click off to render. Saved in the file under editor: notes."],
   value: ["Value", "spring_mass", "", "A named input: a number with a unit, a material name (4140 prehard, 7075-T6), a layup, or an = expression of other values. Becomes params (or derived for = expressions). Plug it into any value socket to share one number between nodes."],
@@ -3220,6 +3249,8 @@ function menuAll(){
     add("Control", lab, what, COL.ctl, () => ["ctl", {name: t === "expr" ? "sig" : t, ctype:t}], {words:"control signal live " + w}));
   add("Modifiers", "Range of values", "plug into any input: one run per value", COL.sweep, () => ["sweep", {name:"range"}], {words:"sweep vary parametric study"});
   add("Modifiers", "Monte Carlo", "plug into any input: sampled between low and high", COL.mc, () => ["mc", {name:"mc"}], {words:"random uncertainty statistics"});
+  add("Results", "Levers (sensitivity)", "which inputs move an output most: each nudged up and down a little", COL.sens, () => ["sens", {name:"levers"}],
+      {words:"sensitivity derivative gradient levers influence elasticity tornado ranking what matters"});
   add("Notes", "Note", "free text on the canvas, with LaTeX ($...$, $$...$$)", COL.note, () => ["note", {text:""}], {words:"comment text latex equation"});
   add("Notes", "Image", "a picture on the canvas (a diagram, a sketch, a photo), linked from the model's folder", COL.note, () => ["image", {}], {words:"picture diagram photo sketch figure png drawing"});
   LIB.forEach(g => add("Library", g.name, `${(g.data.nodes || []).length} nodes · your saved group`, COL.group, () => ["library", g.data], {kind:"library"}));
@@ -3608,8 +3639,8 @@ async function doStudy(){
   await renderYaml(); status("busy", "Sizing the study…");
   const e = await API.call("study_estimate", yamlText, cores());
   if (!e.ok){ status("bad", e.error); return; }
-  if (!e.sweeps.length && !e.mc.length){ status("bad", "Nothing varies yet: plug a Range of values or Monte Carlo node into an input, or press Run for one run."); return; }
-  const what = `<p><b>${e.runs.toLocaleString()} runs</b>${e.sweeps.length ? " · sweeps: " + esc(e.sweeps.join(", ")) : ""}${e.mc.length ? " · Monte Carlo: " + esc(e.mc.join(", ")) : ""}</p>
+  if (!e.sweeps.length && !e.mc.length && !(e.sens || []).length){ status("bad", "Nothing varies yet: plug a Range of values or Monte Carlo node into an input, plug values into a Levers node, or press Run for one run."); return; }
+  const what = `<p><b>${e.runs.toLocaleString()} runs</b>${e.sweeps.length ? " · sweeps: " + esc(e.sweeps.join(", ")) : ""}${e.mc.length ? " · Monte Carlo: " + esc(e.mc.join(", ")) : ""}${(e.sens || []).length ? " · levers: " + esc(e.sens.join(", ")) : ""}</p>
     <p>One run takes ${e.one_run_s.toFixed(2)} s, so this is about <b>${dur(e.est_s)}</b> on ${e.workers} core${e.workers > 1 ? "s" : ""}.</p>`;
   const chosen = cores();
   if (chosen > e.runs && !(await ask("More cores than runs",
@@ -3641,9 +3672,10 @@ function showStudy(p){
   const tout = ok.filter(r => r.outputs._timed_out).length;
   if (p.timed_out){ status("bad", `Study stopped by the AUTO timeout after ${dur(p.elapsed)}: ${ok.length.toLocaleString()} of ${p.total.toLocaleString()} runs finished (shown below). Pick Limit or Off in the top bar to let it run longer.`); }
   if (freshStudy && !p.timed_out && !p.error && ok.length) confetti();
-  if (!p.timed_out) status(p.error || tout ? "bad" : "ok", p.error || `Study done: ${ok.length.toLocaleString()} runs in ${dur(p.elapsed)}${bad ? " · " + bad + " failed to run" : ""}${tout ? " · " + tout + " stopped by the timeout (partial results)" : ""}`);
+  if (!p.timed_out) status(p.error || tout ? "bad" : "ok", p.error || `Study done: ${(p.sensitivity ? p.total : ok.length).toLocaleString()} runs in ${dur(p.elapsed)}${bad ? " · " + bad + " failed to run" : ""}${tout ? " · " + tout + " stopped by the timeout (partial results)" : ""}`);
   const outs = ok.length ? Object.keys(ok[0].outputs).filter(k => !k.startsWith("_")) : [];
   const ins = [...p.sweeps, ...p.mc];
+  if (p.sensitivity && !p.sweeps.length && !p.mc.length){ document.getElementById("pRes").innerHTML = leversHTML(p.sensitivity); return; }
   let h = `<h3>Study · ${ok.length.toLocaleString()} runs</h3><div class="hint" style="padding:0 0 6px">${p.sweeps.length ? "sweeps: " + esc(p.sweeps.join(", ")) : ""}${p.sweeps.length && p.mc.length ? " · " : ""}${p.mc.length ? "Monte Carlo: " + esc(p.mc.join(", ")) : ""}</div>`;
   const fm = (p.failure || []).filter(f => f.metric !== undefined && typeof f.limit === "number");
   if (fm.length){ h += `<h3>Failure modes</h3><table class="res">`;
@@ -3656,9 +3688,26 @@ function showStudy(p){
   h += `</table><h3>Plot</h3><div class="kv"><label>y</label><select id="sy">${sel_(outs, outs[0])}</select>
     <label>x</label><select id="sx">${sel_([["", "histogram"], ...ins.map(k => [k, k])], p.sweeps[0] || "")}</select></div>
     <canvas id="plot" style="margin-top:8px"></canvas><div style="margin-top:8px"><button id="bCsv">Save results as CSV</button></div>`;
-  document.getElementById("pRes").innerHTML = h;
+  document.getElementById("pRes").innerHTML = h + (p.sensitivity ? leversHTML(p.sensitivity) : "");
   ["sy","sx"].forEach(id => document.getElementById(id).onchange = plotStudy); plotStudy();
   document.getElementById("bCsv").onclick = saveCsv;
+}
+// the levers table: for each output, its inputs ranked by how much they move it
+function leversHTML(S_){
+  const pc = +(100 * S_.step).toPrecision(3);
+  let h = `<h3>Levers · ${S_.levers.length} input${S_.levers.length === 1 ? "" : "s"} nudged ±${pc} %</h3><div class="hint" style="padding:0 0 6px">For each output: what +${pc} % of each input does to it, ranked. Elasticity is the % change of the output per % change of the input (1 = proportional, −1 = inversely). d/dx is the derivative in the output's unit per the input's SI unit.</div>`;
+  Object.entries(S_.table).forEach(([o, t]) => {
+    const rows = t.rows, mx = Math.max(1e-300, ...rows.filter(r => r.elasticity !== null && r.elasticity !== undefined).map(r => Math.abs(r.elasticity)));
+    h += `<h3>${esc(o)}${t.unit ? " (" + esc(t.unit) + ")" : ""} = ${fmt(t.y0)}</h3><table class="res"><tr><td style="color:var(--ink3)">lever</td><td class="v" style="color:var(--ink3)">+${pc} % gives</td><td class="v" style="color:var(--ink3)">elasticity</td><td style="color:var(--ink3);width:38%"></td></tr>`;
+    rows.forEach(r => {
+      if (r.error){ h += `<tr><td>${esc(r.lever)}</td><td class="v" colspan="3" style="color:var(--fail)">${esc(r.error)}</td></tr>`; return; }
+      const e = r.elasticity, w = e === null || e === undefined ? 0 : 50 * Math.abs(e) / mx;
+      const bar = `<div style="position:relative;height:10px;background:var(--hair);border-radius:3px"><div style="position:absolute;top:0;bottom:0;${e >= 0 ? "left:50%" : "right:50%"};width:${w}%;background:${e >= 0 ? "var(--p1)" : "var(--p2)"};border-radius:3px"></div><div style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ink3)"></div></div>`;
+      const sgn = v => (v > 0 ? "+" : "") + fmt(v);
+      h += `<tr title="d/dx = ${fmt(r.dydx)} per unit of ${esc(r.lever)} (SI) · up ${fmt(r.y_plus - r.y0)}, down ${fmt(r.y0 - r.y_minus)}${r.lopsided > 0.2 ? " · lopsided: a kink or threshold nearby" : ""}"><td>${esc(r.lever)}${r.lopsided > 0.2 ? ' <span style="color:var(--warn)" title="the up and down changes differ by more than 20 %: a kink or a threshold near this point">⚠</span>' : ""}</td>` +
+           `<td class="v">${sgn(r.change)}${t.unit ? " " + esc(t.unit) : ""}</td><td class="v">${e === null || e === undefined ? "—" : sgn(e)}</td><td>${bar}</td></tr>`; });
+    h += `</table>`; });
+  return h;
 }
 function plotStudy(){
   const cv = document.getElementById("plot"); if (!cv || !lastStudy) return;

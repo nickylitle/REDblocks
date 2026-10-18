@@ -207,6 +207,17 @@ knockouts:                                                              # extra,
 Automatic knockouts: every element is switched off once ("no <element>"), and every elastoplastic element
 is also made elastic ("<element> elastic only"). A knockout that changes nothing fails (dead wiring).
 
+### levers (sensitivity)
+
+```yaml
+study:
+  sensitivity: {vary: [k, c, m], of: [peak_force_N], step: 1 %}   # of: blank = every output
+```
+Study runs the nominal model, then each lever once at +step and once at -step (two runs each). For each output the
+levers are ranked by elasticity (% change of the output per % change of the input); the change for +step and the
+derivative (output unit per the input's SI unit) are listed too. Up and down changes that differ by more than 20 %
+are flagged: a kink or a threshold near the nominal point. A zero-valued lever moves by +-step in its own SI units.
+
 ### run and report
 
 ```yaml

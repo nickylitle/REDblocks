@@ -317,12 +317,16 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            sp = sens_spec(s.doc, s)
+            if sp:
+                plan = (plan if (sweeps or mc) else [{}]) + sens_plan(sp[0], sp[2])
             s.run()                                     # first run compiles the kernels; time a warm one
             t0 = time.time(); s.run(); one = time.time() - t0
             w = max(1, int(workers or os.cpu_count() or 1))
             est = one * len(plan) / min(w, len(plan)) * 1.15
             self._last_one_run = (text, one)
-            return dict(ok=True, runs=len(plan), sweeps=sweeps, mc=mc, one_run_s=one, workers=w, est_s=est,
+            return dict(ok=True, runs=len(plan), sweeps=sweeps, mc=mc, sens=[n for n, _ in sp[0]] if sp else [],
+                        one_run_s=one, workers=w, est_s=est,
                         ask=len(plan) > ASK_RUNS or est > ASK_SECONDS)
         except Exception as exc:
             return _err(exc)
@@ -334,6 +338,13 @@ class Api:
             from ..compiler import load_system
             s = load_system(text)
             plan, sweeps, mc = study_plan(s.doc)
+            sp = sens_spec(s.doc, s)
+            sens = None
+            if sp:
+                if not (sweeps or mc):
+                    plan = [{}]                              # the nominal run the levers are measured from
+                sens = dict(start=len(plan), levers=sp[0], outs=sp[1], h=sp[2])
+                plan = plan + sens_plan(sp[0], sp[2])
         except Exception as exc:
             return _err(exc)
         w = max(1, min(int(workers or os.cpu_count() or 1), len(plan)))
@@ -345,7 +356,7 @@ class Api:
             one = prev[1] if prev and prev[0] == text else estimate_run_s(s.nominal)
             job_limit = max(30.0, AUTO_FACTOR * len(plan) * one / w)
         job = self._job = dict(job_limit=job_limit, timed_out=False, running=True, done=0, total=len(plan), results=[None] * len(plan), cancel=False,
-                               sweeps=sweeps, mc=mc, t0=time.time(), error=None,
+                               sweeps=sweeps, mc=mc, t0=time.time(), error=None, sens=sens,
                                units={k: o.get("unit", "") for k, o in s.doc["outputs"].items()},
                                failure=_clean(s.doc.get("failure") or []))
 
@@ -387,7 +398,14 @@ class Api:
                    timed_out=j.get("timed_out", False), job_limit=j.get("job_limit"),
                    elapsed=time.time() - j["t0"])
         if not j["running"]:
-            out.update(results=[r for r in j["results"] if r is not None], sweeps=j["sweeps"], mc=j["mc"],
+            res = j["results"]; sn = j.get("sens")
+            if sn:
+                out["sensitivity"] = sens_result(res, sn["start"], sn["levers"], sn["outs"], sn["h"], j["units"])
+                if not (j["sweeps"] or j["mc"]):
+                    res = res[:1]                            # the lever runs are reported as levers, not as a sample
+                else:
+                    res = res[:sn["start"]]
+            out.update(results=[r for r in res if r is not None], sweeps=j["sweeps"], mc=j["mc"],
                        units=j["units"], failure=j["failure"])
         return out
 
@@ -1252,6 +1270,68 @@ def study_plan(doc):
     keys = list(sweeps)
     combos = [dict(zip(keys, c)) for c in itertools.product(*[sweeps[k] for k in keys])] if keys else [{}]
     return [{**c, **s} for c in combos for s in samples], keys, list(ranges)
+
+
+def sens_spec(doc, s):
+    """study.sensitivity: {vary: [params], of: [outputs], step: 1 %}. Returns (levers [(name, x0)], outputs, step) or
+    None. Each lever is run at x0 (1 + step) and x0 (1 - step); a zero x0 moves by +-step in its own units."""
+    sp = (doc.get("study") or {}).get("sensitivity")
+    if not sp:
+        return None
+    vary = [str(v) for v in (sp.get("vary") or [])]
+    if not vary:
+        raise ValueError("study.sensitivity.vary: name at least one value to vary")
+    ctx = s.nominal.ctx
+    bad = [v for v in vary if not isinstance(ctx.get(v), (int, float)) or isinstance(ctx.get(v), bool)]
+    if bad:
+        raise ValueError(f"study.sensitivity.vary: {', '.join(bad)} {'is not a number value' if len(bad) == 1 else 'are not number values'}")
+    outs = [str(o) for o in (sp.get("of") or [])] or [k for k in s.doc["outputs"] if not k.startswith("_")]
+    missing = [o for o in outs if o not in s.doc["outputs"]]
+    if missing:
+        raise ValueError(f"study.sensitivity.of: no output named {', '.join(missing)}")
+    st = sp.get("step", "1 %")
+    t = str(st).strip()
+    h = float(t.rstrip("%").strip()) / 100.0 if t.endswith("%") else float(t)
+    if not 0 < h < 0.5:
+        raise ValueError("study.sensitivity.step is a small fraction: 1 % (default), 0.5 %, 0.02")
+    return [(v, float(ctx[v])) for v in vary], outs, h
+
+
+def sens_plan(levers, h):
+    plan = []
+    for name, x0 in levers:
+        d = abs(x0) * h if x0 != 0 else h
+        plan += [{name: x0 + d}, {name: x0 - d}]
+    return plan
+
+
+def sens_result(results, start, levers, outs, h, units):
+    """Each output's levers, ranked: what a +step change of each input does to it (central difference), the
+    derivative, the elasticity (% output per % input) and how lopsided the two sides are (a kink or a threshold)."""
+    nom = results[0]["outputs"] if results and results[0] and results[0].get("ok") else None
+    table = {}
+    for o in outs:
+        rows = []
+        y0 = nom.get(o) if nom else None
+        for j, (name, x0) in enumerate(levers):
+            rp, rm = results[start + 2 * j], results[start + 2 * j + 1]
+            if not (rp and rm and rp.get("ok") and rm.get("ok") and y0 is not None):
+                rows.append(dict(lever=name, x0=x0, error=(rp or {}).get("error") or (rm or {}).get("error") or "run failed")); continue
+            yp, ym = rp["outputs"].get(o), rm["outputs"].get(o)
+            if not all(isinstance(v, (int, float)) for v in (yp, ym, y0)):
+                rows.append(dict(lever=name, x0=x0, error="not a number")); continue
+            dx = abs(x0) * h if x0 != 0 else h
+            dydx = (yp - ym) / (2 * dx)
+            step_change = (yp - ym) / 2                     # the output's change for +step of this input
+            el = (yp - ym) / (2 * h * y0) if (x0 != 0 and y0 != 0) else None
+            up, dn = yp - y0, y0 - ym
+            lop = abs(up - dn) / max(abs(up), abs(dn)) if max(abs(up), abs(dn)) > 0 else 0.0
+            rows.append(dict(lever=name, x0=x0, y0=y0, y_plus=yp, y_minus=ym, dydx=dydx, change=step_change,
+                             elasticity=el, lopsided=lop))
+        key = lambda r: -abs(r["elasticity"]) if r.get("elasticity") is not None else (-abs(r.get("change", 0.0)) * 1e-300 if "change" in r else 1.0)
+        rows.sort(key=key)
+        table[o] = dict(unit=units.get(o, ""), y0=y0, rows=rows)
+    return dict(step=h, levers=[n for n, _ in levers], outputs=outs, table=table)
 
 
 _WORKER = {}

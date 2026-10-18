@@ -23,7 +23,7 @@ python -m pip install ".[app]" pyinstaller || goto :err
 REM Help shows every block's Python source; the one-file exe has no .py files, so save the sources first
 python -c "from simblocks.app.api import write_block_sources; print(write_block_sources('simblocks/app/block_sources.json'))" || goto :err
 python -m pip install --no-deps --force-reinstall . || goto :err
-set COMMON=--noconfirm --collect-all simblocks --collect-submodules numba --collect-data llvmlite --hidden-import scipy.stats._qmc --hidden-import yaml
+set COMMON=--noconfirm --collect-all simblocks --collect-submodules numba --collect-data llvmlite --hidden-import scipy.stats._qmc --hidden-import yaml --collect-submodules matplotlib.backends
 pyinstaller %COMMON% --onedir --windowed --icon packaging\simblocks.ico --collect-all webview --name Simblocks packaging\simblocks_runner.py || goto :err
 pyinstaller %COMMON% --onefile --icon packaging\simblocks.ico --name simblocks_runner packaging\simblocks_runner.py || goto :err
 echo.

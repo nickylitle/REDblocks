@@ -199,7 +199,12 @@ def save(fig, path_no_ext, formats=("png", "svg"), strict=None):
     out = []
     for f in formats:
         p = f"{path_no_ext}.{f}"
-        fig.savefig(p, facecolor=SURFACE)
+        try:
+            fig.savefig(p, facecolor=SURFACE)
+        except ImportError:                              # that format's writer is not in this build: skip it
+            if f == "png":
+                raise
+            continue
         out.append(p)
     plt.close(fig)
     return out

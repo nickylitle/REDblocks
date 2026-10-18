@@ -269,7 +269,8 @@ def _html(name, question, answer, rep, pages, findings, assumptions, sources, sv
     for p in svg_paths:
         with open(p, "rb") as fh:
             b64 = base64.b64encode(fh.read()).decode()
-        imgs.append(f"<img alt='{esc(os.path.basename(p))}' src='data:image/svg+xml;base64,{b64}'>")
+        mime = "image/png" if p.endswith(".png") else "image/svg+xml"
+        imgs.append(f"<img alt='{esc(os.path.basename(p))}' src='data:{mime};base64,{b64}'>")
     checks = "".join(f"<tr><td class='mono'>{esc(c.name)}</td><td><span class='chip {c.status}'>{c.status}</span></td>"
                      f"<td>{esc(c.detail)}</td></tr>" for c in rep.checks)
     li = lambda xs: "".join(f"<li>{esc(x)}</li>" for x in xs)
@@ -314,12 +315,16 @@ def results_report(out_dir, name, question, answer, rep, history=None, history_p
         for key, f in figs:
             pdf.savefig(f, facecolor=T.SURFACE)
             base = os.path.join(out_dir, f"{slug}_{key}")
-            f.savefig(base + ".png", facecolor=T.SURFACE); f.savefig(base + ".svg", facecolor=T.SURFACE)
-            paths[key] = base + ".png"; svgs.append(base + ".svg")
+            f.savefig(base + ".png", facecolor=T.SURFACE)
+            paths[key] = base + ".png"
+            try:                                         # a build without matplotlib's SVG writer still makes the report
+                f.savefig(base + ".svg", facecolor=T.SURFACE); svgs.append(base + ".svg")
+            except ImportError:
+                svgs.append(base + ".png")            # the page then carries the PNG instead
             plt.close(f)
     # answer page first, then diagrams, then the rest
-    order = [p for p in svgs if p.endswith("_answer.svg")] + list(extra_svgs) + \
-            [p for p in svgs if p not in extra_svgs and not p.endswith("_answer.svg")]
+    first = lambda p: p.endswith(("_answer.svg", "_answer.png"))
+    order = [p for p in svgs if first(p)] + list(extra_svgs) + [p for p in svgs if p not in extra_svgs and not first(p)]
     hp = os.path.join(out_dir, f"{slug}_report.html")
     with open(hp, "w") as fh:
         fh.write(_html(name, question, answer, rep, figs, findings, assumptions, sources, order))
