@@ -573,7 +573,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <h3 class="dsub">Fun</h3>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Volume of the confetti sound">Volume <input type="range" id="sVol" min="0" max="100" step="5" style="width:110px"></label></div>
-  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Plays with the confetti. The chime and the pop are made by the app itself (no file, nothing to credit). Or pick your own sound: MP3, WAV, OGG or M4A, up to 2 MB.">Confetti sound <select id="setCSound"><option value="chime">Chime</option><option value="pop">Pop and sparkle</option><option value="custom">My sound</option><option value="off">Off</option></select><button id="setCSoundPick">Choose sound…</button><button id="setCSoundTest">Play</button><span class="sub" id="setCSoundNow"></span></label>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Plays with the confetti. The pop is made by the app itself (no file, nothing to credit). Or pick your own sound: MP3, WAV, OGG or M4A, up to 2 MB.">Confetti sound <select id="setCSound"><option value="pop">Pop and sparkle</option><option value="custom">My sound</option><option value="off">Off</option></select><button id="setCSoundPick">Choose sound…</button><button id="setCSoundTest">Play</button><span class="sub" id="setCSoundNow"></span></label>
     <input type="file" id="setCSoundFile" accept="audio/*" hidden></div>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small GIF (or PNG / WebP) that plays next to the progress bar while something runs. Up to 2 MB.">Loading animation <button id="setLoader">Choose GIF…</button><button id="setLoaderOff">Remove</button><span class="sub" id="setLoaderNow"></span></label>
     <input type="file" id="setLoaderFile" accept="image/gif,image/png,image/webp,image/apng" hidden></div>
@@ -2751,7 +2751,7 @@ function watchSizes(){ if (!_ovObs) return; _ovObs.disconnect(); world.querySele
 function confettiOn(){ if (SETTINGS.confetti !== undefined) return !!SETTINGS.confetti; const id = themeId(); return !isUserTheme(id) && !!(THEMES[id] || {}).fun; }
 // ---- confetti (Settings, off by default): bursts up from the bottom edge in the theme's own colours
 // ---- the confetti's sound, synthesised here (nothing downloaded, nothing to credit), or the user's own file.
-// chime: a bright major arpeggio of soft bell tones that rings into a chord. pop: a cork pop, then sparkles.
+// pop: a cork pop, then high bell sparkles.
 let _actx = null;
 function _space(a, dest){                         // a short feedback echo, so the tones sit in a room instead of a box
   const dry = a.createGain(), d = a.createDelay(1), fb = a.createGain(), wet = a.createGain(), lp = a.createBiquadFilter();
@@ -2763,11 +2763,6 @@ function _bell(a, dest, t, f, amp, dur, pan){     // a sine with two quiet overt
   if (p){ p.pan.value = pan || 0; g.connect(p); p.connect(dest); } else g.connect(dest);
   [[1, 1], [2, 0.22], [3.01, 0.07]].forEach(([k, w]) => { const o = a.createOscillator(), og = a.createGain(); o.type = "sine"; o.frequency.value = f * k;
     og.gain.value = w; o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + 0.05); }); }
-function chimeSound(a, dest, t0){
-  const out = _space(a, dest), N = [1046.5, 1318.5, 1568.0, 2093.0];     // C6 E6 G6 C7
-  N.forEach((f, i) => _bell(a, out, t0 + i * 0.075, f, 0.32, 1.1 + 0.25 * i, -0.45 + 0.3 * i));
-  [1046.5, 1318.5, 1568.0].forEach((f, i) => _bell(a, out, t0 + 0.34, f, 0.16, 1.6, (i - 1) * 0.5));   // the chord it lands on
-  return 2.4; }
 function popSound(a, dest, t0){
   const out = _space(a, dest);
   const th = a.createOscillator(), tg = a.createGain(); th.type = "sine";           // the pop: a quick falling thump
@@ -2781,22 +2776,22 @@ function popSound(a, dest, t0){
   const P = [2093.0, 2349.3, 2637.0, 3136.0, 3520.0, 4186.0];                      // sparkles: a C major pentatonic, high
   for (let i = 0; i < 12; i++) _bell(a, out, t0 + 0.08 + 0.06 * i + 0.03 * Math.random(), P[Math.floor(Math.random() * P.length)], 0.12 * (1 - i / 16), 0.35, Math.random() * 1.6 - 0.8);
   return 1.8; }
-const SOUNDS = {chime:chimeSound, pop:popSound};
+const SOUNDS = {pop:popSound};
 function playSynth(kind){
   try {
     _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
     const a = _actx; if (a.state === "suspended") a.resume();
     const out = a.createGain(); out.gain.value = 0.55 * vol(); out.connect(a.destination);
-    (SOUNDS[kind] || chimeSound)(a, out, a.currentTime + 0.02);
+    (SOUNDS[kind] || popSound)(a, out, a.currentTime + 0.02);
   } catch (e) { /* no audio here: confetti stays silent */ }
 }
 const vol = () => Math.max(0, Math.min(1, (SETTINGS.volume ?? 80) / 100));
 function confettiSound(){
   if (vol() === 0) return;
-  const m = SETTINGS.confettiSound || "chime";
+  const m = SETTINGS.confettiSound || "pop";
   if (m === "off") return;
   if (m === "custom" && SETTINGS.confettiSoundData){ try { const au = new Audio(SETTINGS.confettiSoundData); au.volume = vol(); au.play().catch(() => {}); } catch (e) {} return; }
-  playSynth(m === "pop" ? "pop" : "chime");      // the old party horn setting plays the chime
+  playSynth("pop");                              // the old horn and chime settings play the pop
 }
 function confetti(force){
   if (!force && !confettiOn()) return;
@@ -5511,7 +5506,7 @@ async function recoveryOffer(){
     await loadText(r.text, null, r.path ? r.path.replace(/[\\/][^\\/]*$/, "") : null); dirty = true; status("ok", "Recovered unsaved work: Save to keep it."); API.call("recovery_clear"); return true; }
   API.call("recovery_clear"); return false; }
 function syncCSound(){ const sel = document.getElementById("setCSound"); if (!sel) return;
-  sel.value = SETTINGS.confettiSound === "horn" || !SETTINGS.confettiSound ? "chime" : SETTINGS.confettiSound;
+  sel.value = ["custom", "off"].includes(SETTINGS.confettiSound) ? SETTINGS.confettiSound : "pop";
   document.getElementById("setCSoundNow").textContent = SETTINGS.confettiSoundName ? "mine: " + SETTINGS.confettiSoundName : "";
   document.getElementById("setCSoundPick").style.display = sel.value === "custom" ? "" : "none"; }
 document.getElementById("setCSound").onchange = e => { SETTINGS.confettiSound = e.target.value; settingsSave(); syncCSound();
