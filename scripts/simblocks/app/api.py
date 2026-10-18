@@ -440,6 +440,56 @@ class Api:
             j["cancel"] = True
         return dict(ok=True)
 
+    def save_png(self, data_url, name="plot.png"):
+        """A plot (a canvas data URL) as a PNG file through a save dialog."""
+        try:
+            if self._window is None:
+                return dict(ok=False, error="no window")
+            import base64 as _b64
+            import webview
+            r = self._window.create_file_dialog(webview.SAVE_DIALOG, save_filename=name, file_types=("PNG image (*.png)",))
+            if not r:
+                return dict(ok=False, cancelled=True)
+            path = r if isinstance(r, str) else r[0]
+            raw = _b64.b64decode(str(data_url).split(",", 1)[1])
+            with open(path, "wb") as fh:
+                fh.write(raw)
+            return dict(ok=True, path=path)
+        except Exception as exc:
+            return _err(exc)
+
+    # ------------------------------------------------------------------ recovery copy of unsaved work
+    def _recovery_path(self):
+        return os.path.join(os.path.dirname(SETTINGS), "recovery.json")
+
+    def recovery_save(self, text, path=""):
+        try:
+            os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
+            with open(self._recovery_path(), "w", encoding="utf-8") as fh:
+                json.dump(dict(text=text, path=path or "", time=time.time()), fh)
+            return dict(ok=True)
+        except Exception as exc:
+            return _err(exc)
+
+    def recovery_load(self):
+        try:
+            with open(self._recovery_path(), encoding="utf-8") as fh:
+                d = json.load(fh)
+            return dict(ok=True, **d)
+        except FileNotFoundError:
+            return dict(ok=True, text="")
+        except Exception as exc:
+            return _err(exc)
+
+    def recovery_clear(self):
+        try:
+            os.remove(self._recovery_path())
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            return _err(exc)
+        return dict(ok=True)
+
     def save_csv(self, text, name="study.csv"):
         """Study results as CSV through a save dialog (desktop) or returned for download."""
         try:

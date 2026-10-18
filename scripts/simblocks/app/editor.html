@@ -413,6 +413,8 @@ label.cpick button{padding:0 6px;font-size:12px}
 #top button.on{border-color:var(--acc);background:var(--selbg)}
 #info .more{display:inline-block;margin-top:6px;color:var(--link);cursor:pointer;font-size:12px;background:none;border:0;padding:0}
 .note textarea{display:block;width:calc(100% - 16px);margin:8px;min-height:90px;font:12px/1.45 var(--mono);resize:vertical;background:var(--bg)}
+#findBox{position:absolute;top:150px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:6px 8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#findBox[hidden]{display:none!important}#findQ{width:300px}#findN{font:11px var(--mono, monospace);color:var(--ink3);min-width:44px}
 </style>
 </head>
 <body>
@@ -453,6 +455,8 @@ label.cpick button{padding:0 6px;font-size:12px}
       <select id="bDim" title="Dimensionality of the whole model"><option value="1d">1D</option><option value="2d">2D</option><option value="3d">3D</option></select></div>
     <div class="grp"><label for="bCores">cores</label><select id="bCores" title="Processor cores for studies (detected on this computer)"></select></div>
     <div class="grp"><label for="tEnd">end time</label><div class="uv"><input id="tEnd" class="tb" placeholder="e.g. 3"><select id="tEndU"></select></div></div>
+    <div class="grp"><label for="accSel" title="Scales the automatic step: Draft takes twice the step (quicker, rougher), Fine half of it (slower, closer to converged). Fixed steps are not changed.">accuracy</label>
+      <select id="accSel"><option value="draft">Draft</option><option value="normal">Normal</option><option value="fine">Fine</option></select></div>
     <div class="grp" id="dtGrp"><label for="dtMode">time step</label>
       <select id="dtMode" title="AUTO picks the step from the stiffest element (0.02 x critical). Fixed uses your step. Bounded keeps the automatic step between a minimum and a maximum. Adaptive changes the step as it runs: large in free motion, the contact-sized step while a contact touches or is about to, smaller as a driven stiffness rises (min and max still bound it).">
         <option value="auto">AUTO</option><option value="fixed">Fixed</option><option value="bounded">Bounded</option><option value="adaptive">Adaptive</option></select>
@@ -528,6 +532,26 @@ label.cpick button{padding:0 6px;font-size:12px}
 <div id="helpView"><div id="hSide"><div class="top"><button id="hBack" title="Back to the canvas (Esc)">← Canvas</button><input id="hQ" placeholder="Search features and blocks"></div><div id="hNav"></div></div><div id="hBody"></div></div>
 <div class="dlg" id="setDlg" role="dialog" aria-modal="true"><div class="box" style="width:min(820px,95vw)">
   <h4>Settings</h4><div class="sub">Saved on this computer for every model. Model files never store colours.</div>
+  <h3 class="dsub">Simulation</h3>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="What a new model starts with. Each model keeps its own in its file.">Time step for new models <select id="sDefDt"><option value="auto">AUTO</option><option value="adaptive">Adaptive</option><option value="fixed">Fixed</option><option value="bounded">Bounded</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Draft takes twice the automatic step, Fine half. New models start with this; each model keeps its own.">Accuracy for new models <select id="sDefAcc"><option value="draft">Draft</option><option value="normal">Normal</option><option value="fine">Fine</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="The wall-clock limit new models start with.">Timeout for new models <select id="sDefTo"><option value="auto">AUTO</option><option value="limit">Limit</option><option value="off">Off</option></select><input id="sDefToVal" style="width:70px" placeholder="60 s"></label></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="How long after an edit before the live run starts. Longer: fewer runs while you type on a slow model.">Live run after <input id="sLiveDelay" style="width:60px" placeholder="450"> ms</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Significant figures in results, tables and wire tips">Significant figures <select id="sSig"><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="auto: plain, with an exponent past a million or below 0.001. engineering: 12.3 k, 4.56 m. scientific: 1.23e+04">Numbers <select id="sNum"><option value="auto">auto</option><option value="eng">engineering (k, M, m, µ)</option><option value="sci">scientific</option></select></label></div>
+  <h3 class="dsub">Canvas and files</h3>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">Wires <select id="sWire"><option value="curved">curved</option><option value="straight">straight</option><option value="right">right angles</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Nodes you drag land on the grid"><input type="checkbox" id="sSnap">Snap to a grid when dragging</label><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">grid <input id="sSnapGrid" style="width:46px" placeholder="20"> px</label></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sOpenLast">Open the last file when the app starts</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A recovery copy of unsaved work, offered back if the app closes before you save">Recovery copy every <select id="sAuto"><option value="0">off</option><option value="1">1 min</option><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="sRepOpen">Open the report when it is written</label></div>
+  <h3 class="dsub">Fun</h3>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Volume of the confetti sound">Volume <input type="range" id="sVol" min="0" max="100" step="5" style="width:110px"></label></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Plays with the confetti. The party horn is made by the app itself (no file, nothing to credit). Or pick your own sound: MP3, WAV, OGG or M4A, up to 2 MB.">Confetti sound <select id="setCSound"><option value="horn">Party horn</option><option value="custom">My sound</option><option value="off">Off</option></select><button id="setCSoundPick">Choose sound…</button><button id="setCSoundTest">Play</button><span class="sub" id="setCSoundNow"></span></label>
+    <input type="file" id="setCSoundFile" accept="audio/*" hidden></div>
+  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small GIF (or PNG / WebP) that plays next to the progress bar while something runs. Up to 2 MB.">Loading animation <button id="setLoader">Choose GIF…</button><button id="setLoaderOff">Remove</button><span class="sub" id="setLoaderNow"></span></label>
+    <input type="file" id="setLoaderFile" accept="image/gif,image/png,image/webp,image/apng" hidden></div>
   <h3 class="dsub">Default themes</h3><div class="cards" id="setThemes"></div>
   <h3 class="dsub">User themes</h3><div class="cards" id="setUser"></div>
   <div class="utrow"><input type="text" id="utName" placeholder="theme name" aria-label="Theme name"><button id="utNew" title="Save the theme you are using now, with your changes, as a new user theme">New from current</button><button id="utCopy" title="Duplicate the selected theme (built-in or yours) under the name in the box">Copy</button><button id="utRename" title="Rename the selected user theme to the name in the box">Rename</button><button id="utRemove" title="Delete the selected user theme and its folder">Remove</button></div>
@@ -541,11 +565,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <input type="file" id="lookBgFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
   <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)"><input type="checkbox" id="setKeep">Keep my own colours when I switch theme</label>
     <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Body wires long dashes, signals dotted, states dash-dot, metrics short dashes, values solid"><input type="checkbox" id="setDash">Wire patterns by type (dashes)</label>
-    <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Purely for fun. Live runs never trigger it."><input type="checkbox" id="setConfetti">Confetti when a run, study or verify finishes</label></div>
-  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="Plays with the confetti. The party horn is made by the app itself (no file, nothing to credit). Or pick your own sound: MP3, WAV, OGG or M4A, up to 2 MB.">Confetti sound <select id="setCSound"><option value="horn">Party horn</option><option value="custom">My sound</option><option value="off">Off</option></select><button id="setCSoundPick">Choose sound…</button><button id="setCSoundTest">Play</button><span class="sub" id="setCSoundNow"></span></label>
-    <input type="file" id="setCSoundFile" accept="audio/*" hidden></div>
-  <div class="row2"><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)" title="A small GIF (or PNG / WebP) that plays next to the progress bar while something runs. Up to 2 MB.">Loading animation <button id="setLoader">Choose GIF…</button><button id="setLoaderOff">Remove</button><span class="sub" id="setLoaderNow"></span></label>
-    <input type="file" id="setLoaderFile" accept="image/gif,image/png,image/webp,image/apng" hidden></div>
+    </div>
   <h3 class="dsub">Colours</h3><div class="sub" id="setOwn"></div><div id="setColors"></div>
   <div class="btns"><button id="setResetAll">Reset all to the theme</button><button id="setClose" class="primary">Done</button></div></div></div>
 <div class="dlg" id="matvDlg" role="dialog" aria-modal="true" aria-labelledby="matvTitle"><div class="box" style="width:min(980px,96vw)">
@@ -577,6 +597,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div class="btns"><button id="matClose" class="primary">Done</button></div></div></div>
 <div id="modal" role="dialog" aria-modal="true"><div class="box"><h4 id="mdT"></h4><div id="mdB"></div>
   <div class="btns"><button id="mdNo">Cancel</button><button id="mdYes" class="primary">Run it</button></div></div></div>
+<div id="findBox" hidden><input id="findQ" placeholder="Find a node by name (Enter: next)" spellcheck="false" aria-label="Find a node"><span id="findN"></span><button id="findX" aria-label="Close">✕</button></div>
 <div id="orgMenu" role="menu">
   <button data-o="clean"><b>Clean up</b><span>Snap everything onto a tidy grid, keeping roughly where you put it.</span></button>
   <button data-o="kind"><b>Sort by kind</b><span>Grid in reading order: values, ranges, bodies, elements, results, notes.</span></button>
@@ -584,6 +605,10 @@ label.cpick button{padding:0 6px;font-size:12px}
   <button data-o="flow"><b>Flow, left to right</b><span>Columns follow the wires: each node sits right of what feeds it.</span></button>
   <button data-o="role"><b>Columns by role</b><span>The classic Arrange: one column per node role.</span></button>
   <button data-o="vtable"><b>Values into tables</b><span>Fold loose value nodes into compact tables: inputs in one, = expressions in another.</span></button>
+  <button data-o="alignL"><b>Align left</b><span>Selected nodes share the leftmost one's left edge.</span></button>
+  <button data-o="alignT"><b>Align top</b><span>Selected nodes share the topmost one's top edge.</span></button>
+  <button data-o="distV"><b>Stack evenly</b><span>Selected nodes in a column, the same gap between each.</span></button>
+  <button data-o="distH"><b>Row evenly</b><span>Selected nodes in a row, the same gap between each.</span></button>
   <p class="scope"></p>
 </div>
 <script>
@@ -598,6 +623,7 @@ const API = {
   }
 };
 // ------------------------------------------------------------------------------------------------ model
+let SETTINGS = {recent:[]};          // this computer's settings (loaded at start); declared first: everything reads it
 const COL = {value:"var(--c-value)", builder:"var(--c-builder)", body:"var(--c-body)", element:"var(--c-element)",
   output:"var(--c-output)", expr:"var(--c-expr)", failure:"var(--c-fail)", sweep:"var(--c-sweep)", mc:"var(--c-mc)", load:"var(--c-load)",
   export:"var(--c-export)", group:"var(--c-group)", note:"var(--c-note)", image:"var(--c-note)", part:"var(--s-elec)", net:"var(--s-elec)", ctl:"var(--s-ctl)", sens:"var(--c-sweep)", goal:"var(--c-sweep)"};
@@ -639,7 +665,9 @@ const FIELD_HELP_EL = {jettison:{mass:"mass dropped (the part that leaves)"}};
 let CAT = null;
 let S = newState();
 let filePath = null, dirty = false;
-function newState(){ return {meta:{name:"New model", question:"", dim:"1d", units:(window.__defaultUnits || "SI"), dtMode:"auto", toMode:"auto", run:{t_end:"1 s"}, extra:{}}, nodes:[], links:[], groups:[], nid:1}; }
+function newState(){ const D = SETTINGS || {};
+  return {meta:{name:"New model", question:"", dim:"1d", units:(window.__defaultUnits || "SI"), dtMode:D.defDt || "auto", toMode:D.defTo || "auto",
+    run:{t_end:"1 s", accuracy:D.defAcc || "normal", timeout:D.defTo === "limit" ? (D.defToVal || "60 s") : ""}, extra:{}}, nodes:[], links:[], groups:[], nid:1}; }
 let docToken = Math.random().toString(36).slice(2);
 const uid = () => "n" + (S.nid++);
 const byId = id => S.nodes.find(n => n.id === id);
@@ -1290,6 +1318,7 @@ function toDoc(){
   if (S.meta.dtMode === "adaptive") run.dt = "adaptive";
   if (S.meta.dtMode === "bounded" || S.meta.dtMode === "adaptive"){ if (!blank(S.meta.run.dt_min)) run.dt_min = lit(S.meta.run.dt_min); if (!blank(S.meta.run.dt_max)) run.dt_max = lit(S.meta.run.dt_max); }
   if (!blank(S.meta.run.mc_n)) run.mc_n = lit(S.meta.run.mc_n);
+  if (S.meta.run.accuracy && S.meta.run.accuracy !== "normal") run.accuracy = S.meta.run.accuracy;
   if (S.meta.toMode === "off") run.timeout = "none";
   else if (S.meta.toMode === "limit" && !blank(S.meta.run.timeout)) run.timeout = lit(S.meta.run.timeout);
   doc.run = run;
@@ -1351,11 +1380,11 @@ function fromDoc(doc){
   const run = Object.assign({}, doc.run || {});
   const adaptive = String(run.dt ?? "").trim().toLowerCase() === "adaptive";
   const dtv = (run.dt === "auto" || adaptive) ? "" : str(run.dt ?? "");
-  S.meta.run = {t_end:str(run.t_end), dt:dtv, dt_min:str(run.dt_min ?? ""), dt_max:str(run.dt_max ?? ""), mc_n:str(run.mc_n ?? "")};
+  S.meta.run = {t_end:str(run.t_end), dt:dtv, dt_min:str(run.dt_min ?? ""), dt_max:str(run.dt_max ?? ""), mc_n:str(run.mc_n ?? ""), accuracy:String(run.accuracy || "normal").toLowerCase()};
   S.meta.dtMode = adaptive ? "adaptive" : dtv ? "fixed" : ((run.dt_min !== undefined || run.dt_max !== undefined) ? "bounded" : "auto");
   const to = run.timeout; S.meta.toMode = (to === undefined || String(to).toLowerCase() === "auto") ? "auto" : (["none","off","never"].includes(String(to).toLowerCase()) ? "off" : "limit");
   S.meta.run.timeout = S.meta.toMode === "limit" ? str(to) : "";
-  ["t_end","dt","dt_min","dt_max","mc_n","timeout"].forEach(k => delete run[k]); S.meta.run_extra = run;
+  ["t_end","dt","dt_min","dt_max","mc_n","timeout","accuracy"].forEach(k => delete run[k]); S.meta.run_extra = run;
   const known = ["simblocks","name","question","dim","units","gravity","params","derived","bodies","elements","circuit","control","outputs","failure","uncertain","run","study","exports","editor"];
   S.meta.gravity = str(doc.gravity ?? "");
   S.meta.units = ["SI","mm","US"].includes(doc.units) ? doc.units : "SI";
@@ -2464,7 +2493,7 @@ function partyHorn(){
     _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
     const a = _actx, t0 = a.currentTime + 0.02, T = 0.9;
     if (a.state === "suspended") a.resume();
-    const out = a.createGain(); out.gain.value = 0.22; out.connect(a.destination);
+    const out = a.createGain(); out.gain.value = 0.28 * vol(); out.connect(a.destination);
     const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.2; bp.connect(out);
     bp.frequency.setValueAtTime(900, t0); bp.frequency.linearRampToValueAtTime(1700, t0 + T);
     const env = a.createGain(); env.connect(bp);
@@ -2482,10 +2511,12 @@ function partyHorn(){
     const ng = a.createGain(); ng.gain.value = 0.25; n.buffer = buf; n.connect(ng); ng.connect(bp); n.start(t0);   // the puff
   } catch (e) { /* no audio here: confetti stays silent */ }
 }
+const vol = () => Math.max(0, Math.min(1, (SETTINGS.volume ?? 80) / 100));
 function confettiSound(){
+  if (vol() === 0) return;
   const m = SETTINGS.confettiSound || "horn";
   if (m === "off") return;
-  if (m === "custom" && SETTINGS.confettiSoundData){ try { const au = new Audio(SETTINGS.confettiSoundData); au.volume = 0.8; au.play().catch(() => {}); } catch (e) {} return; }
+  if (m === "custom" && SETTINGS.confettiSoundData){ try { const au = new Audio(SETTINGS.confettiSoundData); au.volume = vol(); au.play().catch(() => {}); } catch (e) {} return; }
   partyHorn();
 }
 function confetti(force){
@@ -2535,6 +2566,14 @@ function placeGrid(cells, ox, oy, gx = 24, gy = 20){
   cells.forEach(({u, c, r}) => u.move(cx[c], ry[r]));
 }
 function organize(mode){
+  if (["alignL","alignT","distV","distH"].includes(mode)){
+    const {units, scoped} = orgUnits(); if (!scoped){ status("bad", "Select two or more nodes first (Shift+drag a box, or Ctrl+click)."); return; }
+    const x0 = Math.min(...units.map(u => u.x)), y0 = Math.min(...units.map(u => u.y)), G = 20;
+    if (mode === "alignL") units.forEach(u => u.move(x0, u.y));
+    if (mode === "alignT") units.forEach(u => u.move(u.x, y0));
+    if (mode === "distV"){ let y = y0; units.sort((a, b) => a.y - b.y).forEach(u => { u.move(x0, y); y += u.h + G; }); }
+    if (mode === "distH"){ let x = x0; units.sort((a, b) => a.x - b.x).forEach(u => { u.move(x, y0); x += u.w + G; }); }
+    render(); unOverlap(); changed(false); status("ok", "Done. Ctrl+Z undoes it."); return; }
   if (mode === "role"){ arrange(); fitView(); changed(false); return; }
   if (mode === "vtable"){ const scoped = selSet.size >= 2, pick = n => n.kind === "value" && !groupOf(n.id) && (!scoped || selSet.has(n.id));
     const isExpr = n => String(n.data.value || "").trim().startsWith("=");
@@ -2599,7 +2638,10 @@ function sockPos(nid, key, dir){
   return {x:(r.left + r.width / 2 - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
 }
 const TYPE_COL = {val:"var(--s-val)", body:"var(--s-body)", sig:"var(--s-sig)", state:"var(--s-state)", metric:"var(--s-metric)", elec:"var(--s-elec)", ctl:"var(--s-ctl)"};
-function curve(a, b){ const dx = Math.max(40, Math.abs(b.x - a.x) * 0.5); return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`; }
+function curve(a, b){ const st = (SETTINGS || {}).wire || "curved";
+  if (st === "straight") return `M${a.x},${a.y} L${b.x},${b.y}`;
+  if (st === "right"){ const mx = b.x > a.x + 30 ? (a.x + b.x) / 2 : a.x + 20; return b.x > a.x + 30 ? `M${a.x},${a.y} H${mx} V${b.y} H${b.x}` : `M${a.x},${a.y} H${a.x + 20} V${(a.y + b.y) / 2} H${b.x - 20} V${b.y} H${b.x}`; }
+  const dx = Math.max(40, Math.abs(b.x - a.x) * 0.5); return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`; }
 let wireSel = new Set();
 // focus: with a selection, everything not connected to it dims; its wires are drawn on top
 function focus(){
@@ -2645,6 +2687,14 @@ function refWires(){
            `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2"></circle>`;
     }); });
   return h; }
+// what a wire carried in the last run: a signal's peak and final value, a value's number
+function wireVal(src, key){ if (!src) return "";
+  if (["value","sweep","mc"].includes(src.kind)) return src.data.value !== undefined && String(src.data.value).trim() ? `${src.data.name} = ${src.data.value}\n` : "";
+  if (!lastRun || !lastRun.history) return "";
+  const q = key.startsWith("q.") ? key.slice(2) : (key === "body" ? null : null); if (!q) return "";
+  const hs = lastRun.history[src.data.name + "." + q]; if (!hs || !hs.length) return "";
+  const u = (lastRun.hist_units || {})[src.data.name + "." + q] || "", pk = hs.reduce((a, v) => Math.abs(v) > Math.abs(a) ? v : a, 0);
+  return `${src.data.name}.${q}: peak ${fmt(pk)}${u ? " " + u : ""}, end ${fmt(hs[hs.length - 1])}${u ? " " + u : ""}\n`; }
 function drawWires(temp){
   let h = "", top = "";
   const wt = document.getElementById("wiresTop"); if (wt && wt !== world.lastElementChild) world.appendChild(wt);
@@ -2662,7 +2712,7 @@ function drawWires(temp){
                    world.querySelector(`[data-m="${l.to.node}"] .sock.in[data-s="${CSS.escape(l.to.key)}"]`), wt_), lab = l.field && !l.from.key.startsWith("o.") ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 5}" text-anchor="middle">.${esc(l.field)}</text>` : "";
     if (wireSel.has(l)) top += `<path class="halo" d="${d}"></path><path class="wsel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>${esc(byId(l.from.node).data.name || "")} → ${esc((byId(l.to.node) || {data:{}}).data.name || "")} · Delete removes</title></path>` + lab;
     else if (F && F.links.has(l)) top += `<path class="wrel" d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds</title></path>` + lab;
-    else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
+    else h += `<path${F ? ' class="dim"' : ""} d="${d}" stroke="${col}" data-t="${wt_}" data-i="${i}"><title>${wireVal(src, l.from.key)}click to select · Ctrl+click adds · Delete removes</title></path>` + lab;
   });
   if (wt) wt.innerHTML = top;
   h += refWires();
@@ -2760,7 +2810,10 @@ window.addEventListener("mouseup", e => {
     if ((el && el.dataset.id === p.id) || (drag && drag.type === "move" && drag.moved)) applyPendSel(p); }
   if (!drag) return;
   const d = drag; drag = null; canvas.style.cursor = "";
-  if (d.type === "move"){ if (d.moved) changed(false); return; }
+  if (d.type === "move"){ if (d.moved){
+      if ((SETTINGS || {}).snap){ const gs = Math.max(5, parseInt(SETTINGS.snapGrid) || 20);   // snap what moved onto the grid
+        [...selSet].forEach(id => { const n = byId(id) || byGid(id); if (n && n.x !== undefined){ n.x = Math.round(n.x / gs) * gs; n.y = Math.round(n.y / gs) * gs; } }); render(); }
+      changed(false); } return; }
   if (d.type === "box"){ document.getElementById("selbox").style.display = "none"; setSel([...selSet]); return; }
   if (d.type === "wire"){
     const sock = e.target.closest && e.target.closest(".sock");
@@ -3012,6 +3065,7 @@ window.addEventListener("keydown", e => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){ e.preventDefault(); save(e.shiftKey); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o"){ e.preventDefault(); openFile(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && document.getElementById("helpView").style.display !== "grid"){ e.preventDefault(); findOpen(); return; }
   if (e.key === "F5"){ e.preventDefault(); doRun(); return; }
   if (e.key === "F1"){ e.preventDefault(); helpOpen(); return; }
   if (document.getElementById("helpView").style.display === "grid"){ if (e.key === "Escape") helpClose(); return; }
@@ -3395,7 +3449,7 @@ function niceTime(v){ if (!isFinite(v) || v <= 0) return ["", "s"]; const opts =
   for (const [u, f] of opts) if (v >= f * 0.999) return [String(+(v / f).toPrecision(4)), u]; return [String(+(v / 1e-9).toPrecision(4)), "ns"]; }
 function syncTimeBar(){
   const r = S.meta.run, mode = S.meta.dtMode || "auto";
-  document.getElementById("dtMode").value = mode;
+  document.getElementById("dtMode").value = mode; document.getElementById("accSel").value = r.accuracy || "normal";
   TB.forEach(([a, b, k]) => { const q = splitQ(r[k] || ""); const inp = document.getElementById(a), sel = document.getElementById(b);
     inp.value = q.num; sel.innerHTML = unitOptions("time", q.num ? (q.unit || "s") : (k === "t_end" ? "s" : "us")); });
   const bnd = mode === "bounded" || mode === "adaptive";
@@ -3429,6 +3483,7 @@ TB.forEach(([a, b, k]) => [a, b].forEach(id => document.getElementById(id).addEv
 document.getElementById("toMode").addEventListener("change", e => { S.meta.toMode = e.target.value;
   if (S.meta.toMode === "limit" && blank(S.meta.run.timeout)) S.meta.run.timeout = "60 s";
   syncTimeBar(); changed(false); });
+document.getElementById("accSel").addEventListener("change", e => { S.meta.run.accuracy = e.target.value; changed(false); });
 document.getElementById("dtMode").addEventListener("change", e => {
   const mode = e.target.value; S.meta.dtMode = mode; const r = S.meta.run;
   if (mode !== "fixed") r.dt = ""; if (mode !== "bounded" && mode !== "adaptive"){ r.dt_min = ""; r.dt_max = ""; }
@@ -3445,7 +3500,7 @@ function changed(rerender = true){
   histSoon(); studyStale = true;
   dirty = true; document.getElementById("fname").textContent = (filePath ? filePath.split(/[\\/]/).pop() : "untitled") + " •";
   if (rerender) render(); else { drawWires(); renderYaml(); }
-  clearTimeout(checkTimer); checkTimer = setTimeout(check, 450);
+  clearTimeout(checkTimer); checkTimer = setTimeout(check, Math.max(100, parseInt((SETTINGS || {}).liveDelay) || 450));
 }
 function status(cls, msg){ const s = document.getElementById("status"); s.className = cls + (SETTINGS.loader ? " has-gif" : ""); document.getElementById("smsg").textContent = msg;
   const g = document.getElementById("stGif"); if (g) g.hidden = !(SETTINGS.loader && cls === "busy"); }
@@ -3485,8 +3540,13 @@ async function check(){
   if (prev !== errNode) world.querySelectorAll(".node").forEach(x => x.classList.toggle("err", x.dataset.id === errNode));
   markErrFields();
 }
-function fmt(v){ if (v === null || v === undefined) return "n/a"; if (typeof v === "string") return v; const a = Math.abs(v);
-  if (a !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(3); return (+v.toPrecision(4)).toLocaleString(); }
+// numbers in results: significant figures and notation from Settings (auto: plain, exponent beyond 1e6 / 1e-3)
+function fmt(v){ if (v === null || v === undefined) return "n/a"; if (typeof v === "string") return v; if (!isFinite(v)) return String(v);
+  const sf = Math.max(2, Math.min(10, parseInt((SETTINGS || {}).sig) || 4)), mode = (SETTINGS || {}).numfmt || "auto", a = Math.abs(v);
+  if (mode === "eng" && a !== 0){ const SI = {"-12":"p","-9":"n","-6":"µ","-3":"m","0":"","3":"k","6":"M","9":"G","12":"T"};
+    const ex = Math.max(-12, Math.min(12, 3 * Math.floor(Math.log10(a) / 3))); return String(+(v / Math.pow(10, ex)).toPrecision(sf)) + (SI[ex] !== undefined ? (SI[ex] ? " " + SI[ex] : "") : "e" + ex); }
+  if (mode === "sci" && a !== 0) return v.toExponential(sf - 1);
+  if (a !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(sf - 1); return (+v.toPrecision(sf)).toLocaleString(); }
 // ------------------------------------------------------------------------------------------------ run / verify / report
 function tab(p){ document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
   document.querySelectorAll(".pane").forEach(x => x.classList.toggle("on", x.id === p));
@@ -3584,10 +3644,14 @@ function showRun(r, isLive){
   if (lastStudy) h += `<div class="pathbtn"><button id="bLastStudy">Show last study results</button><span>${studyStale ? "from before your latest edit" : ""}</span></div>`;
   if (!isLive && r.exported && r.exported.length) h += `<h3>CSV written</h3>` + r.exported.map(p => `<div class="pathbtn"><button data-open="${esc(p)}">Open</button><span>${esc(p)}</span></div>`).join("")
     + `<div class="pathbtn"><button data-open="${esc(r.exported[0].replace(/[\\/][^\\/]*$/, ""))}">Open folder</button></div>`;
-  h += `<h3>Outputs${isLive ? ' <span class="livechip">live</span>' : ""}</h3><table class="res">`;
-  Object.entries(r.outputs).filter(([k]) => !k.startsWith("_")).forEach(([k, v]) => h += `<tr><td>${esc(k)}</td><td class="v">${esc(fmt(v))}</td><td class="u">${esc(r.units[k] || "")}</td></tr>`);
-  h += `<tr><td style="color:var(--ink3)">energy ledger</td><td class="v">${(100 * r.outputs._ledger_rel).toFixed(3)}</td><td class="u">%</td></tr></table>`;
-  h += `<h3>Time history</h3><canvas id="plot"></canvas><div class="series" id="series"></div>`;
+  const P0 = pinnedRun;
+  h += `<h3>Outputs${isLive ? ' <span class="livechip">live</span>' : ""}</h3><div class="mini" style="margin:0 0 6px"><button id="bPin" title="Keep this run to compare the next ones against">${P0 ? "Pin this run instead" : "Pin this run"}</button>${P0 ? '<button id="bUnpin">Unpin</button>' : ""}<button id="bCopyRes" title="Copy the table as text (tab separated: pastes into a sheet or a message)">Copy</button></div>`;
+  h += `<table class="res">` + (P0 ? `<tr><td style="color:var(--ink3)">output</td><td class="v" style="color:var(--ink3)">now</td><td class="u"></td><td class="v" style="color:var(--ink3)">pinned</td><td class="v" style="color:var(--ink3)">change</td></tr>` : "");
+  Object.entries(r.outputs).filter(([k]) => !k.startsWith("_")).forEach(([k, v]) => { const pv = P0 ? P0.outputs[k] : undefined;
+    const ch = P0 && typeof v === "number" && typeof pv === "number" ? (pv !== 0 ? `${v - pv >= 0 ? "+" : ""}${(100 * (v - pv) / Math.abs(pv)).toFixed(2)} %` : (v === pv ? "0" : fmt(v - pv))) : "";
+    h += `<tr><td>${esc(k)}</td><td class="v">${esc(fmt(v))}</td><td class="u">${esc(r.units[k] || "")}</td>` + (P0 ? `<td class="v" style="color:var(--ink2)">${pv === undefined ? "—" : esc(fmt(pv))}</td><td class="v" style="color:${ch.startsWith("+") ? "var(--p1)" : (ch.startsWith("-") ? "var(--p2)" : "var(--ink3)")}">${ch}</td>` : "") + `</tr>`; });
+  h += `<tr><td style="color:var(--ink3)">energy ledger</td><td class="v">${(100 * r.outputs._ledger_rel).toFixed(3)}</td><td class="u">%</td>${P0 ? "<td></td><td></td>" : ""}</tr></table>`;
+  h += `<h3>Time history</h3><canvas id="plot"></canvas><div class="series" id="series"></div><div class="mini" style="margin-top:6px"><button id="bPlotPng" title="Save the plot as a PNG picture">Save plot as PNG</button>${P0 ? '<span class="hint" style="padding:0 0 0 8px">pinned run dashed</span>' : ""}</div>`;
   pane.innerHTML = h; pane.scrollTop = keep;
   const keys = Object.keys(r.history).filter(k => k !== "t");
   const want = plotKeys && plotKeys.some(k => keys.includes(k)) ? plotKeys : keys.filter(k => /\.(force|velocity)$/.test(k)).slice(0, 2);
@@ -3596,7 +3660,32 @@ function showRun(r, isLive){
   document.getElementById("series").addEventListener("change", () => { plotKeys = [...document.querySelectorAll("#series input:checked")].map(x => x.value); plot(); }); plot();
   pane.querySelectorAll("button[data-open]").forEach(b => b.onclick = () => API.call("open_path", b.dataset.open));
   const ls = document.getElementById("bLastStudy"); if (ls) ls.onclick = () => showStudy(lastStudy);
+  document.getElementById("bPin").onclick = () => { pinnedRun = JSON.parse(JSON.stringify({outputs:r.outputs, history:r.history, units:r.units})); showRun(r, isLive); status("ok", "Run pinned: the next runs compare against it."); };
+  const up = document.getElementById("bUnpin"); if (up) up.onclick = () => { pinnedRun = null; showRun(r, isLive); };
+  document.getElementById("bCopyRes").onclick = () => { const rows = Object.entries(r.outputs).filter(([k]) => !k.startsWith("_")).map(([k, v]) => [k, fmt(v), r.units[k] || ""].concat(pinnedRun ? [fmt(pinnedRun.outputs[k])] : []).join("\t"));
+    copyText((pinnedRun ? "output\tnow\tunit\tpinned\n" : "output\tvalue\tunit\n") + rows.join("\n")); };
+  document.getElementById("bPlotPng").onclick = () => savePng(document.getElementById("plot"), (S.meta.name || "plot").replace(/\W+/g, "_") + "_plot.png");
 }
+let pinnedRun = null;
+// ---- find on canvas (Ctrl+F): type part of a name, Enter jumps to each match in turn
+let FIND = {i:-1, hits:[]};
+function findOpen(){ const b = document.getElementById("findBox"); b.hidden = false; const q = document.getElementById("findQ"); q.focus(); q.select(); findRun(); }
+function findRun(){ const t = document.getElementById("findQ").value.trim().toLowerCase();
+  FIND.hits = !t ? [] : S.nodes.filter(n => { const nm = String(n.data.name || n.data.title || n.data.text || "").toLowerCase(); return nm.includes(t); });
+  FIND.i = -1; document.getElementById("findN").textContent = t ? `${FIND.hits.length} found` : ""; if (FIND.hits.length) findNext(); }
+function findNext(){ if (!FIND.hits.length) return; FIND.i = (FIND.i + 1) % FIND.hits.length; const n = FIND.hits[FIND.i];
+  const g = hiddenIn(n.id); if (g) openGroup(g);
+  const c = canvas.getBoundingClientRect(), el = world.querySelector(`.node[data-id="${n.id}"]`), w = el ? el.offsetWidth : 270, h = el ? el.offsetHeight : 120;
+  view.k = Math.max(view.k, 0.8); view.x = c.width / 2 - (n.x + w / 2) * view.k; view.y = c.height / 2 - (n.y + h / 2) * view.k; applyView(); drawWires();
+  setSel(n.id); document.getElementById("findN").textContent = `${FIND.i + 1} of ${FIND.hits.length}`; }
+document.getElementById("findQ").addEventListener("input", findRun);
+document.getElementById("findQ").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); findNext(); } if (e.key === "Escape"){ document.getElementById("findBox").hidden = true; } });
+document.getElementById("findX").onclick = () => { document.getElementById("findBox").hidden = true; };
+async function copyText(t){ try { await navigator.clipboard.writeText(t); status("ok", "Copied the results."); }
+  catch (e){ const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); status("ok", "Copied the results."); } catch (e2) { status("bad", "Could not copy here."); } ta.remove(); } }
+async function savePng(cv, name){ if (!cv) return; const url = cv.toDataURL("image/png");
+  if (window.pywebview){ const r = await API.call("save_png", url, name); if (r.ok) status("ok", "Saved " + r.path); else if (!r.cancelled) status("bad", r.error); return; }
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click(); }
 const tok = n => getComputedStyle(document.documentElement).getPropertyValue("--" + n).trim();
 const PCOLS = () => ["p1","p2","p3","p4","p5"].map(tok);
 function plot(){
@@ -3620,7 +3709,9 @@ function plot(){
     g.save(); g.translate(11, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText(ylab, 0, 0); g.restore(); }
   g.fillStyle = tok("ink3");
   ks.forEach((k, j) => { g.strokeStyle = PCOL[j % PCOL.length]; g.lineWidth = 1.6; g.beginPath();
-    lastRun.history[k].forEach((v, i) => { const x = X(t[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); });
+    lastRun.history[k].forEach((v, i) => { const x = X(t[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+    const ph = pinnedRun && pinnedRun.history[k], pt = pinnedRun && pinnedRun.history.t;      // the pinned run, dashed
+    if (ph && pt){ g.setLineDash([5, 4]); g.globalAlpha = 0.7; g.beginPath(); ph.forEach((v, i) => { const x = X(pt[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; } });
   document.querySelectorAll("#series label").forEach(l => { const k = l.querySelector("input").value, j = ks.indexOf(k);
     l.style.color = j >= 0 ? PCOL[j % PCOL.length] : ""; });
 }
@@ -3647,6 +3738,7 @@ async function doReport(){
   pane.innerHTML = `<h3>Report</h3>` + Object.entries(r.paths).map(([k, p]) => `<div class="pathbtn"><button data-open="${esc(p)}">Open ${esc(k)}</button><span>${esc(p)}</span></div>`).join("")
     + `<div class="pathbtn"><button data-open="${esc(r.out_dir)}">Open folder</button></div>`;
   pane.querySelectorAll("button[data-open]").forEach(b => b.onclick = () => API.call("open_path", b.dataset.open));
+  if (SETTINGS.reportOpen && r.paths && (r.paths.html || r.paths.pdf)) API.call("open_path", r.paths.html || r.paths.pdf);
 }
 document.getElementById("bRun").onclick = doRun; document.getElementById("bVerify").onclick = doVerify; document.getElementById("bReport").onclick = doReport;
 // ------------------------------------------------------------------------------------------------ studies
@@ -3844,7 +3936,7 @@ document.getElementById("bDim").addEventListener("change", e => { S.meta.dim = e
 document.getElementById("bCores").addEventListener("change", async e => { SETTINGS.workers = parseInt(e.target.value); await API.call("save_settings", SETTINGS); });
 document.getElementById("bRecent").addEventListener("change", async e => { const p = e.target.value; e.target.value = ""; if (!p) return;
   const r = await API.call("open_path_text", p); if (r.ok) loadText(r.text, r.path); else status("bad", "Could not open " + p + ": " + r.error); });
-let SETTINGS = {recent:[]};
+// (SETTINGS is declared at the top of the script)
 async function refreshRecent(){ const r = await API.call("load_settings"); SETTINGS = r || {recent:[]};
   document.getElementById("bRecent").innerHTML = `<option value="">Recent</option>` + (SETTINGS.recent || []).map(p => `<option value="${esc(p)}">${esc(p.split(/[\\/]/).pop())}</option>`).join(""); }
 // ------------------------------------------------------------------------------------------------ files
@@ -3866,7 +3958,7 @@ document.getElementById("fileIn").addEventListener("change", e => { const f = e.
 async function save(asNew){
   await renderYaml();
   if (window.pywebview){ const r = await API.call("save_file", yamlText, filePath, !!asNew || !filePath);
-    if (r.ok){ filePath = r.path; API.call("set_model_dir", filePath); dirty = false; refreshRecent(); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); return true; }
+    if (r.ok){ filePath = r.path; API.call("set_model_dir", filePath); dirty = false; refreshRecent(); API.call("recovery_clear"); document.getElementById("fname").textContent = r.path.split(/[\\/]/).pop(); status("ok", "Saved " + r.path); return true; }
     if (!r.cancelled) status("bad", r.error); return false; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([yamlText], {type:"text/yaml"}));
   a.download = (S.meta.name || "model").replace(/\W+/g, "_") + ".yaml"; a.click(); dirty = false; return true;
@@ -4814,7 +4906,7 @@ async function settingsShow(){
   document.getElementById("setColors").innerHTML = TOKEN_GROUPS.map(([g, list]) => `<h3 class="dsub">${esc(g)}</h3><div class="cgrid">` +
     list.map(([k, lab]) => `<label class="cpick${own[k] ? " own" : ""}" title="${own[k] ? "your colour (theme: " + t[k] + ")" : (user ? "saved in this user theme" : "theme colour")}"><input type="color" data-tok="${k}" value="${val(k)}"><span>${esc(lab)}</span>${own[k] ? `<button data-reset="${k}" title="Back to the theme colour">↺</button>` : ""}</label>`).join("") + `</div>`).join("");
   const n = Object.keys(own).length;
-  document.getElementById("setConfetti").checked = confettiOn(); applyLoader(); syncCSound();
+  document.getElementById("setConfetti").checked = confettiOn(); applyLoader(); syncCSound(); syncSimSettings();
   document.getElementById("setDash").checked = document.documentElement.classList.contains("dashwires");
   document.getElementById("setOwn").textContent = user ? `Changes save straight into your theme "${th.name}".`
     : (n ? `${n} colour${n === 1 ? "" : "s"} changed from the ${th.name} theme.` : `All colours from the ${th.name} theme.`);
@@ -4882,6 +4974,29 @@ document.getElementById("setLoaderFile").addEventListener("change", e => { const
   if (f.size > 2 * 1024 * 1024){ status("bad", "That picture is over 2 MB: pick a smaller GIF."); return; }
   const rd = new FileReader(); rd.onload = () => { SETTINGS.loader = rd.result; applyLoader(); settingsSave();
     status("ok", "Loading animation set. It plays next to the progress bar while a run, study or verify works."); }; rd.readAsDataURL(f); });
+// ---- simulation, canvas and file settings
+const SIM_SET = [["sDefDt","defDt","auto"],["sDefAcc","defAcc","normal"],["sDefTo","defTo","auto"],["sDefToVal","defToVal",""],["sLiveDelay","liveDelay",""],
+  ["sSig","sig","4"],["sNum","numfmt","auto"],["sWire","wire","curved"],["sSnapGrid","snapGrid",""],["sAuto","autosave","2"],["sVol","volume",80]];
+const SIM_CHK = [["sSnap","snap",false],["sOpenLast","openLast",false],["sRepOpen","reportOpen",false]];
+function syncSimSettings(){
+  SIM_SET.forEach(([id, k, def]) => { const el = document.getElementById(id); if (el) el.value = SETTINGS[k] ?? def; });
+  SIM_CHK.forEach(([id, k, def]) => { const el = document.getElementById(id); if (el) el.checked = SETTINGS[k] ?? def; }); }
+SIM_SET.forEach(([id, k]) => { const el = document.getElementById(id); if (!el) return;
+  el.addEventListener(el.tagName === "SELECT" || el.type === "range" ? "change" : "input", () => {
+    SETTINGS[k] = el.type === "range" ? +el.value : el.value; settingsSave();
+    if (["sig","numfmt","wire"].includes(k)){ render(); if (lastRun) showRun(lastRun, false); }
+    if (k === "autosave") autosaveArm(); }); });
+SIM_CHK.forEach(([id, k]) => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => { SETTINGS[k] = el.checked; settingsSave(); }); });
+// ---- recovery copy: unsaved work every few minutes, offered back on the next start
+let _autoT = null;
+function autosaveArm(){ clearInterval(_autoT); const m = parseInt(SETTINGS.autosave ?? 2); if (!m) return;
+  _autoT = setInterval(async () => { if (!dirty || !S.nodes.length) return; try { await renderYaml(); await API.call("recovery_save", yamlText, filePath || ""); } catch (e) {} }, m * 60000); }
+async function recoveryOffer(){
+  let r; try { r = await API.call("recovery_load"); } catch (e) { return false; } if (!r || !r.ok || !r.text) return false;
+  const when = new Date(r.time * 1000).toLocaleString(), name = r.path ? r.path.split(/[\\/]/).pop() : "an unsaved model";
+  if (await ask("Recover unsaved work?", `<p>The app closed before <b>${esc(name)}</b> was saved. A recovery copy from <b>${esc(when)}</b> is here.</p><p>Open it? (Save it to keep it. Not opening it throws it away.)</p>`, "Open the copy")){
+    await loadText(r.text, null, r.path ? r.path.replace(/[\\/][^\\/]*$/, "") : null); dirty = true; status("ok", "Recovered unsaved work: Save to keep it."); API.call("recovery_clear"); return true; }
+  API.call("recovery_clear"); return false; }
 function syncCSound(){ const sel = document.getElementById("setCSound"); if (!sel) return;
   sel.value = SETTINGS.confettiSound || "horn";
   document.getElementById("setCSoundNow").textContent = SETTINGS.confettiSoundName ? "mine: " + SETTINGS.confettiSoundName : "";
@@ -4975,8 +5090,12 @@ async function start(){
     await refreshRecent();
     TEMPLATES = await API.call("templates"); await loadLibrary();
     document.getElementById("bLive").checked = SETTINGS.live !== false;
-    applyView(); render(); histReset();
+    S = newState(); applyView(); render(); histReset(); syncTimeBar && syncTimeBar();
     status("", "Ready. Right-click or Shift+A to add nodes, or open an example.");
+    autosaveArm();
+    const recovered = await recoveryOffer();
+    if (!recovered && SETTINGS.openLast && (SETTINGS.recent || [])[0]){ const p0 = SETTINGS.recent[0];
+      const r = await API.call("open_path_text", p0); if (r.ok) await loadText(r.text, r.path); }
   } catch (err) { status("bad", err.message); }
 }
 if (window.pywebview && window.pywebview.api) start();
