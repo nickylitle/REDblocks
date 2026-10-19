@@ -186,7 +186,12 @@ def tool_run_model(path: str, overrides: dict | None = None, histories: list[str
             if q.startswith("esc_"):
                 return isinstance(d.get("esc"), dict)
             return True
-        keys = [k for k in H if k != "t" and useful(k)]
+        types = {k: (e or {}).get("type") for k, e in (s.doc.get("elements") or {}).items()}
+
+        def live(k):                                    # an element history that never leaves 0 does not apply to it
+            nm = k.partition(".")[0]
+            return nm not in types or k.endswith((".force", ".measure")) or np.any(np.asarray(H[k], float) != 0.0)
+        keys = [k for k in H if k != "t" and "__" not in k.partition(".")[0] and useful(k) and live(k)]
         res["history_keys"] = keys if len(keys) <= 200 else keys[:200] + ["..."]
         want = keys if histories == ["*"] else [k for k in (histories or []) if k in H]
         miss = [k for k in (histories or []) if k != "*" and k not in H]
