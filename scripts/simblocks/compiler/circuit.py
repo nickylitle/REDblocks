@@ -43,7 +43,7 @@ FIELDS = {
     "diode": {"Vf", "R_on", "R_off"},
     "switch": {"R_on", "R_off", "on_at", "off_at", "pwm_freq", "duty", "phase"},
     "fuse": {"R", "I_rating", "t_blow", "I_trip"},
-    "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor", "I0"},
+    "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor", "I0", "eta", "eta_back"},
     "wire": {"awg", "area", "length", "material", "connectors", "R_contact"},
 }
 REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": set(),
@@ -52,7 +52,7 @@ REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_s
 # a source's function generator (wave:): the value follows a shape in time instead of staying fixed
 WAVE_SHAPES = {"sine": 1, "square": 2, "triangle": 3, "sawtooth": 4, "pulse": 5, "step": 6, "ramp": 7}
 WAVE_FIELDS = {"shape", "amplitude", "offset", "frequency", "period", "phase", "duty", "start", "stop", "rise"}
-ESC_FIELDS = {"throttle", "I_max", "regen", "R_on", "t_sw", "f_sw", "C_th", "R_th", "T_amb_C"}
+ESC_FIELDS = {"throttle", "I_max", "regen", "brake", "R_on", "t_sw", "f_sw", "C_th", "R_th", "T_amb_C"}
 COMMON = {"type", "between", "label", "note", "source", "thermal"}
 QUANTITIES = {"current", "voltage", "power", "energy", "soc", "state", "torque", "temperature", "heat", "esc_temperature",
               "esc_heat", "winding_current"}
@@ -62,7 +62,7 @@ HAS_THERMAL = {"resistor", "capacitor", "inductor", "battery", "diode", "switch"
 ALPHA_DEFAULT = {"motor": 0.00393, "inductor": 0.00393}
 KT_TEMPCO_DEFAULT = -0.0011          # NdFeB magnets: about -0.11 % per K
 VF_TEMPCO_DEFAULT = -0.002           # silicon diode: about -2 mV per K
-NPRM = 12; NST = 6; NOUT = 11      # out: current, voltage, power, energy, soc / state, torque, T (C), heat,
+NPRM = 15; NST = 6; NOUT = 11      # out: current, voltage, power, energy, soc / state, torque, T (C), heat,
                                    # ESC temperature (C), ESC heat (J), motor winding current (A)
 
 
@@ -185,10 +185,23 @@ def compile_circuit(doc, ctx):
             P[0] = Kt; P[1] = g("R"); P[2] = g("L", 0.0); P[3] = g("gear", 1.0)
             if P[1] <= 0:
                 raise SpecError("a motor's R (winding resistance) must be positive", where, line_of(d, "R"), f)
+            # gearbox efficiency: motoring the output gets eta G Kt i; back-driven (the load drives the motor) the load
+            # feels G Kt i / eta_back. eta_back defaults to the planetary/spur relation from eta and the ratio.
+            P[13] = g("eta", 1.0)
+            if not 0.0 < P[13] <= 1.0:
+                raise SpecError("eta (gearbox efficiency) is above 0 and at most 1", where, line_of(d, "eta"), f)
+            if "eta_back" in d:
+                P[14] = g("eta_back")
+            else:
+                from ..actuators.motors import backdrive_efficiency
+                P[14] = backdrive_efficiency(P[13], P[3]) if P[13] < 1.0 else 1.0
+            if not 0.0 < P[14] <= 1.0:
+                raise SpecError("eta_back must be above 0 (this gearbox would self-lock: give eta_back explicitly) "
+                                "and at most 1", where, line_of(d, "eta_back") or line_of(d, "eta"), f)
             esc = d.get("esc")
             if esc is not None:
                 if not isinstance(esc, dict):
-                    raise SpecError("esc is {throttle: 0-1, I_max: <current>, regen: false}", where, line_of(d, "esc"), f)
+                    raise SpecError("esc is {throttle: -1 to 1, I_max: <current>, regen: false, brake: false}", where, line_of(d, "esc"), f)
                 for key in set(esc) - ESC_FIELDS:
                     raise SpecError(f"'{key}' is not an esc field (allowed: {', '.join(sorted(ESC_FIELDS))})", where,
                                     line_of(esc, key), f)
@@ -196,6 +209,7 @@ def compile_circuit(doc, ctx):
                 P[4] = num(resolve(esc.get("throttle", 1.0), ctx, where + ".esc.throttle"), where + ".esc.throttle")
                 P[5] = num(resolve(esc.get("I_max", 1e9), ctx, where + ".esc.I_max"), where + ".esc.I_max")
                 P[6] = 1.0 if esc.get("regen") is True else 0.0
+                P[12] = 1.0 if esc.get("brake") is True else 0.0      # drag brake: at zero throttle the bridge shorts the winding
                 ge = lambda key, dflt: num(resolve(esc[key], ctx, f"{where}.esc.{key}"), f"{where}.esc.{key}") if key in esc else dflt
                 # optional losses: R_on per MOSFET (a BLDC bridge has two in the current path), switching t_sw at f_sw
                 P[8] = 2.0 * ge("R_on", 0.0); P[9] = ge("t_sw", 0.0) * ge("f_sw", 0.0)
@@ -203,8 +217,8 @@ def compile_circuit(doc, ctx):
                     raise SpecError("the ESC's thermal model needs both C_th (J/K) and R_th (K/W)", where, line_of(d, "esc"), f)
                 P[10] = ge("C_th", 0.0); P[11] = ge("R_th", 0.0)
                 pst[k, 1] = pst[k, 2] = ge("T_amb_C", 25.0) + 273.15
-                if not 0.0 <= P[4] <= 1.0:
-                    raise SpecError("throttle is a fraction of full duty, 0 to 1", where, line_of(esc, "throttle"), f)
+                if not -1.0 <= P[4] <= 1.0:
+                    raise SpecError("throttle is a fraction of full duty, -1 (full reverse) to 1", where, line_of(esc, "throttle"), f)
             P[7] = len(motors)
             motors.append(pn)
             el = {"type": "emotor", "measure": d["measure"], "__part__": pn, "label": d.get("label", pn),
@@ -535,10 +549,10 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
     if tp == 10:                                       # motor: v = R i + L di/dt + e
         Z = prm[k, 1] * rf + prm[k, 2] / dt
         return 1.0 / Z, (emf - (prm[k, 2] / dt) * pst[k, 0]) / Z
-    if tp == 11:                                       # motor behind an averaged ESC, duty d = flg
+    if tp == 11:                                       # motor behind an averaged ESC, signed duty d = flg (< 0: reverse)
         d = flg[k]
-        if d <= 0.0:
-            return 0.0, 0.0
+        if d == 0.0:                                   # bridge off (coast), or shorting the winding (drag brake):
+            return 0.0, 0.0                            # either way no bus current
         Z = prm[k, 1] * rf + prm[k, 8] + prm[k, 2] / dt
         Gm = 1.0 / Z
         # i_m = Gm (d v - emf + (L/dt) i_prev); bus current i = d i_m
@@ -596,21 +610,22 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 want = 1.0 if v > vf else 0.0
                 if want != flg[k]:
                     flg[k] = want; changed = True
-            elif tp == 11 and pst[k, 5] < 0.5:
+            elif tp == 11 and pst[k, 5] < 0.5 and flg[k] != 0.0:
                 d = flg[k]
                 Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 8] + prm[k, 2] / dt
                 im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z
                 Imax = prm[k, 5]
-                if im > Imax * 1.000001 and v > 0.0:
-                    dn = (Imax * Z + emf[k] - (prm[k, 2] / dt) * pst[k, 0]) / v
-                    if dn < 0.0:
+                sg = 1.0 if d > 0.0 else -1.0                    # forward or reverse: the limit acts on |current|
+                if sg * im > Imax * 1.000001 and v > 0.0:
+                    dn = (sg * Imax * Z + emf[k] - (prm[k, 2] / dt) * pst[k, 0]) / v
+                    if sg * dn < 0.0:
                         dn = 0.0
-                    if dn > prm[k, 4]:
+                    if sg * dn > sg * prm[k, 4]:
                         dn = prm[k, 4]
-                    if abs(dn - d) > 1e-7 * dn + 1e-12:              # settled to 0.1 ppm of the duty
+                    if abs(dn - d) > 1e-7 * abs(dn) + 1e-12:         # settled to 0.1 ppm of the duty
                         flg[k] = dn; changed = True
-                elif im < 0.0 and prm[k, 6] < 0.5 and d > 0.0:
-                    flg[k] = 0.0; changed = True                # no regen: the ESC stops driving (freewheels)
+                elif d * im < 0.0 and prm[k, 6] < 0.5:
+                    flg[k] = 0.0; changed = True                # no regen: the ESC stops driving (freewheels or brakes)
         if not changed:
             break
     # each motor's back-EMF damping on its shaft, from the circuit as it is this step: how much its current drops per
@@ -621,8 +636,16 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
         tm = ptype[km]
         if (tm != 10 and tm != 11) or pst[km, 5] > 0.5:
             continue
-        if tm == 11 and not (flg[km] > 0.0 and flg[km] >= prm[km, 4] * (1.0 - 1e-6)):
-            continue                                            # at the current limit or freewheeling: no damping
+        if tm == 11:
+            d_ = flg[km]
+            if d_ == 0.0:                                       # coasting: none; drag brake below its limit: 1 / Z
+                if prm[km, 12] > 0.5:
+                    Zb = prm[km, 1] * _rf(km, th, pst) + prm[km, 8] + prm[km, 2] / dt
+                    if abs((-emf[km] + (prm[km, 2] / dt) * pst[km, 0]) / Zb) < prm[km, 5]:
+                        cdamp[km] = 1.0 / Zb
+                continue
+            if not ((d_ > 0.0 and d_ >= prm[km, 4] * (1.0 - 1e-6)) or (d_ < 0.0 and d_ <= prm[km, 4] * (1.0 - 1e-6))):
+                continue                                        # at the current limit: no damping
         de = 1e-3 * (abs(emf[km]) + 1.0)
         i0 = _motor_i(km, ptype, prm, pst, th, flg, dt, emf[km], vnet[na[km]] - vnet[nb[km]])
         emf[km] += de
@@ -693,18 +716,33 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             else:
                 d = flg[k]
                 Z = prm[k, 1] * rf + prm[k, 8] + prm[k, 2] / dt
-                im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z if d > 0.0 else 0.0
+                if d != 0.0:
+                    im = (d * v - emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z
+                elif prm[k, 12] > 0.5:                          # drag brake: the winding shorted through the bridge,
+                    im = (-emf[k] + (prm[k, 2] / dt) * pst[k, 0]) / Z   # held to the ESC's current limit
+                    if im > prm[k, 5]:
+                        im = prm[k, 5]
+                    elif im < -prm[k, 5]:
+                        im = -prm[k, 5]
+                else:
+                    im = 0.0
                 vm = d * v - prm[k, 8] * im                    # what reaches the winding, past the bridge
             if pst[k, 5] > 0.5:
                 im = 0.0
             pst[k, 0] = im
             kt = _kt(k, prm, th, pst)
             e = mot_el[int(prm[k, 7])]
-            st[e, 0] = prm[k, 3] * kt * im                            # torque on the measured coordinate
+            Tq = prm[k, 3] * kt * im                                  # torque on the measured coordinate,
+            fe = 1.0                                                  # through the gearbox's efficiency
+            ef = prm[k, 13] if prm[k, 13] > 0.0 else 1.0           # 0 = not set: an ideal gearbox
+            eb = prm[k, 14] if prm[k, 14] > 0.0 else 1.0
+            if ef < 1.0 or eb < 1.0:
+                fe = ef if Tq * st[e, 2] >= 0.0 else 1.0 / eb
+            st[e, 0] = Tq * fe
             st[e, 1] = im; st[e, 3] = vm
             kg = prm[k, 3] * kt
-            st[e, 4] = kg * kg * cdamp[k] if (pst[k, 5] < 0.5 and im != 0.0) else 0.0   # back-EMF damping, N m s
-            heat = prm[k, 1] * rf * im * im
+            st[e, 4] = fe * kg * kg * cdamp[k] if (pst[k, 5] < 0.5 and im != 0.0) else 0.0   # back-EMF damping, N m s
+            heat = prm[k, 1] * rf * im * im + abs(Tq * (1.0 - fe) * st[e, 2])   # winding + gearbox loss
             if tp == 11:                                         # the ESC's own losses and temperature (optional)
                 qe = prm[k, 8] * im * im
                 if flg[k] > 0.0 and flg[k] < 0.999:

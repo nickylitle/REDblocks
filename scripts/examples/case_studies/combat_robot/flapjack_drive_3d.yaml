@@ -1,0 +1,84 @@
+simblocks: 1
+name: Flapjack drive 3D (launch)
+question: "How fast does Flapjack launch, how much weight sits on the wheels, and how hard does it brake, with real pitch and roll on its tires and skid?"
+assumptions:
+  - "Redone from flapjack_drive_legacy.py in REDblocks 3D (Oct 2026). Rear armor touchdown points are ASSUMED (30 mm behind the axle, 5 mm up). dt 20 us matches AUTO (2.6 us) to 4 digits."
+dim: 3d
+gravity: 9.81
+
+params:
+  m_chassis: {value: 1.311 kg, note: "1.361 kg robot minus the two 25 g wheels"}
+  mu_tire: {value: 1.67, note: "measured kinetic (sliding), dusty 20A urethane on painted wood"}
+  mu_peak: {value: 2.0, note: "measured static: the tire curve's peak (upper bound of the test rig)"}
+  slip_peak: {value: 0.12, note: "slip ratio at peak grip (estimate, soft urethane)"}
+  eta_gear: {value: 0.82, note: "Repeat Compact 22.6:1 planetary, forward"}
+  mu_bolt: {value: 0.203, note: "measured kinetic, bare steel button head on painted wood"}
+  k_tire: {value: 20 kN/m, note: "urethane tread contact stiffness (estimate)"}
+  c_tire: {value: 80 N s/m, note: "about 0.35 of critical: restitution near 0.3"}
+  k_bolt: {value: 200 kN/m, note: "steel bolt head on wood (estimate)"}
+  c_bolt: {value: 250 N s/m, note: "about 0.35 of critical: restitution near 0.3"}
+  I_esc: {value: 20 A, note: "ESC current limit"}
+  x_tail: {value: -0.030, note: "ASSUMED: rear armor touchdown 30 mm behind the axle"}
+  z_tail: {value: 0.005, note: "ASSUMED: 5 mm ground clearance at the rear armor"}
+  mu_tail: {value: 0.25, note: "ASSUMED: armor on painted wood"}
+
+bodies:
+  floor:
+    ground: true
+    planes: {top: {at: [2, 0, 0], normal: [0, 0, 1], size: [80 m, 80 m]}}
+  chassis:
+    dof: free
+    mass: $m_chassis
+    inertia: [0.00297, 0.00412, 0.00467]
+    at: [0, 0, 0.0001]
+    com: [0.0675, 0, 0.023]
+    points: {axleL: [0, 0.09, 0.022], axleR: [0, -0.09, 0.022], bolt: [0.100, 0, 0], tailL: [$x_tail, 0.05, $z_tail], tailR: [$x_tail, -0.05, $z_tail]}
+    note: "drawing origin on the floor under the axle; COM 65 mm ahead of the axle (35 % wheel share) and 23 mm up"
+  wheelL:
+    dof: free
+    mass: 25 g
+    inertia: [3.2e-6, 6.05e-6, 3.2e-6]
+    at: [0, 0.09, 0.0221]
+    points: {c: [0, 0, 0]}
+    spheres: {tread: {at: [0, 0, 0], r: 22 mm}}
+  wheelR:
+    dof: free
+    mass: 25 g
+    inertia: [3.2e-6, 6.05e-6, 3.2e-6]
+    at: [0, -0.09, 0.0221]
+    points: {c: [0, 0, 0]}
+    spheres: {tread: {at: [0, 0, 0], r: 22 mm}}
+
+control:
+  thrL: "= 1 if t > 0.05 else 0"
+  thrR: "= 1 if t > 0.05 else 0"
+
+elements:
+  axleL: {type: hinge, rigid: true, axis: y, measure: [chassis.axleL, wheelL.c]}
+  axleR: {type: hinge, rigid: true, axis: y, measure: [chassis.axleR, wheelR.c]}
+  tireL: {type: kelvin_voigt, k: $k_tire, c: $c_tire, measure: {contact: [wheelL.tread, floor.top]}}
+  tireR: {type: kelvin_voigt, k: $k_tire, c: $c_tire, measure: {contact: [wheelR.tread, floor.top]}}
+  gripL: {type: contact_friction, contact: tireL, mu: $mu_tire, mu_peak: $mu_peak, slip_peak: $slip_peak}
+  gripR: {type: contact_friction, contact: tireR, mu: $mu_tire, mu_peak: $mu_peak, slip_peak: $slip_peak}
+  skid: {type: kelvin_voigt, k: $k_bolt, c: $c_bolt, measure: {contact: [chassis.bolt, floor.top]}}
+  skid_slide: {type: contact_friction, contact: skid, mu: $mu_bolt, v_eps: 0.005}
+  tailL: {type: kelvin_voigt, k: $k_bolt, c: $c_bolt, measure: {contact: [chassis.tailL, floor.top]}}
+  tailR: {type: kelvin_voigt, k: $k_bolt, c: $c_bolt, measure: {contact: [chassis.tailR, floor.top]}}
+  tailL_slide: {type: contact_friction, contact: tailL, mu: $mu_tail, v_eps: 0.005}
+  tailR_slide: {type: contact_friction, contact: tailR, mu: $mu_tail, v_eps: 0.005}
+
+circuit:
+  ground: gnd
+  parts:
+    pack: {type: voltage_source, between: [bus, gnd], V: 18.5 V, R: 50 mohm, label: "5S pack, 18.5 V and 50 mohm"}
+    motL: {type: motor, between: [bus, gnd], kv: 2300 rpm/V, R: 0.15 ohm, gear: 22.6, J_rotor: 8e-7 kg m^2, eta: $eta_gear,
+           measure: {twist: [chassis, wheelL], axis: y}, esc: {throttle: {control: thrL, init: 0, max: 1}, I_max: $I_esc, regen: true, brake: true}}
+    motR: {type: motor, between: [bus, gnd], kv: 2300 rpm/V, R: 0.15 ohm, gear: 22.6, J_rotor: 8e-7 kg m^2, eta: $eta_gear,
+           measure: {twist: [chassis, wheelR], axis: y}, esc: {throttle: {control: thrR, init: 0, max: 1}, I_max: $I_esc, regen: true, brake: true}}
+
+outputs:
+  v_end: {body: chassis, quantity: vx, reduce: final, unit: m/s}
+  I_peak: {part: motL, quantity: current, reduce: max_abs, unit: A}
+  vbus_min: {part: pack, quantity: voltage, reduce: min, unit: V}
+
+run: {t_end: 2.05 s, dt: 20 us}

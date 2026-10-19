@@ -7,6 +7,9 @@
 Layout = domain / category / geometry / load (see registry.py). Builders run before the loop,
 kernels run inside it (njit-safe), analytic blocks are closed forms for sizing and checks.
 """
+from . import _cacheguard
+_cacheguard.check()     # numba caches each compiled function by its own file only: clear them all when any source changed
+
 from .registry import REGISTRY, block, find, catalog_markdown
 from . import materials, structures, contact, constitutive, friction, actuators, rigid_body, geometry, viz, \
     aero, thermal, integrators, diagnostics

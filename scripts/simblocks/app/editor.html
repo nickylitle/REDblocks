@@ -1093,7 +1093,7 @@ const PART_INFO = {
   fuse:["blows when ∫(i/I_rating)² dt > t_blow", "Heats with (i/I_rating)²; opens once that has gone on for t_blow at the rating, or at once above I_trip."],
   wire:["R = ρ L / A + connectors", "A wire run: gauge (awg) or copper area, the total length (out and back), and its connectors (XT30, XT60, XT90). It is a resistor; thermal: on fills in the copper's heat capacity and free convection, so only the ambient is needed."],
   motor:["v = R i + L di/dt + Kt ω, τ = Kt i", "A DC (or lumped brushless) motor. Give kv or Kt, not both. Its shaft is the body plugged in; gear is motor turns per shaft turn. ESC (optional) chops the supply at throttle and limits current to I_max; regen lets it push current back."]};
-const PART_PH = {I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
+const PART_PH = {eta:"e.g. 0.82", eta_back:"from eta and gear", I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
   cells:"e.g. 6", capacity:"e.g. 1300", R0:"pack R", R1:"sag R", C1:"sag C", soc0:"1 = full", V_full:"4.2 /cell", V_empty:"3.3 /cell",
   Vf:"0.7 V", R_on:"default 1 mohm", R_off:"open", on_at:"0 s", off_at:"never", pwm_freq:"0 = no PWM", duty:"1", phase:"0",
   I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
@@ -1143,7 +1143,7 @@ const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells"
   wire:["awg","area","length","material","connectors","R_contact"], diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
   esc:["throttle","I_max","R_on","t_sw","f_sw","C_th","R_th","T_amb_C"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
 const byOrder = (list, ord) => list.slice().sort((a, b) => ((ord || []).indexOf(a) + 1 || 99) - ((ord || []).indexOf(b) + 1 || 99));
-const PART_DIM = {I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
+const PART_DIM = {eta:"none", eta_back:"none", I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
   cells:"none", capacity:"capacity", R0:"resistance", R1:"resistance", C1:"capacitance", soc0:"none", V_full:"voltage", V_empty:"voltage",
   Vf:"voltage", R_on:"resistance", R_off:"resistance", on_at:"time", off_at:"time", pwm_freq:"frequency", duty:"none", phase:"none",
   I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia", I0:"current",
@@ -1204,8 +1204,8 @@ const PART_Q_HELP = {winding_current:"the current in the windings (behind an ESC
 function partSockets(n, ins, outs){
   const d = n.data, ct = (CAT.circuit || {types:{}}).types[d.ptype] || {fields:[], required:[]};
   if (d.ptype === "motor"){ if (!String(d.mraw || "").trim()) ins.push({key:"t0", label:"shaft", type:"body", req:true}); ins.push({key:"t1", label:"frame", type:"body"}); }
-  byOrder(ct.fields, PART_ORDER[d.ptype]).filter(f => f !== "wave" && !(f === "I0" && !d.ioOn) && !(f === "I_load" && d.ldOn)).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
-  if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen" && (d.escLossOn || !ESC_LOSS.includes(f))), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
+  byOrder(ct.fields, PART_ORDER[d.ptype]).filter(f => f !== "wave" && !(f === "I0" && !d.ioOn) && !(f === "I_load" && d.ldOn) && !((f === "eta" || f === "eta_back") && !d.etaOn)).forEach(f => ins.push({key:"f." + f, label:f, type:"val", req:ct.required.includes(f)}));
+  if (d.ptype === "motor" && d.escOn) byOrder((CAT.circuit.esc || []).filter(f => f !== "regen" && f !== "brake" && (d.escLossOn || !ESC_LOSS.includes(f))), PART_ORDER.esc).forEach(f => ins.push({key:"e." + f, label:f, type:"val"}));
   if (d.wvOn && WAVE_ON.includes(d.ptype)) waveKeys(d.wvShape || "sine").forEach(f => ins.push({key:"w." + f, label:f, type:"val", req:waveReq(d.wvShape || "sine", f), tip:WAVE_TIP[f]}));
   if (d.ldOn && LOAD_ON.includes(d.ptype)) waveKeys(d.ldShape || "sine").forEach(f => ins.push({key:"l." + f, label:f, type:"val", req:waveReq(d.ldShape || "sine", f), tip:WAVE_TIP[f]}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
@@ -1238,7 +1238,7 @@ function circuitOut(){
     sockets(n).ins.forEach(s => { const v = inVal(n, s.key, fieldValue(n, s.key)); if (blank(v) || !/^[fehwl]\./.test(s.key)) return;
       const f = s.key.slice(2), c = s.key[0]; if (c === "f") o[f] = v; else if (c === "e") (o.esc = o.esc || {})[f] = v;
       else if (c === "w") o.wave[f] = v; else if (c === "l") o.I_load[f] = v; else (o.thermal = o.thermal || {})[f] = v; });
-    if (d.ptype === "motor"){ o.measure = motorMeasure(n); if (d.escOn){ o.esc = o.esc || {}; if (d.regen) o.esc.regen = true; } }
+    if (d.ptype === "motor"){ o.measure = motorMeasure(n); if (d.escOn){ o.esc = o.esc || {}; if (d.regen) o.esc.regen = true; if (d.brake) o.esc.brake = true; } }
     if (d.thOn && !o.thermal) o.thermal = {};             // a wire fills its own thermal values in
     if (d.label) o.label = d.label; P[d.name] = o; });
   return {ground: g ? g.data.name : "gnd", parts:P};
@@ -1249,14 +1249,14 @@ function circuitIn(doc, pend, put){
   const net = nm => { nm = String(nm); if (!nets[nm]){ nets[nm] = addNode("net", {name:nm, ground: nm === gnd}); pin[nm] = 0; } return nets[nm]; };
   net(gnd);
   Object.entries(c.parts || {}).forEach(([k, e]) => { if (!e || typeof e !== "object") return;
-    const d = {name:k, ptype:String(e.type || "resistor"), fields:{}, esc:{}, th:{}, escOn:e.esc !== undefined, regen:!!(e.esc && e.esc.regen === true),
+    const d = {name:k, ptype:String(e.type || "resistor"), fields:{}, esc:{}, th:{}, escOn:e.esc !== undefined, regen:!!(e.esc && e.esc.regen === true), brake:!!(e.esc && e.esc.brake === true), etaOn:e.eta !== undefined || e.eta_back !== undefined,
                thOn:e.thermal !== undefined, label:e.label || "", axis:"z", mraw:"",
                escLossOn:!!(e.esc && ESC_LOSS.some(k => e.esc[k] !== undefined)), ioOn:e.I0 !== undefined,
                wvOn:!!(e.wave && typeof e.wave === "object"), wv:{}, wvShape:"sine", ldOn:!!(e.I_load && typeof e.I_load === "object"), ld:{}, ldShape:"sine"};
     Object.entries(e).forEach(([f, v]) => { if (!["type","between","esc","thermal","measure","label","wave"].includes(f) && !(f === "I_load" && d.ldOn)) d.fields[f] = str(v); });
     [["wave", "wv", "wvShape", "wvOn"], ["I_load", "ld", "ldShape", "ldOn"]].forEach(([y, k, sk, on]) => { if (!d[on]) return;
       Object.entries(e[y]).forEach(([f, v]) => { if (f === "shape") d[sk] = String(v); else if (f === "period"){ const T = pulseSI(str(v)); d[k].frequency = isFinite(T) && T > 0 ? String(+(1 / T).toPrecision(6)) + " Hz" : "= 1 / (" + str(v) + ")"; } else d[k][f] = str(v); }); });
-    Object.entries(e.esc || {}).forEach(([f, v]) => { if (f !== "regen") d.esc[f] = str(v); });
+    Object.entries(e.esc || {}).forEach(([f, v]) => { if (f !== "regen" && f !== "brake") d.esc[f] = str(v); });
     Object.entries(e.thermal || {}).forEach(([f, v]) => { d.th[f] = str(v); });
     const n = addNode("part", d), bodyLinks = [];
     if (d.ptype === "motor"){ const m = e.measure, bn = s => String(s).replace(/\.(rz|spin)$/, "");
@@ -1288,14 +1288,17 @@ function partHTML(n, ins){
   if (d.ptype === "current_source" || d.ptype === "current_load")
     b += `<div class="row"><label title="source: pushes I out of its + terminal (powers the circuit). load: draws I in at + (a sink on a supply). Same part, opposite sign.">acts as</label><select data-k="ptype">${sel_([["current_source","source (pushes I out of +)"],["current_load","load (draws I into +)"]], d.ptype)}</select></div>`;
   b += `<div class="sep"></div>`;
-  ins.filter(s => s.key.startsWith("f.") && s.key !== "f.I0").forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
+  ins.filter(s => s.key.startsWith("f.") && s.key !== "f.I0" && s.key !== "f.eta" && s.key !== "f.eta_back").forEach(s => b += fieldRow(n, s, d.fields[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
   if (d.ptype === "motor"){
     b += `<div class="row"><label title="chop the supply at a throttle and limit the current, like a speed controller">ESC</label><input type="checkbox" data-k="escOn"${d.escOn ? " checked" : ""} style="justify-self:start"></div>`;
     if (d.escOn){ ins.filter(s => s.key.startsWith("e.")).forEach(s => b += fieldRow(n, s, d.esc[s.key.slice(2)] ?? "", PART_PH[s.key.slice(2)] || ""));
       b += `<div class="row"><label title="let the motor push current back into the supply when it is driven faster than the throttle asks">regen</label><input type="checkbox" data-k="regen"${d.regen ? " checked" : ""} style="justify-self:start"></div>`;
+      b += `<div class="row"><label title="drag brake: at zero throttle the ESC shorts the winding and the motor brakes (held to I_max); off: zero throttle coasts. Throttle runs -1 (reverse) to 1">drag brake</label><input type="checkbox" data-k="brake"${d.brake ? " checked" : ""} style="justify-self:start"></div>`;
       b += `<div class="row"><label title="optional: the bridge's MOSFET resistance and switching loss, and the ESC's own temperature">ESC losses</label><input type="checkbox" data-k="escLossOn"${d.escLossOn ? " checked" : ""} style="justify-self:start"></div>`; }
     b += `<div class="row"><label title="optional: the no-load current I0 from the datasheet, as an iron and bearing drag Kt I0 on the shaft">no-load loss</label><input type="checkbox" data-k="ioOn"${d.ioOn ? " checked" : ""} style="justify-self:start"></div>`;
     if (d.ioOn){ const s0 = ins.find(s => s.key === "f.I0"); if (s0) b += fieldRow(n, s0, d.fields.I0 ?? "", PART_PH.I0); }
+    b += `<div class="row"><label title="optional: gearbox efficiency. eta while the motor drives the output; eta_back when the load drives the motor (blank = worked out from eta and the ratio)">gearbox losses</label><input type="checkbox" data-k="etaOn"${d.etaOn ? " checked" : ""} style="justify-self:start"></div>`;
+    if (d.etaOn) ["eta", "eta_back"].forEach(f => { const s0 = ins.find(s => s.key === "f." + f); if (s0) b += fieldRow(n, s0, d.fields[f] ?? "", PART_PH[f] || ""); });
   }
   if (WAVE_ON.includes(d.ptype)) b += waveBlock(n, ins, "w.", "wvOn", "wvShape", d.wv || (d.wv = {}), "function gen",
     "drive the " + (d.ptype === "voltage_source" ? "voltage" : "current") + " with a waveform: sine, square, triangle, sawtooth, pulse, step or ramp");

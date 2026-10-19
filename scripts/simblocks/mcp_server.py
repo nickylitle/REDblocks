@@ -22,7 +22,8 @@ INSTRUCTIONS = """REDblocks (Simblocks) runs explicit-dynamics sims built from c
 bodies, springs, contacts, plates and beams from Roark, plasticity from real stress-strain curves, motors, circuits.
 A model is one YAML file. Workflow: read_model (or list_examples) -> format_reference for the syntax you need ->
 edit_model / write_model (the compiler checks every edit; invalid edits are refused) -> run_model -> sweep / verify /
-plot. Values carry units ("3 mm", "12 V"). Never invent failure criteria: failure modes come from the user.
+plot. A run that may take over ~45 s (check_model gives estimated_run_s): start_job, then job_status until done.
+The run watchdog is adjustable per call (timeout: "none" turns it off). Values carry units ("3 mm", "12 V"). Never invent failure criteria: failure modes come from the user.
 Outputs are in SI unless a unit is given in the model. Tell the user which file you changed."""
 
 
@@ -100,6 +101,22 @@ def _write_checked(path, text, allow_invalid=False):
     return dict(chk, written=True, path=path, backup=(path + ".bak") if os.path.exists(path + ".bak") else None)
 
 
+def _tmo(timeout):
+    """The run watchdog: None or "model" -> the model's own run.timeout (AUTO by default); "none", "off", 0 or
+    False -> no limit; a number or "90 s" / "5 min" -> that many seconds of wall-clock time."""
+    if timeout is None or timeout == "model":
+        return "model"
+    if timeout is False or str(timeout).strip().lower() in ("none", "off", "0", "no", "false", "unlimited"):
+        return None
+    if isinstance(timeout, (int, float)):
+        return float(timeout) if timeout > 0 else None
+    from .compiler.units import parse_quantity
+    try:
+        return float(parse_quantity(str(timeout)))
+    except Exception:
+        return float(str(timeout).split()[0])
+
+
 def _hist_stats(t, v):
     v = np.asarray(v, float)
     if not len(v):
@@ -160,14 +177,17 @@ def tool_edit_model(path: str, old: str, new: str):
         return _err(exc)
 
 
-def tool_run_model(path: str, overrides: dict | None = None, histories: list[str] | None = None, points: int = 0):
+def tool_run_model(path: str, overrides: dict | None = None, histories: list[str] | None = None, points: int = 0,
+                   timeout: str | float | None = None):
     """Run the model once. overrides sets params for this run only, e.g. {"thickness": "3 mm"}. Returns every output,
     the energy ledger, and for each history named in histories (e.g. ["hit.force", "wedge.velocity"]; [] for none,
-    ["*"] for all) its final, max, time of max, min and mean. points > 0 also returns that many evenly spaced samples."""
+    ["*"] for all) its final, max, time of max, min and mean. points > 0 also returns that many evenly spaced samples.
+    timeout is the run watchdog: omit for the model's own (AUTO), "none" to turn it off, or seconds ("10 min").
+    A run longer than about 50 s can outlast the connection: use start_job for those (check_model gives the estimate)."""
     try:
         p = _path(path)
         s = _load(_read(p), p)
-        out, H = s.run(overrides or None, history=True)
+        out, H = s.run(overrides or None, history=True, timeout=_tmo(timeout))
         res = {"ok": True, "outputs": {k: _num(v) for k, v in out.items() if not k.startswith("_")},
                "checks": {k: _num(v) for k, v in out.items() if k.startswith("_")}}
         t = np.asarray(H.get("t", []), float)
@@ -207,16 +227,17 @@ def tool_run_model(path: str, overrides: dict | None = None, histories: list[str
         return _err(exc)
 
 
-def tool_sweep(path: str, param: str, values: list[str], outputs: list[str] | None = None):
+def tool_sweep(path: str, param: str, values: list[str], outputs: list[str] | None = None,
+               timeout: str | float | None = None):
     """Run the model once per value of one param (e.g. param "thickness", values ["2 mm", "3 mm", "4 mm"]) and return
-    a table of the outputs (all, or the ones named in outputs)."""
+    a table of the outputs (all, or the ones named in outputs). timeout applies to each run (see run_model)."""
     try:
         p = _path(path)
         s = _load(_read(p), p)
         rows = []
         for v in values:
             try:
-                o = s.run({param: v})
+                o = s.run({param: v}, timeout=_tmo(timeout))
                 rows.append({param: v, **{k: _num(x) for k, x in o.items() if not k.startswith("_") and (not outputs or k in outputs)}})
             except Exception as exc:
                 rows.append({param: v, "error": str(exc)})
@@ -342,8 +363,83 @@ def tool_open_in_editor(path: str):
     return {"ok": True, "queued": p, "note": "REDblocks did not pick it up within 5 s; it opens when the editor next runs"}
 
 
+# ------------------------------------------------------------------ background jobs (long runs)
+JOBS = {}
+
+
+def _job_view(j, with_result=True):
+    import time
+    v = {"job_id": j["id"], "kind": j["kind"], "path": j["path"], "state": j["state"],
+         "elapsed_s": round((j.get("t1") or time.time()) - j["t0"], 1), "estimated_run_s": j.get("est")}
+    if with_result and j["state"] in ("done", "error", "cancelled"):
+        v["result"] = j.get("result")
+    return v
+
+
+def tool_start_job(kind: str, path: str, overrides: dict | None = None, histories: list[str] | None = None,
+                   points: int = 0, param: str | None = None, values: list[str] | None = None,
+                   outputs: list[str] | None = None, mc_n: int | None = None, timeout: str | float | None = "none"):
+    """Start a long run in the background and return at once with a job_id. kind is "run" (same arguments as
+    run_model), "sweep" (param, values, outputs) or "verify" (mc_n). The watchdog is off by default here
+    (timeout "none"); give seconds to cap it. Then call job_status(job_id) until it says done."""
+    import threading, time, uuid
+    p = _path(path)
+    if kind not in ("run", "sweep", "verify"):
+        return {"ok": False, "error": "kind is run, sweep or verify"}
+    chk = _check_text(_read(p), p) if os.path.exists(p) else {"ok": False, "error": f"no file at {p}"}
+    if not chk["ok"]:
+        return chk
+    j = {"id": uuid.uuid4().hex[:8], "kind": kind, "path": p, "state": "running", "t0": time.time(),
+         "est": chk.get("estimated_run_s"), "done": threading.Event()}
+
+    def go():
+        from .compiler.model import uncancel
+        j["thread"] = threading.get_ident()
+        try:
+            if kind == "run":
+                r = tool_run_model(p, overrides, histories, points, timeout)
+            elif kind == "sweep":
+                r = tool_sweep(p, param or "", values or [], outputs, timeout)
+            else:
+                r = tool_verify_model(p, mc_n)
+            j["result"] = r
+            j["state"] = "cancelled" if j.get("cancel") else ("done" if r.get("ok", True) else "error")
+        except Exception as exc:
+            j["result"] = _err(exc); j["state"] = "error"
+        finally:
+            j["t1"] = time.time(); uncancel(threading.get_ident()); j["done"].set()
+    th = threading.Thread(target=go, daemon=True)
+    JOBS[j["id"]] = j
+    th.start()
+    return {"ok": True, **_job_view(j, False)}
+
+
+def tool_job_status(job_id: str, wait_s: float = 45):
+    """A background job's state (running, done, error, cancelled), how long it has run, and its result once
+    finished. Waits up to wait_s seconds (at most 50) for it to finish before answering."""
+    j = JOBS.get(job_id)
+    if not j:
+        return {"ok": False, "error": f"no job {job_id}", "jobs": [_job_view(x, False) for x in JOBS.values()]}
+    j["done"].wait(max(0.0, min(float(wait_s or 0), 50.0)))
+    return {"ok": True, **_job_view(j)}
+
+
+def tool_cancel_job(job_id: str):
+    """Stop a background job. A run stops at its next check; a sweep or Verify stops all its remaining runs."""
+    from .compiler.model import cancel_runs
+    j = JOBS.get(job_id)
+    if not j:
+        return {"ok": False, "error": f"no job {job_id}"}
+    j["cancel"] = True
+    if j.get("thread"):
+        cancel_runs(j["thread"])
+    j["done"].wait(5)
+    return {"ok": True, **_job_view(j)}
+
+
 TOOLS = [tool_list_examples, tool_open_in_editor, tool_read_model, tool_check_model, tool_write_model, tool_edit_model, tool_run_model,
-         tool_sweep, tool_verify_model, tool_find_blocks, tool_block_info, tool_find_materials, tool_format_reference]
+         tool_sweep, tool_verify_model, tool_start_job, tool_job_status, tool_cancel_job, tool_find_blocks, tool_block_info,
+         tool_find_materials, tool_format_reference]
 
 
 # ------------------------------------------------------------------ server

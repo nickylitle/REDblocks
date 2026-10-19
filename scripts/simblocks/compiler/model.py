@@ -1025,6 +1025,22 @@ def adaptive_args(M, dt=None):
     return adp, adf, np.asarray(M.contact_el, np.int64)
 
 
+_ACTIVE_STOPS = {}          # thread id -> stop flags of the runs going on in it
+CANCELLED = set()           # threads whose runs (this one and every later one) stop at once
+
+
+def cancel_runs(thread_id):
+    """Stop the runs going on in that thread, and every run it starts after (a background MCP job's cancel:
+    a sweep or Verify is many runs). uncancel(thread_id) clears it."""
+    CANCELLED.add(thread_id)
+    for st in _ACTIVE_STOPS.get(thread_id, []):
+        st[0] = 1
+
+
+def uncancel(thread_id):
+    CANCELLED.discard(thread_id)
+
+
 def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     """timeout: 'model' uses run.timeout; None runs to the end; a number is seconds of wall-clock time."""
     import threading
@@ -1046,6 +1062,9 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     if limit == "auto":
         limit = auto_timeout(M, dt)
     stop = np.zeros(3, dtype=np.int64)            # [stop request, steps run, 1 = ended itself (touchdown)]
+    _ACTIVE_STOPS.setdefault(threading.get_ident(), []).append(stop)   # cancel_runs(thread) can stop it
+    if threading.get_ident() in CANCELLED:
+        stop[0] = 1
     dim2 = getattr(M, "dim", "1d") == "2d"
     dim3 = getattr(M, "dim", "1d") == "3d"
     if limit:
@@ -1088,6 +1107,9 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     finally:
         if timer is not None:
             timer.cancel()
+        lst = _ACTIVE_STOPS.get(threading.get_ident(), [])
+        if any(x is stop for x in lst):
+            lst[:] = [x for x in lst if x is not stop]
     timed_out = int(stop[1]) < n and int(stop[2]) == 0
     secs = _time.perf_counter() - t_run
     if secs > 0.05 and int(stop[1]) > 0:          # learn this computer's speed for the next estimate

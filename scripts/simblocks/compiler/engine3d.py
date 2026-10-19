@@ -116,6 +116,31 @@ def _vel(X, V, W, b, px, py, pz):
             V[b, 2] + W[b, 0] * ry - W[b, 1] * rx)
 
 
+@njit(cache=True, nogil=True)
+def _slip_mu(e, X, V, W, ia, ib, geo, vt, p):
+    """mu / mu_slide of a rolling contact (a wheel's sphere on a floor) from its slip ratio sigma = slip speed / the
+    larger of the hub's ground speed and the tread's rolling speed (at least v_min): brush-like rise, a peak of
+    mu_peak at slip_peak, settling to mu (sliding) at large slip (the legacy Flapjack tire curve)."""
+    nx = geo[e, 6]; ny = geo[e, 7]; nz = geo[e, 8]
+    pax, pay, paz = _vel(X, V, W, ia, geo[e, 0], geo[e, 1], geo[e, 2])
+    pbx, pby, pbz = _vel(X, V, W, ib, geo[e, 3], geo[e, 4], geo[e, 5])
+    hax = V[ia, 0] if ia >= 0 else 0.0; hay = V[ia, 1] if ia >= 0 else 0.0; haz = V[ia, 2] if ia >= 0 else 0.0
+    hbx = V[ib, 0] if ib >= 0 else 0.0; hby = V[ib, 1] if ib >= 0 else 0.0; hbz = V[ib, 2] if ib >= 0 else 0.0
+    # each side's rolling (spin) part and hub part at the contact; the reference is the larger relative one
+    cx = (hax - pbx) if ia >= 0 else (pax - hbx); cy = (hay - pby) if ia >= 0 else (pay - hby)
+    cz = (haz - pbz) if ia >= 0 else (paz - hbz)
+    cn = cx * nx + cy * ny + cz * nz
+    cx -= cn * nx; cy -= cn * ny; cz -= cn * nz
+    rx = (pax - hax) - (pbx - hbx); ry = (pay - hay) - (pby - hby); rz = (paz - haz) - (pbz - hbz)
+    rn = rx * nx + ry * ny + rz * nz
+    rx -= rn * nx; ry -= rn * ny; rz -= rn * nz
+    vref = max(math.sqrt(cx * cx + cy * cy + cz * cz), math.sqrt(rx * rx + ry * ry + rz * rz), p[4])
+    sig = vt / vref
+    muk = p[0]; mus = p[2]; sp = p[3]
+    mu = muk * math.tanh(sig / (0.5 * sp)) + (mus - muk) * (sig / sp) * math.exp(1.0 - sig / sp)
+    return mu / muk if muk > 0.0 else 0.0
+
+
 @njit(cache=True, nogil=True, inline="always")
 def _push(F, T, X, b, px, py, pz, fx, fy, fz):
     if b < 0:
@@ -678,6 +703,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         SG[k, 0] = 1e300; SG[k, 1] = -1e300
     th = th0.copy()
     R = np.zeros((nb, 3, 3)); W = np.zeros((nb, 3)); Rh = np.zeros((3, 3))
+    gwp = np.zeros((ne, 2))           # geared rotors: last step's frame and output rates about the motor axis
     for b in range(nb):
         _qmat(quat[b, 0], quat[b, 1], quat[b, 2], quat[b, 3], R[b])
     _omega(R, rmode, Iinv, axis, Lw, wsp, W, nb)
@@ -963,6 +989,26 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     se[e] = s
                     if active[e] == 0:
                         Fe[e] = 0.0; continue
+                    if typ[e] == 17 and P[e, 9] > 0.5:   # a geared rotor riding in a moving frame A (see model3d):
+                        oa = wax * awx + way * awy + waz * awz     # the output B carries G^2 J_r; these two torques put
+                        ob = wbx * awx + wby * awy + wbz * awz     # the rotor's reaction back where the gearbox puts it
+                        if not first:
+                            aA = (oa - gwp[e, 0]) / dt; aB = (ob - gwp[e, 1]) / dt
+                            Gr = P[e, 0]; Jr = P[e, 8]
+                            dA = (Gr - 1.0) * Jr * (Gr * aB - (Gr - 1.0) * aA)
+                            dB = Gr * (Gr - 1.0) * Jr * aA
+                            if ba[e] >= 0:
+                                T[ba[e], 0] += dA * awx; T[ba[e], 1] += dA * awy; T[ba[e], 2] += dA * awz
+                            if bb[e] >= 0:
+                                T[bb[e], 0] += dB * awx; T[bb[e], 1] += dB * awy; T[bb[e], 2] += dB * awz
+                            A[e] -= (dA * oa + dB * ob) * dt                # work they do: booked with the motor (a source)
+                            if ba[e] >= 0:                  # the reflected G^2 J_r on B also over-states its gyroscopic
+                                cg = (Gr * Gr - Gr) * Jr * ob     # pull when the frame turns the axle: the real rotor holds
+                                ga = ba[e]                          # G J_r w, so take (G^2 - G) J_r w x (wA x axis) back off A
+                                T[ga, 0] += cg * (W[ga, 1] * awz - W[ga, 2] * awy)
+                                T[ga, 1] += cg * (W[ga, 2] * awx - W[ga, 0] * awz)
+                                T[ga, 2] += cg * (W[ga, 0] * awy - W[ga, 1] * awx)
+                        gwp[e, 0] = oa; gwp[e, 1] = ob
                     o = tab_off[e]; L = tab_len[e]
                     Fv, dd, din, stored = _force(typ[e], one_sided[e], P[e], s, sd, tab_k[e], tab_x[o:o + L],
                                                  tab_F[o:o + L], st[e], aux[e], dt)
@@ -1056,7 +1102,10 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     continue
                 if typ[e] == 10:
                     Fn = Fe[ref[e]]
-                    Fm = P[e, 0] * Fn * math.tanh(sd / P[e, 1])
+                    if P[e, 3] > 0.0:                   # tire: mu follows the combined-slip curve in slip ratio
+                        Fm = P[e, 0] * Fn * _slip_mu(e, X, V, W, ba[e], bb[e], geo, sd, P[e])
+                    else:
+                        Fm = P[e, 0] * Fn * math.tanh(sd / P[e, 1])
                     inv = _inv_along(X, R, minv, rmode, Iinv, axis, Iax, ba[e], geo[e, 0], geo[e, 1], geo[e, 2],
                                      geo[e, 9], geo[e, 10], geo[e, 11]) + \
                         _inv_along(X, R, minv, rmode, Iinv, axis, Iax, bb[e], geo[e, 3], geo[e, 4], geo[e, 5],

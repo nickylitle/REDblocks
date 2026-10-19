@@ -437,6 +437,14 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             P[e, 0] = g(d, "mu", where); P[e, 1] = g(d, "v_eps", where, 0.01)
             if P[e, 0] < 0 or P[e, 1] <= 0:
                 raise SpecError("mu must be >= 0 and v_eps > 0", where, line_of(d, "mu"), f)
+            if ("mu_peak" in d) != ("slip_peak" in d):
+                raise SpecError("a tire curve needs both mu_peak (the grip at its peak) and slip_peak (the slip ratio "
+                                "there, e.g. 0.12); mu is the sliding grip", where, line_of(d, "mu_peak") or line_of(d, "slip_peak"), f)
+            if "mu_peak" in d:
+                P[e, 2] = g(d, "mu_peak", where); P[e, 3] = g(d, "slip_peak", where); P[e, 4] = g(d, "v_min", where, 0.05)
+                if P[e, 2] < P[e, 0] or not 0.0 < P[e, 3] < 5.0 or P[e, 4] <= 0 or P[e, 0] <= 0:
+                    raise SpecError("tire curve: mu_peak >= mu > 0, 0 < slip_peak < 5, v_min > 0", where,
+                                    line_of(d, "mu_peak"), f)
             tabs_x.append(np.zeros(0)); tabs_F.append(np.zeros(0))
             if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
                 act[e] = 0
@@ -599,10 +607,25 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             if mk[e] == E3.MK_TWIST:
                 bi = bb[e]; Jr = gg("J_rotor", 0.0)
                 if Jr > 0:
-                    if bi < 0 or B["rmode"][bi] != E3.R_SPIN:
-                        raise SpecError("J_rotor is added to a spin body; for a freely rotating rotor add it to the "
-                                        "rotor's inertia", where, line_of(d, "J_rotor"), f)
-                    B["Iax"][bi] = 1.0 / (1.0 / B["Iax"][bi] + Jr * G * G)
+                    if bi < 0:
+                        raise SpecError("J_rotor needs the motor's output body as the second body of the twist", where,
+                                        line_of(d, "J_rotor"), f)
+                    if B["rmode"][bi] == E3.R_SPIN:
+                        B["Iax"][bi] = 1.0 / (1.0 / B["Iax"][bi] + Jr * G * G)
+                    elif B["rmode"][bi] == E3.R_FREE:
+                        # the reflected rotor G^2 J_r rides on the output about the motor axis (fixed in both, the
+                        # output being on a hinge about it); the inertia stays positive-definite, so no tensor rule
+                        aw_ = _qR(B["quat0"][ba[e]]) @ GX[e, :3] if ba[e] >= 0 else GX[e, :3]
+                        RB_ = _qR(B["quat0"][bi]); ab_ = RB_.T @ aw_
+                        Ib_ = np.linalg.inv(B["Iinv"][bi])
+                        w0_ = RB_ @ B["Iinv"][bi] @ RB_.T @ B["Lw0"][bi]
+                        Ib_ = Ib_ + Jr * G * G * np.outer(ab_, ab_)
+                        B["Iinv"][bi] = np.linalg.inv(Ib_)
+                        B["Lw0"][bi] = RB_ @ Ib_ @ RB_.T @ w0_
+                    else:
+                        raise SpecError("J_rotor needs an output body that spins or rotates", where, line_of(d, "J_rotor"), f)
+                    if ba[e] >= 0:                    # the frame moves: put the rotor's reaction back in it (engine3d)
+                        P[e, 8] = Jr; P[e, 9] = 1.0
             elif mk[e] != E3.MK_LIN or len(nz) != 1 or nz[0] % 4 != 3:
                 raise SpecError("a drive turns one spin coordinate ('shaft.spin') or a twist ({twist: [chassis, "
                                 "weapon], axis: z} for a motor on a moving body)", where, line_of(d, "measure"), f)

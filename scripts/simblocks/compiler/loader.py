@@ -83,7 +83,7 @@ ELEMENT_KEYS = {
              "nu", "internal", "rack_reversed"},
     "bolt": {"size", "d", "pitch", "grip", "threaded", "preload", "torque", "nut_factor", "grade", "Sy", "E",
              "E_members", "k_bolt", "k_members", "c", "zeta", "Su", "elongation"},
-    "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact"},
+    "pin": {"k", "c", "rigid"}, "contact_friction": {"mu", "v_eps", "contact", "mu_peak", "slip_peak", "v_min"},
     "rope": {"k", "c", "length"}, "weld": {"k", "c", "k_rot", "c_rot", "rigid"},
     "hinge": {"k", "c", "k_rot", "c_rot", "axis", "k_twist", "c_twist", "rigid"},
     "slider": {"k", "c", "k_rot", "c_rot", "axis", "friction", "v_eps", "rigid"},

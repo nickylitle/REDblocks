@@ -401,7 +401,7 @@ circuit:
 | `diode` | Vf (0.7 V), R_on (10 mohm), R_off (10 Mohm) | conducts first net to second past Vf |
 | `switch` | R_on, R_off, on_at, off_at, pwm_freq, duty, phase | closed from on_at to off_at, chopped at duty with pwm_freq |
 | `fuse` | **I_rating**, t_blow (1 s), I_trip, R | opens once integral (i/I_rating)^2 dt > t_blow, or at once above I_trip |
-| `motor` | **R**, **measure**, kv or Kt, L, gear, J_rotor, esc {throttle, I_max, regen} | v = R i + L di/dt + gear Kt ds/dt |
+| `motor` | **R**, **measure**, kv or Kt, L, gear, J_rotor, eta, eta_back, esc {throttle, I_max, regen, brake} | v = R i + L di/dt + gear Kt ds/dt |
 
 Function generator: `wave:` on a voltage source, current source or current load (and `I_load:` given as the same
 dict on a battery or voltage source) drives it with a waveform. Output = offset + amplitude x shape(t).
@@ -416,6 +416,19 @@ Keys: `shape` (sine, square, triangle, sawtooth, pulse = 0 to amplitude, step, r
 (default: the part's V or I), `frequency` or `period` (periodic shapes), `phase`, `duty` (0 to 1, square and pulse),
 `start` (offset before it), `stop` (offset after it), `rise` (ramp: time to climb by the amplitude). The auto step
 takes about 50 steps per period.
+
+Motor details:
+- **ESC** `throttle` runs -1 (full reverse) to 1: a reversing drive ESC. `regen: true` lets current flow back to
+  the bus; `brake: true` is the drag brake: at zero throttle the bridge shorts the winding (current held to `I_max`),
+  otherwise zero throttle coasts.
+- **Gearbox efficiency** `eta` (forward, default 1): the output gets eta x gear x Kt x i while the motor drives it;
+  when the load drives the motor (braking, back-driving) it feels gear x Kt x i / `eta_back` (default from eta and the
+  ratio, the planetary/spur relation; give it if measured). The loss is counted in the motor's `heat`.
+- **J_rotor** is reflected through the gear (J_rotor gear^2 on the output). On a motor that rides on a moving body
+  (`measure: {twist: [chassis, wheel]}` in 3D) the rotor's reaction stays in the chassis, as the gearbox puts it:
+  the chassis feels the torque that reaches the wheel plus the rotor's own spin-up, not the full reflected inertia
+  torque (a gearmotor launching a robot does not wheelie from rotor inertia it does not have), and the gyroscopic
+  pull when the chassis turns is the real rotor's (G J_r w), not the reflected G^2 J_r w.
 
 `thermal` (optional on every part except sources): `{C_th: J/K, R_th: K/W, T_amb_C: 25, T0_C, alpha: 1/K,
 T_max_C, kt_tempco, vf_tempco}`. The part heats with its losses and cools to ambient through R_th. Its resistance
@@ -544,7 +557,7 @@ bodies:
 | `{contact: [A.tip, B.face]}` | penetration of a point or circle into a line segment or circle (> 0 in contact) | hertz, kelvin_voigt, elastoplastic |
 | `{twist: [A, B]}` | B's turn relative to A (rz_B - rz_A, zero at the start) | a motor between a frame and its rotor, torsion springs, bearing drag |
 | `type: pin`, `measure: [A.p, B.q]` | the two points held together (vector spring-damper k, c, or `rigid: true`) | hinges, axles |
-| `type: contact_friction`, `contact: <element>` | slip along that contact's surface: mu x contact force | sliding, rolling, scraping |
+| `type: contact_friction`, `contact: <element>` | slip along that contact's surface: mu x contact force (3D: optional tire curve, below) | sliding, rolling, scraping |
 
 `A.p` names a point, circle or line on body A; `A` alone is its drawing origin.
 
@@ -598,6 +611,10 @@ bodies:
   `{along: [A.p, B.q], dir: z, turns_with: A}`, `{contact: [A.tip, B.face]}` (a point or sphere against a plane patch
   or a sphere), `{twist: [A, B], axis: z}` (B's turn relative to A about an axis fixed in A, given in world
   directions at the start), `type: pin` (a ball joint) and `contact_friction` (slip in the contact plane).
+- **Tire curve** on `contact_friction` (3D): `mu` is the sliding grip; add `mu_peak` and `slip_peak` and grip follows
+  slip ratio sigma = slip speed / the larger of the hub's ground speed and the tread's rolling speed (at least `v_min`,
+  default 0.05 m/s): a brush-like rise, the peak `mu_peak` at `slip_peak`, settling to `mu` at large slip.
+  `{type: contact_friction, contact: tire, mu: 1.67, mu_peak: 2.0, slip_peak: 0.12}` for a wheel's sphere on a floor.
 - A plane patch's outside is the side the point starts on; it counts while the point is over the patch
   (`size` along `u` and `normal x u`) and the bite is under `depth`. Contacts start only by crossing from outside.
 - Body outputs: `x y z vx vy vz speed`, `angle` and `omega` of a spin body, `wx wy wz` (world angular velocity)

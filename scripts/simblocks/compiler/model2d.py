@@ -261,6 +261,9 @@ def compile_elements(doc, ctx, M, B, feats, overrides):
             raise SpecError("a rope's measure is {distance: [A.p, B.q], length: L} (it only pulls past L)", where,
                             line_of(d, "measure"), f)
         if t == "contact_friction":
+            if "mu_peak" in d or "slip_peak" in d:
+                raise SpecError("the tire curve (mu_peak, slip_peak) is 3d only for now; in 2d give mu (the sliding grip)",
+                                where, line_of(d, "mu_peak") or line_of(d, "slip_peak"), f)
             on = d.get("contact")
             if on not in els or on == en:
                 raise SpecError("contact_friction needs contact: <the name of a contact element>", where,
