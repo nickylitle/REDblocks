@@ -4635,6 +4635,11 @@ async function loadText(text, path, dataDir, keepView){
 // the open file changed on disk (an AI assistant through REDblocks MCP, or another program): reload it in place
 let diskStamp = null, diskWarned = false, diskNote = "";
 async function stampNow(){ diskStamp = null; diskWarned = false; diskNote = ""; if (!filePath) return; const r = await API.call("file_stamp", filePath); if (r && r.ok) diskStamp = r.mtime; }
+setInterval(async () => {   // an assistant asked to open a model here (REDblocks MCP open_in_editor)
+  const r = await API.call("take_open_request"); if (!r || !r.ok) return;
+  if (dirty && !(await ask("Open " + r.path.split(/[\\/]/).pop() + "?", "An AI assistant asked to open this model. Your unsaved edits here would be lost.", "Open it", "Keep mine"))) return;
+  await loadText(r.text, r.path); refreshRecent(); status("ok", "Opened " + r.path.split(/[\\/]/).pop() + " for the assistant.");
+}, 1500);
 setInterval(async () => {
   if (!filePath || diskStamp === null || document.hidden) return;
   const r = await API.call("file_stamp", filePath); if (!r || !r.ok || r.mtime === diskStamp) return;

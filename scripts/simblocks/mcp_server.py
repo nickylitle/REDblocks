@@ -320,7 +320,29 @@ def tool_format_reference(section: str = ""):
     return {"ok": bool(got), "text": "\n".join(got)[:20000] if got else f"no section matches '{section}'"}
 
 
-TOOLS = [tool_list_examples, tool_read_model, tool_check_model, tool_write_model, tool_edit_model, tool_run_model,
+def _request_file():
+    return os.path.join(os.path.expanduser("~"), ".simblocks", "open_request.json")
+
+
+def tool_open_in_editor(path: str):
+    """Open a model in the REDblocks editor window on this computer, so the user can watch it (the editor must be
+    running). If the editor has unsaved edits it asks instead of replacing them."""
+    import time
+    p = _path(path)
+    if not os.path.exists(p):
+        return {"ok": False, "error": f"no file at {p}"}
+    f = _request_file()
+    os.makedirs(os.path.dirname(f), exist_ok=True)
+    with open(f, "w", encoding="utf-8") as fh:
+        json.dump({"path": p, "t": time.time()}, fh)
+    for _ in range(20):                                   # the editor deletes the request when it picks it up
+        time.sleep(0.25)
+        if not os.path.exists(f):
+            return {"ok": True, "opened": p}
+    return {"ok": True, "queued": p, "note": "REDblocks did not pick it up within 5 s; it opens when the editor next runs"}
+
+
+TOOLS = [tool_list_examples, tool_open_in_editor, tool_read_model, tool_check_model, tool_write_model, tool_edit_model, tool_run_model,
          tool_sweep, tool_verify_model, tool_find_blocks, tool_block_info, tool_find_materials, tool_format_reference]
 
 

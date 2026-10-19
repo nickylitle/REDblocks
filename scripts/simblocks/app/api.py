@@ -457,6 +457,21 @@ class Api:
         except Exception as exc:
             return _err(exc)
 
+    def take_open_request(self):
+        """A model an AI assistant asked the editor to open (REDblocks MCP open_in_editor), taken once."""
+        import json
+        f = os.path.join(os.path.expanduser("~"), ".simblocks", "open_request.json")
+        try:
+            with open(f, encoding="utf-8") as fh:
+                req = json.load(fh)
+            os.remove(f)
+            path = req.get("path", "")
+            if time.time() - float(req.get("t", 0)) > 3600 or not os.path.exists(path):
+                return dict(ok=False)
+            return self.open_path_text(path)
+        except Exception:
+            return dict(ok=False)
+
     def file_stamp(self, path):
         """When the file last changed, so the editor can reload a model an assistant (MCP) or another program edited."""
         try:

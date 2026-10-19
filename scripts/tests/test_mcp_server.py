@@ -78,7 +78,7 @@ def test_stdio_session(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 names = {t.name for t in (await s.list_tools()).tools}
-                assert {"read_model", "edit_model", "run_model", "sweep", "verify_model", "plot", "format_reference"} <= names
+                assert {"read_model", "edit_model", "run_model", "sweep", "verify_model", "plot", "format_reference", "open_in_editor"} <= names
                 res = await s.call_tool("write_model", {"path": "lc.yaml", "yaml": LC})
                 assert json.loads(res.content[0].text)["written"]
                 res = await s.call_tool("run_model", {"path": "lc.yaml"})
