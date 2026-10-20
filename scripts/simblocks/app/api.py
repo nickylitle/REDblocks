@@ -220,8 +220,33 @@ class Api:
 
     def run(self, text, overrides=None, n_hist=600, model_path=None, export=False, track=False):
         """One run at the nominal values. export=True also writes the model's CSV exports (Run button);
-        live runs pass export=False so typing never writes files. track=True reports stages to progress()."""
-        return _run_payload(text, overrides, n_hist, model_path, export, track)
+        live runs pass export=False so typing never writes files. track=True reports stages to progress().
+        The Run button's run (export=True) can be stopped with run_stop()."""
+        if not export:
+            return _run_payload(text, overrides, n_hist, model_path, export, track)
+        import threading
+        from ..compiler.model import uncancel
+        tid = threading.get_ident()
+        uncancel(tid); self._run_tid = tid; self._run_stopped = False
+        try:
+            r = _run_payload(text, overrides, n_hist, model_path, export, track)
+            if self._run_stopped and isinstance(r, dict):
+                r["stopped"] = True
+            return r
+        finally:
+            if getattr(self, "_run_tid", None) == tid:
+                self._run_tid = None
+            uncancel(tid)
+
+    def run_stop(self):
+        """Stop the Run button's run where it is (its results so far come back, marked stopped)."""
+        from ..compiler.model import cancel_runs
+        tid = getattr(self, "_run_tid", None)
+        if tid is None:
+            return dict(ok=False)
+        self._run_stopped = True
+        cancel_runs(tid)
+        return dict(ok=True)
 
     def scenarios_run(self, text):
         """Every scenario (a named set of values) run once, side by side with the model as written."""

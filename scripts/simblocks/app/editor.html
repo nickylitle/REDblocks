@@ -51,6 +51,8 @@ button{font:var(--ui-fs,12px) var(--sans);white-space:nowrap;display:inline-flex
   padding:5px 10px;cursor:pointer}
 button:hover{border-color:var(--acc)}
 button.primary{background:var(--selbg);border-color:var(--acc)}
+button.stopbtn{background:var(--fail);border-color:var(--fail);color:var(--bg);font-weight:600}
+button.primary:disabled{opacity:.6;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 input,select,textarea{font:12px var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--edge);
   border-radius:4px;padding:3px 6px;min-width:0}
@@ -4105,14 +4107,33 @@ function needCheck(){
   status("bad", `${miss.length} required box${miss.length === 1 ? " is" : "es are"} empty (${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""}): fill the flashing ones.`);
   return false;
 }
+// While a run goes, the Run button is a Stop button. After every change it ignores clicks for a moment, so a
+// double-click on Run never starts a run and stops it again (and spam-clicking never queues more runs)
+let runBusy = false, runBtnT = 0;
+const RUN_BTN_LOCK_MS = 450;
+function runBtnState(busy){
+  const b = document.getElementById("bRun"); runBusy = busy;
+  b.textContent = busy ? "Stop" : "Run"; b.classList.toggle("stopbtn", busy);
+  b.title = busy ? "Stop this run where it is (the results so far are kept)" : "Run once at the nominal values and write CSV exports (F5)";
+  b.disabled = true; clearTimeout(runBtnT); runBtnT = setTimeout(() => { b.disabled = false; }, RUN_BTN_LOCK_MS);
+}
+async function runClick(){
+  if (runBusy){ const b = document.getElementById("bRun"); b.disabled = true; status("busy", "Stopping…"); await API.call("run_stop"); return; }
+  doRun();
+}
 async function doRun(){
-  if (!needCheck()) return;
+  if (runBusy || !needCheck()) return;
+  runBtnState(true);
+  try { await doRunInner(); } finally { runBtnState(false); }
+}
+async function doRunInner(){
   await renderYaml(); status("busy", "Running…"); tab("pRes");
   const seq = ++runSeq, t0 = performance.now(); pcStart("run");
   const r = await API.call("run", yamlText, null, 600, filePath, true, true); pcStop();
   const secs = (performance.now() - t0) / 1000; liveSlow = secs > LIVE_MAX_S ? secs : 0;
   if (!r.ok){ status("bad", r.error); document.getElementById("pRes").innerHTML = `<div class="empty">${esc(r.error)}</div>`; return; }
   if (seq === runSeq) showRun(r, false);
+  if (r.stopped){ status("bad", `Stopped at t = ${niceTime(r.outputs._t_stopped || 0).join(" ")}: results are partial.`); return; }
   if (r.outputs._timed_out){ status("bad", `Stopped by the timeout at t = ${niceTime(r.outputs._t_stopped).join(" ")}: results are partial.`); return; }
   confetti(); status("ok", `Ran in ${secs.toFixed(2)} s · energy ledger ${(100 * r.outputs._ledger_rel).toFixed(3)}%` + (r.exported.length ? ` · ${r.exported.length} CSV written` : ""));
 }
@@ -4398,7 +4419,7 @@ async function overlayLoad(f){ const r = await API.call("read_csv_table", f, fil
   const fx = unitOf(hdr[0]) ? (unitFactor(unitOf(hdr[0])) || 1) : 1, xs = r.rows.map(row => +row[0] * fx);
   OVL[f] = []; for (let j = 1; j < cols; j++){ const u = unitOf(hdr[j]), fy = u ? (unitFactor(u) || 1) : 1;
     OVL[f].push({label:(hdr[j] || "column " + (j + 1)).replace(/\s*\[[^\]]*\]\s*$/, "") + " (" + f.split(/[\\/]/).pop() + ")", t:xs, y:r.rows.map(row => +row[j] * fy)}); } }
-document.getElementById("bRun").onclick = doRun; document.getElementById("bVerify").onclick = doVerify; document.getElementById("bReport").onclick = doReport;
+document.getElementById("bRun").onclick = runClick; document.getElementById("bVerify").onclick = doVerify; document.getElementById("bReport").onclick = doReport;
 // ------------------------------------------------------------------------------------------------ studies
 function ask(title, html, yes){
   return new Promise(res => {
