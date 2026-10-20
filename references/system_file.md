@@ -287,6 +287,23 @@ Element quantities with a time history: force, measure, plus plastic_set and bro
 battery_current, bus_voltage, soc (drive), moment, torque, shear, hinge_set (beam) and impulse, dissipated,
 friction_impulse (impact). Otherwise absorbed_work and dissipated are end-of-run numbers.
 
+Spectra instead of time histories (for Ansys harmonic, random-vibration and response-spectrum loads): add `spectrum`
+to an export. The file is then `Frequency [Hz]` plus one spectrum per column, computed from every time step (the run
+logs them all for it).
+
+```yaml
+  - name: mount_srs
+    spectrum: {kind: srs, f_min: 10 Hz, f_max: 2000 Hz, Q: 10}   # srs | psd | fft (or just spectrum: psd)
+    columns: [{body: frame, quantity: az, unit: gn}]              # body accelerations: acceleration (1d), ax ay az
+```
+
+- `fft`: one-sided amplitude (a sine of amplitude A reads A), Hann window, amplitude-corrected.
+- `psd`: Welch, Hann, 50 % overlap, unit^2/Hz (`segment: 0.5 s` sets the segment; default an eighth of the record);
+  it integrates to the mean square.
+- `srs`: maximax absolute-acceleration shock response spectrum, Smallwood ramp-invariant filter (ISO 18431-4),
+  `per_octave` points (12), up to a fifth of the sample rate; the residual ring-down is included.
+- Units: `gn` (or `g0`) is standard gravity, 9.80665 m/s^2 (`g` is the gram).
+
 ### Vehicles in flight (2d): rockets, staging, drag, steering, landing guidance, a planet
 
 `gravity: {planet: earth, radius: 6373 km, rotation: $site.omega_plane}` puts the planet's centre at the origin:
@@ -361,6 +378,8 @@ outputs:
 | `lag` | **lag** (input), tau, init | first-order: y += (u - y)(1 - e^(-dt/tau)) |
 | `rate_limit` | **rate_limit** (input), **rate**, init | y moves toward u by at most rate x dt per step |
 | `integrate` | **integrate** (input), init | y = init + ∫u dt |
+| `hold` | **hold** (input), **period** | sample and hold: y takes u every period and holds it (a controller loop at a fixed rate, 1 / period) |
+| `transfer` | **transfer** (input), **num**, **den** | y = num(s) / den(s) u, coefficients in falling powers of s (MATLAB order), order up to 3, starts at rest; trapezoidal (Tustin) state-space step, stable at any step. `num: [1], den: [0.02, 1]` is 1 / (0.02 s + 1) |
 
 Timing: at the end of each step the signals read the state that step ended in (positions, speeds, forces and element
 states) and set the fields the next step uses. Signals are worked out in the order written; one that reads a signal

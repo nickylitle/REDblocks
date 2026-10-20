@@ -238,6 +238,32 @@ class Api:
                 self._run_tid = None
             uncancel(tid)
 
+    def anim_scene(self, text, model_path=None, frames=900):
+        """The 1d / 2d / 3d animation of this model: its last run's history if the model is unchanged since, else a
+        fresh run. See simblocks/viz/anim.py."""
+        try:
+            from ..compiler import load_system
+            from ..viz.anim import scene
+            prev = os.environ.get("SIMBLOCKS_MODEL_DIR")
+            if model_path:
+                os.environ["SIMBLOCKS_MODEL_DIR"] = os.path.dirname(os.path.abspath(model_path))
+            try:
+                s = load_system(text)
+                L = _LAST_RUN
+                if L.get("text") == text and L.get("overrides") is None and "H" in L:
+                    S = scene(s, frames=frames, H=L["H"], out=L["out"]); S["reused"] = True
+                else:
+                    S = scene(s, frames=frames); S["reused"] = False
+            finally:
+                if model_path:
+                    if prev is None:
+                        os.environ.pop("SIMBLOCKS_MODEL_DIR", None)
+                    else:
+                        os.environ["SIMBLOCKS_MODEL_DIR"] = prev
+            return dict(ok=True, scene=_clean(S))
+        except Exception as exc:
+            return _err(exc)
+
     def run_stop(self):
         """Stop the Run button's run where it is (its results so far come back, marked stopped)."""
         from ..compiler.model import cancel_runs
@@ -1520,6 +1546,9 @@ def _run_payload(text, overrides=None, n_hist=600, model_path=None, export=False
     return _run_payload_in(text, overrides, n_hist, model_path, export, track)
 
 
+_LAST_RUN = {}          # the last run's full history: Animate replays it without running again
+
+
 def _run_payload_in(text, overrides=None, n_hist=600, model_path=None, export=False, track=False):
     from ..compiler import load_system
     try:
@@ -1538,6 +1567,7 @@ def _run_payload_in(text, overrides=None, n_hist=600, model_path=None, export=Fa
             out, H, paths = s.run_with_exports(overrides or None, model_path=model_path)
         else:
             out, H = s.run(overrides or None, history=True)
+        _LAST_RUN.update(text=text, overrides=overrides or None, path=model_path, H=H, out=out)   # the viewer reuses it
         if track:
             _PROG.update(stage=2, label="Outputs, energy ledger and time history", solve_t0=0.0)
         types = {k: e["type"] for k, e in s.doc["elements"].items()}

@@ -2,7 +2,7 @@
 import asyncio, os
 from common import main, check, load
 HERE = os.path.dirname(os.path.abspath(__file__))
-LONG = open(os.path.join(HERE, "..", "..", "examples", "learn", "3d_3_robot_arm.yaml")).read()
+LONG = open(os.path.join(HERE, "..", "..", "examples", "learn", "3d_3_robot_arm.yaml")).read().replace("t_end: 2.5 s", "t_end: 40 s")   # long enough to stop
 SHORT = open(os.path.join(HERE, "..", "..", "examples", "learn", "2d_1_pendulum.yaml")).read()
 
 async def spam(pg, n=6):

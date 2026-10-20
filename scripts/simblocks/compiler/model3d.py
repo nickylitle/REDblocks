@@ -29,7 +29,8 @@ from .engine1d import NP
 TRANS = ("x", "y", "z")
 COORDS3 = ("x", "y", "z", "spin")
 FEATURES3 = ("points", "spheres", "planes")
-BODY_Q3 = {k: i for i, k in enumerate(("x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz"))}
+BODY_Q3 = {k: i for i, k in enumerate(("x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz",
+                                      "qw", "qx", "qy", "qz"))}   # q: orientation quaternion (world from body)
 NAMED = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1), "-x": (-1, 0, 0), "-y": (0, -1, 0), "-z": (0, 0, -1)}
 
 

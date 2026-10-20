@@ -246,6 +246,29 @@ def tool_sweep(path: str, param: str, values: list[str], outputs: list[str] | No
         return _err(exc)
 
 
+def tool_estimate(path: str, data: str, signal: str, vary: dict, time_col: str | int = 0, y_col: str | int = 1,
+                  time_unit: str = "s", unit: str | None = None, t_range: list | None = None):
+    """Fit parameters to test data: find the values of the params in vary ({name: [low, high]}, units allowed)
+    that make the model's history `signal` (body.quantity, element.quantity, part.quantity or control.name;
+    body accelerations ax/ay/az/acceleration work) match the measured CSV `data` (time column, measurement column;
+    give their units with time_unit and unit). Bounded least squares, one run per evaluation. Returns the best values
+    with 1-sigma uncertainty (a huge one means the data cannot see that parameter), their correlation, the RMS misfit
+    and R^2. Use start_job for a slow model."""
+    try:
+        from .diagnostics.estimate import estimate
+        p = _path(path)
+        _model_env(p)
+        r = estimate(_load(_read(p), p), _path(data), signal, vary, t_range=t_range, time_col=time_col,
+                     y_col=y_col, time_unit=time_unit, unit=unit)
+        n = len(r["t"]); k = max(1, n // 200)
+        r["curve"] = {"t": r["t"][::k], "measured": r["measured"][::k], "fitted": r["fitted"][::k]}
+        for x in ("t", "measured", "fitted"):
+            r.pop(x)
+        return {"ok": True, **r}
+    except Exception as exc:
+        return _err(exc)
+
+
 def tool_verify_model(path: str, mc_n: int | None = None):
     """Full verification: time-step convergence, knockouts (does each element matter), Monte Carlo over the
     uncertain values, energy ledger, failure-mode safety factors. Slower than a run. Returns the report as markdown."""
@@ -438,7 +461,7 @@ def tool_cancel_job(job_id: str):
 
 
 TOOLS = [tool_list_examples, tool_open_in_editor, tool_read_model, tool_check_model, tool_write_model, tool_edit_model, tool_run_model,
-         tool_sweep, tool_verify_model, tool_start_job, tool_job_status, tool_cancel_job, tool_find_blocks, tool_block_info,
+         tool_sweep, tool_verify_model, tool_estimate, tool_start_job, tool_job_status, tool_cancel_job, tool_find_blocks, tool_block_info,
          tool_find_materials, tool_format_reference]
 
 

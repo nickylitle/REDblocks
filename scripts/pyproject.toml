@@ -29,4 +29,4 @@ include = ["simblocks*"]
 [tool.setuptools.package-data]
 simblocks = ["viz/fonts/*", "docs/*.json", "materials/*.json", "materials/curves/*.csv", "materials/curves/user/*",
              "materials/cards/*", "materials/research/*.json", "app/editor.html", "app/examples/*.yaml", "app/examples/data/*", "app/examples/showcase/*", "app/fonts/*",
-             "app/templates.yaml", "app/katex_bundle.js", "app/block_sources.json"]
+             "app/templates.yaml", "app/katex_bundle.js", "app/three.min.js", "app/three.LICENSE.txt", "app/block_sources.json"]

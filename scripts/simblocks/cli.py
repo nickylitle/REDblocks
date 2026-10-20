@@ -74,6 +74,12 @@ def main(argv=None):
     p.add_argument("--out", default=None, help="results zip (default: <name>_results.zip next to the job)")
     p.add_argument("--fresh", action="store_true", help="ignore a partial run and start over")
     p = sub.add_parser("batch-info"); p.add_argument("results")
+    p = sub.add_parser("estimate", help="fit parameters so a model history matches measured data (CSV)")
+    p.add_argument("file"); p.add_argument("--data", required=True, help="CSV: time, measurement (header optional)")
+    p.add_argument("--signal", required=True, help="body.quantity, element.quantity, part.quantity or control.name")
+    p.add_argument("--vary", nargs="+", required=True, help="param=low:high (units allowed: k_tire=5kN/m:50kN/m)")
+    p.add_argument("--time-col", default="0"); p.add_argument("--y-col", default="1")
+    p.add_argument("--time-unit", default="s"); p.add_argument("--unit", default=None, help="the measurement's unit")
     sub.add_parser("mcp", help="run as an MCP server (stdio) so an AI assistant can read, edit, run and verify models")
     a = ap.parse_args(argv)
     if a.cmd == "mcp":
@@ -89,6 +95,22 @@ def main(argv=None):
     if a.cmd == "batch-info":
         from .batch import summarize
         summarize(a.results)
+        return 0
+    if a.cmd == "estimate":
+        import re as _re
+        from .compiler import load_system as _ls
+        from .diagnostics.estimate import estimate
+        vary = {}
+        for it in a.vary:
+            k, rng = it.split("=", 1); lo, hi = rng.split(":", 1)
+            unit_ = lambda v: _re.sub(r"^([-+0-9.eE]+)([A-Za-z].*)$", r"\1 \2", v.strip())
+            vary[k.strip()] = [unit_(lo), unit_(hi)]
+        col = lambda c: int(c) if str(c).isdigit() else c
+        r = estimate(_ls(a.file), a.data, a.signal, vary, time_col=col(a.time_col), y_col=col(a.y_col),
+                     time_unit=a.time_unit, unit=a.unit)
+        for k, v in r["values"].items():
+            print(f"{k:<20} {v:.6g} +- {r['std'][k]:.3g}" + ("   (at its bound)" if k in r["at_bound"] else ""))
+        print(f"rms misfit {r['rms']:.4g}   R^2 {r['r2']:.5f}   {r['runs']} runs   {r['message']}")
         return 0
 
     from .compiler import load_system, SpecError

@@ -32,6 +32,7 @@ NAMING_SCHEMES = {
 SI_UNIT = {"force": "N", "measure": "m", "position": "m", "velocity": "m/s", "plastic_set": "m", "broken": "",
            "current": "A", "battery_current": "A", "bus_voltage": "V", "soc": ""}
 ROT_UNIT = {"position": "rad", "velocity": "rad/s"}
+ACCEL = {"acceleration": "velocity", "ax": "vx", "ay": "vy", "az": "vz"}   # body accelerations, from the velocity history
 SI_UNIT.update(x="m", y="m", z="m", angle="rad", vx="m/s", vy="m/s", vz="m/s", omega="rad/s", speed="m/s",
                wx="rad/s", wy="rad/s", wz="rad/s")
 
@@ -49,6 +50,8 @@ def log_points(doc, n_steps):
     pts = 0
     for x in doc.get("exports") or []:
         p = x.get("points", 1000)
+        if x.get("spectrum") is not None:            # a spectrum needs every step (up to a few million rows)
+            p = "all" if n_steps <= 4_000_000 else 4_000_000
         pts = max(pts, n_steps if str(p) == "all" else int(p))
     return max(pts, 2)
 
@@ -159,10 +162,17 @@ def column(doc, H, c, M=None):
         default_label = f"{c['element']} {qn}"
     else:
         qn = c.get("quantity", "position"); key = f"{c['body']}.{qn}"
-        si = (ROT_UNIT if body_is_rotational(M, c["body"], doc) else SI_UNIT).get(qn, "")
+        rot = body_is_rotational(M, c["body"], doc)
+        si = (ROT_UNIT if rot else SI_UNIT).get(qn, "")
+        if qn in ACCEL:                             # acceleration: the derivative of the logged velocity
+            si = "rad/s^2" if (rot and qn == "acceleration") else "m/s^2"
         default_label = f"{c['body']} {qn}"
     unit = c.get("unit") or si
-    y = np.asarray(H[key], dtype=float) / (unit_factor(unit) if unit else 1.0)
+    if "body" in c and c.get("quantity") in ACCEL:
+        v = np.asarray(H[f"{c['body']}.{ACCEL[c['quantity']]}"], dtype=float)
+        y = np.gradient(v, np.asarray(H["t"], dtype=float)) / (unit_factor(unit) if unit else 1.0)
+    else:
+        y = np.asarray(H[key], dtype=float) / (unit_factor(unit) if unit else 1.0)
     return y, str(c.get("label") or default_label), unit
 
 
@@ -180,6 +190,9 @@ def write(doc, H, model_path=None, run="nominal", when="run", stamp=None, M=None
         os.makedirs(folder, exist_ok=True)
         tu = x.get("time_unit") or "s"
         cols = [column(doc, H, c, M) for c in x["columns"]]
+        if x.get("spectrum") is not None:
+            paths.append(_write_spectrum(x, t, cols, folder, model, run, stamp, when))
+            continue
         rows = len(t); pts = x.get("points", 1000)
         idx = np.arange(rows) if str(pts) == "all" or rows <= int(pts) else \
             np.unique(np.round(np.linspace(0, rows - 1, int(pts))).astype(int))
@@ -200,3 +213,39 @@ def write(doc, H, model_path=None, run="nominal", when="run", stamp=None, M=None
             np.savetxt(fh, data, delimiter=",", fmt="%.9g")
         paths.append(path)
     return paths
+
+
+def _write_spectrum(x, t, cols, folder, model, run, stamp, when):
+    """An export with spectrum: frequency in the first column, each column's FFT, PSD or SRS after it."""
+    from ..diagnostics.spectrum import spectrum
+    sp = x["spectrum"] if isinstance(x["spectrum"], dict) else {"kind": x["spectrum"]}
+    kind = sp["kind"]
+    g = lambda k: float(unit_factor_value(sp[k])) if k in sp else None
+    F = None; vals = []; heads = []
+    for y, lab, u in cols:
+        f, v, suf = spectrum(kind, t, y, g("f_min"), g("f_max"), float(sp.get("Q", 10)), g("segment"),
+                             int(sp.get("per_octave", 12)))
+        F = f if F is None else F
+        vals.append(v)
+        tag = {"fft": "amplitude", "psd": "PSD", "srs": f"SRS Q={float(sp.get('Q', 10)):g}"}[kind]
+        un = (f"({u})^2/Hz" if u else "1/Hz") if kind == "psd" else u
+        heads.append((f"{lab} {tag}", un))
+    data = np.column_stack([F] + vals)
+    hdr = str(x.get("header", "units"))
+    path = os.path.join(folder, file_name(x.get("naming"), model, x["name"], run, stamp, force_run=(when == "study")))
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        if hdr == "units":
+            fh.write(",".join(["Frequency [Hz]"] + [f"{l} [{u}]" if u else l for l, u in heads]) + "\n")
+        elif hdr == "plain":
+            safe = lambda s: re.sub(r"\W+", "_", s).strip("_")
+            fh.write(",".join(["f_Hz"] + [safe(l) for l, _ in heads]) + "\n")
+        np.savetxt(fh, data, delimiter=",", fmt="%.9g")
+    return path
+
+
+def unit_factor_value(v):
+    """A number, or a quantity with a unit ('10 Hz', '0.5 s'), in SI."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip(); parts = s.split(None, 1)
+    return float(parts[0]) * (unit_factor(parts[1]) if len(parts) > 1 else 1.0)

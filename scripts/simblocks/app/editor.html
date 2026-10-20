@@ -381,6 +381,16 @@ label.cpick button{padding:0 6px;font-size:12px}
 .note .nb h4{margin:4px 0;font:600 14px var(--sans)} .note .nb ul{margin:4px 0;padding-left:18px} .note .nb p{margin:4px 0}
 .note .nb .katex-display{margin:6px 0;overflow-x:auto;overflow-y:hidden}
 .note .nb .texerr{color:var(--fail);font:11px var(--mono)}
+#animView{position:fixed;left:0;right:0;top:var(--bars-h,84px);bottom:26px;z-index:41;display:none;flex-direction:column;background:var(--bg)}
+#animView .abar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--edge);background:var(--panel);flex-wrap:wrap}
+#animView .abar label{display:flex;align-items:center;gap:4px;font:12px var(--sans);color:var(--ink2)}
+#animView #avTime{font:12px var(--mono);color:var(--ink);min-width:170px}
+#animView #avScrub{flex:1;min-width:160px;accent-color:var(--acc)}
+#animView .astage{position:relative;flex:1;min-height:0}
+#animView canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+#animView .alegend{position:absolute;left:12px;top:10px;font:12px var(--sans);color:var(--ink2);background:color-mix(in srgb, var(--panel) 85%, transparent);border:1px solid var(--edge);border-radius:6px;padding:7px 10px;pointer-events:none;max-width:44%}
+#animView .alegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#animView .ahelp{position:absolute;right:12px;bottom:10px;font:11px var(--sans);color:var(--ink3);pointer-events:none;text-align:right}
 #helpView{position:fixed;left:0;right:0;top:var(--bars-h,84px);bottom:26px;z-index:40;display:none;grid-template-columns:310px 1fr;background:var(--bg)}
 #hSide{border-right:1px solid var(--edge);background:var(--panel);display:flex;flex-direction:column;min-height:0}
 #hSide .top{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--edge)}
@@ -448,6 +458,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <button id="bStudy" title="Run every sweep value x Monte Carlo sample on the chosen cores">Study</button>
       <button id="bModes" title="Natural frequencies and mode shapes, about the position the model settles to under its loads">Modes</button>
       <button id="bStatic" title="Where the model settles under its loads and gravity, solved directly (no run), with every output there">Static</button>
+      <button id="bAnim" title="Watch the run: a 1d, 2d or 3d replay of every body (replays the last Run, or runs once)">Animate</button>
       <button id="bVerify" title="Full verification battery">Verify</button>
       <button id="bReport" title="Verify, then write a PDF and HTML report: next to the saved file, or in your home folder (simblocks/out) if it is not saved">Report</button>
     </div>
@@ -542,6 +553,20 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div id="status"><span class="dot"></span><img id="stGif" alt="" hidden><span id="prog"><i></i></span><span class="msg" id="smsg">Starting...</span></div>
 </div>
 <input type="file" id="fileIn" accept=".yaml,.yml" hidden>
+<div id="animView" role="dialog" aria-label="Replay"><div class="abar">
+  <button id="avClose" title="Back to the canvas (Esc)">← Canvas</button>
+  <button id="avPlay" class="primary" title="Play or pause (Space)">Play</button>
+  <input type="range" id="avScrub" min="0" max="1000" value="0" title="Drag to any moment">
+  <span id="avTime">t = 0</span>
+  <label title="How fast the replay runs against real time">speed <select id="avSpeed">
+    <option value="auto">fit to 10 s</option><option value="0.001">0.001x</option><option value="0.01">0.01x</option><option value="0.1">0.1x</option>
+    <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1">1x real time</option><option value="2">2x</option></select></label>
+  <label title="Keep the camera on one body">follow <select id="avFollow"><option value="-1">nothing</option></select></label>
+  <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
+  <label title="Springs, dampers, joints and motors between bodies"><input type="checkbox" id="avLinks" checked>links</label>
+  <button id="avFit" title="Frame everything again">Reset view</button>
+</div><div class="astage"><canvas id="avCanvas"></canvas><div class="alegend" id="avLegend"></div>
+<div class="ahelp">drag: turn · shift-drag or right-drag: pan · wheel: zoom · space: play</div></div></div>
 <div id="helpView"><div id="hSide"><div class="top"><button id="hBack" title="Back to the canvas (Esc)">← Canvas</button><input id="hQ" placeholder="Search features and blocks"></div><div id="hNav"></div></div><div id="hBody"></div></div>
 <div class="dlg" id="setDlg" role="dialog" aria-modal="true"><div class="box" style="width:min(820px,95vw)">
   <h4>Settings</h4><div class="sub">Saved on this computer for every model. Model files never store colours.</div>
@@ -740,7 +765,7 @@ function defaults(kind){
     case "scen": return {name:"scenarios", nv:1, names:["scenario_1", "scenario_2"], cells:[[""], [""]]};
     case "opt": return {name:"optimize", goal:"minimize", nv:1, nc:1, ranges:[{lo:"", hi:""}], cons:[{side:"max", value:""}], fm:true, max:"150"};
     case "export": return {name:"csv", cols:[{label:"", unit:"", quantity:"position"}], folder:"out/csv", naming:"{model}_{name}",
-                           custom:"", time_unit:"s", points:"1000", header:"units", when:"run"};
+                           custom:"", time_unit:"s", points:"1000", header:"units", when:"run", spec:"time", f_min:"", f_max:"", Q:""};
   }
 }
 // sockets of a node: inputs [{key,label,type,field?,req}], outputs [{key,label,type}]
@@ -871,9 +896,10 @@ function compatible(outType, inType){
   return outType === inType;
 }
 // ---- control signals: the inputs a kind takes as wires (the rest are typed)
-const CTL_KINDS = [["expr","expression"],["if","if / else"],["pid","PID"],["lag","lag (smoothing)"],["rate_limit","rate limit"],["integrate","integrator"]];
+const CTL_KINDS = [["expr","expression"],["if","if / else"],["pid","PID"],["lag","lag (smoothing)"],["rate_limit","rate limit"],["integrate","integrator"],["hold","sample and hold (controller rate)"],["transfer","transfer function num(s) / den(s)"]];
 const CTL_INS = {pid:[["measure","measure","sigin"],["setpoint","setpoint","sigin"],["kp","kp","val"],["ki","ki","val"],["kd","kd","val"],["min","min","val"],["max","max","val"]],
-  lag:[["input","input","sigin"],["tau","tau","val"]], rate_limit:[["input","input","sigin"],["rate","rate","val"]], integrate:[["input","input","sigin"]]};
+  lag:[["input","input","sigin"],["tau","tau","val"]], rate_limit:[["input","input","sigin"],["rate","rate","val"]], integrate:[["input","input","sigin"]],
+  hold:[["input","input","sigin"],["period","period","val"]], transfer:[["input","input","sigin"],["num","num","val"],["den","den","val"]]};
 function ctlText(n, key){      // what a control input reads: a wire's source, or the text typed in it
   const l = linkTo(n.id, "c." + key); if (!l) return n.data[key];
   const src = byId(l.from.node); if (!src) return n.data[key];
@@ -890,6 +916,9 @@ function ctlOut(n){
   else if (d.ctype === "pid"){ const p = {measure:t("measure"), setpoint:t("setpoint")};
     ["kp","ki","kd","min","max","d_filter","bias"].forEach(k => { if (has(k)) p[k] = t(k); }); o.pid = p; }
   else { o[d.ctype] = t("input"); if (d.ctype === "lag" && has("tau")) o.tau = t("tau"); if (d.ctype === "rate_limit") o.rate = t("rate");
+    if (d.ctype === "hold") o.period = t("period");
+    if (d.ctype === "transfer"){ const arr = k => { const v = String(d[k] || "").trim().replace(/^\[|\]$/g, ""); return v ? v.split(",").map(x => lit(x.trim())) : []; };
+      o.num = arr("num"); o.den = arr("den"); }
     if (!blank(d.start) && String(d.start).trim()) o.init = lit(d.start); }
   if (d.label) o.label = d.label;
   return o;
@@ -900,8 +929,11 @@ function ctlIn(k, v){      // a control section entry -> node data
   if (v.expr !== undefined){ d.ctype = "expr"; d.expr = str(v.expr); }
   else if (v.if !== undefined){ Object.assign(d, {ctype:"if", cond:str(v.if), then:str(v.then ?? 1), else:str(v.else ?? 0), latch:!!v.latch, hold:str(v.for ?? "")}); }
   else if (v.pid){ d.ctype = "pid"; Object.entries(v.pid).forEach(([kk, x]) => d[kk] = str(x)); }
-  else { const kt = ["lag","rate_limit","integrate"].find(x => v[x] !== undefined) || "lag"; d.ctype = kt; d.input = str(v[kt]);
-    if (v.tau !== undefined) d.tau = str(v.tau); if (v.rate !== undefined) d.rate = str(v.rate); if (v.init !== undefined) d.start = str(v.init); }
+  else { const kt = ["lag","rate_limit","integrate","hold","transfer"].find(x => v[x] !== undefined) || "lag"; d.ctype = kt; d.input = str(v[kt]);
+    if (v.tau !== undefined) d.tau = str(v.tau); if (v.rate !== undefined) d.rate = str(v.rate); if (v.init !== undefined) d.start = str(v.init);
+    if (v.period !== undefined) d.period = str(v.period);
+    if (v.num !== undefined) d.num = Array.isArray(v.num) ? "[" + v.num.map(str).join(", ") + "]" : str(v.num);
+    if (v.den !== undefined) d.den = Array.isArray(v.den) ? "[" + v.den.map(str).join(", ") + "]" : str(v.den); }
   if (v.label) d.label = v.label;
   return d;
 }
@@ -1265,10 +1297,10 @@ function circuitIn(doc, pend, put){
     if (d.ptype === "motor"){ const m = e.measure, bn = s => String(s).replace(/\.(rz|spin)$/, "");
       const isB = s => typeof s === "string" && byName(bn(s.trim()), "b") && /^[A-Za-z_]\w*(\.(rz|spin))?$/.test(s.trim());
       if (isB(m)) bodyLinks.push([bn(m.trim()), 0]);
-      else if (m && typeof m === "object" && Array.isArray(m.twist) && m.twist.length === 2){ bodyLinks.push([m.twist[1], 0], [m.twist[0], 1]); d.axis = str(m.axis ?? "z"); }
+      else if (m && typeof m === "object" && Array.isArray(m.twist) && m.twist.length === 2){ bodyLinks.push([m.twist[1], 0], [m.twist[0], 1]); n.data.axis = str(m.axis ?? "z"); }   // n.data: addNode copied d
       else if (typeof m === "string" && /^\s*([A-Za-z_]\w*)\s*-\s*([A-Za-z_]\w*)\s*$/.test(m) && !isGeo()){ const [, a, b] = m.match(/^\s*([A-Za-z_]\w*)\s*-\s*([A-Za-z_]\w*)\s*$/); bodyLinks.push([a, 0], [b, 1]); }
-      else d.mraw = str(m ?? ""); }
-    bodyLinks.forEach(([b, i]) => { const bb = byName(String(b), "b"); if (bb) S.links.push({from:{node:bb.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); else d.mraw = str(e.measure); });
+      else n.data.mraw = str(m ?? ""); }
+    bodyLinks.forEach(([b, i]) => { const bb = byName(String(b), "b"); if (bb) S.links.push({from:{node:bb.id, key:"body"}, to:{node:n.id, key:"t" + i}, field:""}); else n.data.mraw = str(e.measure); });
     (Array.isArray(e.between) ? e.between : []).slice(0, 2).forEach((nm, i) => { const t = net(nm); S.links.push({from:{node:n.id, key: i ? "pb" : "pa"}, to:{node:t.id, key:"p" + (pin[t.data.name]++)}, field:""}); });
     Object.keys(d.fields).forEach(f => pend.push([n.id, "f." + f, e[f]]));
     Object.keys(d.esc).forEach(f => pend.push([n.id, "e." + f, e.esc[f]]));
@@ -1480,6 +1512,10 @@ function toDoc(){
       if (c.unit) o.unit = c.unit; if (c.label) o.label = c.label; cols.push(o); });
     const x = {name:d.name, columns:cols, folder:d.folder || "out/csv", naming: d.naming === "custom" ? (d.custom || "{model}_{name}") : (d.naming || "{model}_{name}"),
                time_unit:d.time_unit || "s", points: String(d.points || "1000").trim() === "all" ? "all" : (parseInt(d.points) || 1000), header:d.header || "units", when:d.when || "run"};
+    if (d.spec && d.spec !== "time"){                       // a spectrum instead of the time history
+      const sp = {kind:d.spec}; if (String(d.f_min || "").trim()) sp.f_min = d.f_min.trim(); if (String(d.f_max || "").trim()) sp.f_max = d.f_max.trim();
+      if (d.spec === "srs" && String(d.Q || "").trim()) sp.Q = parseFloat(d.Q) || 10;
+      x.spectrum = Object.keys(sp).length === 1 ? d.spec : sp; delete x.time_unit; delete x.points; }
     exps.push(x); });
   const study = {};
   if (Object.keys(sweep).length) study.sweep = sweep;
@@ -1837,6 +1873,9 @@ function fromDoc(doc){
     const nm = x.naming || "{model}_{name}";
     const n = addNode("export", {name:x.name, folder:str(x.folder || "out/csv"), naming: known_.includes(nm) ? nm : "custom", custom: known_.includes(nm) ? "" : nm,
       time_unit:x.time_unit || "s", points:str(x.points ?? "1000"), header:x.header || "units", when:x.when || "run",
+      spec: x.spectrum ? (typeof x.spectrum === "string" ? x.spectrum : x.spectrum.kind) : "time",
+      f_min: x.spectrum && x.spectrum.f_min !== undefined ? str(x.spectrum.f_min) : "", f_max: x.spectrum && x.spectrum.f_max !== undefined ? str(x.spectrum.f_max) : "",
+      Q: x.spectrum && x.spectrum.Q !== undefined ? String(x.spectrum.Q) : "",
       cols:(x.columns || []).map(c => ({label:c.label || "", unit:c.unit || "", quantity:c.quantity || (c.body ? "position" : "force")}))});
     (x.columns || []).forEach((c, i) => { const src = c.control ? byName(c.control, "k") : (c.part ? byName(c.part, "c") : (c.element ? byName(c.element, "e") : byName(c.body, "b")));
       if (src) S.links.push({from:{node:src.id, key: c.control ? "out" : (c.part ? "q." + (c.quantity || "current") : (c.element ? "q." + (c.quantity || "force") : "body"))}, to:{node:n.id, key:"c" + i}, field:""}); });
@@ -2471,15 +2510,23 @@ function exportHTML(n, ins){
     b += `<div class="row${s.req ? " req" : ""}"><span class="sock in t-any" data-s="${s.key}" data-t="any"></span><label title="${esc(what)}">${esc(src ? src.data.name : "column " + (s.col + 1))}</label>
       <div class="uv"><input data-col="${s.col}" data-ck="label" value="${esc(c.label)}" placeholder="${esc(src ? qn : "header")}" title="column header">` +
       (od && od !== "none" ? `<select data-col="${s.col}" data-ck="unit" title="unit">${unitOptions(od, c.unit)}</select>` : "") + `</div></div>`;
-    if (src && src.kind === "body"){ const ql = is3d() ? ["x","y","z","vx","vy","vz","speed","angle","omega","wx","wy","wz"] : (is2d() ? ["x","y","angle","vx","vy","omega","speed"] : ["position","velocity"]); if (!ql.includes(c.quantity)) c.quantity = ql[0];
+    if (src && src.kind === "body"){ const ql = is3d() ? ["x","y","z","vx","vy","vz","ax","ay","az","speed","angle","omega","wx","wy","wz"] : (is2d() ? ["x","y","angle","vx","vy","ax","ay","omega","speed"] : ["position","velocity","acceleration"]); if (!ql.includes(c.quantity)) c.quantity = ql[0];
       b += `<div class="row"><label></label><select data-col="${s.col}" data-ck="quantity">${sel_(ql, c.quantity)}</select></div>`; }
   });
   b += `<div class="mini"><button data-act="addcol">+ column</button>${d.cols.length > 1 ? '<button data-act="delcol">− column</button>' : ""}</div><div class="sep"></div>`;
   b += `<div class="row"><label>folder</label><div class="uv"><input data-k="folder" value="${esc(d.folder)}" placeholder="out/csv (next to the model)"><button class="pick" data-act="folder" title="Choose a folder">…</button></div></div>`;
   b += `<div class="row"><label>naming</label><select data-k="naming">${sel_(NAMINGS, d.naming || "{model}_{name}")}</select></div>`;
   if (d.naming === "custom") b += `<div class="row"><label>pattern</label><input data-k="custom" value="${esc(d.custom)}" placeholder="{model}_{name}_{date}"></div>`;
+  b += `<div class="row"><label title="a time history, or its spectrum (for Ansys harmonic, random vibration or response-spectrum loads)">write</label><select data-k="spec">${sel_([["time","time history"],["fft","FFT amplitude spectrum"],["psd","PSD (Welch), unit²/Hz"],["srs","shock response spectrum (SRS)"]], d.spec || "time")}</select></div>`;
+  if (d.spec && d.spec !== "time"){
+    b += `<div class="row"><label>from</label><input data-k="f_min" value="${esc(d.f_min || "")}" placeholder="${d.spec === "srs" ? "1 / record length" : "0 Hz"}"></div>`;
+    b += `<div class="row"><label>to</label><input data-k="f_max" value="${esc(d.f_max || "")}" placeholder="${d.spec === "srs" ? "a fifth of the sample rate" : "Nyquist"}"></div>`;
+    if (d.spec === "srs") b += `<div class="row"><label title="SRS damping as Q (10 = 5 % damping, the usual)">Q</label><input data-k="Q" value="${esc(d.Q || "")}" placeholder="10"></div>`;
+    b += `<div class="hint">uses every time step (it logs them all); body accelerations: pick acceleration (1d) or ax, ay, az</div>`;
+  } else {
   b += `<div class="row"><label>time unit</label><select data-k="time_unit">${sel_(UNITS.time, d.time_unit || "s")}</select></div>`;
   b += `<div class="row"><label>rows</label><input data-k="points" value="${esc(d.points)}" placeholder="1000, or all"></div>`;
+  }
   b += `<div class="row"><label>header</label><select data-k="header">${sel_([["units","names [units]: Time [s], F [N]"],["plain","plain: t_s, F_N"],["none","none (numbers only)"]], d.header || "units")}</select></div>`;
   b += `<div class="row"><label>write on</label><select data-k="when">${sel_([["run","Run"],["study","Run + every study run"]], d.when || "run")}</select></div>`;
   b += `<div class="hint" title="written when you press Run (live updates never write files)">→ ${esc(exportName(d))}</div>`;
@@ -3569,6 +3616,7 @@ window.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && document.getElementById("helpView").style.display !== "grid"){ e.preventDefault(); findOpen(); return; }
   if (e.key === "F5"){ e.preventDefault(); doRun(); return; }
   if (e.key === "F1"){ e.preventDefault(); helpOpen(); return; }
+  if (AV.open){ if (e.key === "Escape") animClose(); else if (e.key === " " && !typing){ e.preventDefault(); avPlay(); } return; }
   if (document.getElementById("helpView").style.display === "grid"){ if (e.key === "Escape") helpClose(); return; }
   if (typing) return;
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
@@ -5195,7 +5243,9 @@ const GUIDE = [
   <p><b>Modes</b> (top bar) gives the natural frequencies and mode shapes. It first settles the model under its loads and gravity, so preloads count: a hanging pendulum's pin tension is what makes it swing. Then it linearises through the solver itself, one step from rest for each coordinate nudged a hair either way. Every element, joint, beam, contact and gear is included exactly as a run sees it. The table gives Hz and rpm, so a mode near a motor, weapon or wheel speed stands out. A free motion (nothing holds it) is a rigid-body mode at 0 Hz. Exact (rigid) joints are kept, and the directions they forbid are set aside. One-sided contacts count as they are at the start, touching or not.</p>
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
-  <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>`},
+  <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
+  <p><b>Animate</b> (top bar) replays the run in 3D: every body moving as the solver moved it (1d bodies in lanes, sliding ones scaled up so small travel shows; 2d in the x-y plane; 3d with its orientation), with springs, dampers, motors and joints drawn between their points. Drag to turn, shift-drag to pan, wheel to zoom, space to play; follow keeps the camera on one body. It replays the last Run when the model has not changed since.</p>
+  <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
   <p><b>Scenarios</b>: named sets of values (arena hit, drop test, worst case). Plug in the values that change and fill one column per scenario; blank cells keep the model's own. Run all scenarios lists every output side by side. In YAML: <code>scenarios: {arena: {v: 8 m/s}, drop: {v: 3 m/s}}</code>.</p>
@@ -5875,6 +5925,312 @@ async function start(){
 if (window.pywebview && window.pywebview.api) start();
 else window.addEventListener("pywebviewready", start);
 if (window.__devApi) start();
+// ------------------------------------------------------------------------------------------------ replay viewer
+// 1d, 2d and 3d runs drawn with three.js (three.min.js next to this file, loaded the first time it opens). The scene
+// comes from the backend (simblocks/viz/anim.py): each body's shapes in its own frame and its position and
+// orientation at every logged instant; links (springs, dampers, joints, motors) are drawn between attachment points.
+const AV = {S:null, R:null, scene:null, cam:null, bodies:[], links:[], trails:[], playing:false, tcur:0, rate:1, raf:0,
+  last:0, follow:-1, orbit:null, ro:null, grid:null, open:false};
+function avLoadThree(){
+  return new Promise((res, rej) => {
+    if (window.THREE) return res();
+    const s = document.createElement("script"); s.src = "three.min.js";
+    s.onload = () => res(); s.onerror = () => rej(new Error("three.min.js is missing next to editor.html"));
+    document.head.appendChild(s);
+  });
+}
+async function animOpen(){
+  if (!needCheck()) return;
+  await renderYaml(); status("busy", "Building the replay…");
+  let r;
+  try { await avLoadThree(); r = await API.call("anim_scene", yamlText, filePath, 900); }
+  catch (e){ status("bad", String(e.message || e)); return; }
+  if (!r.ok){ status("bad", r.error); return; }
+  AV.S = r.scene; AV.open = true;
+  document.getElementById("animView").style.display = "flex";
+  avBuild();
+  status("ok", `Replay: ${AV.S.dim}, ${AV.S.t.length} frames ${AV.S.reused ? "from the last run" : "from a fresh run"}` +
+               (AV.S.notes.length ? " · " + AV.S.notes.join("; ") : ""));
+}
+function animClose(){
+  AV.open = false; AV.playing = false; cancelAnimationFrame(AV.raf);
+  document.getElementById("animView").style.display = "none";
+  if (AV.ro){ AV.ro.disconnect(); AV.ro = null; }
+  avDisposeScene();                                  // the renderer (and its WebGL context) stays for next time
+}
+const avCol = i => new THREE.Color(tok("p" + (1 + i % 5)) || "#1b95d8");
+function avMat(c, o){ return new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.55, metalness:0.15}, o || {})); }
+function avBasis(n, u){
+  const N = new THREE.Vector3(...n).normalize(), U = new THREE.Vector3(...u).normalize(), W = new THREE.Vector3().crossVectors(N, U);
+  return new THREE.Matrix4().makeBasis(U, W, N);
+}
+function avGrid(size, div, col, op){
+  // a square grid in the x-y plane, each line cut into short pieces: a line reaching behind the camera is then only
+  // one short piece, which every renderer clips correctly (some software renderers drop the whole long line)
+  const h = size / 2, st = size / div, cut = Math.max(1, Math.min(40, div)), seg = size / cut, v = [];
+  for (let i = 0; i <= div; i++){
+    const c = -h + i * st;
+    for (let k = 0; k < cut; k++){ const a0 = -h + k * seg, a1 = a0 + seg; v.push(a0, c, 0, a1, c, 0, c, a0, 0, c, a1, 0); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(v), 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op, depthWrite:false}));
+}
+function avCyl(a, b, r, mat){
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), L = A.distanceTo(B) || 1e-9;
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 12), mat);
+  m.position.copy(A).add(B).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  return m;
+}
+function avDisposeScene(){
+  if (!AV.scene) return;
+  AV.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); });
+  AV.scene = null;
+}
+function avBuild(){
+  const S = AV.S, E = S.extent, cv = document.getElementById("avCanvas");
+  avDisposeScene();
+  if (!AV.R){ AV.R = new THREE.WebGLRenderer({canvas:cv, antialias:true}); AV.R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); }
+  const sc = AV.scene = new THREE.Scene(); sc.background = new THREE.Color(tok("bg") || "#0b0f17");
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x283040, 0.55));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.5); dl.position.set(1, -1.4, 2.2); sc.add(dl);
+  const bodyScale = Math.max(E.body, 1e-3), ps = bodyScale * 0.035;      // point markers: from the bodies' own size
+  AV.ps = ps; AV.bodies = []; AV.links = []; AV.trails = [];
+  const fsel = document.getElementById("avFollow"); fsel.innerHTML = `<option value="-1">nothing</option>`;
+  let mi = 0, heavy = -1, hm = -1;
+  S.bodies.forEach((b, bi) => {
+    const g = new THREE.Group(); sc.add(g);
+    const col = b.ground ? new THREE.Color(tok("ink3") || "#7a8597") : avCol(mi);
+    const edgeMat = new THREE.LineBasicMaterial({color:col});
+    for (const p of b.prims){
+      if (p.kind === "sphere"){
+        const m = new THREE.Mesh(new THREE.SphereGeometry(p.r, 28, 18), avMat(col)); m.position.set(...p.p); g.add(m);
+        if (!b.ground){                                    // a band of marks round it, so its spin shows
+          for (let k = 0; k < 6; k++){ const a_ = k * Math.PI / 3, dot = new THREE.Mesh(new THREE.SphereGeometry(p.r * 0.16, 10, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
+            dot.position.set(p.p[0] + p.r * Math.cos(a_), p.p[1], p.p[2] + p.r * Math.sin(a_)); g.add(dot); }
+        }
+      }
+      else if (p.kind === "point"){ const m = new THREE.Mesh(new THREE.SphereGeometry(ps, 12, 8), new THREE.MeshBasicMaterial({color:col})); m.position.set(...p.p); g.add(m); }
+      else if (p.kind === "plane"){
+        if (p.infinite || (b.ground && Math.max(p.hu, p.hw) > 0.5 * E.size)){   // a floor: a grid where things happen
+          let span = Math.max(E.size * 2.4, bodyScale * 30);
+          if (!p.infinite) span = Math.min(span, 2 * Math.max(p.hu, p.hw));
+          const raw = Math.max(span / 300, bodyScale * 0.5), e10 = Math.pow(10, Math.floor(Math.log10(raw)));
+          const step = [1, 2, 5, 10].map(m => m * e10).find(v => v >= raw);
+          const n = Math.min(400, Math.round(span / step));
+          const holder = new THREE.Group();
+          for (const [stp, op] of [[step, 0.22], [step * 10, 0.5]]){   // fine lines, and every tenth one brighter
+            const nn = Math.max(1, Math.round(n * step / stp));
+            holder.add(avGrid(nn * stp, nn, new THREE.Color(tok("ink3") || "#8a8383"), op));
+          }
+          holder.applyMatrix4(avBasis(p.n, p.u)); holder.position.set(...p.o);
+          if (p.infinite || span < 2 * Math.max(p.hu, p.hw)){  // centre a clipped grid on the action, in the plane
+            const cx = (E.lo[0] + E.hi[0]) / 2, cy = (E.lo[1] + E.hi[1]) / 2, cz = (E.lo[2] + E.hi[2]) / 2;
+            const N = new THREE.Vector3(...p.n).normalize(), d = new THREE.Vector3(cx, cy, cz).sub(holder.position);
+            holder.position.add(d.sub(N.clone().multiplyScalar(d.dot(N))));
+          }
+          const fill = new THREE.Mesh(new THREE.PlaneGeometry(n * step, n * step), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.06, side:THREE.DoubleSide, depthWrite:false}));
+          holder.add(fill); g.add(holder); AV.grid = holder;
+        } else {
+          const geo = new THREE.PlaneGeometry(2 * p.hu, 2 * p.hw);
+          const m = new THREE.Mesh(geo, avMat(col, {transparent:true, opacity:0.35, side:THREE.DoubleSide}));
+          m.applyMatrix4(avBasis(p.n, p.u)); m.position.set(...p.o); g.add(m);
+          const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat); e.applyMatrix4(avBasis(p.n, p.u)); e.position.set(...p.o); g.add(e);
+        }
+      }
+      else if (p.kind === "disc"){
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r, Math.max(p.r * 0.08, ps), 40), avMat(col, {transparent:true, opacity:0.55}));
+        m.rotation.x = Math.PI / 2; m.position.set(...p.p); g.add(m);
+        g.add(avCyl(p.p, [p.p[0] + p.r, p.p[1], p.p[2]], ps * 0.5, new THREE.MeshBasicMaterial({color:col})));   // a spoke shows its turn
+      }
+      else if (p.kind === "line"){ g.add(avCyl(p.a, p.b, ps * 0.7, avMat(col))); }
+      else if (p.kind === "block"){ const m = new THREE.Mesh(new THREE.BoxGeometry(...p.size), avMat(col)); m.position.set(...p.p); g.add(m); }
+      else if (p.kind === "wheel"){
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r, p.r * 0.35, 40), avMat(col)); m.rotation.x = Math.PI / 2; g.add(m);
+        const sp = new THREE.Mesh(new THREE.BoxGeometry(p.r * 0.95, p.r * 0.14, p.r * 0.4), new THREE.MeshBasicMaterial({color:0xffffff}));
+        sp.position.x = p.r * 0.47; g.add(sp);
+      }
+      else if (p.kind === "wall"){ const m = new THREE.Mesh(new THREE.BoxGeometry(...p.size), avMat(col)); m.position.set(...p.p); g.add(m); }
+    }
+    if (b.hull){
+      const pos = new Float32Array(b.hull.points.flat()), geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(b.hull.faces.flat()); geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, avMat(col, {transparent:true, opacity:0.42, side:THREE.DoubleSide})));
+      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 15), edgeMat));
+    }
+    if (b.sticks){                                          // a body given only by a few points: rods to its centre of mass
+      const sm = avMat(col);
+      for (const [p0, p1] of b.sticks) g.add(avCyl(p0, p1, ps * 0.8, sm));
+    }
+    if (b.outline){
+      const sh = new THREE.Shape(b.outline.map(q => new THREE.Vector2(q[0], q[1])));
+      g.add(new THREE.Mesh(new THREE.ShapeGeometry(sh), avMat(col, {transparent:true, opacity:0.3, side:THREE.DoubleSide})));
+      const lg = new THREE.BufferGeometry().setFromPoints([...b.outline, b.outline[0]].map(q => new THREE.Vector3(q[0], q[1], 0)));
+      g.add(new THREE.Line(lg, edgeMat));
+    }
+    if (b.pos && !b.ground && !b.prims.length && !b.hull){       // a bare body: a marker at its tracked point
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(ps * 1.6, 14, 10), avMat(col)));
+    }
+    const rec = {g, b, col, idx:bi};
+    if (b.pos){
+      const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(b.pos.flat()), 3));
+      const tl = new THREE.Line(tg, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0.55})); tl.frustumCulled = false;
+      sc.add(tl); AV.trails.push({line:tl, n:b.pos.length});
+      fsel.insertAdjacentHTML("beforeend", `<option value="${bi}">${esc(b.name)}</option>`);
+      if ((b.mass || 0) > hm){ hm = b.mass || 0; heavy = bi; }
+    }
+    if (!b.ground) mi++;
+    AV.bodies.push(rec);
+  });
+  for (const L of S.links){
+    const col = new THREE.Color(L.kind === "spring" ? tok("p2") : L.kind === "damper" ? tok("p4") : L.kind === "motor" ? tok("p5") : tok("ink"));
+    const n = L.kind === "spring" ? 42 : 2;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * n), 3));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:col})); line.frustumCulled = false; sc.add(line);
+    let knob = null;
+    if (L.kind === "joint"){ knob = new THREE.Mesh(new THREE.SphereGeometry(ps * 1.3, 12, 8), new THREE.MeshBasicMaterial({color:col})); sc.add(knob); }
+    AV.links.push({L, line, knob, n});
+  }
+  document.getElementById("avLegend").innerHTML = `<b style="color:var(--ink)">${esc(S.name)}</b> <span style="color:var(--ink3)">(${S.dim})</span><br>` +
+    S.bodies.filter(b => !b.ground).map(b => `<i style="background:#${AV.bodies.find(r => r.b === b).col.getHexString()}"></i>${esc(b.name)}`).join("<br>") +
+    (S.links.length ? `<br><span style="color:var(--ink3)">links: ` + [["spring", "p2", "springs"], ["damper", "p4", "dampers"], ["motor", "p5", "motors"], ["joint", "ink", "joints"]]
+      .filter(([k]) => S.links.some(l => l.kind === k)).map(([, c, w]) => `<span style="color:${tok(c)}">${w}</span>`).join(" · ") + `</span>` : "") +
+    (S.notes.length ? `<br><span style="color:var(--ink3)">${S.notes.map(esc).join("<br>")}</span>` : "");
+  // the camera: 3d from a high corner (z up); 2d and 1d from above
+  AV.cam = new THREE.PerspectiveCamera(40, 1, 1e-4, 1e5);
+  if (S.dim === "3d") AV.cam.up.set(0, 0, 1);
+  // a body far smaller than where it travels (a robot driving across the floor): follow it from the start
+  const travel = E.size, small = E.body * 25 < travel;
+  AV.follow = small && heavy >= 0 ? heavy : -1; fsel.value = String(AV.follow);
+  avFit();
+  const T = S.t[S.t.length - 1] - S.t[0];
+  AV.speedAuto = T / 10; avSetSpeed(); AV.tcur = S.t[0]; AV.playing = false;
+  document.getElementById("avPlay").textContent = "Play";
+  avResize();
+  if (!AV.ro){ AV.ro = new ResizeObserver(avResize); AV.ro.observe(cv.parentElement); }
+  avPose(); avRender();
+}
+function avFit(){
+  const S = AV.S, E = S.extent, f = AV.follow;
+  const c = f >= 0 ? new THREE.Vector3(...S.bodies[f].pos[0]) : new THREE.Vector3((E.lo[0] + E.hi[0]) / 2, (E.lo[1] + E.hi[1]) / 2, (E.lo[2] + E.hi[2]) / 2);
+  const r = f >= 0 ? Math.max(E.body * 6, 1e-3) : Math.max(E.size, E.body * 3) * 1.5;
+  AV.orbit = S.dim === "3d" ? {target:c, r, az:-0.95, el:0.5} : {target:c, r, az:-Math.PI / 2, el:1.25};
+  AV.followOff = null;
+  avCamera();
+}
+function avCamera(){
+  const o = AV.orbit, S = AV.S;
+  const ce = Math.cos(o.el), se = Math.sin(o.el);
+  if (S.dim === "3d") AV.cam.position.set(o.target.x + o.r * ce * Math.cos(o.az), o.target.y + o.r * ce * Math.sin(o.az), o.target.z + o.r * se);
+  else { AV.cam.position.set(o.target.x + o.r * ce * Math.cos(o.az), o.target.y + o.r * ce * Math.sin(o.az), o.target.z + o.r * se); AV.cam.up.set(0, 1, 0); }
+  AV.cam.near = o.r / 2000; AV.cam.far = o.r * 2000; AV.cam.updateProjectionMatrix();
+  AV.cam.lookAt(o.target);
+}
+function avResize(){
+  if (!AV.R) return;
+  const box = document.getElementById("avCanvas").parentElement, w = box.clientWidth || 800, h = box.clientHeight || 500;
+  AV.R.setSize(w, h, false); AV.cam.aspect = w / h; AV.cam.updateProjectionMatrix(); avRender();
+}
+function avSetSpeed(){
+  const v = document.getElementById("avSpeed").value;
+  AV.rate = v === "auto" ? AV.speedAuto : parseFloat(v);
+}
+function avFrame(t){                                   // index and blend for sim time t
+  const T = AV.S.t; let lo = 0, hi = T.length - 1;
+  if (t <= T[0]) return [0, 0]; if (t >= T[hi]) return [hi, 0];
+  while (hi - lo > 1){ const m = (lo + hi) >> 1; if (T[m] <= t) lo = m; else hi = m; }
+  return [lo, (t - T[lo]) / ((T[lo + 1] - T[lo]) || 1)];
+}
+let _qa = null, _qb = null;                      // made once three.js is loaded
+function avBodyPose(b, k, a, P, Q){
+  if (!_qa){ _qa = new THREE.Quaternion(); _qb = new THREE.Quaternion(); }
+  if (!b.pos){ P.set(0, 0, 0); Q.set(0, 0, 0, 1); return; }
+  const k2 = Math.min(k + 1, b.pos.length - 1), p0 = b.pos[k], p1 = b.pos[k2], q0 = b.quat[k], q1 = b.quat[k2];
+  P.set(p0[0] + a * (p1[0] - p0[0]), p0[1] + a * (p1[1] - p0[1]), p0[2] + a * (p1[2] - p0[2]));
+  _qa.set(q0[1], q0[2], q0[3], q0[0]); _qb.set(q1[1], q1[2], q1[3], q1[0]); Q.slerpQuaternions(_qa, _qb, a);
+}
+function avPose(){
+  const S = AV.S, [k, a] = avFrame(AV.tcur), P = new THREE.Vector3(), Q = new THREE.Quaternion();
+  const poses = AV.bodies.map(r => { avBodyPose(r.b, k, a, P, Q); r.g.position.copy(P); r.g.quaternion.copy(Q); return [P.clone(), Q.clone()]; });
+  const showL = document.getElementById("avLinks").checked;
+  const wp = (bi, loc) => bi < 0 ? new THREE.Vector3(...loc) : new THREE.Vector3(...loc).applyQuaternion(poses[bi][1]).add(poses[bi][0]);
+  for (const o of AV.links){
+    const A = wp(o.L.a, o.L.pa), B = wp(o.L.b, o.L.pb), arr = o.line.geometry.attributes.position.array;
+    if (o.n === 2){ arr.set([A.x, A.y, A.z, B.x, B.y, B.z]); }
+    else {                                            // a zigzag spring between A and B
+      const d = B.clone().sub(A), L = d.length() || 1e-12, u = d.clone().divideScalar(L);
+      let side = new THREE.Vector3(0, 0, 1).cross(u); if (side.length() < 1e-6) side = new THREE.Vector3(1, 0, 0).cross(u);
+      side.normalize().multiplyScalar(Math.max(AV.ps * 2.2, Math.min(L * 0.08, AV.S.extent.body * 0.12)));
+      for (let i = 0; i < o.n; i++){
+        const s_ = i / (o.n - 1), zz = (i === 0 || i === o.n - 1 || i === 1 || i === o.n - 2) ? 0 : (i % 2 ? 1 : -1);
+        arr[3 * i] = A.x + d.x * s_ + side.x * zz; arr[3 * i + 1] = A.y + d.y * s_ + side.y * zz; arr[3 * i + 2] = A.z + d.z * s_ + side.z * zz;
+      }
+    }
+    o.line.geometry.attributes.position.needsUpdate = true; o.line.visible = showL;
+    if (o.knob){ o.knob.position.copy(A); o.knob.visible = showL; }
+  }
+  const tr = document.getElementById("avTrail").checked;
+  for (const t of AV.trails){ t.line.visible = tr; t.line.geometry.setDrawRange(0, Math.max(1, k + 1)); }
+  if (AV.follow >= 0){                               // the camera rides along with the followed body
+    const fp = poses[AV.follow][0];
+    if (AV.followOff) AV.orbit.target.copy(fp);
+    else { AV.orbit.target.copy(fp); AV.followOff = true; }
+    avCamera();
+  }
+  const T = S.t[S.t.length - 1];
+  const nt = v => v > 0 ? niceTime(v).join(" ") : "0 s";
+  document.getElementById("avTime").textContent = `t = ${nt(AV.tcur)} / ${nt(T)}`;
+  document.getElementById("avScrub").value = String(Math.round(1000 * (AV.tcur - S.t[0]) / ((T - S.t[0]) || 1)));
+}
+function avRender(){ if (AV.R && AV.scene) AV.R.render(AV.scene, AV.cam); }
+function avTick(now){
+  if (!AV.open) return;
+  const S = AV.S, T = S.t[S.t.length - 1];
+  if (AV.playing){
+    const dt = Math.min(0.1, (now - (AV.last || now)) / 1000); AV.tcur += dt * AV.rate;
+    if (AV.tcur >= T){ AV.tcur = T; AV.playing = false; document.getElementById("avPlay").textContent = "Play"; }
+    avPose();
+  }
+  AV.last = now; avRender();
+  if (AV.playing) AV.raf = requestAnimationFrame(avTick);
+}
+function avPlay(){
+  const S = AV.S; if (!S) return;
+  if (!AV.playing && AV.tcur >= S.t[S.t.length - 1]) AV.tcur = S.t[0];
+  AV.playing = !AV.playing; document.getElementById("avPlay").textContent = AV.playing ? "Pause" : "Play";
+  AV.last = performance.now(); if (AV.playing) AV.raf = requestAnimationFrame(avTick);
+}
+(function avWire(){
+  const cv = document.getElementById("avCanvas"); let drag = null;
+  cv.addEventListener("contextmenu", e => e.preventDefault());
+  cv.addEventListener("pointerdown", e => { drag = {x:e.clientX, y:e.clientY, pan:e.shiftKey || e.button === 2}; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
+  cv.addEventListener("pointerup", e => { drag = null; cv.style.cursor = "grab"; });
+  cv.addEventListener("pointermove", e => {
+    if (!drag || !AV.orbit) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+    const o = AV.orbit;
+    if (drag.pan){
+      const h = cv.clientHeight || 500, k = 2 * o.r * Math.tan(THREE.MathUtils.degToRad(AV.cam.fov / 2)) / h;
+      const right = new THREE.Vector3().setFromMatrixColumn(AV.cam.matrix, 0), up = new THREE.Vector3().setFromMatrixColumn(AV.cam.matrix, 1);
+      o.target.add(right.multiplyScalar(-dx * k)).add(up.multiplyScalar(dy * k));
+      if (AV.follow >= 0){ AV.follow = -1; document.getElementById("avFollow").value = "-1"; }
+    } else { o.az -= dx * 0.008; o.el = Math.max(-1.55, Math.min(1.55, o.el + dy * 0.008)); }
+    avCamera(); avRender();
+  });
+  cv.addEventListener("wheel", e => { e.preventDefault(); if (!AV.orbit) return; AV.orbit.r *= Math.exp(e.deltaY * 0.0012); avCamera(); avRender(); }, {passive:false});
+  document.getElementById("avClose").onclick = animClose;
+  document.getElementById("avPlay").onclick = avPlay;
+  document.getElementById("avFit").onclick = () => { avFit(); avPose(); avRender(); };
+  document.getElementById("avSpeed").onchange = avSetSpeed;
+  document.getElementById("avFollow").onchange = e => { AV.follow = parseInt(e.target.value); avFit(); avPose(); avRender(); };
+  document.getElementById("avTrail").onchange = () => { avPose(); avRender(); };
+  document.getElementById("avLinks").onchange = () => { avPose(); avRender(); };
+  document.getElementById("avScrub").oninput = e => {
+    const S = AV.S; if (!S) return; const T0 = S.t[0], T = S.t[S.t.length - 1];
+    AV.tcur = T0 + (T - T0) * parseInt(e.target.value) / 1000; avPose(); avRender();
+  };
+  document.getElementById("bAnim").onclick = animOpen;
+})();
 </script>
 </body>
 </html>

@@ -124,7 +124,8 @@ BODY_QUANTITIES_3D = {"x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega"
                       "velocity", "kinetic_energy"}
 BODY_QUANTITIES_2D = {"x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "kinetic_energy"}
 REDUCES = {"final", "max", "min", "max_abs", "first_time_above", "first_time_below", "at", "time_of_max", "time_of_min"}
-EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note"}
+EXPORT_KEYS = {"name", "columns", "folder", "naming", "time_unit", "points", "header", "when", "label", "note", "spectrum"}
+SPECTRUM_KEYS = {"kind", "f_min", "f_max", "Q", "segment", "per_octave"}
 EXPORT_COLUMN_KEYS = {"element", "body", "part", "control", "quantity", "unit", "label"}
 HISTORY_QUANTITIES = {"force", "measure"}
 STATE_HISTORY = {"elastoplastic": {"plastic_set", "broken", "rate_factor", "accumulated_set"}, "drive": {"current", "battery_current", "bus_voltage", "soc"},
@@ -465,6 +466,16 @@ def check_exports(doc):
         except (TypeError, ValueError):
             raise SpecError("points must be a whole number of rows (2 or more) or 'all' (every time step)", p, line_of(x, "points"), f)
         _unit_ok(x.get("time_unit"), p, line_of(x, "time_unit"), f)
+        sp = x.get("spectrum")
+        if sp is not None:
+            if isinstance(sp, str):
+                sp = {"kind": sp}
+            if not isinstance(sp, dict) or sp.get("kind") not in ("fft", "psd", "srs"):
+                raise SpecError("spectrum is fft, psd or srs (or {kind: srs, f_min: 10 Hz, f_max: 2000 Hz, Q: 10})", p,
+                                line_of(x, "spectrum"), f)
+            for k in set(sp) - SPECTRUM_KEYS:
+                raise SpecError(f"unknown spectrum key '{k}' (allowed: {', '.join(sorted(SPECTRUM_KEYS))})", p,
+                                line_of(x, "spectrum"), f)
         for j, c in enumerate(cols):
             q = f"{p}.columns[{j}]"
             if not isinstance(c, dict):
@@ -497,8 +508,9 @@ def check_exports(doc):
                     raise SpecError(f"body '{c['body']}' is not defined", q, line_of(c, "body"), f)
                 if bods[c["body"]].get("ground"):
                     raise SpecError(f"'{c['body']}' is ground and never moves", q, line_of(c, "body"), f)
-                okq = ("x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity") if doc.get("dim") == "2d" \
-                    else (tuple(sorted(BODY_QUANTITIES_3D - {"kinetic_energy"})) if doc.get("dim") == "3d" else ("position", "velocity"))
+                okq = ("x", "y", "angle", "vx", "vy", "omega", "speed", "position", "velocity", "ax", "ay") if doc.get("dim") == "2d" \
+                    else (tuple(sorted(BODY_QUANTITIES_3D - {"kinetic_energy"})) + ("ax", "ay", "az") if doc.get("dim") == "3d"
+                          else ("position", "velocity", "acceleration"))
                 if c.get("quantity", "position") not in okq:
                     raise SpecError(f"a body column exports one of: {', '.join(okq)}", q, line_of(c, "quantity"), f)
 

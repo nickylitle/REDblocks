@@ -32,8 +32,9 @@ from numba import njit
 from .loader import SpecError
 
 # signal kinds
-K_EXPR, K_IF, K_PID, K_LAG, K_RATE, K_INT = 0, 1, 2, 3, 4, 5
-KIND_KEYS = {"if": K_IF, "pid": K_PID, "lag": K_LAG, "rate_limit": K_RATE, "integrate": K_INT}
+K_EXPR, K_IF, K_PID, K_LAG, K_RATE, K_INT, K_HOLD, K_TF = 0, 1, 2, 3, 4, 5, 6, 7
+KIND_KEYS = {"if": K_IF, "pid": K_PID, "lag": K_LAG, "rate_limit": K_RATE, "integrate": K_INT, "hold": K_HOLD,
+             "transfer": K_TF}
 # program ops
 OP_C, OP_S, OP_T, OP_X = 0, 1, 2, 3          # push constant, signal, time, sensor
 (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_POW, OP_NEG, OP_MIN, OP_MAX, OP_ABS, OP_SQRT, OP_EXP, OP_LOG, OP_SIN, OP_COS,
@@ -194,10 +195,10 @@ def compile_control(doc, ctx, M, sensor_slot):
             kind[j] = K_EXPR; inp(j, 0, spec, where); continue
         ks = [k for k in spec if k in KIND_KEYS] + (["expr"] if "expr" in spec else [])
         if len(ks) != 1:
-            raise SpecError("a control signal is an expression, or one of if, pid, lag, rate_limit, integrate, expr",
-                            where)
+            raise SpecError("a control signal is an expression, or one of if, pid, lag, rate_limit, integrate, hold, "
+                            "transfer, expr", where)
         k = ks[0]
-        extra = set(spec) - {k, "then", "else", "latch", "for", "tau", "rate", "init", "label", "note"}
+        extra = set(spec) - {k, "then", "else", "latch", "for", "tau", "rate", "init", "label", "note", "period", "num", "den"}
         if extra:
             raise SpecError(f"unknown key{'s' if len(extra) > 1 else ''} {', '.join(sorted(extra))} in a {k} signal", where)
         if k == "expr":
@@ -233,6 +234,32 @@ def compile_control(doc, ctx, M, sensor_slot):
             prm[j, 1] = g(spec, "init", where, math.nan)
         elif k == "integrate":
             kind[j] = K_INT; inp(j, 0, spec["integrate"], where + ".integrate"); prm[j, 0] = g(spec, "init", where, 0.0)
+        elif k == "hold":                              # sample and hold: a controller running at a fixed rate
+            kind[j] = K_HOLD; inp(j, 0, spec["hold"], where + ".hold")
+            prm[j, 0] = g(spec, "period", where, 0.0)
+            if not prm[j, 0] > 0:
+                raise SpecError("hold needs period: the time between samples (> 0), e.g. 1 ms for a 1 kHz loop", where)
+        elif k == "transfer":                          # a linear transfer function num(s) / den(s)
+            kind[j] = K_TF; inp(j, 0, spec["transfer"], where + ".transfer")
+            co = lambda key: [num(resolve(v, ctx, f"{where}.{key}[{i}]"), f"{where}.{key}[{i}]")
+                              for i, v in enumerate(spec.get(key) or [])]
+            nm, dn = co("num"), co("den")
+            while len(dn) > 1 and dn[0] == 0.0:
+                dn = dn[1:]
+            if not dn or dn[0] == 0.0 or not nm:
+                raise SpecError("transfer needs num and den: coefficients in falling powers of s, e.g. num: [1], "
+                                "den: [0.02, 1] for 1 / (0.02 s + 1)", where)
+            n = len(dn) - 1
+            if n > 3 or len(nm) > len(dn):
+                raise SpecError("transfer: order up to 3 (den up to 4 coefficients), and no more zeros than poles", where)
+            if n == 0:
+                raise SpecError("transfer: den needs an s term (a pure gain is an expression)", where)
+            a0 = dn[0]; a = [x / a0 for x in dn]; b = [0.0] * (len(dn) - len(nm)) + [x / a0 for x in nm]
+            prm[j, 0] = n
+            for i in range(1, n + 1):
+                prm[j, i] = a[i]                       # a1..an (den normalised, a0 = 1)
+            for i in range(n + 1):
+                prm[j, 4 + i] = b[i]                   # b0..bn (same length as den)
     return dict(names=list(sec), sensors=sens_keys, kind=kind, prog=np.array(prog.ops or [0], np.int64),
                 val=np.array(prog.vals or [0.0]), rng=rng, prm=prm, ssrc=np.array(ssrc, np.int64),
                 sidx=np.array(sidx, np.int64))
@@ -370,6 +397,59 @@ def _run_prog(prog, val, a, b, sig, sens, t, stack):
 
 
 @njit(cache=True, nogil=True)
+def _tf_step(prm, cst, j, u, dt, first):
+    """One step of y = num(s)/den(s) u (order n <= 3), state in cst[j, 0..n-1], last input in cst[j, 3].
+    Controllable canonical form x' = A x + B u, y = C x + D u, advanced with the trapezoidal rule (Tustin):
+    second order and A-stable, so any step is stable; it starts from rest (zero state)."""
+    n = int(prm[j, 0])
+    if first:
+        for i in range(3):
+            cst[j, i] = 0.0
+        cst[j, 3] = u
+    A = np.zeros((3, 3)); x = np.zeros(3)
+    for i in range(n - 1):
+        A[i, i + 1] = 1.0
+    for i in range(n):
+        A[n - 1, i] = -prm[j, n - i]                   # last row: -a_n ... -a_1
+        x[i] = cst[j, i]
+    h = 0.5 * dt
+    M = np.zeros((3, 3)); r = np.zeros(3)
+    for i in range(n):
+        acc = x[i]
+        for k in range(n):
+            acc += h * A[i, k] * x[k]
+            M[i, k] = -h * A[i, k]
+        M[i, i] += 1.0
+        r[i] = acc
+    r[n - 1] += h * (cst[j, 3] + u)                    # B = [0, .., 0, 1]
+    for c in range(n):                                 # solve M x1 = r (n <= 3, partial pivoting)
+        p = c
+        for q in range(c + 1, n):
+            if abs(M[q, c]) > abs(M[p, c]):
+                p = q
+        if p != c:
+            for k in range(n):
+                tmp = M[c, k]; M[c, k] = M[p, k]; M[p, k] = tmp
+            tmp = r[c]; r[c] = r[p]; r[p] = tmp
+        for q in range(c + 1, n):
+            f = M[q, c] / M[c, c]
+            for k in range(c, n):
+                M[q, k] -= f * M[c, k]
+            r[q] -= f * r[c]
+    for c in range(n - 1, -1, -1):
+        acc = r[c]
+        for k in range(c + 1, n):
+            acc -= M[c, k] * x[k]
+        x[c] = acc / M[c, c]
+    b0 = prm[j, 4]; y = b0 * u
+    for i in range(n):                                 # C = (b_{n-i} - a_{n-i} b0) for state i
+        y += (prm[j, 4 + n - i] - prm[j, n - i] * b0) * x[i]
+        cst[j, i] = x[i]
+    cst[j, 3] = u
+    return y
+
+
+@njit(cache=True, nogil=True)
 def control_step(t, dt, first, kind, prog, val, rng, prm, cst, sig, sens, stack):
     """Every signal, in order. cst[j]: [state 0..3]. first: the first step (initialise lags and limiters)."""
     for j in range(kind.shape[0]):
@@ -439,3 +519,10 @@ def control_step(t, dt, first, kind, prog, val, rng, prm, cst, sig, sens, stack)
                 cst[j, 0] = prm[j, 0]
             cst[j, 0] += u * dt
             sig[j] = cst[j, 0]
+        elif k == 6:                                   # sample and hold
+            if first or t >= cst[j, 1] - 1e-12 * prm[j, 0]:
+                cst[j, 0] = u
+                cst[j, 1] = (math.floor(t / prm[j, 0] + 1e-9) + 1.0) * prm[j, 0]
+            sig[j] = cst[j, 0]
+        elif k == 7:                                   # transfer function: controllable canonical state space, Tustin
+            sig[j] = _tf_step(prm, cst, j, u, dt, first)

@@ -29,6 +29,8 @@ _U = {
     "kHz": 1e3, "MHz": 1e6,
     # temperature differences / absolute in K
     "K": 1.0,
+    # acceleration: standard gravity (g alone is the gram)
+    "gn": 9.80665, "g0": 9.80665,
     # dimensionless
     "%": 0.01, "1": 1.0,
 }

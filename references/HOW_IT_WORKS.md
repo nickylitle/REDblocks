@@ -429,3 +429,21 @@ Nothing runs online and nothing needs Claude.
 | **Knockout** | A rerun with one physics term turned off, to prove it was wired in |
 | **Richardson** | Estimating the zero-step-size answer from runs at dt, dt/2 and dt/4 |
 | **Sobol** | A sampling pattern that covers a space evenly with few points |
+
+
+## Fitting parameters to test data (parameter estimation)
+
+`redblocks estimate model.yaml --data test.csv --signal chassis.vx --vary mu_tire=1:2.5 k_tire=5kN/m:50kN/m`
+(also the MCP tool `estimate`, and `simblocks.diagnostics.estimate.estimate` in Python) finds the parameter values
+that make a model history match a measured one: bounded least squares on the misfit at the measurement times, one
+full run per evaluation, started from the best of a spread of trial points (a fit to an oscillation has false
+minima a period apart). It reports each value with its 1-sigma uncertainty from the fit's Jacobian (a parameter the
+data cannot see shows a huge one), their correlation, the RMS misfit and R^2. The CSV's first column is time and the
+second the measurement (or name them with --time-col / --y-col, with --time-unit and --unit).
+
+## Replay (Animate)
+
+The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies in lanes (sliding ones scaled up so
+small travel shows, the scale is printed), 2d bodies in the x-y plane, 3d bodies with their logged orientation
+quaternions. Springs, dampers, motors and joints are drawn between their attachment points; a floor plane becomes a
+grid. It reuses the last Run's history when the model is unchanged.

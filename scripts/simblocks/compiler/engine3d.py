@@ -63,7 +63,7 @@ def _end_rot(E, R, b, GB, off, e):
     return (tx * E[0, 0] + ty * E[1, 0] + tz * E[2, 0], tx * E[0, 1] + ty * E[1, 1] + tz * E[2, 1],
             tx * E[0, 2] + ty * E[1, 2] + tz * E[2, 2])
 R_NONE, R_SPIN, R_FREE = 0, 1, 2
-NBQ = 12
+NBQ = 16                     # x y z, vx vy vz, speed, angle, omega, wx wy wz, orientation qw qx qy qz
 
 
 @njit(cache=True, nogil=True, inline="always")
@@ -747,13 +747,14 @@ def _geo_rate(e, X, V, W, ba, bb, geo, use_t):
 
 
 @njit(cache=True, nogil=True)
-def _body_q(X, V, W, th, wsp, rmode, b, out):
+def _body_q(X, V, W, th, wsp, rmode, quat, b, out):
     out[0] = X[b, 0]; out[1] = X[b, 1]; out[2] = X[b, 2]
     out[3] = V[b, 0]; out[4] = V[b, 1]; out[5] = V[b, 2]
     out[6] = math.sqrt(V[b, 0] ** 2 + V[b, 1] ** 2 + V[b, 2] ** 2)
     out[7] = th[b]
     out[8] = wsp[b] if rmode[b] == R_SPIN else math.sqrt(W[b, 0] ** 2 + W[b, 1] ** 2 + W[b, 2] ** 2)
     out[9] = W[b, 0]; out[10] = W[b, 1]; out[11] = W[b, 2]
+    out[12] = quat[b, 0]; out[13] = quat[b, 1]; out[14] = quat[b, 2]; out[15] = quat[b, 3]
 
 
 @njit(cache=True, nogil=True)
@@ -862,7 +863,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     BQ = np.zeros(NBQ)
     BT = np.empty((nb * NBQ, 2))
     for b in range(nb):
-        _body_q(X, V, W, th, wsp, rmode, b, BQ)
+        _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
         for k in range(NBQ):
             BT[b * NBQ + k, 0] = BQ[k]; BT[b * NBQ + k, 1] = BQ[k]
     ncr = cross_src.shape[0]
@@ -890,7 +891,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     if log_every > 0:                      # row 0: the starting state at t = 0 (its forces are step 0's, below)
         LOGT[0] = 0.0
         for b in range(nb):
-            _body_q(X, V, W, th, wsp, rmode, b, BQ)
+            _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
             for k in range(NBQ):
                 LOGB[0, b * NBQ + k] = BQ[k]
         j = 1
@@ -1656,7 +1657,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 if aux[e, k] < TR[e, 4 + 2 * k]: TR[e, 4 + 2 * k] = aux[e, k]
                 if aux[e, k] > TR[e, 5 + 2 * k]: TR[e, 5 + 2 * k] = aux[e, k]
         for b in range(nb):
-            _body_q(X, V, W, th, wsp, rmode, b, BQ)
+            _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
             for k in range(NBQ):
                 x = BQ[k]
                 if x < BT[b * NBQ + k, 0]: BT[b * NBQ + k, 0] = x
@@ -1666,7 +1667,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for k in range(nsen):
                 src = cssrc[k]; kk = csidx[k]
                 if src == 0:
-                    _body_q(X, V, W, th, wsp, rmode, kk // NBQ, BQ)
+                    _body_q(X, V, W, th, wsp, rmode, quat, kk // NBQ, BQ)
                     sens[k] = BQ[kk % NBQ]
                 elif src == 2:
                     sens[k] = Fe[kk]
@@ -1692,7 +1693,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             if t_cross[c] < 0.0:
                 src = cross_src[c]; k = cross_idx[c]
                 if src == 0:
-                    _body_q(X, V, W, th, wsp, rmode, k // NBQ, BQ)
+                    _body_q(X, V, W, th, wsp, rmode, quat, k // NBQ, BQ)
                     x = BQ[k % NBQ]
                 elif src == 2:
                     x = Fe[k]
@@ -1755,7 +1756,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             for k in range(nsig):
                 LOGS[j, k] = sig[k]
             for b in range(nb):
-                _body_q(X, V, W, th, wsp, rmode, b, BQ)
+                _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
                 for k in range(NBQ):
                     LOGB[j, b * NBQ + k] = BQ[k]
             for e in range(ne):
@@ -1779,7 +1780,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         for k in range(nsig):
             LOGS[j, k] = sig[k]
         for b in range(nb):
-            _body_q(X, V, W, th, wsp, rmode, b, BQ)
+            _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
             for k in range(NBQ):
                 LOGB[j, b * NBQ + k] = BQ[k]
         for e in range(ne):
@@ -1794,7 +1795,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     KE1 = _ke(V, W, Lw, wsp, minv, rmode, Iax, nb)
     FB = np.zeros(nb * NBQ)
     for b in range(nb):
-        _body_q(X, V, W, th, wsp, rmode, b, BQ)
+        _body_q(X, V, W, th, wsp, rmode, quat, b, BQ)
         for k in range(NBQ):
             FB[b * NBQ + k] = BQ[k]
     for e in range(min(ne, cctlD.shape[0])):
