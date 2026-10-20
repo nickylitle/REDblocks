@@ -390,6 +390,16 @@ label.cpick button{padding:0 6px;font-size:12px}
 #animView canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
 #animView .alegend{position:absolute;left:12px;top:10px;font:12px var(--sans);color:var(--ink2);background:color-mix(in srgb, var(--panel) 85%, transparent);border:1px solid var(--edge);border-radius:6px;padding:7px 10px;pointer-events:none;max-width:44%}
 #animView .alegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#animView .aread{position:absolute;left:12px;bottom:10px;background:color-mix(in srgb, var(--panel) 88%, transparent);border:1px solid var(--edge);border-radius:6px;padding:6px 10px;font:12px var(--sans);color:var(--ink2);max-height:60%;overflow:auto}
+#animView .aread .rr{display:grid;grid-template-columns:minmax(90px,auto) 92px var(--spark-w,150px);align-items:center;gap:8px;padding:2px 0}
+#animView .aread .rv{font:12px var(--mono);color:var(--ink);text-align:right;white-space:nowrap}
+#animView .aread canvas{position:static;width:var(--spark-w,150px);height:24px;cursor:default}
+#animView .aread.big{--spark-w:min(60vw,640px)}
+#animView .aread.big canvas{height:44px}
+#animView .apick{position:absolute;right:12px;top:10px;background:var(--panel);border:1px solid var(--edge);border-radius:6px;padding:8px 10px;font:12px var(--sans);color:var(--ink2);max-height:70%;overflow:auto;display:none;z-index:2}
+#animView .apick label{display:flex;gap:6px;align-items:center;padding:1px 0}
+#animView .apick h4{margin:6px 0 2px;font:600 11px var(--sans);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+#animView .aempty{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);color:var(--ink3);font:13px var(--sans);text-align:center;pointer-events:none}
 #animView .ahelp{position:absolute;right:12px;bottom:10px;font:11px var(--sans);color:var(--ink3);pointer-events:none;text-align:right}
 #helpView{position:fixed;left:0;right:0;top:var(--bars-h,84px);bottom:26px;z-index:40;display:none;grid-template-columns:310px 1fr;background:var(--bg)}
 #hSide{border-right:1px solid var(--edge);background:var(--panel);display:flex;flex-direction:column;min-height:0}
@@ -565,7 +575,9 @@ label.cpick button{padding:0 6px;font-size:12px}
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and motors between bodies"><input type="checkbox" id="avLinks" checked>links</label>
   <button id="avFit" title="Frame everything again">Reset view</button>
+  <button id="avPickB" title="Choose the values read out next to the replay: circuit voltages and currents, control signals, element forces">Readout ▾</button>
 </div><div class="astage"><canvas id="avCanvas"></canvas><div class="alegend" id="avLegend"></div>
+<div class="aread" id="avRead"></div><div class="apick" id="avPick"></div><div class="aempty" id="avEmpty" hidden>No moving bodies in this model.<br>The readout shows its signals as the replay plays.</div>
 <div class="ahelp">drag: turn · shift-drag or right-drag: pan · wheel: zoom · space: play</div></div></div>
 <div id="helpView"><div id="hSide"><div class="top"><button id="hBack" title="Back to the canvas (Esc)">← Canvas</button><input id="hQ" placeholder="Search features and blocks"></div><div id="hNav"></div></div><div id="hBody"></div></div>
 <div class="dlg" id="setDlg" role="dialog" aria-modal="true"><div class="box" style="width:min(820px,95vw)">
@@ -6108,7 +6120,53 @@ function avBuild(){
   document.getElementById("avPlay").textContent = "Play";
   avResize();
   if (!AV.ro){ AV.ro = new ResizeObserver(avResize); AV.ro.observe(cv.parentElement); }
+  avReadBuild();
   avPose(); avRender();
+}
+function avReadBuild(){
+  const S = AV.S, box = document.getElementById("avRead"), pick = document.getElementById("avPick");
+  document.getElementById("avEmpty").hidden = !S.empty;
+  box.classList.toggle("big", !!S.empty);
+  const sig = S.signals || [];
+  const groups = [["circuit", "Circuit"], ["control", "Control signals"], ["element", "Element forces"]];
+  pick.innerHTML = groups.filter(([g]) => sig.some(x => x.group === g)).map(([g, title]) => `<h4>${title}</h4>` +
+    sig.map((x, i) => x.group !== g ? "" : `<label><input type="checkbox" data-si="${i}"${x.show ? " checked" : ""}>${esc(x.label)}${x.unit ? ` <span style="color:var(--ink3)">${esc(x.unit)}</span>` : ""}</label>`).join("")).join("") ||
+    `<span style="color:var(--ink3)">nothing to read out</span>`;
+  pick.querySelectorAll("input").forEach(el => el.onchange = () => { sig[+el.dataset.si].show = el.checked; avReadRows(); avPose(); avRender(); });
+  avReadRows();
+}
+function avReadRows(){
+  const S = AV.S, box = document.getElementById("avRead"), sig = (S.signals || []).filter(x => x.show);
+  box.hidden = !sig.length;
+  box.innerHTML = sig.map((x, i) => `<div class="rr"><span title="${esc(x.key)}">${esc(x.label)}</span><span class="rv" id="avRv${i}"></span><canvas id="avSp${i}"></canvas></div>`).join("");
+  AV.read = sig.map((x, i) => {
+    const cv = document.getElementById("avSp" + i), w = cv.clientWidth || 150, h = cv.clientHeight || 24, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = w * dpr; cv.height = h * dpr;
+    const bg = document.createElement("canvas"); bg.width = cv.width; bg.height = cv.height;   // the whole history, drawn once
+    const g = bg.getContext("2d"), n = x.v.length, lo = x.lo, hi = x.hi === x.lo ? x.lo + 1 : x.hi, pad = 2 * dpr;
+    const X = k => (k / Math.max(1, n - 1)) * (bg.width - 1), Y = v => bg.height - pad - (v - lo) / (hi - lo) * (bg.height - 2 * pad);
+    if (lo < 0 && hi > 0){ g.strokeStyle = tok("edge"); g.lineWidth = dpr; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(bg.width, Y(0)); g.stroke(); }
+    g.strokeStyle = tok("p" + (1 + i % 5)); g.lineWidth = 1.2 * dpr; g.beginPath();
+    for (let k = 0; k < n; k++){ const px = X(k), py = Y(x.v[k]); k ? g.lineTo(px, py) : g.moveTo(px, py); }
+    g.stroke();
+    return {x, cv, bg, el:document.getElementById("avRv" + i), X, Y};
+  });
+}
+function avEng(v, u){                                   // 0.000086 A -> 86.4 µA (SI prefixes on SI units)
+  if (!isFinite(v)) return String(v);
+  if (!["A","V","W","N","N m","J","Pa"].includes(u)) return fmt(v) + (u ? " " + u : "");
+  const a = Math.abs(v); if (a === 0) return "0 " + u;
+  const P = [[1e9,"G"],[1e6,"M"],[1e3,"k"],[1,""],[1e-3,"m"],[1e-6,"µ"],[1e-9,"n"]], [f, p] = P.find(([f]) => a >= f * 0.9995) || P[P.length - 1];
+  return (+(v / f).toPrecision(4)) + " " + p + u;
+}
+function avReadUpdate(k, a){
+  for (const r of (AV.read || [])){
+    const v0 = r.x.v[k], v1 = r.x.v[Math.min(k + 1, r.x.v.length - 1)], v = v0 + a * (v1 - v0);
+    r.el.textContent = avEng(v, r.x.unit);
+    const g = r.cv.getContext("2d"); g.clearRect(0, 0, r.cv.width, r.cv.height); g.drawImage(r.bg, 0, 0);
+    const px = r.X(k + a); g.strokeStyle = tok("ink"); g.lineWidth = 1; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, r.cv.height); g.stroke();
+    g.fillStyle = tok("ink"); g.beginPath(); g.arc(px, r.Y(v), 2.2 * Math.min(2, window.devicePixelRatio || 1), 0, 7); g.fill();
+  }
 }
 function avFit(){
   const S = AV.S, E = S.extent, f = AV.follow;
@@ -6177,6 +6235,7 @@ function avPose(){
     else { AV.orbit.target.copy(fp); AV.followOff = true; }
     avCamera();
   }
+  avReadUpdate(k, a);
   const T = S.t[S.t.length - 1];
   const nt = v => v > 0 ? niceTime(v).join(" ") : "0 s";
   document.getElementById("avTime").textContent = `t = ${nt(AV.tcur)} / ${nt(T)}`;
@@ -6230,6 +6289,7 @@ function avPlay(){
     AV.tcur = T0 + (T - T0) * parseInt(e.target.value) / 1000; avPose(); avRender();
   };
   document.getElementById("bAnim").onclick = animOpen;
+  document.getElementById("avPickB").onclick = () => { const p = document.getElementById("avPick"); p.style.display = p.style.display === "block" ? "none" : "block"; };
 })();
 </script>
 </body>

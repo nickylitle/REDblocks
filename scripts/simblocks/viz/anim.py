@@ -68,7 +68,66 @@ def scene(system, overrides=None, frames=900, H=None, out=None):
     else:
         _scene1(M, H, idx, S)
     _extent(S)
+    S["empty"] = not any(b.get("pos") for b in S["bodies"])
+    S["signals"] = _signals(M, H, idx)
     return S
+
+
+PART_Q = (("voltage", "V"), ("current", "A"), ("power", "W"), ("soc", ""), ("temperature", "°C"), ("state", ""))
+SHOW_FIRST = {"voltage_source": ("voltage", "current"), "battery": ("voltage", "current", "soc"), "motor": ("current",),
+              "capacitor": ("voltage",), "inductor": ("current",), "nonlinear_resistor": ("voltage", "current"),
+              "current_source": ("current",), "current_load": ("current",)}
+
+
+def _signals(M, H, idx):
+    """Values to read out next to the replay: every circuit part's voltage, current, power (and charge, temperature,
+    state where it has them), every control signal and every element's force, at the replay's frames. `show` marks
+    the ones on by default (sources and batteries: voltage, current, charge; motors: current; a few control signals)."""
+    doc = M.doc; out = []
+    parts = ((doc.get("circuit") or {}).get("parts") or {}) if isinstance(doc.get("circuit"), dict) else {}
+    nshow = 0
+
+    def add(key, label, unit, group, show):
+        nonlocal nshow
+        if key not in H:
+            return
+        v = np.asarray(H[key], float)[idx]
+        if not np.isfinite(v).all() or (np.ptp(v) == 0 and group != "circuit"):
+            return
+        if group == "circuit" and np.ptp(v) == 0 and not show:
+            return
+        show = bool(show and nshow < 8); nshow += int(show)
+        out.append(dict(key=key, label=label, unit=unit, group=group, show=show, v=np.round(v, 9).tolist(),
+                        lo=float(v.min()), hi=float(v.max())))
+    for pn, d in parts.items():
+        t = (d or {}).get("type", "")
+        first = SHOW_FIRST.get(t, ())
+        for q, u in PART_Q:
+            if q == "soc" and t != "battery":
+                continue
+            if q == "temperature" and not (d or {}).get("thermal"):
+                continue
+            if q == "state" and t not in ("fuse", "switch", "diode", "nonlinear_resistor", "motor"):
+                continue
+            add(f"{pn}.{q}", f"{pn} {q}", "%" if q == "soc" else u, "circuit", q in first)
+    for i, cn in enumerate((doc.get("control") or {})):
+        add(f"control.{cn}", cn, "", "control", i < 3)
+    from ..compiler.exports import series_unit
+    for en in M.el_names:
+        if "__" in en or en not in (doc.get("elements") or {}):
+            continue
+        try:
+            u = series_unit(M, doc, f"{en}.force")
+        except Exception:
+            u = ""
+        add(f"{en}.force", f"{en} force", u, "element", False)
+    if not nshow:                                     # nothing picked: the first few, whatever they are
+        for sgl in out[:3]:
+            sgl["show"] = True
+    for sgl in out:
+        if sgl["unit"] == "%":
+            sgl["v"] = [x * 100 for x in sgl["v"]]; sgl["lo"] *= 100; sgl["hi"] *= 100
+    return out
 
 
 def _el_kind(M, en):
@@ -214,6 +273,8 @@ def _scene1(M, H, idx, S):
             pos = [[float(v) * scale, y, 0.0] for v in q[b]]
             quat = [[1.0, 0.0, 0.0, 0.0]] * len(idx)
         S["bodies"].append(dict(name=b, ground=False, prims=prims, pos=pos, quat=quat, rotation=rot))
+    if nb == 0:                                      # a circuit (or control) only model: nothing to draw
+        return
     S["bodies"].append(dict(name="ground", ground=True, prims=[dict(kind="wall", name="wall", p=[-2.0, (nb - 1) * 0.7, 0],
                                                                       size=[0.12, nb * 1.4, 0.8])]))
     gi = len(S["bodies"]) - 1

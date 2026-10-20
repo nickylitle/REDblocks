@@ -1,10 +1,11 @@
-"""Animate opens a three.js replay for 1d, 2d and 3d models; the scrubber moves the bodies; Esc closes it."""
+"""Animate opens a three.js replay for 1d, 2d and 3d models; the scrubber moves the bodies and the readout; Esc closes it.
+A circuit-only model (no moving bodies) says so and still reads its signals out."""
 import asyncio, os
 from common import main, check, load
 HERE = os.path.dirname(os.path.abspath(__file__)); EX = os.path.join(HERE, "..", "..", "examples")
 SHOT = os.environ.get("REPLAY_SHOTS", "")
 CASES = [("learn/1d_1_mass_spring_damper.yaml", "1d"), ("learn/2d_3_four_bar.yaml", "2d"), ("learn/3d_3_robot_arm.yaml", "3d"),
-         ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d")]
+         ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d"), ("learn/1d_6_chua_circuit.yaml", "1d")]
 
 async def s(pg):
     ok = True
@@ -18,6 +19,18 @@ async def s(pg):
                 break
         st = await pg.evaluate("() => [AV.open, AV.S && AV.S.dim, AV.S && AV.S.t.length, !!AV.R, document.getElementById('smsg').textContent]")
         ok &= check(st[0] and st[1] == dim and st[2] > 100 and st[3], st, f"{dim} replay open", rel)
+        rd0 = await pg.evaluate("() => (AV.read || []).map(r => r.el.textContent)")
+        ok &= check(len(rd0) > 0, rd0, "a readout is shown", "readout")
+        if "chua" in rel:
+            em = await pg.evaluate("() => [AV.S.empty, document.getElementById('avEmpty').hidden]")
+            ok &= check(em == [True, False], em, "says there are no moving bodies", "empty")
+            await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '700'; e.oninput({target:e}); }")
+            rd1 = await pg.evaluate("() => (AV.read || []).map(r => r.el.textContent)")
+            ok &= check(rd1 != rd0, (rd0, rd1), "the readout follows the scrubber", "readout-moves")
+            if SHOT:
+                await pg.screenshot(path=os.path.join(SHOT, "replay_chua.png"))
+            await pg.keyboard.press("Escape"); await pg.wait_for_timeout(200)
+            continue
         # scrub to the middle and to the end: a moving body is somewhere else
         p0 = await pg.evaluate("() => { const r = AV.bodies.find(r => r.b.pos && !r.b.ground); return r.g.position.toArray(); }")
         await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '1000'; e.oninput({target:e}); }")
