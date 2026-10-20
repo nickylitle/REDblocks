@@ -1370,10 +1370,12 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                     sens[k] = aux[kk, src - 4]
             control_step(tn, dt, i == 0, ckind, cprog, cval, crng, ccp, cst, sig, sens, cstack)
             for a_ in range(cae.shape[0]):
-                x_ = sig[casig[a_]]
-                if caarr[a_] >= 2:                   # the field is stored as its inverse (a motor's kv as 1/kv)
+                x_ = sig[casig[a_]]; ca_ = caarr[a_]
+                if ca_ >= 4:                         # the field is stored negated (a current load's I)
+                    x_ = -x_; ca_ -= 4
+                elif ca_ >= 2:                       # the field is stored as its inverse (a motor's kv as 1/kv)
                     x_ = 1.0 / x_ if x_ != 0.0 else 1e300
-                if caarr[a_] == 0 or caarr[a_] == 2:
+                if ca_ == 0 or ca_ == 2:
                     P[cae[a_], caslot[a_]] = x_
                 else:
                     cprm[cae[a_], caslot[a_]] = x_

@@ -1,0 +1,35 @@
+simblocks: 1
+name: Chua circuit
+question: "Does Chua's circuit (two capacitors, an inductor, a resistor and a negative-resistance diode) go chaotic, and what does its double-scroll attractor look like?"
+dim: 1d
+
+params:
+  C1: {value: 10 nF, note: "Kennedy 1992 component values"}
+  C2: {value: 100 nF}
+  L: {value: 18 mH}
+  R_L: {value: 12.5 ohm, note: "inductor winding resistance"}
+  R: {value: 1800 ohm, note: "the knob: 2000 rest, 1950 limit cycle, 1900 to 1860 period doubling, 1850 single scroll, 1800 double scroll"}
+  Ga: {value: -0.757e-3, note: "Chua diode inner slope, S (negative conductance)"}
+  Gb: {value: -0.409e-3, note: "Chua diode outer slope, S"}
+  Bp: {value: 1.0, note: "Chua diode breakpoint, V"}
+derived:
+  i_bp: "= $Ga * $Bp"                       # diode current at the breakpoint
+  i_end: "= $Gb * 20 + ($Ga - $Gb) * $Bp"   # at 20 V (the outer slope carries on past it)
+
+circuit:
+  ground: gnd
+  parts:
+    c1: {type: capacitor, between: [a, gnd], C: $C1, v0: 0.1 V, label: "C1, the fast capacitor (started at 0.1 V)"}
+    r:  {type: resistor, between: [a, b], R: $R, label: "coupling resistor R"}
+    c2: {type: capacitor, between: [b, gnd], C: $C2, label: "C2"}
+    l:  {type: inductor, between: [b, gnd], L: $L, R: $R_L, label: "L with its winding resistance"}
+    nr: {type: nonlinear_resistor, between: [a, gnd], iv: [[-20, "= -$i_end"], [-1, "= -$i_bp"], [1, $i_bp], [20, $i_end]],
+         label: "Chua diode: slope Ga inside +-Bp, Gb outside (a negative resistor, powered)"}
+
+outputs:
+  v1_max: {part: c1, quantity: voltage, reduce: max, unit: V}
+  v1_min: {part: c1, quantity: voltage, reduce: min, unit: V}
+  v2_max: {part: c2, quantity: voltage, reduce: max_abs, unit: V}
+  iL_max: {part: l, quantity: current, reduce: max_abs, unit: mA}
+
+run: {t_end: 60 ms}

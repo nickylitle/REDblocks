@@ -283,17 +283,17 @@ def compile_model(doc, overrides=None):
                 raise SpecError(f"no control signal named '{fd['signal']}' (signals: {', '.join(sec) or 'none'})", where,
                                 None, fname)
             m = marks[i]
-            found = []                                   # (array code, row, slot): 0 P, 1 circuit; +2 when inverted
+            found = []                                   # (array code, row, slot): 0 P, 1 circuit; +2 inverted, +4 negated
             for code, arr in ((0, PP), (1, cp)):
-                for inv, val in ((0, m), (2, 1.0 / m)):
+                for inv, val in ((0, m), (2, 1.0 / m), (4, -m)):     # as itself, inverted, or negated
                     r_, c_ = np.where(np.isclose(arr, val, rtol=1e-9, atol=0.0)) if arr.size else ((), ())
                     found += [(code + inv, int(r), int(c)) for r, c in zip(r_, c_)]
             if fd["path"][0] == "elements":
                 en = fd["path"][1]
                 if en not in Ms.el_names:
                     raise SpecError("a split element (segments) cannot be driven by a control signal", where, None, fname)
-                found = [x for x in found if x[0] in (0, 2) and x[1] == Ms.el_names.index(en)]
-            elif any(x[0] in (0, 2) for x in found):
+                found = [x for x in found if x[0] in (0, 2, 4) and x[1] == Ms.el_names.index(en)]
+            elif any(x[0] in (0, 2, 4) for x in found):
                 found = []                               # also copied into the mechanics (a motor's Kt): not one number
             if len(found) != 1:
                 raise SpecError(f"'{fd['path'][-1]}' cannot be driven by a control signal (the model turns it into "

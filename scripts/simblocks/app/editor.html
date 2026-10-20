@@ -1081,7 +1081,7 @@ function measureOf(n){
 // A part is a two-terminal law (+ / -); each terminal wires into a net block, and one net is ground (0 V).
 // Motors also take a shaft body: the circuit drives it, and its speed makes the back-EMF.
 const PART_NAME = {resistor:"resistor", capacitor:"capacitor", inductor:"inductor", voltage_source:"voltage source", current_source:"current source", current_load:"current load",
-  battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor", wire:"wire"};
+  battery:"battery", diode:"diode", switch:"switch", fuse:"fuse", motor:"motor", wire:"wire", nonlinear_resistor:"nonlinear resistor"};
 const PART_INFO = {
   resistor:["v = R i", "An ideal resistor."],
   capacitor:["i = C dv/dt", "A capacitor with optional series ESR (equivalent series resistance, default 0) and leakage resistance R_leak (0 = none). v0 is its starting voltage."],
@@ -1090,12 +1090,13 @@ const PART_INFO = {
   current_source:["i = I", "Drives current I out of its + terminal into the circuit and back in at − (a source: its current reads negative by the passive sign). Tick function gen to make I a waveform."],
   current_load:["i = I", "Draws a fixed current I: in at its + terminal (the supply side), out at − (the return). Its current reads positive. Tick function gen for a sine, square, pulse, step or ramp draw."],
   battery:["v = OCV(soc) - R0 i - v1", "A LiPo pack: open-circuit voltage from charge (V_full to V_empty per cell), series R0, and an R1 || C1 branch for the voltage sag that recovers. Charge drains with the current; capacity in mAh."],
+  nonlinear_resistor:["i = f(v), piecewise linear", "Any I-V curve as a table of [v, i] points (2 to 7, voltage rising), straight between points and carried on along the end slopes. Solved implicitly with the rest of the circuit, so a negative slope (a Chua diode, a tunnel diode) is exact and stable. Example: [[-20, 7.5 mA], [-1, 0.757 mA], [1, -0.757 mA], [20, -7.5 mA]]."],
   diode:["on: v = Vf + R_on i", "Conducts from + (anode) to − (cathode) once forward biased past Vf; off it leaks through R_off."],
   switch:["R_on or R_off", "Closed (R_on) from on_at to off_at. With pwm_freq it chops at duty (0 to 1)."],
   fuse:["blows when ∫(i/I_rating)² dt > t_blow", "Heats with (i/I_rating)²; opens once that has gone on for t_blow at the rating, or at once above I_trip."],
   wire:["R = ρ L / A + connectors", "A wire run: gauge (awg) or copper area, the total length (out and back), and its connectors (XT30, XT60, XT90). It is a resistor; thermal: on fills in the copper's heat capacity and free convection, so only the ambient is needed."],
   motor:["v = R i + L di/dt + Kt ω, τ = Kt i", "A DC (or lumped brushless) motor. Give kv or Kt, not both. Its shaft is the body plugged in; gear is motor turns per shaft turn. ESC (optional) chops the supply at throttle and limits current to I_max; regen lets it push current back."]};
-const PART_PH = {eta:"e.g. 0.82", eta_back:"from eta and gear", I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
+const PART_PH = {iv:"[[v, i], ...] e.g. [[-1, 1 mA], [1, -1 mA]]", eta:"e.g. 0.82", eta_back:"from eta and gear", I_load:"blank = none (a fixed draw)", R:"ohm", C:"e.g. 470 uF", ESR:"0 (ideal)", R_leak:"0 = none", v0:"0 V", L:"e.g. 15 uH", i0:"0 A", V:"e.g. 24 V", I:"e.g. 1 A",
   cells:"e.g. 6", capacity:"e.g. 1300", R0:"pack R", R1:"sag R", C1:"sag C", soc0:"1 = full", V_full:"4.2 /cell", V_empty:"3.3 /cell",
   Vf:"0.7 V", R_on:"default 1 mohm", R_off:"open", on_at:"0 s", off_at:"never", pwm_freq:"0 = no PWM", duty:"1", phase:"0",
   I_rating:"rated current", t_blow:"1 s at rating", I_trip:"instant trip", kv:"rpm/V (or Kt)", Kt:"N m/A (or kv)", gear:"1 (motor:shaft)", J_rotor:"rotor inertia",
@@ -1103,7 +1104,7 @@ const PART_PH = {eta:"e.g. 0.82", eta_back:"from eta and gear", I_load:"blank = 
   T_max_C:"never fails", kt_tempco:"-0.0011", vf_tempco:"-0.002", awg:"e.g. 14 (or area)", area:"or e.g. 2 mm^2", length:"total run, out and back",
   material:"copper", connectors:"e.g. XT60, XT60", R_contact:"other contacts", I0:"no-load current", t_sw:"e.g. 100 ns", f_sw:"e.g. 24 kHz"};
 // what each part field means (the library pages)
-const PART_MEAN = {R:"resistance", C:"capacitance", ESR:"equivalent series resistance", R_leak:"leakage resistance (0 = none)",
+const PART_MEAN = {iv:"I-V table, [v, i] points", R:"resistance", C:"capacitance", ESR:"equivalent series resistance", R_leak:"leakage resistance (0 = none)",
   v0:"voltage at the start", L:"inductance", i0:"current at the start", V:"voltage", I:"current", I_load:"a fixed current drawn across it (its part is <name>__load)",
   cells:"cells in series", capacity:"capacity", R0:"series resistance", R1:"sag branch resistance", C1:"sag branch capacitance",
   soc0:"charge at the start (0 to 1)", V_full:"cell voltage full", V_empty:"cell voltage empty", Vf:"forward voltage",
@@ -1140,12 +1141,12 @@ const PART_SYM = (() => {
     motor: ends(62, 98) + `<circle cx="80" cy="45" r="18" ${W}/><text x="74" y="50" font-size="13" fill="currentColor">M</text><line x1="80" y1="27" x2="80" y2="10" stroke="currentColor" stroke-width="3"/><text x="86" y="16" font-size="8" fill="currentColor">shaft</text>`};
 })();
 // fields in the order a datasheet gives them
-const PART_ORDER = {motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty","I_load"],
+const PART_ORDER = {nonlinear_resistor:["iv"], motor:["kv","Kt","R","L","gear","J_rotor"], battery:["cells","capacity","R0","R1","C1","soc0","V_full","V_empty","I_load"],
   capacitor:["C","ESR","R_leak","v0"], inductor:["L","R","i0"], voltage_source:["V","R","I_load"], current_source:["I"], current_load:["I"], resistor:["R"],
   wire:["awg","area","length","material","connectors","R_contact"], diode:["Vf","R_on","R_off"], switch:["on_at","off_at","R_on","R_off","pwm_freq","duty","phase"], fuse:["I_rating","t_blow","I_trip","R"],
   esc:["throttle","I_max","R_on","t_sw","f_sw","C_th","R_th","T_amb_C"], thermal:["C_th","R_th","T_amb_C","T0_C","T_max_C","alpha","kt_tempco","vf_tempco"]};
 const byOrder = (list, ord) => list.slice().sort((a, b) => ((ord || []).indexOf(a) + 1 || 99) - ((ord || []).indexOf(b) + 1 || 99));
-const PART_DIM = {eta:"none", eta_back:"none", I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
+const PART_DIM = {iv:"none", eta:"none", eta_back:"none", I_load:"current", R:"resistance", C:"capacitance", ESR:"resistance", R_leak:"resistance", v0:"voltage", L:"inductance", i0:"current", V:"voltage", I:"current",
   cells:"none", capacity:"capacity", R0:"resistance", R1:"resistance", C1:"capacitance", soc0:"none", V_full:"voltage", V_empty:"voltage",
   Vf:"voltage", R_on:"resistance", R_off:"resistance", on_at:"time", off_at:"time", pwm_freq:"frequency", duty:"none", phase:"none",
   I_rating:"current", t_blow:"time", I_trip:"current", kv:"kv", Kt:"kt", gear:"none", J_rotor:"inertia", I0:"current",

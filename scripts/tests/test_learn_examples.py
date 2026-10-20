@@ -109,3 +109,11 @@ def test_1d_5_cruise_control():
     assert o["v_end"] == pytest.approx(25, rel=1e-4)
     assert 24.0 < o["v_sag"] < 25.0                                       # a brief sag when the hill starts
     assert o["t_on_hill"] == pytest.approx(40, abs=0.01)
+
+
+def test_1d_6_chua_circuit():
+    """Double-scroll chaos: both scrolls visited, the attractor's size as in Kennedy (1992), powers balance."""
+    o = run("1d_6_chua_circuit.yaml")
+    assert 3.9 < o["v1_max"] < 4.3 and -4.3 < o["v1_min"] < -3.9          # visits both scrolls
+    assert 0.7 < o["v2_max"] < 0.85 and 3.2 < o["iL_max"] < 3.8
+    assert o["_circuit_ledger_rel"] < 1e-6

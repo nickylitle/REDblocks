@@ -33,9 +33,11 @@ from numba import njit
 from .loader import SpecError, line_of
 
 # part types
-R_, C_, L_, VS, IS, BAT, DIODE, SW, FUSE, MOT, ESC = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+R_, C_, L_, VS, IS, BAT, DIODE, SW, FUSE, MOT, ESC, NLR = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+NLR_MAX = 7                         # a nonlinear resistor's table: up to 7 (v, i) points (they fill the 15 parameter slots)
 TYPES = {"resistor": R_, "capacitor": C_, "inductor": L_, "voltage_source": VS, "current_source": IS, "current_load": IS,
-         "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT, "wire": R_}
+         "battery": BAT, "diode": DIODE, "switch": SW, "fuse": FUSE, "motor": MOT, "wire": R_,
+         "nonlinear_resistor": NLR}
 FIELDS = {
     "resistor": {"R"}, "capacitor": {"C", "v0", "R_leak", "ESR"}, "inductor": {"L", "R", "i0"},
     "voltage_source": {"V", "R", "I_load", "wave"}, "current_source": {"I", "wave"}, "current_load": {"I", "wave"},
@@ -45,10 +47,11 @@ FIELDS = {
     "fuse": {"R", "I_rating", "t_blow", "I_trip"},
     "motor": {"kv", "Kt", "R", "L", "gear", "measure", "esc", "J_rotor", "I0", "eta", "eta_back"},
     "wire": {"awg", "area", "length", "material", "connectors", "R_contact"},
+    "nonlinear_resistor": {"iv"},
 }
 REQUIRED = {"resistor": {"R"}, "capacitor": {"C"}, "inductor": {"L"}, "voltage_source": set(),
             "current_source": set(), "current_load": set(), "battery": {"cells", "capacity"}, "diode": set(), "switch": set(),
-            "fuse": {"I_rating"}, "motor": {"R", "measure"}, "wire": {"length"}}
+            "fuse": {"I_rating"}, "motor": {"R", "measure"}, "wire": {"length"}, "nonlinear_resistor": {"iv"}}
 # a source's function generator (wave:): the value follows a shape in time instead of staying fixed
 WAVE_SHAPES = {"sine": 1, "square": 2, "triangle": 3, "sawtooth": 4, "pulse": 5, "step": 6, "ramp": 7}
 WAVE_FIELDS = {"shape", "amplitude", "offset", "frequency", "period", "phase", "duty", "start", "stop", "rise"}
@@ -169,6 +172,11 @@ def compile_circuit(doc, ctx):
                 P[2] = 1e-4                         # an ideal source needs some resistance to be a Norton source
         elif t == "diode":
             P[0] = g("Vf", 0.7); P[1] = g("R_on", 0.01); P[2] = g("R_off", 1e7)
+        elif t == "nonlinear_resistor":
+            pts = _iv_table(d["iv"], ctx, where + ".iv", line_of(d, "iv"), f)
+            P[0] = len(pts)
+            for j, (vj, ij) in enumerate(pts):
+                P[1 + j] = vj; P[1 + NLR_MAX + j] = ij
         elif t == "switch":
             P[0] = g("R_on", 1e-3); P[1] = g("R_off", 1e8)
             P[2] = g("on_at", 0.0); P[3] = g("off_at", 1e300)
@@ -358,6 +366,38 @@ def _wave_in(w, P, sign, base, ctx, where, ln, f):
         raise SpecError("a ramp needs rise: the time it takes to climb by the amplitude", where, ln, f)
 
 
+def _iv_table(raw, ctx, where, ln, f):
+    """A nonlinear resistor's I-V curve: [[v, i], ...], 2 to 7 points with v rising (numbers, units or $params).
+    Between points it is linear; beyond the end points it carries on along the end segments' slopes."""
+    from .model import resolve, num
+    if isinstance(raw, str):
+        import yaml
+        try:
+            raw = yaml.safe_load(raw)
+        except Exception:
+            raise SpecError("iv is a list of [v, i] points, e.g. [[-1, 0.5 mA], [0, 0], [1, -0.5 mA]]", where, ln, f)
+    if not isinstance(raw, (list, tuple)) or not all(isinstance(p, (list, tuple)) and len(p) == 2 for p in raw):
+        raise SpecError("iv is a list of [v, i] points, e.g. [[-1, 0.5 mA], [0, 0], [1, -0.5 mA]]", where, ln, f)
+    if not 2 <= len(raw) <= NLR_MAX:
+        raise SpecError(f"iv takes 2 to {NLR_MAX} points (it has {len(raw)})", where, ln, f)
+    pts = [(num(resolve(v, ctx, f"{where}[{j}].v"), f"{where}[{j}].v"), num(resolve(i, ctx, f"{where}[{j}].i"), f"{where}[{j}].i"))
+           for j, (v, i) in enumerate(raw)]
+    if any(pts[j + 1][0] <= pts[j][0] for j in range(len(pts) - 1)):
+        raise SpecError("iv points need rising voltages", where, ln, f)
+    return pts
+
+
+@njit(cache=True, nogil=True)
+def _nlr_seg(prm, k, v):
+    """The segment of a nonlinear resistor's table that voltage v falls on (0 to n - 2; the ends extend outward)."""
+    n = int(prm[k, 0])
+    s_ = 0
+    for j in range(1, n - 1):
+        if v >= prm[k, 1 + j]:
+            s_ = j
+    return s_
+
+
 def circuit_tau(circ):
     """The circuit's fastest time scale, for the automatic step: each capacitor's C (ESR + the smallest other
     resistance), each inductor's or motor's L / (R + that), the battery's R1 C1, and a PWM switch's period.
@@ -368,6 +408,9 @@ def circuit_tau(circ):
         t = pt[k]; P = prm[k]
         r = {R_: P[0], C_: P[2], L_: P[1], VS: P[1], BAT: P[2] + P[3], DIODE: P[1], SW: P[0], FUSE: P[0],
              MOT: P[1], ESC: P[1]}.get(int(t), 0.0)
+        if t == NLR:                               # its steepest segment, as a resistance
+            n = int(P[0]); g_ = max(abs((P[1 + NLR_MAX + j + 1] - P[1 + NLR_MAX + j]) / (P[2 + j] - P[1 + j])) for j in range(n - 1))
+            r = 1.0 / g_ if g_ > 0 else math.inf
         rs.append(r if r > 0 else math.inf)
     taus = []
     for k in range(len(pt)):
@@ -533,6 +576,11 @@ def _companion(k, ptype, prm, pst, th, flg, t, dt, emf):
             a = 0.0; b = 0.0
         Rt = prm[k, 2] * rf + b                             # terminal: v = (OCV - a) + Rt i
         return 1.0 / Rt, (ocv - a) / Rt
+    if tp == 12:                                       # nonlinear resistor: the table segment it sits on
+        s_ = int(flg[k]); n_ = 7
+        v0 = prm[k, 1 + s_]; v1 = prm[k, 2 + s_]; i0 = prm[k, 1 + n_ + s_]; i1 = prm[k, 2 + n_ + s_]
+        g_ = (i1 - i0) / (v1 - v0)
+        return g_, -(i0 - g_ * v0)                     # i = g v + (i0 - g v0) = G v - J
     if tp == 7:                                        # diode: Vf + R_on when on, R_off when off
         if flg[k] > 0.5:
             vf = prm[k, 0] + (th[k, 7] * (pst[k, 4] - T_REF) if th[k, 0] > 0.5 else 0.0)
@@ -610,6 +658,10 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
                 want = 1.0 if v > vf else 0.0
                 if want != flg[k]:
                     flg[k] = want; changed = True
+            elif tp == 12:
+                sg_ = float(_nlr_seg(prm, k, v))
+                if sg_ != flg[k]:
+                    flg[k] = sg_; changed = True
             elif tp == 11 and pst[k, 5] < 0.5 and flg[k] != 0.0:
                 d = flg[k]
                 Z = prm[k, 1] * _rf(k, th, pst) + prm[k, 8] + prm[k, 2] / dt
@@ -680,8 +732,8 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
         heat = 0.0
         if pst[k, 5] > 0.5 and tp != 4 and tp != 5:
             pass
-        elif tp == 1 or tp == 7 or tp == 8 or tp == 9:
-            heat = v * i
+        elif tp == 1 or tp == 7 or tp == 8 or tp == 9 or tp == 12:
+            heat = v * i                                     # (a negative resistance delivers: negative)
         elif tp == 2:
             gl = 1.0 / prm[k, 1] if prm[k, 1] > 0.0 else 0.0
             ic = i - gl * v                                  # the capacitor branch (the leak runs beside it)
@@ -756,7 +808,9 @@ def circuit_step(t, dt, nn, ptype, na, nb, prm, pst, th, pout, mot_el, st, flg, 
             pout[k, 10] = im                                     # winding current (behind an ESC: not the bus current)
         elif tp == 7 or tp == 8:
             pout[k, 4] = 1.0 if G > 1e-3 else 0.0
-        if tp != 9 and tp != 6 and tp != 10 and tp != 11 and tp != 7 and tp != 8:
+        if tp == 12:
+            pout[k, 4] = flg[k]                                  # which segment of its table it is on
+        elif tp != 9 and tp != 6 and tp != 10 and tp != 11 and tp != 7 and tp != 8:
             pout[k, 4] = 0.0 if pst[k, 5] > 0.5 else 1.0
         pout[k, 7] += heat * dt
         if th[k, 0] > 0.5:                                       # lumped thermal mass: heat in, conduction out

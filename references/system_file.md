@@ -330,7 +330,7 @@ module's powered descent to touchdown).
 
 Named signals worked out every time step from the running model. An element field, or a circuit part's field
 (including its `esc` and `thermal` settings), written `{control: <signal>, init: <first-step value>, max: <the most it
-reaches>}` follows that signal as the model runs (a load's `P`, a drive's, rocket's or ESC's `throttle`, a spring's
+reaches>}` follows that signal as the model runs (a load's `P`, a current source's or load's `I`, a drive's, rocket's or ESC's `throttle`, a spring's
 `k`, a damper's `c`, a drive's `kv`, which the model stores inverted). Signals are SI. Outputs and CSV columns read a
 signal with `control: <name>` (any reduce, including at, time_of_max and first_time_*).
 
@@ -399,6 +399,7 @@ circuit:
 | `current_load` | **I** (or wave), wave | draws I in at + (supply side), out at − (its current reads positive) |
 | `battery` | **cells**, **capacity**, R0, R1, C1, soc0 (1), V_full (4.2), V_empty (3.3), I_load (a fixed draw across it, A, or a wave; its part is `<name>__load`) | LiPo OCV(soc) - R0 i - v1, v1 the R1 \|\| C1 sag |
 | `diode` | Vf (0.7 V), R_on (10 mohm), R_off (10 Mohm) | conducts first net to second past Vf |
+| `nonlinear_resistor` | **iv**: 2 to 7 `[v, i]` points, voltage rising (units and `$params` allowed) | piecewise linear between points, the end slopes carried on outward; solved implicitly with the circuit, so negative slopes (a Chua diode, a tunnel diode) are exact and stable. `state` is the segment it is on |
 | `switch` | R_on, R_off, on_at, off_at, pwm_freq, duty, phase | closed from on_at to off_at, chopped at duty with pwm_freq |
 | `fuse` | **I_rating**, t_blow (1 s), I_trip, R | opens once integral (i/I_rating)^2 dt > t_blow, or at once above I_trip |
 | `motor` | **R**, **measure**, kv or Kt, L, gear, J_rotor, eta, eta_back, esc {throttle, I_max, regen, brake} | v = R i + L di/dt + gear Kt ds/dt |
