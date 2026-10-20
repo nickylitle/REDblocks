@@ -27,6 +27,7 @@ from .control import control_step
 from .adaptive import pick_dt
 
 from .engine2d import _book_hits
+from .linsolve import _gauss, _lu, _lu_solve
 from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 
 MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
@@ -403,89 +404,141 @@ def _rows3(e, mk_, X, R, th, ba, bb, C, s0, GA, GB, GX, ref, axis, J, cpos):
 
 
 @njit(cache=True, nogil=True)
+def _inv_world(R, rmode, Iinv, axis, Iax, nb, Iw):
+    """World inverse inertia of every body as a 3x3 (R Iinv R^T for free bodies, Iax a a^T for spin bodies), so a
+    joint solve turns an angular impulse into a change of omega with 9 multiplies instead of a call per row."""
+    for b in range(nb):
+        if rmode[b] == R_FREE:
+            for i in range(3):
+                for j in range(3):
+                    s_ = 0.0
+                    for k in range(3):
+                        for l in range(3):
+                            s_ += R[b, i, k] * Iinv[b, k, l] * R[b, j, l]
+                    Iw[b, i, j] = s_
+        elif rmode[b] == R_SPIN:
+            for i in range(3):
+                for j in range(3):
+                    Iw[b, i, j] = Iax[b] * axis[b, i] * axis[b, j]
+        else:
+            for i in range(3):
+                for j in range(3):
+                    Iw[b, i, j] = 0.0
+
+
+@njit(cache=True, nogil=True)
 def _jsolve3(mode, ne, nb, typ, active, mk, X, V, W, R, th, quat, Lw, wsp, minv, rmode, Iinv, axis, Iax, ba, bb, C, s0,
-             GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA, JO, rhs, re, rr, dt, first_pass):
+             GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA, JO, rhs, re, rr, dt, first_pass, jok, MJ, K, xs, rbn, rbl, tol, acc, Iw):
     """Every rigid-joint row at once: K x = rhs, K = J M^-1 J^T (direct, so long levers on light bodies converge
     where row-by-row sweeps crawl). mode 0: velocities onto the constraints; mode 1: positions (SHAKE along the
-    start-of-step directions J3o). Returns the largest residual."""
+    start-of-step directions J3o). Returns the largest residual (before this solve); jok[0] = 1 when it solved
+    (or had nothing to do), 0 when the system was singular. MJ, K, xs, rbn, rbl are work arrays (no allocation per
+    call); each row only touches the bodies listed in rbl, so K is built from those alone."""
+    jok[0] = 0.0
     n = 0
     for e in range(ne):
         if typ[e] != 15 or active[e] == 0 or (mode == 1 and mk[e] == MK_TWIST):
             continue
         nr = _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
         for r in range(nr):
-            u = 0.0
+            u = 0.0; nbt = 0
             for b in range(nb):
+                nz = False
                 for k in range(6):
-                    JA[n, b, k] = J3[r, b, k]
-                    JO[n, b, k] = J3o[e, r, b, k] if mode == 1 else J3[r, b, k]
-                for k in range(3):
-                    u += J3[r, b, k] * V[b, k] + J3[r, b, 3 + k] * W[b, k]
+                    ja = J3[r, b, k]; jo = J3o[e, r, b, k] if mode == 1 else ja
+                    JA[n, b, k] = ja; JO[n, b, k] = jo
+                    if ja != 0.0 or jo != 0.0:
+                        nz = True
+                if nz:
+                    rbl[n, nbt] = b; nbt += 1
+                    for k in range(3):
+                        u += J3[r, b, k] * V[b, k] + J3[r, b, 3 + k] * W[b, k]
+            rbn[n] = nbt
             rhs[n] = -cps[r] if mode == 1 else -u
             if mode == 1 and first_pass and abs(cps[r]) > aux[e, 3]:
                 aux[e, 3] = abs(cps[r])
             re[n] = e; rr[n] = r; n += 1
     if n == 0:
+        jok[0] = 1.0
         return 0.0
     mx = 0.0
     for i in range(n):
         if abs(rhs[i]) > mx:
             mx = abs(rhs[i])
-    if mx == 0.0:
-        return 0.0
+    if mx <= tol:                       # already on the constraints (tol 0: only exactly)
+        jok[0] = 1.0
+        return mx
     # M^-1 JO^T per row: linear part minv * J, angular part the change of world omega
-    MJ = np.zeros((n, nb, 6))
+    _inv_world(R, rmode, Iinv, axis, Iax, nb, Iw)
     for j in range(n):
-        for b in range(nb):
+        for q in range(rbn[j]):
+            b = rbl[j, q]
             for k in range(3):
                 MJ[j, b, k] = minv[b, k] * JO[j, b, k]
             ox = JO[j, b, 3]; oy = JO[j, b, 4]; oz = JO[j, b, 5]
-            if ox != 0.0 or oy != 0.0 or oz != 0.0:
-                tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, ox, oy, oz)
-                MJ[j, b, 3] = tx; MJ[j, b, 4] = ty; MJ[j, b, 5] = tz
-    K = np.zeros((n, n)); tr = 0.0
+            for k in range(3):
+                MJ[j, b, 3 + k] = Iw[b, k, 0] * ox + Iw[b, k, 1] * oy + Iw[b, k, 2] * oz
+    tr = 0.0
     for i in range(n):
         for j in range(n):
             s_ = 0.0
-            for b in range(nb):
-                for k in range(6):
-                    s_ += JA[i, b, k] * MJ[j, b, k]
+            for q in range(rbn[i]):
+                b = rbl[i, q]
+                hit = False
+                for q2 in range(rbn[j]):
+                    if rbl[j, q2] == b:
+                        hit = True
+                        break
+                if hit:
+                    for k in range(6):
+                        s_ += JA[i, b, k] * MJ[j, b, k]
             K[i, j] = s_
         tr += K[i, i]
     if tr <= 0.0:
         return mx
     for i in range(n):
         K[i, i] += 1e-12 * tr / n
-    x = np.linalg.solve(K, rhs[:n].copy())
+        xs[i] = rhs[i]
+    if not _gauss(K, xs, n):
+        return mx
     for i in range(n):
-        if not np.isfinite(x[i]):
+        if not np.isfinite(xs[i]):
             return mx
+    jok[0] = 1.0
+    # add every row's impulse per body first, then move each body once (one rotation per body, not one per row)
+    for b in range(nb):
+        for k in range(6):
+            acc[b, k] = 0.0
     for j in range(n):
-        e = re[j]; r = rr[j]; dl = x[j]
+        e = re[j]; r = rr[j]; dl = xs[j]
         lam[e, r] += dl / dt if mode == 1 else dl
-        for b in range(nb):
-            for k in range(3):
-                if JO[j, b, k] != 0.0:
-                    if mode == 1:
-                        X[b, k] += minv[b, k] * JO[j, b, k] * dl
-                        V[b, k] += minv[b, k] * JO[j, b, k] * dl / dt
-                    else:
-                        V[b, k] += minv[b, k] * JO[j, b, k] * dl
-            jx = JO[j, b, 3] * dl; jy = JO[j, b, 4] * dl; jz = JO[j, b, 5] * dl
-            if (jx != 0.0 or jy != 0.0 or jz != 0.0) and rmode[b] != R_NONE:
-                f_ = 1.0 / dt if mode == 1 else 1.0
-                if rmode[b] == R_SPIN:
-                    wsp[b] += (jx * axis[b, 0] + jy * axis[b, 1] + jz * axis[b, 2]) * Iax[b] * f_
-                elif rmode[b] == R_FREE:
-                    Lw[b, 0] += jx * f_; Lw[b, 1] += jy * f_; Lw[b, 2] += jz * f_
+        for q in range(rbn[j]):
+            b = rbl[j, q]
+            for k in range(6):
+                acc[b, k] += JO[j, b, k] * dl
+    for b in range(nb):
+        for k in range(3):
+            if acc[b, k] != 0.0:
                 if mode == 1:
-                    tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, jx, jy, jz)
-                    _rotate_quat(quat, b, tx, ty, tz, 1.0)
-                    _qmat(quat[b, 0], quat[b, 1], quat[b, 2], quat[b, 3], R[b])
-                    if rmode[b] == R_SPIN:
-                        th[b] += tx * axis[b, 0] + ty * axis[b, 1] + tz * axis[b, 2]
+                    X[b, k] += minv[b, k] * acc[b, k]
+                    V[b, k] += minv[b, k] * acc[b, k] / dt
                 else:
-                    _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
+                    V[b, k] += minv[b, k] * acc[b, k]
+        jx = acc[b, 3]; jy = acc[b, 4]; jz = acc[b, 5]
+        if (jx != 0.0 or jy != 0.0 or jz != 0.0) and rmode[b] != R_NONE:
+            f_ = 1.0 / dt if mode == 1 else 1.0
+            if rmode[b] == R_SPIN:
+                wsp[b] += (jx * axis[b, 0] + jy * axis[b, 1] + jz * axis[b, 2]) * Iax[b] * f_
+            elif rmode[b] == R_FREE:
+                Lw[b, 0] += jx * f_; Lw[b, 1] += jy * f_; Lw[b, 2] += jz * f_
+            if mode == 1:
+                tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, jx, jy, jz)
+                _rotate_quat(quat, b, tx, ty, tz, 1.0)
+                _qmat(quat[b, 0], quat[b, 1], quat[b, 2], quat[b, 3], R[b])
+                if rmode[b] == R_SPIN:
+                    th[b] += tx * axis[b, 0] + ty * axis[b, 1] + tz * axis[b, 2]
+            else:
+                _omega1(R, rmode, Iinv, axis, Lw, wsp, W, b)
     return mx
 
 @njit(cache=True, nogil=True)
@@ -566,11 +619,12 @@ def _motor_row(e, m_, C, ba, bb, geo, axis, rmode, nb, g):
 
 @njit(cache=True, nogil=True)
 def _motor_eff3(em, ne, nb, typ, active, mk, X, V, W, Vst, Wst, R, th, minv, rmode, Iinv, axis, Iax, ba, bb, C, s0,
-                GA, GB, GX, refc, J3, cps, JA, g, geo):
+                GA, GB, GX, refc, J3, cps, JA, g, geo, mst, MK, piv, Mg, bv, rbn, rbl, MJm, Iw):
     """A motor's shaft as the rigid joints leave it free to move: (1 / inertia along its measure, the measure's
-    rate change this step), both with the joints held (g M^-1 g' - b' K^-1 b, b = J M^-1 g', K = J M^-1 J')."""
+    rate change this step), both with the joints held (g M^-1 g' - b' K^-1 b, b = J M^-1 g', K = J M^-1 J').
+    K depends only on positions, so it is built and factored once per step (mst[0] = 0 asks for that; mst[1] holds
+    the row count, mst[2] = 1 if K is usable) and every motor of the step reuses it."""
     _motor_row(em, mk[em], C, ba, bb, geo, axis, rmode, nb, g)
-    Mg = np.zeros((nb, 6))
     gg = 0.0; du = 0.0
     for b in range(nb):
         for k in range(3):
@@ -580,48 +634,79 @@ def _motor_eff3(em, ne, nb, typ, active, mk, X, V, W, Vst, Wst, R, th, minv, rmo
         for k in range(3):
             gg += g[b, k] * Mg[b, k] + g[b, 3 + k] * Mg[b, 3 + k]
             du += g[b, k] * (V[b, k] - Vst[b, k]) + g[b, 3 + k] * (W[b, k] - Wst[b, k])
-    n = 0
-    for e in range(ne):
-        if typ[e] != 15 or active[e] == 0:
-            continue
-        nr = _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
-        for r in range(nr):
-            for b in range(nb):
-                for k in range(6):
-                    JA[n, b, k] = J3[r, b, k]
-            n += 1
-    if n == 0:
+    if mst[0] == 0:
+        mst[0] = 1; mst[2] = 0
+        n = 0
+        for e in range(ne):
+            if typ[e] != 15 or active[e] == 0:
+                continue
+            nr = _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
+            for r in range(nr):
+                nbt = 0
+                for b in range(nb):
+                    nz = False
+                    for k in range(6):
+                        JA[n, b, k] = J3[r, b, k]
+                        if J3[r, b, k] != 0.0:
+                            nz = True
+                    if nz:
+                        rbl[n, nbt] = b; nbt += 1
+                rbn[n] = nbt
+                n += 1
+        mst[1] = n
+        if n > 0:
+            _inv_world(R, rmode, Iinv, axis, Iax, nb, Iw)
+            for j in range(n):                     # M^-1 J^T per row (kept in MJm), then K = J M^-1 J^T
+                for q in range(rbn[j]):
+                    b = rbl[j, q]
+                    for k in range(3):
+                        MJm[j, b, k] = minv[b, k] * JA[j, b, k]
+                    ox = JA[j, b, 3]; oy = JA[j, b, 4]; oz = JA[j, b, 5]
+                    for k in range(3):
+                        MJm[j, b, 3 + k] = Iw[b, k, 0] * ox + Iw[b, k, 1] * oy + Iw[b, k, 2] * oz
+            tr = 0.0
+            for i in range(n):
+                for j in range(n):
+                    s_ = 0.0
+                    for q in range(rbn[i]):
+                        b = rbl[i, q]
+                        hit = False
+                        for q2 in range(rbn[j]):
+                            if rbl[j, q2] == b:
+                                hit = True
+                                break
+                        if hit:
+                            for k in range(6):
+                                s_ += JA[i, b, k] * MJm[j, b, k]
+                    MK[i, j] = s_
+                tr += MK[i, i]
+            if tr > 0.0:
+                for i in range(n):
+                    MK[i, i] += 1e-12 * tr / n
+                if _lu(MK, piv, n):
+                    mst[2] = 1
+    n = mst[1]
+    if n == 0 or mst[2] == 0:
         return gg, du
-    MJ = np.zeros((n, nb, 6))
-    for j in range(n):
-        for b in range(nb):
-            for k in range(3):
-                MJ[j, b, k] = minv[b, k] * JA[j, b, k]
-            tx, ty, tz = _turn_dir(R, rmode, Iinv, axis, Iax, b, JA[j, b, 3], JA[j, b, 4], JA[j, b, 5])
-            MJ[j, b, 3] = tx; MJ[j, b, 4] = ty; MJ[j, b, 5] = tz
-    K = np.zeros((n, n)); bv = np.zeros(n); jd = np.zeros(n); tr = 0.0
     for i in range(n):
-        for b in range(nb):
+        s_ = 0.0
+        for q in range(rbn[i]):
+            b = rbl[i, q]
             for k in range(6):
-                bv[i] += JA[i, b, k] * Mg[b, k]
-            for k in range(3):
-                jd[i] += JA[i, b, k] * (V[b, k] - Vst[b, k]) + JA[i, b, 3 + k] * (W[b, k] - Wst[b, k])
-        for j in range(n):
-            s_ = 0.0
-            for b in range(nb):
-                for k in range(6):
-                    s_ += JA[i, b, k] * MJ[j, b, k]
-            K[i, j] = s_
-        tr += K[i, i]
-    if tr <= 0.0:
-        return gg, du
+                s_ += JA[i, b, k] * Mg[b, k]
+        bv[i] = s_
+        bv[n + i] = s_
+    _lu_solve(MK, piv, bv, n)                      # bv[:n] = K^-1 b ; bv[n:] keeps b
     for i in range(n):
-        K[i, i] += 1e-12 * tr / n
-    y = np.linalg.solve(K, bv)
-    for i in range(n):
-        if not np.isfinite(y[i]):
+        y = bv[i]
+        if not np.isfinite(y):
             return gg, du
-        gg -= bv[i] * y[i]; du -= y[i] * jd[i]
+        jd = 0.0
+        for q in range(rbn[i]):
+            b = rbl[i, q]
+            for k in range(3):
+                jd += JA[i, b, k] * (V[b, k] - Vst[b, k]) + JA[i, b, 3 + k] * (W[b, k] - Wst[b, k])
+        gg -= bv[n + i] * y; du -= y * jd
     return gg, du
 
 
@@ -759,6 +844,13 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     nja = 3 * nrig if nrig > 0 else 1
     JA3 = np.zeros((nja, nb, 6)); JO3 = np.zeros((nja, nb, 6)); rhs3 = np.zeros(nja)
     rje = np.zeros(nja, np.int64); rjr = np.zeros(nja, np.int64)
+    jok = np.zeros(1)                                  # the last direct joint solve worked (1) or not (0)
+    MJ3 = np.zeros((nja, nb, 6)); K3 = np.zeros((nja, nja)); xs3 = np.zeros(nja)          # joint solve work arrays
+    rbn3 = np.zeros(nja, np.int64); rbl3 = np.zeros((nja, nb), np.int64)
+    acc3 = np.zeros((nb, 6)); Iw3 = np.zeros((nb, 3, 3))
+    JAm3 = np.zeros((nja, nb, 6)); MKm3 = np.zeros((nja, nja)); pivm3 = np.zeros(nja, np.int64)   # motor work arrays
+    Mgm3 = np.zeros((nb, 6)); bvm3 = np.zeros(2 * nja); rbnm3 = np.zeros(nja, np.int64); rblm3 = np.zeros((nja, nb), np.int64)
+    mst3 = np.zeros(3, np.int64)
     for e in range(ne):
         if typ[e] == 15 and (mk[e] == MK_LIN or mk[e] == MK_ALONG):
             _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
@@ -1167,13 +1259,14 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 Lw[b, 0] += dt * T[b, 0]; Lw[b, 1] += dt * T[b, 1]; Lw[b, 2] += dt * T[b, 2]
         _omega(R, rmode, Iinv, axis, Lw, wsp, W, nb)
         # motors: the exact step of a shaft held by back-EMF (stable at any step; see engine1d motor_scale)
+        mst3[0] = 0                                         # joint matrix for the motors: build it again this step
         for e in range(ne):
             if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
                 kk = motor_k(typ[e], P[e], st[e], dt)
                 if kk <= 1e-9:
                     continue
                 ie, du = _motor_eff3(e, ne, nb, typ, active, mk, X, V, W, Vst, Wst, R, th, minv, rmode, Iinv, axis,
-                                     Iax, ba, bb, C, s0, GA, GB, GX, refc, J3, cps, JA3, gmot, geo)
+                                     Iax, ba, bb, C, s0, GA, GB, GX, refc, J3, cps, JAm3, gmot, geo, mst3, MKm3, pivm3, Mgm3, bvm3, rbnm3, rblm3, MJ3, Iw3)
                 if ie <= 0.0:
                     continue
                 kk *= ie / P[e, 10]                       # the damping on the inertia the joints leave it
@@ -1260,7 +1353,27 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     u0d[e] = geo[e, 6] * rx0 + geo[e, 7] * ry0 + geo[e, 8] * rz0
             for c in range(nc):
                 lossN[cand[c]] = 0.0; lossT[cand[c]] = 0.0
-            for it in range(16):
+            n_gs = 16
+            if nc == 0:
+                # joints alone: the direct solve below is the exact mass-weighted projection, and any sweeps before it
+                # only move velocity along the rows it removes anyway, so skip them and just book each row's loss
+                n_gs = 0
+                for e in range(ne):
+                    if typ[e] != 15 or active[e] == 0:
+                        continue
+                    nr = _rows3(e, mk[e], X, R, th, ba, bb, C, s0, GA, GB, GX, refc, axis, J3, cps)
+                    for r in range(nr):
+                        u = 0.0; u0 = 0.0
+                        for b in range(nb):
+                            for k in range(3):
+                                u += J3[r, b, k] * V[b, k] + J3[r, b, 3 + k] * W[b, k]
+                                u0 += J3[r, b, k] * Vst[b, k] + J3[r, b, 3 + k] * Wst[b, k]
+                        kk = _keff3(J3, r, R, minv, rmode, Iinv, axis, Iax, nb)
+                        if kk <= 0.0 or u == 0.0:
+                            continue
+                        loss = 0.5 * u0 * u0 / kk
+                        D[e] += loss; A[e] += loss
+            for it in range(n_gs):
                 for c in range(nc):
                     e = cand[c]; tdt = tauv[e] * dt
                     if mk[e] == MK_LIN:
@@ -1347,7 +1460,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                             D[e] += loss; A[e] += loss
             if nrig > 0:                                    # joints: finish the velocity rows with one direct solve
                 _jsolve3(0, ne, nb, typ, active, mk, X, V, W, R, th, quat, Lw, wsp, minv, rmode, Iinv, axis, Iax, ba, bb,
-                         C, s0, GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA3, JO3, rhs3, rje, rjr, dt, False)
+                         C, s0, GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA3, JO3, rhs3, rje, rjr, dt, False, jok, MJ3, K3, xs3, rbn3, rbl3, 0.0, acc3, Iw3)
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]
@@ -1435,12 +1548,16 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     if rmode[b] == R_SPIN:
                         th[b] += DW[b, 0] * axis[b, 0] + DW[b, 1] * axis[b, 1] + DW[b, 2] * axis[b, 2]
         if nrig > 0:                                        # rigid joints: Newton steps of the direct position solve
+            pconv = False
             for it in range(4):
+                fp_ = it == 0
+                tol_ = 0.0 if it == 0 else 1e-12          # a later pass solves only if the first left a real gap
                 if _jsolve3(1, ne, nb, typ, active, mk, X, V, W, R, th, quat, Lw, wsp, minv, rmode, Iinv, axis, Iax, ba,
                             bb, C, s0, GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA3, JO3, rhs3, rje, rjr, dt,
-                            it == 0) < 1e-12:
+                            fp_, jok, MJ3, K3, xs3, rbn3, rbl3, tol_, acc3, Iw3) < 1e-12:
+                    pconv = True
                     break
-            for it in range(4):                            # row-by-row clean-up of anything the direct solve left
+            for it in range(0 if pconv else 4):            # row-by-row clean-up of anything the direct solve left
                 mx_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0 or mk[e] == MK_TWIST:
@@ -1479,8 +1596,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         if nrig > 0:                                        # RATTLE: velocities tangent to the constraints (numerical)
             for it in range(1):
                 _jsolve3(0, ne, nb, typ, active, mk, X, V, W, R, th, quat, Lw, wsp, minv, rmode, Iinv, axis, Iax, ba, bb,
-                         C, s0, GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA3, JO3, rhs3, rje, rjr, dt, False)
-            for it in range(4):
+                         C, s0, GA, GB, GX, refc, J3, cps, J3o, lam, aux, JA3, JO3, rhs3, rje, rjr, dt, False, jok, MJ3, K3, xs3, rbn3, rbl3, 0.0, acc3, Iw3)
+            for it in range(0 if jok[0] > 0.5 else 4):     # row sweeps only if the direct solve failed (singular)
                 mu_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0:

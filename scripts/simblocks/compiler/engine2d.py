@@ -27,6 +27,7 @@ import numpy as np
 from numba import njit
 
 from .circuit import circuit_step, NOUT as NOUT_C
+from .linsolve import _gauss, _lu, _lu_solve
 
 from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 from .control import control_step
@@ -301,55 +302,74 @@ def _rows2(e, mk_, q, ba, bb, C, s0, GA, GB, GX, ref, J, cpos):
 
 
 @njit(cache=True, nogil=True)
-def _motor_eff2(em, ne, nq, typ, active, mk, q, v, vst, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, JA):
+def _motor_eff2(em, ne, nq, typ, active, mk, q, v, vst, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, JA,
+                mst, MK, piv, bv):
     """A motor's shaft as the rigid joints leave it free to move: (1 / inertia along its measure, the measure's
     rate change this step), both with the joints held (g M^-1 g' - b' K^-1 b, b = J M^-1 g', K = J M^-1 J'). The
-    joints are solved after this, so the free change is projected the same way."""
+    joints are solved after this, so the free change is projected the same way. K depends only on positions, so
+    it is built and factored once per step (mst[0] = 0 asks for that) and every motor of the step reuses it."""
     gg = 0.0; du = 0.0
     for k in range(nq):
         if C[em, k] != 0.0:
             gg += C[em, k] * C[em, k] * minv[k]; du += C[em, k] * (v[k] - vst[k])
-    n = 0
-    for e in range(ne):
-        if typ[e] != 15 or active[e] == 0:
-            continue
-        nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
-        for r in range(nr):
-            for k in range(nq):
-                JA[n, k] = Jr[r, k]
-            n += 1
-    if n == 0:
+    if mst[0] == 0:
+        mst[0] = 1; mst[2] = 0
+        n = 0
+        for e in range(ne):
+            if typ[e] != 15 or active[e] == 0:
+                continue
+            nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
+            for r in range(nr):
+                for k in range(nq):
+                    JA[n, k] = Jr[r, k]
+                n += 1
+        mst[1] = n
+        if n > 0:
+            tr = 0.0
+            for i in range(n):
+                for j in range(n):
+                    s_ = 0.0
+                    for k in range(nq):
+                        if JA[i, k] != 0.0 and JA[j, k] != 0.0:
+                            s_ += JA[i, k] * JA[j, k] * minv[k]
+                    MK[i, j] = s_
+                tr += MK[i, i]
+            if tr > 0.0:
+                for i in range(n):
+                    MK[i, i] += 1e-12 * tr / n
+                if _lu(MK, piv, n):
+                    mst[2] = 1
+    n = mst[1]
+    if n == 0 or mst[2] == 0:
         return gg, du
-    K = np.zeros((n, n)); bv = np.zeros(n); jd = np.zeros(n); tr = 0.0
     for i in range(n):
+        s_ = 0.0
         for k in range(nq):
             if JA[i, k] != 0.0:
-                bv[i] += JA[i, k] * minv[k] * C[em, k]; jd[i] += JA[i, k] * (v[k] - vst[k])
-        for j in range(n):
-            s_ = 0.0
-            for k in range(nq):
-                if JA[i, k] != 0.0 and JA[j, k] != 0.0:
-                    s_ += JA[i, k] * JA[j, k] * minv[k]
-            K[i, j] = s_
-        tr += K[i, i]
-    if tr <= 0.0:
-        return gg, du
+                s_ += JA[i, k] * minv[k] * C[em, k]
+        bv[i] = s_; bv[n + i] = s_
+    _lu_solve(MK, piv, bv, n)
     for i in range(n):
-        K[i, i] += 1e-12 * tr / n
-    y = np.linalg.solve(K, bv)
-    for i in range(n):
-        if not np.isfinite(y[i]):
+        y = bv[i]
+        if not np.isfinite(y):
             return gg, du
-        gg -= bv[i] * y[i]; du -= y[i] * jd[i]
+        jd = 0.0
+        for k in range(nq):
+            if JA[i, k] != 0.0:
+                jd += JA[i, k] * (v[k] - vst[k])
+        gg -= bv[n + i] * y; du -= y * jd
     return gg, du
 
 
 @njit(cache=True, nogil=True)
 def _jsolve2(mode, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam, aux,
-             JA, JO, rhs, re, rr, dt, first_pass):
+             JA, JO, rhs, re, rr, dt, first_pass, jok, K, xs, tol):
     """Every rigid-joint row at once: K x = rhs with K = J M^-1 J^T (a direct solve, so long levers and light
     bodies converge in one go where row-by-row sweeps crawl). mode 0: velocities onto the constraints (current J);
-    mode 1: positions (SHAKE, moving along the start-of-step directions Jold). Returns the largest residual."""
+    mode 1: positions (SHAKE, moving along the start-of-step directions Jold). Returns the largest residual
+    (before this solve); jok[0] = 1 when it solved or had nothing to do. It solves only if that residual is above
+    tol. K and xs are work arrays (no allocation per call)."""
+    jok[0] = 0.0
     n = 0
     for e in range(ne):
         if typ[e] != 15 or active[e] == 0:
@@ -366,14 +386,16 @@ def _jsolve2(mode, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, G
                 aux[e, 3] = abs(cps[r])                  # largest drift seen before correction
             re[n] = e; rr[n] = r; n += 1
     if n == 0:
+        jok[0] = 1.0
         return 0.0
     mx = 0.0
     for i in range(n):
         if abs(rhs[i]) > mx:
             mx = abs(rhs[i])
-    if mx == 0.0:
-        return 0.0
-    K = np.zeros((n, n)); tr = 0.0
+    if mx <= tol:
+        jok[0] = 1.0
+        return mx
+    tr = 0.0
     for i in range(n):
         for j in range(n):
             s_ = 0.0
@@ -386,20 +408,23 @@ def _jsolve2(mode, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, G
         return mx
     for i in range(n):                                   # a whisker of regularisation: redundant rows (a closed
         K[i, i] += 1e-12 * tr / n                        # loop) still solve, as the smallest impulses
-    x = np.linalg.solve(K, rhs[:n].copy())
+        xs[i] = rhs[i]
+    if not _gauss(K, xs, n):
+        return mx
     for i in range(n):
-        if not np.isfinite(x[i]):
+        if not np.isfinite(xs[i]):
             return mx
+    jok[0] = 1.0
     for j in range(n):
         e = re[j]; r = rr[j]
         for k in range(nq):
             if JO[j, k] != 0.0:
                 if mode == 1:
-                    q[k] += minv[k] * JO[j, k] * x[j]
-                    v[k] += minv[k] * JO[j, k] * x[j] / dt
+                    q[k] += minv[k] * JO[j, k] * xs[j]
+                    v[k] += minv[k] * JO[j, k] * xs[j] / dt
                 else:
-                    v[k] += minv[k] * JO[j, k] * x[j]
-        lam[e, r] += x[j] / dt if mode == 1 else x[j]
+                    v[k] += minv[k] * JO[j, k] * xs[j]
+        lam[e, r] += xs[j] / dt if mode == 1 else xs[j]
     return mx
 
 @njit(cache=True, nogil=True)
@@ -596,6 +621,9 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
     nja = 2 * nrig_ if nrig_ > 0 else 1
     JA = np.zeros((nja, nq)); JO = np.zeros((nja, nq)); rhs = np.zeros(nja)
     rje = np.zeros(nja, np.int64); rjr = np.zeros(nja, np.int64)
+    jok2 = np.zeros(1); K2 = np.zeros((nja, nja)); xs2 = np.zeros(nja)            # joint solve work arrays
+    JAm2 = np.zeros((nja, nq)); MKm2 = np.zeros((nja, nja)); pivm2 = np.zeros(nja, np.int64); bvm2 = np.zeros(2 * nja)
+    mst2 = np.zeros(3, np.int64)
     for e in range(ne):
         if typ[e] == 15 and mk[e] != MK_PIN:
             nr = _rows2(e, mk[e], q0, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
@@ -1048,12 +1076,13 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
             vst[k] = v[k]
             v[k] += dt * Q[k] * minv[k]
         # motors: the exact step of a shaft held by back-EMF (stable at any step; see engine1d motor_scale)
+        mst2[0] = 0                                     # joint matrix for the motors: build it again this step
         for e in range(ne):
             if (typ[e] == 8 or typ[e] == 17) and active[e] != 0 and P[e, 10] > 0.0:
                 kk = motor_k(typ[e], P[e], st[e], dt)
                 if kk > 1e-9:
                     ie, du = _motor_eff2(e, ne, nq, typ, active, mk, q, v, vst, minv, ba, bb, C, s0, GA, GB, GX, refc,
-                                         Jr, cps, JA)
+                                         Jr, cps, JAm2, mst2, MKm2, pivm2, bvm2)
                     if ie <= 0.0:
                         continue
                     kk *= ie / P[e, 10]                   # the damping on the inertia the joints leave it
@@ -1111,7 +1140,25 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                 ucd[e] = sd; u0d[e] = _rate(MK_LIN if mk[e] == MK_LIN else MK_EDGE, e, q, vst, ba, bb, C, geo, 0); lst[e] = D[e]
             for c in range(nc):
                 lossN[cand[c]] = 0.0; lossT[cand[c]] = 0.0
-            for it in range(16):
+            n_gs = 16
+            if nc == 0:
+                # joints alone: the direct solve below is the exact mass-weighted projection, and any sweeps before it
+                # only move velocity along the rows it removes anyway, so skip them and just book each row's loss
+                n_gs = 0
+                for e in range(ne):
+                    if typ[e] != 15 or active[e] == 0:
+                        continue
+                    nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
+                    for r in range(nr):
+                        u = 0.0; kk = 0.0; u0 = 0.0
+                        for k in range(nq):
+                            if Jr[r, k] != 0.0:
+                                u += Jr[r, k] * v[k]; kk += Jr[r, k] * Jr[r, k] * minv[k]; u0 += Jr[r, k] * vst[k]
+                        if kk <= 0.0 or u == 0.0:
+                            continue
+                        loss = 0.5 * u0 * u0 / kk
+                        D[e] += loss; A[e] += loss
+            for it in range(n_gs):
                 for c in range(nc):
                     e = cand[c]; mke = MK_LIN if mk[e] == MK_LIN else MK_EDGE
                     tdt = tauv[e] * dt
@@ -1158,7 +1205,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             D[e] += loss; A[e] += loss
             if nrig > 0:                                 # joints: finish the velocity rows with one direct solve
                 _jsolve2(0, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
-                         aux, JA, JO, rhs, rje, rjr, dt, False)
+                         aux, JA, JO, rhs, rje, rjr, dt, False, jok2, K2, xs2, 0.0)
             for c in range(nc):
                 e = cand[c]
                 Fe[e] = jn[e] / dt; aux[e, 0] = jn[e]; aux[e, 2] = jt[e]
@@ -1226,14 +1273,19 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                         minv[3 * b + 1] = 1.0 / mass[b]
                     dmv[e] = 0.0
         if nrig > 0:                                 # rigid joints: Newton steps of the direct position solve
+            pconv = False
             for it in range(4):
+                fp_ = it == 0
+                tol_ = 0.0 if it == 0 else 1e-12          # a later pass solves only if the first left a real gap
                 if _jsolve2(1, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
-                            aux, JA, JO, rhs, rje, rjr, dt, it == 0) < 1e-12:
+                            aux, JA, JO, rhs, rje, rjr, dt, fp_, jok2, K2, xs2, tol_) < 1e-12:
+                    pconv = True
                     break
             for it in range(1):
                 _jsolve2(0, ne, nq, typ, active, mk, q, v, minv, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps, Jold, lam,
-                         aux, JA, JO, rhs, rje, rjr, dt, False)
-            for it in range(4):                     # row-by-row clean-up of anything the direct solve left
+                         aux, JA, JO, rhs, rje, rjr, dt, False, jok2, K2, xs2, 0.0)
+            vok = jok2[0] > 0.5                     # the velocity solve just above worked
+            for it in range(0 if pconv else 4):     # row-by-row clean-up of anything the direct solve left
                 mx_ = 0.0
                 for e in range(ne):
                     if typ[e] != 15 or active[e] == 0:
@@ -1260,7 +1312,7 @@ def run_engine2d(n, dt, q0, v0, minv, mass, com, grav, typ, one_sided, active, m
                             nr = _rows2(e, mk[e], q, ba, bb, C, s0, GA, GB, GX, refc, Jr, cps)
                 if mx_ < 1e-13:
                     break
-            for it in range(4):                     # RATTLE: velocities tangent to the constraints at the new
+            for it in range(0 if (vok and pconv and nc == 0) else 4):   # RATTLE sweeps: contacts, or a solve that fell short
                 mu_ = 0.0
                 for e in range(ne):                  # positions (numerical; any energy change shows in the ledger)
                     if typ[e] != 15 or active[e] == 0:

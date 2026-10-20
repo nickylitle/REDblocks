@@ -639,8 +639,8 @@ elements:
 ```
 
 - `rigid: true` (pin, weld, hinge, slider): an exact joint by constraint projection (SHAKE/RATTLE). No stiffness to
-  choose and no time-step cost, but each step costs more (3D: about 40 us per hinge per step, the solve dominates a
-  drive model); the force output is the reaction, `drift` the largest gap it closed. The two points
+  choose and no time-step cost; each step costs a little more (3D: about 9 us per hinge per step: one direct solve of all
+  joint rows together, positions to 1e-12); the force output is the reaction, `drift` the largest gap it closed. The two points
   must meet at the start (a gap is refused). Without `rigid`, joints are stiff spring-dampers: `k`, `c` (and `k_rot`, `c_rot` for the
   turn lock).
 - hinge: 2D turns about the plane's normal; 3D about `axis` (world, at the start; then fixed in A). `k_twist` /
