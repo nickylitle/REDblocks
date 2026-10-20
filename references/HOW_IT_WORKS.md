@@ -321,7 +321,7 @@ dt_check: {n: 16, factors: [2, 4]}
 verify: {entry: make_spec, mc_n: 20}
 ```
 
-`simblocks_runner.exe` (or `simblocks batch job.yaml`) runs it on every core, saves progress as it goes so an
+`redblocks_runner.exe` (or `simblocks batch job.yaml`) runs it on every core, saves progress as it goes so an
 interruption loses nothing, and packs one `<name>_results.zip` of plain JSON. Sobol sampling spreads points
 evenly, so a wide space is covered well with tens of samples instead of hundreds.
 
@@ -358,7 +358,7 @@ attachment point:
 
 ## 13. The desktop editor
 
-`simblocks app` (or the installed **Simblocks** app: Windows search, Start Menu, pinnable to the taskbar) opens a native window: a
+`simblocks app` (or the installed **REDblocks** app: Windows search, Start Menu, pinnable to the taskbar) opens a native window: a
 Blender-style node editor around the same compiler. `packaging/build_exes.bat` builds it and offers to install it for
 the current user (no admin rights; uninstall from Settings > Apps).
 Nothing runs online and nothing needs Claude.

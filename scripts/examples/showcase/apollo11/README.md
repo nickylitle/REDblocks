@@ -1,4 +1,4 @@
-# Apollo 11 in Simblocks
+# Apollo 11 in REDblocks
 
 Open **apollo11.html** in any browser (no internet needed). It shows both canvases against NASA's records: every curve
 is the sim, every dot is NASA's.

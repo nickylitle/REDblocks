@@ -136,4 +136,4 @@ def test_block_library_covers_every_block(tmp_path):
     assert all(e["usage"] and e["outputs"] for e in E)
     p = write(str(tmp_path / "lib.html"))
     txt = open(p).read()
-    assert "<title>Simblocks Block Library</title>" in txt and txt.count('<symbol id="fig-') == len(F)
+    assert "<title>REDblocks Block Library</title>" in txt and txt.count('<symbol id="fig-') == len(F)

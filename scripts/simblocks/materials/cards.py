@@ -1,5 +1,5 @@
 """Material cards: one object that carries everything a sim (or a person) needs about a material,
-saved as JSON and drawn as a one-page summary image (same dark report style as every figure Simblocks makes).
+saved as JSON and drawn as a one-page summary image (same dark report style as every figure REDblocks makes).
 
     card = laminate_card("T300/5208 [0/+-45/90]2s")              # catalog lamina + layup code
     card = laminate_card("my CF", lamina=dict(E1=135e9, E2=9e9, G12=5e9, nu12=0.3, rho=1550,

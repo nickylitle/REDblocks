@@ -93,7 +93,7 @@ When the request is already complete, skip straight to the workflow below and st
    configuration study unprompted. Prefer a wide space sampled sparsely (Sobol, tens of points) over a narrow
    space sampled densely.
 
-7b. **Big studies run on the user's machine** (one-click: `simblocks_runner.exe`, built once with `scripts/packaging/build_exes.bat`; the user drops `<name>_job.yaml` + its sim `.py` next to it and sends back `<name>_results.zip`; Claude reads it with `--from` / `load_results`). Write a batch job (`simblocks batch job.yaml`; format in the
+7b. **Big studies run on the user's machine** (one-click: `redblocks_runner.exe`, built once with `scripts/packaging/build_exes.bat`; the user drops `<name>_job.yaml` + its sim `.py` next to it and sends back `<name>_results.zip`; Claude reads it with `--from` / `load_results`). Write a batch job (`simblocks batch job.yaml`; format in the
    header of `scripts/simblocks/batch.py`, worked example `examples/case_studies/combat_robot/
    spinner_vs_spinner_job.yaml`): configs to compare, `samples.n`, `samples.sampler: sobol`, `samples.uniform`
    ranges, optional `dt_check` and `verify`. The sim module exposes `batch_record(params, dt)` (JSON-safe
@@ -159,7 +159,7 @@ When the request is already complete, skip straight to the workflow below and st
 - `scripts/simblocks/viz/fonts/` Inter + JetBrains Mono (OFL), bundled so figures look identical everywhere.
 - `references/BLOCK_LIBRARY.html` searchable block library (diagram, inputs, outputs, system-file snippet per
   block); regenerate with `simblocks library references/BLOCK_LIBRARY.html` after adding blocks.
-- `scripts/simblocks/app/` the desktop node editor (`simblocks app`, or the installed Simblocks app built and installed by
+- `scripts/simblocks/app/` the desktop node editor (`simblocks app`, or the installed REDblocks app built and installed by
   `scripts/packaging/build_exes.bat`): Blender-style nodes that read and write system files, run, study (sweeps x Monte
   Carlo on chosen cores, asks before big studies), verify and report with no Claude. Point users there for 1D models.
   It also has live results, templates, groups, CSV export nodes, notes with LaTeX, custom materials and blocks folders,

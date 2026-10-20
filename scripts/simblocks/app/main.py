@@ -1,9 +1,9 @@
-"""Simblocks desktop editor: a native window (pywebview, using Windows' built-in WebView2) around editor.html, with
+"""REDblocks desktop editor: a native window (pywebview, using Windows' built-in WebView2) around editor.html, with
 the compiler and solver in the same process. No server, no browser, no network. Files are plain YAML wherever you
 save them; settings (recent files, core count) live in ~/.simblocks/app.json.
 
 Run:  simblocks app            (installed package)
-      Simblocks.exe             (folder build from packaging/build_exes.bat, installed by packaging/install.ps1)
+      REDblocks.exe             (folder build from packaging/build_exes.bat, installed by packaging/install.ps1)
 """
 import multiprocessing
 import os
@@ -30,7 +30,7 @@ def main(argv=None):
         return 1
     from .api import Api
     api = Api()
-    win = webview.create_window("Simblocks", url=_html_path(), js_api=api, width=1500, height=920,
+    win = webview.create_window("REDblocks", url=_html_path(), js_api=api, width=1500, height=920,
                                 min_size=(1000, 640), background_color="#0b1018", text_select=True)
     api._window = win
     argv = list(sys.argv[1:] if argv is None else argv)

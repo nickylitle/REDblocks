@@ -221,27 +221,27 @@ cp = {row[5]: row for row in A["checkpoints"]}
 nasa_pts = lambda key: [("NASA", row[3], row[4], COL["nasa"], "dot", row[0]) for row in A["checkpoints"] if row[2] == key]
 asc_charts = []
 asc_charts.append(card("Altitude", "Kilometres above the pad radius. The sim flies the whole climb from engine chemistry, masses and gravity.",
-                       chart("a-alt", [("Simblocks", asc["t"], asc["alt"], COL["sim"], 2.2, "")], (0, 720), (0, 210), "range time, s",
+                       chart("a-alt", [("REDblocks", asc["t"], asc["alt"], COL["sim"], 2.2, "")], (0, 720), (0, 210), "range time, s",
                              "altitude, km", nasa_pts("alt"), ev_a, yunit="km"), cid="a-alt-card"))
 asc_charts.append(card("Space-fixed speed", "Metres per second against the stars. It starts at 409 m/s: the speed Kennedy Space Center already has from Earth's spin."
                        .replace("409", f"{asc['v'][0]:.0f}"),
-                       chart("a-v", [("Simblocks", asc["t"], asc["v"], COL["sim"], 2.2, "")], (0, 720), (0, 8000), "range time, s",
+                       chart("a-v", [("REDblocks", asc["t"], asc["v"], COL["sim"], 2.2, "")], (0, 720), (0, 8000), "range time, s",
                              "speed, m/s", nasa_pts("v"), ev_a, yunit="m/s")))
 asc_charts.append(card("Acceleration", "Thrust minus drag, over mass. Each peak is the moment before an engine cutoff, when the stage is nearly empty.",
-                       chart("a-acc", [("Simblocks", asc["t"], asc["acc"], COL["sim"], 2.2, "")], (0, 720), (0, 42), "range time, s",
+                       chart("a-acc", [("REDblocks", asc["t"], asc["acc"], COL["sim"], 2.2, "")], (0, 720), (0, 42), "range time, s",
                              "acceleration, m/s²", [("NASA peak", t, a, COL["nasa"], "dot", f"{n} peak") for n, t, a in A["peaks"]],
                              ev_a, yunit="m/s²")))
 asc_charts.append(card("Dynamic pressure", "Aerodynamic load in kilopascals. The one clear miss: the sim uses the standard atmosphere and a generic drag curve.",
-                       chart("a-q", [("Simblocks", asc["t"], asc["q"], COL["sim"], 2.2, "")], (0, 200), (0, 40), "range time, s",
+                       chart("a-q", [("REDblocks", asc["t"], asc["q"], COL["sim"], 2.2, "")], (0, 200), (0, 40), "range time, s",
                              "dynamic pressure, kPa", nasa_pts("q"), [(162.3, "S-IC off")], yunit="kPa")))
 asc_charts.append(card("Flight path angle", "Degrees above the local horizon. Climbing steeply, then flattening into orbit.",
-                       chart("a-fpa", [("Simblocks", asc["t"], asc["fpa"], COL["sim"], 2.2, "")], (0, 720), (0, 40), "range time, s",
+                       chart("a-fpa", [("REDblocks", asc["t"], asc["fpa"], COL["sim"], 2.2, "")], (0, 720), (0, 40), "range time, s",
                              "flight path angle, deg", nasa_pts("fpa"), ev_a, yunit="°")))
 asc_charts.append(card("Vehicle mass", "Tonnes. 2,899 t at liftoff, 135 t in orbit. The steps are stages and hardware falling away.",
-                       chart("a-m", [("Simblocks", asc["t"], asc["mass"], COL["sim"], 2.2, "")], (0, 720), (0, 3000), "range time, s",
+                       chart("a-m", [("REDblocks", asc["t"], asc["mass"], COL["sim"], 2.2, "")], (0, 720), (0, 3000), "range time, s",
                              "mass, t", nasa_pts("mass"), ev_a, yunit="t")))
 asc_track = card("The climb to orbit", "Altitude against ground range, to scale in kilometres. Dots are NASA's measured positions.",
-                 chart("a-track", [("Simblocks", asc["range"], asc["alt"], COL["sim"], 2.4, "")], (0, 2700), (0, 210),
+                 chart("a-track", [("REDblocks", asc["range"], asc["alt"], COL["sim"], 2.4, "")], (0, 2700), (0, 210),
                        "ground range, km", "altitude, km",
                        [("NASA", cp[k][4], cp[h][4], COL["nasa"], "dot", cp[h][0].split(":")[0])
                         for h, k in (("h_sep1", "x_sep1"), ("h_sep2", "x_sep2"))],
@@ -256,12 +256,12 @@ ev_l = [(PH_F["p64"][0], "P64"), (t_td, "touchdown")]
 ev_plan = [(384, "throttle recovery"), (506, "high gate")]
 landing_bands = [(0, PH_F["p64"][0], "P63 braking"), (PH_F["p64"][0], PH_F["p66_crew"][0], "P64"),
                  (PH_F["p66_crew"][0], t_td, "P66")]
-lines_l = lambda key: [("Simblocks, as flown", lf["t"], lf[key], COL["sim"], 2.2, ""),
-                       ("Simblocks, automatic", la["t"], la[key], COL["auto"], 1.6, "5 4")]
+lines_l = lambda key: [("REDblocks, as flown", lf["t"], lf[key], COL["sim"], 2.2, ""),
+                       ("REDblocks, automatic", la["t"], la[key], COL["auto"], 1.6, "5 4")]
 plan_pts = lambda col: [("NASA plan", r[1], r[col], COL["nasa"], "dot", r[0]) for r in plan if r[col] is not None]
 land_track = card("The descent, side on", "Altitude against range to the landing site. From 48,814 ft and 260 nmi out, to the surface. Eagle flew the last minute by hand.",
-                  chart("l-track", [("Simblocks, as flown", lf["range"], lf["alt"], COL["sim"], 2.4, ""),
-                                    ("Simblocks, automatic", la["range"], la["alt"], COL["auto"], 1.6, "5 4")],
+                  chart("l-track", [("REDblocks, as flown", lf["range"], lf["alt"], COL["sim"], 2.4, ""),
+                                    ("REDblocks, automatic", la["range"], la["alt"], COL["auto"], 1.6, "5 4")],
                         (-262, 2), (0, 52000), "range to the landing site, nmi", "altitude, ft", W=1100, H=320,
                         xunit="nmi", yunit="ft"), wide=True)
 land_charts = []
@@ -349,14 +349,14 @@ def dp(unit, v):
     return 3 if unit == "deg" else (2 if unit in ("s", "t") or abs(v) < 100 else 1)
 
 
-asc_table = table([("Checkpoint", ""), ("NASA", "num"), ("Simblocks", "num"), ("Error", "num"), ("Source", "src")],
+asc_table = table([("Checkpoint", ""), ("NASA", "num"), ("REDblocks", "num"), ("Error", "num"), ("Source", "src")],
                   [(esc(n) + f' <span class="mut">{esc(u)}</span>', f(nv, dp(u, nv)), f(sv, dp(u, nv)), errcell(rel, d, u), esc(s))
                    for n, u, nv, sv, d, rel, s in asc_rows])
 plan_table = table([("NASA plan event", ""), ("Time, s", "num"), ("Speed, plan", "num"), ("Speed, sim", "num"), ("Error", "num"),
                     ("Altitude, plan", "num"), ("Altitude, sim", "num")],
                    [(esc(n), f(t, 0), f(v, 0), f(vs, 0), errcell(pct(vs, v)) if vs and v > 100 else "", f(h, 0), f(hs, 0))
                     for _, n, t, v, vs, h, hs, _s in land_rows])
-key_table = table([("Flight event", ""), ("Unit", "mut"), ("Apollo 11", "num"), ("Simblocks", "num"), ("Difference", "num"), ("Source", "src")],
+key_table = table([("Flight event", ""), ("Unit", "mut"), ("Apollo 11", "num"), ("REDblocks", "num"), ("Difference", "num"), ("Source", "src")],
                   [(esc(n), esc(u), f(a, 1), f(b, 1), f'{"+" if b - a >= 0 else "−"}{f(abs(b - a), 1)}', esc(s)) for n, u, a, b, s in key_rows])
 
 # what the canvases are given, and what they work out
@@ -557,12 +557,12 @@ D.forEach(c => {
   c.setAttribute('fill', '#cfd8e6'); c.setAttribute('opacity', (rnd() * 0.7 + 0.15).toFixed(2)); s.appendChild(c); } })();
 """
 
-leg_asc = legend([("Simblocks", COL["sim"], "line"), ("NASA measured", COL["nasa"], "dot"), ("staging and cutoff", "", "ev")])
-leg_land = legend([("Simblocks, as flown", COL["sim"], "line"), ("Simblocks, automatic landing", COL["auto"], "dash"),
+leg_asc = legend([("REDblocks", COL["sim"], "line"), ("NASA measured", COL["nasa"], "dot"), ("staging and cutoff", "", "ev")])
+leg_land = legend([("REDblocks, as flown", COL["sim"], "line"), ("REDblocks, automatic landing", COL["auto"], "dash"),
                    ("NASA premission plan", COL["nasa"], "dot"), ("Apollo 11 flight", COL["flight"], "ring")])
-leg_final = legend([("Simblocks, as flown", COL["sim"], "line"), ("Simblocks, automatic landing", COL["auto"], "dash"),
+leg_final = legend([("REDblocks, as flown", COL["sim"], "line"), ("REDblocks, automatic landing", COL["auto"], "dash"),
                     ("crew callout", COL["call"], "diamond"), ("Apollo 11 flight", COL["flight"], "ring")])
-leg_track = legend([("Simblocks, as flown", COL["sim"], "line"), ("Simblocks, automatic landing", COL["auto"], "dash")])
+leg_track = legend([("REDblocks, as flown", COL["sim"], "line"), ("REDblocks, automatic landing", COL["auto"], "dash")])
 
 
 def with_legend(card_html, leg):
@@ -580,14 +580,14 @@ timeline_html = "".join(f"<div><b>{esc(a)}</b><span>{esc(b)}</span></div>" for a
 
 page = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Apollo 11 in Simblocks</title>
-<meta name="description" content="The Apollo 11 ascent and lunar landing simulated in Simblocks and checked against NASA's flight records.">
+<title>Apollo 11 in REDblocks</title>
+<meta name="description" content="The Apollo 11 ascent and lunar landing simulated in REDblocks and checked against NASA's flight records.">
 <style>{font_css}{CSS}</style></head>
 <body>
 <header class="hero"><svg class="stars" width="100%" height="100%" aria-hidden="true"></svg><div class="wrap">
-<div class="kicker">Simblocks showcase · two canvases · checked against NASA</div>
+<div class="kicker">REDblocks showcase · two canvases · checked against NASA</div>
 <h1>Apollo 11<span>Launch to orbit. Powered descent to the Moon. Simulated.</span></h1>
-<p class="lede">Two Simblocks canvases fly the mission from <b>rocket chemistry and Newton's laws</b>: the Saturn V from the pad to Earth orbit,
+<p class="lede">Two REDblocks canvases fly the mission from <b>rocket chemistry and Newton's laws</b>: the Saturn V from the pad to Earth orbit,
 and the lunar module Eagle from 260 nautical miles out to touchdown, steered by <b>the same guidance law the Apollo computer flew</b>.
 Every curve below is the sim. Every dot is NASA's.</p>
 <div class="tiles">{tiles_html}</div>
@@ -618,7 +618,7 @@ had nobody taken over.</p>
 {key_table}
 </section>
 <section id="engines"><div class="kicker">Under the hood</div><h2>Engines from chemistry</h2>
-<p class="sec-lede">Each engine is a Simblocks <code>rocket_engine</code> block: propellants burnt to chemical equilibrium in the chamber,
+<p class="sec-lede">Each engine is a REDblocks <code>rocket_engine</code> block: propellants burnt to chemical equilibrium in the chamber,
 then expanded through the nozzle with the chemistry shifting as it cools (the NASA CEA method). The block gives the ideal performance;
 one published rating sets how far below ideal the real engine sits. The descent engine's chamber temperature matches Cantera's to the
 hundredth of a kelvin.</p>
@@ -626,7 +626,7 @@ hundredth of a kelvin.</p>
 </section>
 <section id="honest"><div class="kicker">What the sim is given, and where it misses</div><h2>Measured vs simulated</h2>
 <div class="two"><div class="box"><h3>The canvases are given</h3>{in_table}</div>
-<div class="box"><h3>Simblocks works out</h3><ul>{"".join(f"<li>{esc(x)}</li>" for x in outputs)}</ul>
+<div class="box"><h3>REDblocks works out</h3><ul>{"".join(f"<li>{esc(x)}</li>" for x in outputs)}</ul>
 <h3 style="margin-top:22px">Where it misses</h3><ul>{miss_html}</ul></div></div>
 <p class="next" style="margin-top:22px"><b>Left out on purpose:</b> the translunar injection burn, the three-day coast and lunar orbit
 insertion. The page shows the two powered flights where the physics is hardest: climbing out of Earth's atmosphere, and landing on the Moon
@@ -645,7 +645,7 @@ simblocks app                                              # open either canvas 
 <p class="mut" style="font-size:13px">Built {esc(__import__('datetime').date.today().isoformat())} by build_page.py from the canvases in this folder.
 Ascent energy ledger closes to {RA['_ledger_rel']:.1e}; landing to {RL['_ledger_rel']:.1e}. Fonts: IBM Plex (SIL Open Font License).</p>
 </section>
-<footer>Simblocks · Apollo 11 showcase</footer>
+<footer>REDblocks · Apollo 11 showcase</footer>
 </main>
 <script type="application/json" id="chart-data">{json.dumps(CHART_DATA, separators=(",", ":"))}</script>
 <script>{JS}</script>

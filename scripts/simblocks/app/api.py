@@ -807,7 +807,7 @@ class Api:
             import webview
             types = {"csv": ("Tables (*.csv;*.txt;*.dat)", "All files (*.*)"),
                      "image": ("Pictures (*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg)", "All files (*.*)"),
-                     "yaml": ("Simblocks models (*.yaml;*.yml)", "All files (*.*)")}.get(kind, ("All files (*.*)",))
+                     "yaml": ("REDblocks models (*.yaml;*.yml)", "All files (*.*)")}.get(kind, ("All files (*.*)",))
             r = self._window.create_file_dialog(webview.OPEN_DIALOG, directory=start or "", file_types=types)
             if not r:
                 return dict(ok=False, cancelled=True)

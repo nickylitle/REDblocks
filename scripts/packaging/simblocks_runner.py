@@ -1,6 +1,6 @@
 """PyInstaller entry script for both programs:
-Simblocks.exe (desktop node editor, simblocks/app/main.py; folder build, installed by install.ps1) and
-simblocks_runner.exe (one-file batch runner, simblocks/runner_app.py). The executable's name picks which one starts:
+REDblocks.exe (desktop node editor, simblocks/app/main.py; folder build, installed by install.ps1) and
+redblocks_runner.exe (one-file batch runner, simblocks/runner_app.py). The executable's name picks which one starts:
 anything except a name containing "runner" opens the editor."""
 import os
 import sys

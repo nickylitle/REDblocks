@@ -19,6 +19,9 @@ simblocks = "simblocks.cli:main"
 simblocks-runner = "simblocks.runner_app:main"
 simblocks-app = "simblocks.app.main:main"
 redblocks-mcp = "simblocks.mcp_server:main"
+redblocks = "simblocks.cli:main"
+redblocks-runner = "simblocks.runner_app:main"
+redblocks-app = "simblocks.app.main:main"
 
 [tool.setuptools.packages.find]
 include = ["simblocks*"]

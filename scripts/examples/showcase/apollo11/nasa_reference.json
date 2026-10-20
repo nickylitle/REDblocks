@@ -1,5 +1,5 @@
 {
- "about": "Measured and planned values for Apollo 11, used to check the Simblocks canvases. Every number names its source.",
+ "about": "Measured and planned values for Apollo 11, used to check the REDblocks canvases. Every number names its source.",
  "sources": {
   "FE": {
    "title": "Saturn V Launch Vehicle Flight Evaluation Report AS-506, Apollo 11 Mission (MSFC MPR-SAT-FE-69-9, 1969)",

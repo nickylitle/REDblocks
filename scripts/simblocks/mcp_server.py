@@ -18,7 +18,7 @@ import shutil
 
 import numpy as np
 
-INSTRUCTIONS = """REDblocks (Simblocks) runs explicit-dynamics sims built from chained closed-form blocks: 1D/2D/3D rigid
+INSTRUCTIONS = """REDblocks runs explicit-dynamics sims built from chained closed-form blocks: 1D/2D/3D rigid
 bodies, springs, contacts, plates and beams from Roark, plasticity from real stress-strain curves, motors, circuits.
 A model is one YAML file. Workflow: read_model (or list_examples) -> format_reference for the syntax you need ->
 edit_model / write_model (the compiler checks every edit; invalid edits are refused) -> run_model -> sweep / verify /

@@ -563,7 +563,7 @@ def build_html():
         f'<button class="copy" type="button">copy</button></div></article>' for e in ELEMENTS)
     syms = FG.symbols() + "".join(_el_fig(e["name"]) for e in ELEMENTS)
     data = json.dumps(E).replace("</", "<\\/")
-    return f"""<title>Simblocks Block Library</title>
+    return f"""<title>REDblocks Block Library</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -571,7 +571,7 @@ def build_html():
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">{syms}</svg>
 <div class="wrap">
 <div class="eyebrow">simblocks // block library</div>
-<h1>Simblocks Block Library</h1>
+<h1>REDblocks Block Library</h1>
 <p class="lede">Every building block the system-file compiler can use: what it does, what it takes and returns,
 the lines to paste into a system file, and a sketch of its geometry with connection points
 <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" style="fill:var(--pt)"/></svg>

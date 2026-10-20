@@ -64,7 +64,7 @@ Ask one question, "How much should I run?":
 |---|---|
 | One nominal run, fully verified (Recommended) | dt convergence, knockouts, small Monte Carlo (`mc_n` <= 20), energy ledger; report |
 | A small sweep here | up to ~64 Sobol samples over the uncertain inputs, wide ranges; report adds probabilities |
-| A big study on your machine | write `<name>_job.yaml` with proposed dimensions and n, then ask the user to confirm or edit them; deliver the job file, the sim `.py` and `simblocks_runner.exe` (or the build script); results come back as `<name>_results.zip` |
+| A big study on your machine | write `<name>_job.yaml` with proposed dimensions and n, then ask the user to confirm or edit them; deliver the job file, the sim `.py` and `redblocks_runner.exe` (or the build script); results come back as `<name>_results.zip` |
 
 For the sweep and the big study, propose the sampled dimensions and ranges as a short table and let the user
 change them before anything runs. Study size is always the user's call.

@@ -1,4 +1,4 @@
-"""One-click study runner (the entry point of simblocks_runner.exe).
+"""One-click study runner (the entry point of redblocks_runner.exe).
 
 Double-click the executable with a job file (*_job.yaml) and its sim (*.py) in the same folder, or drag a job
 file onto it, or run `simblocks_runner job.yaml [--workers N] [--n N]`. It runs the study on every CPU core and

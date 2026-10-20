@@ -530,7 +530,7 @@ label.cpick button{padding:0 6px;font-size:12px}
         Builder nodes call catalog blocks in <b>derived</b>. An element's body sockets and their factors write its <b>measure</b>.
         Load nodes are <b>force</b> elements. Range and Monte Carlo nodes fill <b>study</b> and <b>uncertain</b>. Output and Failure nodes fill <b>outputs</b> and <b>failure</b>.
         The units dropdown (top bar) is saved as <b>units</b>. The file stays plain YAML that
-        <code>simblocks run</code> reads.</div>
+        <code>redblocks run</code> reads.</div>
     </div>
     <div class="pane" id="pRes"><div class="empty">Press Run to see outputs and time histories.</div></div>
     <div class="pane" id="pVer"><div class="empty">Press Verify to run the full battery: dt convergence, energy ledger,
@@ -634,7 +634,7 @@ const API = {
   async call(m, ...a) {
     if (window.pywebview && window.pywebview.api && window.pywebview.api[m]) return await window.pywebview.api[m](...a);
     if (window.__devApi) return await window.__devApi(m, JSON.stringify(a)).then(r => JSON.parse(r));
-    throw new Error("Open this page through the Simblocks desktop app to run models.");
+    throw new Error("Open this page through the REDblocks desktop app to run models.");
   }
 };
 // ------------------------------------------------------------------------------------------------ model
@@ -1210,7 +1210,7 @@ function partSockets(n, ins, outs){
   if (d.ldOn && LOAD_ON.includes(d.ptype)) waveKeys(d.ldShape || "sine").forEach(f => ins.push({key:"l." + f, label:f, type:"val", req:waveReq(d.ldShape || "sine", f), tip:WAVE_TIP[f]}));
   if (d.thOn && ct.thermal) byOrder(CAT.circuit.thermal || [], PART_ORDER.thermal).filter(f => !TH_FOR[f] || TH_FOR[f].includes(d.ptype))
     .forEach(f => ins.push({key:"h." + f, label:f, type:"val", req:(f === "C_th" || f === "R_th") && d.ptype !== "wire"}));
-  const tn = k => { const nm = netOf(n, k), nt = nm && S.nodes.find(x => x.kind === "net" && x.data.name === nm); return nt && hiddenNet(nt) ? (nt.data.ground ? " · gnd" : " · " + nm) : ""; };
+  const tn = k => { const nm = netOf(n, k), nt = nm && S.nodes.find(x => x.kind === "net" && x.data.name === nm); return nt && hiddenNet(nt) && nt.data.ground ? " · gnd" : ""; };   // auto-named hidden nets stay out of sight: nothing to edit there
   outs.push({key:"pa", label:"+ terminal" + tn("pa"), type:"elec", tip:"drag onto another part's terminal to join them, or onto a Net block (current flows + to − through the part)"},
             {key:"pb", label:"− terminal" + tn("pb"), type:"elec", tip:"drag onto another part's terminal to join them, or onto a Net block"});
   partQuantities(d).forEach(q => outs.push({key:"q." + q, label:q, type:"sig", tip:PART_Q_HELP[q]}));
@@ -2311,7 +2311,7 @@ async function csvOpen(n){
     if (!filePath){ status("bad", "Save the model first: a new table is stored next to it (in a loads folder)."); return; }
     d.csvFile = "loads/" + (d.name || "load") + ".csv"; d.csvOn = true;
     const ag = d.csvAgainst || "time";
-    CSVE = {nid:n.id, path:d.csvFile, comments:["# " + (d.name || "load") + ": made in Simblocks"], header:[ag === "time" ? "time" : "s", "force"],
+    CSVE = {nid:n.id, path:d.csvFile, comments:["# " + (d.name || "load") + ": made in REDblocks"], header:[ag === "time" ? "time" : "s", "force"],
             rows:[["0", "0"], ["1", "1"], ["2", "0"]], delim:",", fresh:true};
     changed(true);
   } else {
@@ -4768,14 +4768,14 @@ document.getElementById("bEx").addEventListener("change", async e => { const nam
 const K = s => `<kbd>${s}</kbd>`;
 const GUIDE = [
  {id:"start", grp:"Start here", t:"Getting started", h:`
-  <p>Simblocks builds a physics model out of blocks on a canvas, runs it, and tells you the numbers that matter. Everything runs on this computer: no server, no account, no internet.</p>
+  <p>REDblocks builds a physics model out of blocks on a canvas, runs it, and tells you the numbers that matter. Everything runs on this computer: no server, no account, no internet.</p>
   <ol>
    <li><b>New</b> opens a template (spinner hit, drop test, weapon spin-up with battery, drive push, and 2D and 3D spinner-on-wedge and bounce-and-roll models) or a blank canvas. Pick the default units there. <b>DIM</b> in the top bar switches between 1D, <a data-h="guide:twod">2D</a> and <a data-h="guide:threed">3D</a>.</li>
    <li>Change the numbers in the nodes. Typed values work like Blender: just type <code>1.1e5</code>, <code>75</code>, <code>4140 prehard</code>.</li>
    <li>Results update live in the <b>Results</b> tab while you type (see <a data-h="guide:live">Live run</a>).</li>
    <li>Press <b>Run</b> (${K("F5")}) for the full run. It also writes any <a data-h="guide:csv">CSV exports</a>.</li>
    <li>To vary an input, plug a <b>Range of values</b> or <b>Monte Carlo</b> node into it and press <b>Study</b>.</li>
-   <li><b>Save</b> (${K("Ctrl+S")}) writes a plain YAML file. The same file runs from the command line with <code>simblocks run model.yaml</code>.</li>
+   <li><b>Save</b> (${K("Ctrl+S")}) writes a plain YAML file. The same file runs from the command line with <code>redblocks run model.yaml</code>.</li>
   </ol>
   <p>Every node has a small <b>i</b> button. It shows a short description, and its <b>Full entry in Help</b> link brings you to the matching page here.</p>`},
  {id:"ex-overview", grp:"Examples", t:"The examples", h:`
@@ -5138,7 +5138,7 @@ const GUIDE = [
  {id:"results", grp:"Results", t:"Outputs, expressions and failure modes", h:`
   <ul><li><b>Output</b> turns a signal into one number: final, max, min, max of the magnitude, or the first time it crosses a value. Its unit is for display and for failure limits.</li>
   <li><b>Expression output</b> computes from values and other outputs: <code>= $plate.F_fpf / $F_peak</code>.</li>
-  <li><b>Failure mode</b> is your own definition of failure, with its origin in your words. Metric mode compares an output with a limit; demand vs capacity compares two expressions. Simblocks never invents a failure criterion.</li></ul>
+  <li><b>Failure mode</b> is your own definition of failure, with its origin in your words. Metric mode compares an output with a limit; demand vs capacity compares two expressions. REDblocks never invents a failure criterion.</li></ul>
   <p>Verify reports each failure mode's safety factor and probability of failure; Study counts the failing runs.</p>`},
  {id:"studies", grp:"Results", t:"Range, Monte Carlo and studies", h:`
   <ul><li><b>Range of values</b>: a list (<code>1, 2, 5</code>) or <code>start:stop:count</code> (<code>10:100:10</code>). One run per value.</li>
@@ -5256,7 +5256,6 @@ const GUIDE = [
   <tr><td>Solarized dark</td><td>Ethan Schoonover&#x27;s low-glare palette, dark.</td></tr>
   <tr><td>Drafting</td><td>Vellum paper, blue-black ink and red markups, like a printed schematic. Good for screenshots that go into reports and slides.</td></tr>
   <tr><td>Sage</td><td>Matcha and moss greens on cream, with blush pink, sunflower yellow and a mushroom red. A picnic in the woods.</td></tr>
-  <tr><td>Texas</td><td>Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim.</td></tr>
   <tr><td>Banana</td><td>Ripe banana yellow on a cream canvas, with brown-speckle ink, leafy green trim and a round, bouncy font. Peak potassium.</td></tr>
   <tr><td>Candy</td><td>Bubblegum pink with bold sweet-shop wires and a round, bouncy font. Sugar rush included.</td></tr>
   <tr><td>Clean</td><td>Plain white with grey borders and crisp blue, green, purple and orange, in the style of GitHub&#x27;s light code view. A neutral light theme for bright rooms and daytime work.</td></tr>
@@ -5270,11 +5269,11 @@ const GUIDE = [
   <p>Colours are saved for you on this computer (<code>~/.simblocks/app.json</code>), never in model files.</p>`},
  {id:"files", grp:"Files", t:"Files, YAML and the command line", h:`
   <p>A model is one plain YAML file you can read, diff and keep in version control. The YAML tab shows it live. Sections: <code>params</code> (values), <code>derived</code> (expressions and builders), <code>bodies</code>, <code>elements</code>, <code>outputs</code>, <code>failure</code>, <code>uncertain</code>, <code>study</code>, <code>exports</code>, <code>run</code>, and <code>editor</code> (layout, groups and notes; the solver ignores it). Keys the editor does not use are kept and written back unchanged.</p>
-  <pre class="code">simblocks check  model.yaml      # compile, print bodies, elements and time step
-simblocks run    model.yaml      # one run (+ CSV exports); --out folder also writes outputs.json and history.csv
-simblocks verify model.yaml      # the verification battery (--mc N samples, --out folder for verify.md)
-simblocks report model.yaml      # verify + PDF/HTML report</pre>
-  <p><b>Installing on Windows:</b> run <code>packaging\build_exes.bat</code> once. It builds the app and offers to install it for you, with no administrator rights: press the Windows key and type <i>Simblocks</i>, then right-click it and choose <b>Pin to taskbar</b>. Model files can open straight into it (right-click a <code>.yaml</code> &gt; Open with &gt; Simblocks &gt; Always), <kbd>Win+R</kbd> <code>simblocks</code> starts it, and it uninstalls from Settings &gt; Apps. Re-run the .bat to update; your settings and saved groups are kept.</p>
+  <pre class="code">redblocks check  model.yaml      # compile, print bodies, elements and time step
+redblocks run    model.yaml      # one run (+ CSV exports); --out folder also writes outputs.json and history.csv
+redblocks verify model.yaml      # the verification battery (--mc N samples, --out folder for verify.md)
+redblocks report model.yaml      # verify + PDF/HTML report</pre>
+  <p><b>Installing on Windows:</b> run <code>packaging\build_exes.bat</code> once. It builds the app and offers to install it for you, with no administrator rights: press the Windows key and type <i>REDblocks</i>, then right-click it and choose <b>Pin to taskbar</b>. Model files can open straight into it (right-click a <code>.yaml</code> &gt; Open with &gt; REDblocks &gt; Always), <kbd>Win+R</kbd> <code>redblocks</code> starts it, and it uninstalls from Settings &gt; Apps. Re-run the .bat to update; your settings and saved groups are kept.</p>
   <p><b>AI assistant (MCP):</b> REDblocks is an MCP server, so Claude (desktop or Claude Code) or any other assistant that speaks MCP can read, edit, run, sweep, verify and plot your models on this computer, on that person's own account. Open <b>Settings &gt; AI assistant</b>: <b>Add REDblocks to Claude desktop</b> writes the connection for you (restart Claude after), and the box shows the one-line Claude Code command and the JSON block for other assistants. From a terminal it is <code>python -m simblocks mcp</code>. Every edit is compiled first (a broken edit is refused) and the previous file is kept as <code>.bak</code>. Keep the model open here and the canvas reloads when the assistant changes it; if you have unsaved edits it warns instead.</p>
   <p>Settings (recent files, cores, units, live, folders) live in <code>~/.simblocks/app.json</code>; saved groups in <code>~/.simblocks/groups</code>. Custom folders also apply to the command line through <code>SIMBLOCKS_MATERIALS</code> and <code>SIMBLOCKS_BLOCKS</code>.</p>`},
  {id:"keys", grp:"Files", t:"Keyboard shortcuts", h:`
@@ -5477,12 +5476,6 @@ const THEMES = {
     "s-val":"#5f7a1c", "s-body":"#b85a6c", "s-sig":"#4a7672", "s-state":"#7d5a3a", "s-metric":"#2f3b29",
     "c-value":"#d9b23a", "c-builder":"#c46f7e", "c-body":"#5f7a52", "c-element":"#8fae5d", "c-load":"#8fae5d", "c-output":"#a0a6ad", "c-expr":"#4fa39a", "c-fail":"#b54a3c", "c-sweep":"#e08a3a", "c-mc":"#d79aa0", "c-export":"#3f6b8a", "c-group":"#c3cdb0", "c-note":"#9c7a62",
     p1:"#2f4a28", p2:"#b85a6c", p3:"#6f8f1c", p4:"#7d5a3a", p5:"#a8811c"}},
-  texas: {name:"Texas", note:"Burnt orange headers on a crisp white canvas, with charcoal text and limestone trim.", scheme:"light", t:{
-    bg:"#ffffff", grid:"#f3e9e1", panel:"#ffffff", panel2:"#f7f3ee", panel3:"#ece5dc", edge:"#d7c9bd", hair:"#efe6de", selbg:"#ffe0c7", "note-bg":"#fff8f1", "group-hd":"#f4ece4", ink:"#333f48", ink2:"#46525b", ink3:"#5c6770", link:"#a34a00", acc:"#bf5700", accf:"#005f86", pass:"#3d7a2a", warn:"#9a5b00", fail:"#b3122e", shadow:"rgba(51,63,72,.16)",
-    bar:"#bf5700", "bar-ink":"#ffffff", "bar-ink2":"#ffe9d6", hd:"#bf5700", "hd-ink":"#ffffff", "hd-ink2":"#ffe0c2",
-    "s-val":"#bf5700", "s-body":"#333f48", "s-sig":"#00818c", "s-state":"#005f86", "s-metric":"#3f7f2c",
-    "c-value":"#f8971f", "c-builder":"#005f86", "c-body":"#333f48", "c-element":"#579d42", "c-load":"#579d42", "c-output":"#9cadb7", "c-expr":"#2bb3a6", "c-fail":"#b3122e", "c-sweep":"#ffd600", "c-mc":"#a6cd57", "c-export":"#6a4c93", "c-group":"#c9c4b3", "c-note":"#a07850",
-    p1:"#bf5700", p2:"#333f48", p3:"#005f86", p4:"#3f7f2c", p5:"#00818c"}},
   banana: {name:"Banana", fun:true, note:"Ripe banana yellow on a cream canvas, with brown-speckle ink, leafy green trim and a round, bouncy font. Peak potassium.", scheme:"light", ui:"fredoka", t:{
     bg:"#fff6c9", grid:"#f6e9a6", panel:"#fffadf", panel2:"#fff0b0", panel3:"#fbe48a", edge:"#d9b84a", hair:"#f2df95", selbg:"#ffe066", "note-bg":"#fff3bd", "group-hd":"#eef3c4",
     bar:"#ffd93b", "bar-ink":"#4a3410", "bar-ink2":"#5e4518", hd:"#ffe36e", "hd-ink":"#3d2b0c", "hd-ink2":"#6b4f1c",
@@ -5576,7 +5569,7 @@ function applyColors(){
   const {th, look, img, own} = curLook(), root = document.documentElement;
   Object.entries(THEMES.blueprint.t).forEach(([k, v]) => root.style.setProperty("--" + k, own[k] || (th.t && th.t[k]) || v));
   root.style.setProperty("color-scheme", th.scheme || "dark");
-  // optional: top bars and node headers in their own colour (Texas: burnt-orange bars, white canvas)
+  // optional: top bars and node headers in their own colour (e.g. Redline's red bars)
   const T = Object.assign({}, THEMES.blueprint.t, th.t || {}, own);
   root.style.setProperty("--bar", T.bar || T.panel); root.style.setProperty("--bar-ink", T["bar-ink"] || T.acc);
   root.style.setProperty("--bar-ink2", T["bar-ink2"] || T.ink3);

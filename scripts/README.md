@@ -38,9 +38,9 @@ simblocks batch-info spinner_vs_spinner_results.zip
 ## Desktop node editor (no Claude, no internet)
 
 `pip install ".[app]"` then `simblocks app`. On Windows, run `packaging/build_exes.bat` once (Python 3.10-3.12): it
-builds `dist/Simblocks/Simblocks.exe` and offers to install it for you (no admin rights). After that, press the Windows
-key and type Simblocks; right-click it > Pin to taskbar to keep it there. Model files can open with it (right-click a
-.yaml > Open with > Simblocks), and it uninstalls from Settings > Apps. Re-run the .bat to update. Blender-style nodes read and write system files; Run, Study (Range and
+builds `dist/REDblocks/REDblocks.exe` and offers to install it for you (no admin rights). After that, press the Windows
+key and type REDblocks; right-click it > Pin to taskbar to keep it there. Model files can open with it (right-click a
+.yaml > Open with > REDblocks), and it uninstalls from Settings > Apps. Re-run the .bat to update. Blender-style nodes read and write system files; Run, Study (Range and
 Monte Carlo modifiers, all cores), Verify and Report work offline, with live results while you edit, templates,
 undo, copy/paste, groups and a personal group library, CSV export nodes, notes with LaTeX, custom materials and custom
 block folders, forgiving block search and a full in-app Help (F1). Settings live in `~/.simblocks/app.json`.
@@ -48,7 +48,7 @@ block folders, forgiving block search and a full in-app Help (F1). Settings live
 ## One-click runner (no Python needed after the build)
 
 Build once on Windows: double-click `packaging/build_exes.bat` (needs Python 3.10-3.12 from python.org).
-It writes `dist/simblocks_runner.exe`.
+It writes `dist/redblocks_runner.exe`.
 
 Use: put `<name>_job.yaml` and the sim `.py` it names in the same folder as the exe, double-click it (or drag a job
 file onto it). It uses every core, resumes if interrupted, and writes `<name>_results.zip` next to the job.
