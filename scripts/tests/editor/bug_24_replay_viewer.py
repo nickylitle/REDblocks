@@ -46,6 +46,11 @@ async def s(pg):
         await pg.keyboard.press("f")
         r1 = await pg.evaluate("() => AV.orbit.r")
         ok &= check(abs(r1 - r0) < 1e-6 * max(1, r0), (r0, r1), "F fits it again", "fit-key")
+        if "flapjack" in rel:                    # the hull is a sketch that can be switched off
+            hv = await pg.evaluate("() => { const vis = () => AV.bodies.flatMap(r => r.g.children.filter(o => o.userData.hull).map(o => o.visible));"
+                                   " const a = vis(); const c = document.getElementById('avHull'); c.checked = false; c.onchange(); const b = vis();"
+                                   " c.checked = true; c.onchange(); return [a, b]; }")
+            ok &= check(len(hv[0]) > 0 and all(hv[0]) and not any(hv[1]), hv, "hulls on, then off", "hull-toggle")
         # scrub to the middle and to the end: a moving body is somewhere else
         p0 = await pg.evaluate("() => { const r = AV.bodies.find(r => r.b.pos && !r.b.ground); return r.g.position.toArray(); }")
         await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '1000'; e.oninput({target:e}); }")

@@ -574,6 +574,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <label title="Keep the camera on one body">follow <select id="avFollow"><option value="-1">nothing</option></select></label>
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
+  <label title="Wrap each body's points in a see-through solid (its convex hull). It is only a sketch of where the points are: the physics touches only the points, spheres, cylinders and planes themselves"><input type="checkbox" id="avHull" checked>hulls</label>
   <label title="Loads that push on a body (forces, drag, friction, motors) as arrows, sized against the largest"><input type="checkbox" id="avForces" checked>loads</label>
   <button id="avFit" title="Fit the whole model on screen (F)">Fit</button>
   <button id="avPickB" title="Choose the values read out next to the replay: circuit voltages and currents, control signals, element forces">Readout ▾</button>
@@ -5262,7 +5263,7 @@ const GUIDE = [
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
   <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
-  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. Body shapes are drawn as solids, and a planet as a disc. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
+  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
   <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
@@ -6130,8 +6131,8 @@ function avBuild(){
     if (b.hull){
       const pos = new Float32Array(b.hull.points.flat()), geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setIndex(b.hull.faces.flat()); geo.computeVertexNormals();
-      g.add(new THREE.Mesh(geo, avMat(col, {transparent:true, opacity:0.42, side:THREE.DoubleSide})));
-      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 15), edgeMat));
+      const hm = new THREE.Mesh(geo, avMat(col, {transparent:true, opacity:0.42, side:THREE.DoubleSide})), he = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 15), edgeMat);
+      hm.userData.hull = he.userData.hull = true; g.add(hm); g.add(he);
     }
     if (b.sticks){                                          // a body given only by a few points: rods to its centre of mass
       const sm = avMat(col);
@@ -6372,6 +6373,8 @@ function avPose(){
     o.head.scale.setScalar(hs * 0.5);
     o.line.geometry.attributes.position.needsUpdate = true;
   }
+  const hull = document.getElementById("avHull").checked;
+  for (const r of AV.bodies) r.g.children.forEach(o => { if (o.userData.hull) o.visible = hull; });
   const tr = document.getElementById("avTrail").checked;
   for (const t of AV.trails){ t.line.visible = tr; t.line.geometry.setDrawRange(0, Math.max(1, k + 1)); }
   if (AV.follow >= 0 && AV.orbit){                   // the camera rides along with the followed body
@@ -6440,6 +6443,7 @@ function avPlay(){
   document.getElementById("avTrail").onchange = () => { avPose(); avRender(); };
   document.getElementById("avLinks").onchange = () => { avPose(); avRender(); };
   document.getElementById("avForces").onchange = () => { avPose(); avRender(); };
+  document.getElementById("avHull").onchange = () => { avPose(); avRender(); };
   document.getElementById("avScrub").oninput = e => {
     const S = AV.S; if (!S) return; const T0 = S.t[0], T = S.t[S.t.length - 1];
     AV.tcur = T0 + (T - T0) * parseInt(e.target.value) / 1000; avPose(); avRender();
