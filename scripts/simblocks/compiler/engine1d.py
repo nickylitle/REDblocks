@@ -329,9 +329,12 @@ def run_engine(n, dt, q0, v0, m, typ, one_sided, active, P, C, s0, tab_off, tab_
             LOGB[0, 2 * b] = q[b]; LOGB[0, 2 * b + 1] = v[b]
         j = 1
     for i in range(n):
-        if (i & 4095) == 0 and stop[0] != 0:
-            done = i
-            break
+        if (i & 4095) == 0:
+            if stop[0] != 0:
+                done = i
+                break
+            if stop.shape[0] > 3:                     # progress for the editor's ETA: millionths of the run
+                stop[3] = int(1e6 * t / t_stop) if adapt and t_stop > 0 else (i * 1000000) // max(n, 1)
         if adapt:
             if t >= t_stop:
                 done = i; stop[2] = 2               # reached t_end

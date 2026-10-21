@@ -262,10 +262,10 @@ class Api:
                     M = s.nominal; steps = int(round(M.t_end / M.dt)); est = estimate_run_s(M)
                     wd = anim_watchdog(M)
                     _PROG.update(stage=1, label=f"Solving {steps:,} time steps (watchdog {wd:.0f} s)", steps=steps,
-                                 est_s=est, solve_t0=time.time())
+                                 est_s=est, solve_t0=time.time(), tid=tid)
                     S = scene(s, frames=frames, timeout=wd); S["reused"] = False
                     S["watchdog_s"] = wd
-                    _PROG.update(stage=2, label="Building the scene", solve_t0=0.0)
+                    _PROG.update(stage=2, label="Building the scene", solve_t0=0.0, tid=None)
                 S["stopped"] = bool(self._run_stopped)
             finally:
                 _PROG["active"] = False
@@ -378,8 +378,15 @@ class Api:
             return _err(exc)
 
     def progress(self):
-        """What the current Run / Verify / Report is doing, for the progress card."""
+        """What the current Run / Verify / Report is doing, for the progress card. A run also reports how far its
+        engine has got (frac, 0 to 1), so the card's time left comes from the run itself, not just the estimate."""
         p = dict(_PROG)
+        if p.get("tid") is not None:
+            from ..compiler.model import run_progress
+            f = run_progress(p["tid"])
+            if f is not None:
+                p["frac"] = f
+        p.pop("tid", None)
         now = time.time()
         p["elapsed"] = now - p.get("t0", now)
         p["solve_elapsed"] = now - p["solve_t0"] if p.get("solve_t0") else 0.0
@@ -1589,15 +1596,16 @@ def _run_payload_in(text, overrides=None, n_hist=600, model_path=None, export=Fa
             M = s.nominal; steps = int(round(M.t_end / M.dt))
             from ..compiler.exports import wanted as _w
             more = " then writing CSV" if (export and _w(s.doc, "run")) else ""
+            import threading
             _PROG.update(stage=1, label=f"Solving {steps:,} time steps{more}", steps=steps, est_s=estimate_run_s(M),
-                         solve_t0=time.time())
+                         solve_t0=time.time(), tid=threading.get_ident())
         if export:
             out, H, paths = s.run_with_exports(overrides or None, model_path=model_path)
         else:
             out, H = s.run(overrides or None, history=True)
         _LAST_RUN.update(text=text, overrides=overrides or None, path=model_path, H=H, out=out)   # the viewer reuses it
         if track:
-            _PROG.update(stage=2, label="Outputs, energy ledger and time history", solve_t0=0.0)
+            _PROG.update(stage=2, label="Outputs, energy ledger and time history", solve_t0=0.0, tid=None)
         types = {k: e["type"] for k, e in s.doc["elements"].items()}
         keep = {"elastoplastic": ("plastic_set", "broken"), "drive": ("current", "battery_current", "bus_voltage", "soc"), "dc_motor": ("current",)}
 

@@ -4,6 +4,8 @@ compile_model(doc, overrides) -> Compiled   (pure function of the file + paramet
 Compiled.run(dt=None, history=False) -> dict of outputs (+ history)
 """
 import inspect
+import json
+import os
 import math
 import re
 
@@ -983,18 +985,56 @@ def _crossings(M):
     return (np.array(src, np.int64), np.array(idx, np.int64), np.array(thr, float), np.array(dr, np.int64), keys)
 
 
-# run.timeout: auto -> AUTO_FACTOR x the estimated run time (never under AUTO_MIN_S). The estimate is deliberately
-# rudimentary: steps x elements / RATE, where RATE (element-steps per second) is learned from finished runs, one
-# per dimension (a 3D element-step costs about 200x a 1D one). The study passes its learned rates to each worker.
-RATE = {"1d": 5.0e6, "2d": 1.0e6, "3d": 2.5e4}
-AUTO_FACTOR = 5.0
-AUTO_MIN_S = 10.0
+# run.timeout: auto -> AUTO_FACTOR x the estimated run time (never under AUTO_MIN_S). The estimate is the cost of one
+# step from what the model has (measured on the examples, 2026-10: a 3D element about 0.25 us, a rigid joint row about
+# 5 us, a circuit part about 0.5 us, a control signal about 0.25 us), times the steps, times this computer's speed
+# factor: learned from every finished run (how long it took against the estimate) and kept in ~/.simblocks/speed.json
+# so it carries over between sessions. The editor's progress card then corrects it live from the run's own progress.
+STEP_US = {"1d": (0.4, 0.1, 0.0), "2d": (1.3, 0.12, 2.6), "3d": (1.0, 0.25, 5.0)}   # base, per element, per rigid row
+RATE = {"speed": 1.0}                  # this computer against the measuring one (2 = twice as slow); studies pass it on
+AUTO_FACTOR = 10.0            # the estimate is within about 2x on the examples: room for a model it misjudges
+AUTO_MIN_S = 20.0
+_SPEED_FILE = os.path.join(os.path.expanduser("~"), ".simblocks", "speed.json")
+
+
+def _load_speed():
+    try:
+        with open(_SPEED_FILE, encoding="utf-8") as fh:
+            v = float(json.load(fh).get("speed", 1.0))
+        if 0.02 < v < 50:
+            RATE["speed"] = v
+    except Exception:
+        pass
+
+
+def _save_speed():
+    try:
+        os.makedirs(os.path.dirname(_SPEED_FILE), exist_ok=True)
+        with open(_SPEED_FILE, "w", encoding="utf-8") as fh:
+            json.dump({"speed": RATE["speed"]}, fh)
+    except Exception:
+        pass
+
+
+_load_speed()
+
+
+def step_cost_us(M):
+    """Microseconds one step of this model takes on the measuring computer (the examples: within about 1.5x)."""
+    dim = getattr(M, "dim", "1d"); b0, be, br = STEP_US.get(dim, STEP_US["1d"])
+    a = getattr(M, "arrays", None) or {}
+    typ = np.asarray(a.get("typ", []))
+    nrig = int(np.sum(typ == 15)) if dim != "1d" and typ.size else 0
+    circ = getattr(M, "circ", None) or {}
+    nparts = len(circ.get("names", ())) if isinstance(circ, dict) else 0
+    nctl = len((getattr(M, "ctl", None) or {}).get("names", ()))
+    return b0 + be * len(M.el_names) + br * nrig + 0.5 * nparts + 0.25 * nctl
 
 
 def estimate_run_s(M, dt=None):
-    """Rough wall-clock time of one run on this computer."""
+    """Wall-clock time of one run on this computer (the step cost x the steps x the learned speed factor)."""
     n = M.t_end / (dt or M.dt)
-    return n * max(1, len(M.el_names)) / RATE.get(getattr(M, "dim", "1d"), RATE["1d"])
+    return n * step_cost_us(M) * 1e-6 * RATE.get("speed", 1.0)
 
 
 def auto_timeout(M, dt=None):
@@ -1002,7 +1042,7 @@ def auto_timeout(M, dt=None):
 
 
 def parse_timeout(v, ctx=None):
-    """run.timeout: 'auto' (5x the estimated run time, at least 10 s), 'none' / 'off' (never), or a time
+    """run.timeout: 'auto' (10x the estimated run time, at least 20 s), 'none' / 'off' (never), or a time
     ('90 s', '5 min', 120). Returns 'auto', seconds, or None."""
     if v is None or (isinstance(v, str) and v.strip().lower() == "auto"):
         return "auto"
@@ -1052,6 +1092,12 @@ def cancel_runs(thread_id):
         st[0] = 1
 
 
+def run_progress(thread_id):
+    """How far the run going on in that thread is (0 to 1, from the engine's own count), or None."""
+    st = [x for x in _ACTIVE_STOPS.get(thread_id, []) if x.shape[0] > 3]
+    return float(st[-1][3]) / 1e6 if st else None
+
+
 def uncancel(thread_id):
     CANCELLED.discard(thread_id)
 
@@ -1076,7 +1122,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     limit = getattr(M, "timeout", "auto") if timeout == "model" else timeout
     if limit == "auto":
         limit = auto_timeout(M, dt)
-    stop = np.zeros(3, dtype=np.int64)            # [stop request, steps run, 1 = ended itself (touchdown)]
+    stop = np.zeros(4, dtype=np.int64)            # [stop request, steps run, 1 = ended itself, progress in millionths]
     _ACTIVE_STOPS.setdefault(threading.get_ident(), []).append(stop)   # cancel_runs(thread) can stop it
     if threading.get_ident() in CANCELLED:
         stop[0] = 1
@@ -1127,9 +1173,11 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             lst[:] = [x for x in lst if x is not stop]
     timed_out = int(stop[1]) < n and int(stop[2]) == 0
     secs = _time.perf_counter() - t_run
-    if secs > 0.05 and int(stop[1]) > 0:          # learn this computer's speed for the next estimate
-        d_ = getattr(M, "dim", "1d")
-        RATE[d_] = 0.5 * RATE.get(d_, RATE["1d"]) + 0.5 * int(stop[1]) * max(1, len(M.el_names)) / secs
+    if secs > 0.2 and int(stop[1]) > 1000:        # learn this computer's speed for the next estimate (and keep it)
+        f = secs / (int(stop[1]) * step_cost_us(M) * 1e-6)
+        if np.isfinite(f) and 0.02 < f < 50:
+            RATE["speed"] = math.exp(0.5 * math.log(RATE.get("speed", 1.0)) + 0.5 * math.log(f))
+            _save_speed()
     # energy ledger
     glob = (KE1 - KE0) + A.sum() - Wg
     internal = 0.0; inputs = max(Wg, 0.0)

@@ -390,7 +390,7 @@ Nothing runs online and nothing needs Claude.
   Colour-blind safe, Candy) set all of them, and any single colour can be changed with a picker. Saved per user in
   `~/.simblocks/app.json`, never in model files.
 - **Timeout.** AUTO estimates a run (time steps x elements / the solver speed measured on this computer) and stops it at
-  5x the estimate, at least 10 s; a Study stops at 5x (runs x time per run / cores), at least 30 s. Limit sets your own
+  10x the estimate, at least 20 s; a Study stops at 5x (runs x time per run / cores), at least 30 s. Limit sets your own
   per-run time, Off never stops. A stopped run returns what it computed so far, marked with the simulated time reached.
 - **Progress card.** Jobs longer than a moment show their stages (compile, solve, results; each Verify check with the
   Monte Carlo sample count; Study runs) with a bar and time left estimated from earlier runs on this computer.

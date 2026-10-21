@@ -931,9 +931,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 LOGB[0, b * NBQ + k] = BQ[k]
         j = 1
     for i in range(n):
-        if (i & 4095) == 0 and stop[0] != 0:
-            done = i
-            break
+        if (i & 4095) == 0:
+            if stop[0] != 0:
+                done = i
+                break
+            if stop.shape[0] > 3:                     # progress for the editor's ETA: millionths of the run
+                stop[3] = int(1e6 * t / t_stop) if adapt and t_stop > 0 else (i * 1000000) // max(n, 1)
         if adapt:
             if t >= t_stop:
                 done = i; stop[2] = 2               # reached t_end

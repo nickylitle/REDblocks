@@ -500,7 +500,7 @@ label.cpick button{padding:0 6px;font-size:12px}
       <label for="dtMax">max</label><div class="uv"><input id="dtMax" class="tb"><select id="dtMaxU"></select></div>
       <span class="dtinfo" id="dtInfo"></span></div>
     <div class="grp" id="toGrp"><label for="toMode">timeout</label>
-      <select id="toMode" title="Stop a run that takes too long (wall-clock). AUTO = 5 x the estimated run time (at least 10 s); for a Study, 5 x (runs x time per run / cores). Results then cover only the part that ran, and say so.">
+      <select id="toMode" title="Stop a run that takes too long (wall-clock). AUTO = 10 x the estimated run time (at least 20 s); for a Study, 5 x (runs x time per run / cores). Results then cover only the part that ran, and say so.">
         <option value="auto">AUTO</option><option value="limit">Limit</option><option value="off">Off</option></select>
       <div class="uv"><input id="toVal" class="tb" placeholder="60"><select id="toU"></select></div></div>
   </div>
@@ -4064,7 +4064,7 @@ function syncTimeBar(){
   tv.value = tm === "limit" ? tq.num : ta[0];
   tu.innerHTML = unitOptions("time", tm === "limit" ? (tq.unit || "s") : ta[1]);
   const ton = tm === "limit", tbox = tv.closest(".uv"); tbox.classList.toggle("off", !ton);
-  tbox.querySelectorAll("input,select").forEach(x => { x.disabled = !ton; x.title = ton ? "" : (tm === "auto" ? `AUTO: 5 x the estimated run time (about ${lastDt && lastDt.est_run_s ? (lastDt.est_run_s < 1 ? "under 1 s" : dur(lastDt.est_run_s)) : "?"} here), at least 10 s. A Study stops after 5 x (runs x time per run / cores). Pick Limit to set your own.` : "No timeout: runs always finish."); });
+  tbox.querySelectorAll("input,select").forEach(x => { x.disabled = !ton; x.title = ton ? "" : (tm === "auto" ? `AUTO: 10 x the estimated run time (about ${lastDt && lastDt.est_run_s ? (lastDt.est_run_s < 1 ? "under 1 s" : dur(lastDt.est_run_s)) : "?"} here), at least 20 s. A Study stops after 5 x (runs x time per run / cores). Pick Limit to set your own.` : "No timeout: runs always finish."); });
   document.getElementById("dtInfo").textContent = !lastDt ? "" : (mode === "adaptive" && lastDt.dt_free
     ? (lastDt.dt_free > lastDt.dt * 1.000001 ? `contact ${niceTime(lastDt.dt).join(" ")} · free ${niceTime(lastDt.dt_free).join(" ")}`
        : `${niceTime(lastDt.dt).join(" ")} · same as AUTO here (contacts do not set the step)`)
@@ -4224,8 +4224,12 @@ async function pcPoll(){
   let frac, eta = "";
   if (p.kind === "run" || p.kind === "anim"){
     if (p.stage === 0) frac = 0.02;
-    else if (p.stage === 1){ const f = p.est_s > 0 ? Math.min(0.97, p.solve_elapsed / p.est_s) : 0.5; frac = 0.04 + 0.9 * f;
-      const left = p.est_s - p.solve_elapsed; eta = left > 0.6 ? `about ${dur(left)} left` : (p.solve_elapsed > 1.3 * p.est_s ? "taking longer than estimated" : "almost done"); }
+    else if (p.stage === 1){
+      // once the engine has reported how far it is, the time left comes from its own pace; before that, the estimate
+      const real = p.frac != null && p.frac > 0.003 && p.solve_elapsed > 0.4;
+      const f = real ? Math.min(0.995, p.frac) : (p.est_s > 0 ? Math.min(0.97, p.solve_elapsed / p.est_s) : 0.5); frac = 0.04 + 0.9 * f;
+      const left = real ? p.solve_elapsed * (1 - f) / f : p.est_s - p.solve_elapsed;
+      eta = left > 0.6 ? `about ${dur(left)} left` + (real ? "" : " (estimate)") : (!real && p.solve_elapsed > 1.3 * p.est_s ? "taking longer than estimated" : "almost done"); }
     else frac = 0.97;
   } else { const n = p.stages.length, sub = p.sub_total ? p.sub_done / p.sub_total : 0; frac = (p.stage + sub) / n; }
   pcDraw(PC_TITLE[p.kind] || "Working", p.stages, p.stage, frac, p.label, eta, el); pcShow(true);
@@ -5145,7 +5149,7 @@ const GUIDE = [
   <tr><td>AUTO</td><td>Picks the step from the stiffest element: 0.02 × the critical step, and no larger than end time / 2000. The boxes stay visible but greyed out and show the chosen step.</td></tr>
   <tr><td>Fixed</td><td>Uses your step exactly.</td></tr>
   <tr><td>Bounded</td><td>Automatic, but kept between your minimum and maximum.</td></tr></table>
-  <p><b>Timeout</b> stops one run when it has taken too long in real (wall-clock) time. AUTO estimates the run first (time steps × elements ÷ this computer's measured solver speed) and stops at 5× that estimate, never sooner than 10 s; the greyed box shows the value it picked. For a Study, AUTO stops the whole study at 5× (runs × time per run ÷ cores), at least 30 s, keeping every run that finished. <i>Limit</i> takes your own time per run (any time unit); <i>Off</i> always runs to the end. A stopped run still returns everything it computed up to that moment, marked clearly: a red banner in Results gives the simulated time it reached, and Study counts stopped runs separately. It applies to Run, live runs, every Study run and every run inside Verify. In a file it is <code>run: {timeout: 2 min}</code>, <code>timeout: none</code>, or left out for AUTO.</p>
+  <p><b>Timeout</b> stops one run when it has taken too long in real (wall-clock) time. AUTO estimates the run first (time steps × the cost of one step from the model's elements, rigid joints, circuit parts and control signals × this computer's speed, learned from earlier runs and kept between sessions) and stops at 10× that estimate, never sooner than 20 s; the greyed box shows the value it picked. For a Study, AUTO stops the whole study at 5× (runs × time per run ÷ cores), at least 30 s, keeping every run that finished. <i>Limit</i> takes your own time per run (any time unit); <i>Off</i> always runs to the end. A stopped run still returns everything it computed up to that moment, marked clearly: a red banner in Results gives the simulated time it reached, and Study counts stopped runs separately. It applies to Run, live runs, every Study run and every run inside Verify. In a file it is <code>run: {timeout: 2 min}</code>, <code>timeout: none</code>, or left out for AUTO.</p>
   <p>The status bar shows the step in use and the number of steps. The solver is explicit: a step larger than the critical step goes unstable, which <b>Verify</b> catches with its time-step convergence check.</p>`},
  {id:"bodies", grp:"Building models", t:"Bodies, elements and measures", h:`
   <p>A <b>body</b> is one coordinate with mass: a translation (mass, position, speed), a rotation (inertia, angle, spin rate) or ground (fixed).</p>
@@ -5247,7 +5251,7 @@ const GUIDE = [
   <table class="ht"><tr><td><b>Run</b> ${K("F5")}</td><td>One run at the nominal values. Outputs, energy ledger, time-history plot. Writes CSV exports.</td></tr>
   <tr><td><b>Verify</b></td><td>The full battery: time-step convergence, energy ledger, knockouts, limit cases, Monte Carlo on the uncertain inputs, and your failure modes.</td></tr>
   <tr><td><b>Report</b></td><td>Verify plus a PDF and HTML report in an <code>out</code> folder next to the saved model.</td></tr></table>
-  <p>A job that takes longer than a moment shows a <b>progress card</b> at the bottom right: the stages it goes through (compile, solve, results for Run; each check of the battery for Verify; prepare, run, collect for Study) with the current one highlighted, a bar, what it is doing now (for example <i>Solving 4,559,453 time steps</i> or <i>Monte Carlo: sample 120 of 200</i>) and the time left. The time left for a solve is estimated from the speed of earlier runs on this computer. Study has a Cancel button there.</p>
+  <p>A job that takes longer than a moment shows a <b>progress card</b> at the bottom right: the stages it goes through (compile, solve, results for Run; each check of the battery for Verify; prepare, run, collect for Study) with the current one highlighted, a bar, what it is doing now (for example <i>Solving 4,559,453 time steps</i> or <i>Monte Carlo: sample 120 of 200</i>) and the time left. The time left for a solve starts as an estimate, then comes from the run's own pace as soon as the solver reports how far it is (within a second or so). Study has a Cancel button there.</p>
   <p>The <b>energy ledger</b> compares the energy every element put in, stored and dissipated with the change in kinetic energy. Under about 1% means the run conserved energy properly.</p>`},
  {id:"csv", grp:"Results", t:"CSV export", h:`
   <p>A <b>CSV export</b> node writes time histories to a file when you press Run. It is optional: add one only when you want files. Plug any number of sources into its columns: element signals and states, or bodies (pick position or velocity).</p>
