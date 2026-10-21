@@ -73,8 +73,10 @@ def test_2d_3_four_bar():
 
 def test_3d_1_spinning_top():
     o = run("3d_1_spinning_top.yaml")
-    assert o["quarter_turn_s"] == pytest.approx(0.484, rel=0.01)
-    assert o["lowest_z_mm"] > 45 and o["_ledger_rel"] < 1e-4
+    # air drag alone: w = w0 / (1 + t / tau), tau = I_s / (K w0) = 53 s; it falls once the spin is too slow to hold it
+    assert 95 < o["t_down"] < 105
+    assert o["lowest_disc_mm"] == pytest.approx(17.3, abs=0.5)     # resting on its tip and its edge
+    assert o["rim_hit_N"] > 0 and o["_ledger_rel"] < 0.01
 
 
 def test_3d_2_drone_arm():

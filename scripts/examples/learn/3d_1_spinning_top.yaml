@@ -1,77 +1,88 @@
 simblocks: 1
 name: 3D-1 Spinning top
-question: "A spinning disc on a pointed stem, tilted 20 degrees: does it fall over, and how fast does it precess?"
+question: "A toy top spun at 2,900 rpm and let go tilted 15 degrees on a table: how does it precess, wander and slow down, and when does it fall?"
 dim: 3d
 gravity: 9.81
 
 params:
-  spin: {value: 196.95 rad/s, note: "spin about its own axis (about 1880 rpm)"}
-  tilt: {value: 20 deg, note: "how far the stem leans from vertical"}
-  start_precession: {value: 3.25 rad/s, note: "a starting condition only: how fast it is already swinging round at t = 0. The solver works out the real precession; this just starts it at the steady rate so it does not nod (0 = spin only)"}
-  stem: {value: 50 mm, note: "from the tip to the centre of the disc"}
+  spin: {value: 300 rad/s, note: "how fast it is spun (about 2,900 rpm)"}
+  tilt: {value: 15 deg, note: "how far it leans from vertical when let go"}
+  stem: {value: 25 mm, note: "from the tip to the centre of the disc"}
+  r_tip: {value: 2 mm, note: "radius of the rounded tip"}
+  mu_tip: {value: 0.25, note: "tip sliding friction (plastic on a wooden table)"}
+  K_air: {value: 8.3e-11, note: "air drag on the spinning disc, N m per (rad/s)^2: 1/2 rho R^5 Cm, laminar Cm = 3.87 / sqrt(Re) at 300 rad/s"}
 
 derived:
-  w_x: "= $spin * sin($tilt)"                 # start spin, world x part
-  w_z: "= $spin * cos($tilt) + $start_precession"   # start spin, world z part: its own spin plus the starting precession
+  w_x: "= $spin * sin($tilt)"
+  w_z: "= $spin * cos($tilt)"
+  ax_x: "= sin($tilt)"
+  ax_z: "= cos($tilt)"
 
 bodies:
-  floor:
+  table:
     ground: true
-    points: {tip_rest: [0, 0, 0]}
-    note: "the point the tip sits on"
+    planes: {top: {at: [0, 0, 0], normal: [0, 0, 1]}}
+    note: "an endless flat table"
   top:
-    dof: free                   # slides and tumbles freely: only the joint holds the tip
-    shape: {kind: disc, R: 40 mm, t: 8 mm, material: 1018_CD, at: [0, 0, $stem]}   # disc centre 50 mm up its own axis
-    orient0: {axis: [0, 1, 0], angle: $tilt}   # tilted (its own z axis leans toward +x)
-    omega0: [$w_x, 0, $w_z]       # spin about its tilted axis plus the starting precession (so it does not nod)
-    points: {tip: [0, 0, 0]}
-    note: "the body's own frame: z along the stem, origin at the tip"
+    dof: free
+    shape: {kind: disc, R: 20 mm, t: 5 mm, density: 1050 kg/m^3, at: [0, 0, $stem]}   # an ABS disc, 6.6 g
+    orient0: {axis: [0, 1, 0], angle: $tilt}
+    at: [0, 0, "= $r_tip + 5e-6"]           # the tip's centre, just above the table
+    omega0: [$w_x, 0, $w_z]
+    spheres: {tip: {at: [0, 0, 0], r: $r_tip}}
+    cylinders: {rim: {at: [0, 0, $stem], axis: z, r: 20 mm, width: 5 mm}}   # the disc's edge, for when it falls over
+    note: "own frame: z along the stem, origin at the centre of the rounded tip"
 
 elements:
-  pivot:
-    type: pin
-    rigid: true                 # a ball joint: the tip stays on its point, free to turn every way
-    measure: [floor.tip_rest, top.tip]
-    label: tip on the floor
+  tip_contact:
+    type: kelvin_voigt
+    k: 20 kN/m
+    c: 5 N s/m
+    measure: {contact: [top.tip, table.top]}
+    label: tip pressing on the table
+  tip_slide:
+    type: contact_friction
+    contact: tip_contact
+    mu: $mu_tip
+    v_eps: 1 mm/s
+    label: tip friction (makes it wander and stand up)
+  rim_contact:
+    type: kelvin_voigt
+    k: 20 kN/m
+    c: 5 N s/m
+    measure: {contact: [top.rim, table.top]}
+    label: disc edge on the table (only once it falls)
+  rim_slide:
+    type: contact_friction
+    contact: rim_contact
+    mu: $mu_tip
+    v_eps: 1 mm/s
+  air:
+    type: drag
+    measure: {twist: [top, table], axis: [$ax_x, 0, $ax_z]}    # about the top's own spin axis
+    K: $K_air
+    label: air drag on the disc's spin
 
 outputs:
-  quarter_turn_s: {body: top, quantity: x, reduce: first_time_below, value: 0, label: time for a quarter of a precession circle}
-  lowest_z_mm:    {body: top, quantity: z, reduce: min, unit: mm, label: lowest the disc centre gets}
-  tip_force_N:    {element: pivot, quantity: force, reduce: max, unit: N}
+  spin_end_rpm: {body: top, quantity: omega, reduce: final, unit: rpm, label: how fast it still turns at the end}
+  t_down:       {body: top, quantity: z, reduce: first_time_below, value: 20 mm, label: when it has fallen (disc centre below 20 mm)}
+  lowest_disc_mm: {body: top, quantity: z, reduce: min, unit: mm, label: lowest the disc centre gets}
+  rim_hit_N:    {element: rim_contact, quantity: force, reduce: max, unit: N, label: hardest the edge hits the table}
 
 run:
-  t_end: 1.2 s
-  dt: 0.1 ms
+  t_end: 120 s
+  dt: 20 us
 
 editor:
-  layout:
-    b:floor: [30, 410]
-    b:top: [30, 793]
-    e:pivot: [1000, 40]
-    o:lowest_z_mm: [1000, 680]
-    o:quarter_turn_s: [1000, 420]
-    o:tip_force_N: [1270, 40]
-    p:spin: [-280, 30]
-    p:start_precession: [-280, 330]
-    p:stem: [30, 395]
-    p:tilt: [-280, 180]
-    p:w_x: [-280, 519]
-    p:w_z: [-280, 705]
-  groups:
-    - name: inputs
-      collapsed: true
-      x: 30
-      y: 190
-      members: ['p:spin', 'p:tilt', 'p:start_precession', 'p:stem']
-      expose: {}
-    - {name: derived, collapsed: true, x: 30, y: 635, members: ['p:w_x', 'p:w_z'], expose: {}}
   notes:
-    - text: "**3D-1 Spinning top.** A steel disc on a stem, spinning fast and tilted 20 degrees, sits on a ball joint at its tip.\
-        \ Gravity tries to tip it over; because it spins, it swings round in a slow circle instead (precession). Textbook check:\
-        \ the simple gyroscope rule gives $\\Omega \\approx m g l / (I_s \\omega_s) = 3.07$ rad/s. The full steady-precession\
-        \ equation $I_t \\Omega^2 \\cos\\theta - I_s \\omega_s \\Omega + m g l = 0$ gives 3.25 rad/s, so a quarter circle takes\
-        \ $\\pi / (2 \\Omega) = 0.484$ s, and the disc does not fall. The precession is computed, not set: *start_precession*\
-        \ only starts it at the steady rate so it does not nod (set it to 0 and it still precesses, with a wobble).\n"
+    - text: "**3D-1 Spinning top.** A 6.6 g plastic top spun at 2,900 rpm and let go leaning 15 degrees on a table. Nothing\
+        \ is scripted: gravity tips it, the spin turns that into precession (a slow circle), the rounded tip slides on the table\
+        \ (which stands it up a little and makes it wander), and air drag on the disc slows the spin. As the spin drops the\
+        \ circles widen and speed up, and below about 110 rad/s it can no longer hold itself up: it falls, its edge hits the\
+        \ table (a cylinder contact), and it ends rolling slowly round on its tip and edge. Checks: the precession follows the\
+        \ gyroscope rule $m g l / (I_s \\omega_s)$ (3.6 rad/s at the start against 4.3, 9.2 at 60 s against 9.1; the tip\
+        \ sliding about is the difference) and the tip wanders up to about 13 cm; the air drag alone gives\
+        \ $\\omega(t) = \\omega_0 / (1 + t/\\tau)$ with $\\tau = I_s / (K \\omega_0) = 53$ s, so 129 rad/s at 70 s, which the run matches.\n"
       x: 30
       y: 30
       width: 950

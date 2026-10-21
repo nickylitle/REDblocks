@@ -36,7 +36,7 @@ OLD = {
     "3d_3_robot_arm.yaml": {"t_hit_s": 0.6226003862990178, "stop_force_N": 369.69593413424684,
                             "stop_dissipated_J": 0.173920581947862, "bumper_mm": 1.7571195368962216,
                             "shoulder_force_N": 325.68010223474107, "payload_top_mm": 819.1792451984807},
-    "3d_1_spinning_top.yaml": {"quarter_turn_s": 0.48400959906224783, "lowest_z_mm": 46.98403573137952,
+    "../../tests/fixtures/top_on_ball_joint.yaml": {"quarter_turn_s": 0.48400959906224783, "lowest_z_mm": 46.98403573137952,
                                "tip_force_N": 3.0981405013598073},
     "2d_3_four_bar.yaml": {"rocker_min_deg": 87.13401769212601, "rocker_max_deg": 138.59037783394845,
                            "crank_rpm": 50.208721388842335, "force_A_N": 9.825175797417984,
