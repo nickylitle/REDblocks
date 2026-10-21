@@ -569,9 +569,11 @@ label.cpick button{padding:0 6px;font-size:12px}
   <button id="avPlay" class="primary" title="Play or pause (Space)">Play</button>
   <input type="range" id="avScrub" min="0" max="1000" value="0" title="Drag to any moment">
   <span id="avTime">t = 0</span>
-  <label title="How fast the replay runs against real time">speed <select id="avSpeed">
-    <option value="auto">fit to 10 s</option><option value="0.001">0.001x</option><option value="0.01">0.01x</option><option value="0.1">0.1x</option>
-    <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1">1x real time</option><option value="2">2x</option></select></label>
+  <label title="How fast the replay runs: the whole run squeezed into a number of seconds you choose, or a multiple of real time">speed <select id="avSpeed">
+    <option value="fit">whole run in</option><option value="0.001">0.001x</option><option value="0.01">0.01x</option><option value="0.1">0.1x</option>
+    <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1">1x real time</option><option value="2">2x</option>
+    <option value="5">5x</option><option value="10">10x</option><option value="100">100x</option></select>
+    <input id="avFitS" type="number" min="0.5" step="1" value="10" style="width:52px" title="Seconds the whole replay takes to play"><span id="avFitU">s</span></label>
   <label title="Keep the camera on one body">follow <select id="avFollow"><option value="-1">nothing</option></select></label>
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
@@ -5268,7 +5270,7 @@ const GUIDE = [
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
   <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
-  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
+  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
   <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
@@ -6213,7 +6215,7 @@ function avBuild(){
   AV.tcur = S.t[0]; AV.orbit = null;
   avResize(); avFit();                               // fitted to the screen's shape when it opens (F fits again)
   const T = S.t[S.t.length - 1] - S.t[0];
-  AV.speedAuto = T / 10; avSetSpeed(); AV.playing = false;
+  AV.T = T; avSetSpeed(); AV.playing = false;
   document.getElementById("avPlay").textContent = "Play";
   if (!AV.ro){ AV.ro = new ResizeObserver(avResize); AV.ro.observe(cv.parentElement); }
   avReadBuild();
@@ -6312,8 +6314,10 @@ function avResize(){
   AV.R.setSize(w, h, false); AV.cam.aspect = w / h; AV.cam.updateProjectionMatrix(); avRender();
 }
 function avSetSpeed(){
-  const v = document.getElementById("avSpeed").value;
-  AV.rate = v === "auto" ? AV.speedAuto : parseFloat(v);
+  const v = document.getElementById("avSpeed").value, fit = v === "fit", box = document.getElementById("avFitS");
+  box.hidden = document.getElementById("avFitU").hidden = !fit;
+  const secs = Math.max(0.5, parseFloat(box.value) || 10);        // the whole run plays in this many seconds
+  AV.rate = fit ? (AV.T || 1) / secs : parseFloat(v);
   avSpinTable();
   const slow = AV.bodies.filter(r => r.b.spin && r.b.spin.slowed).map(r => r.b.name), el = document.getElementById("avSlow");
   if (el){ el.hidden = !slow.length; el.textContent = slow.length ? `${slow.join(", ")} turns too fast to see at this speed: drawn turning slower (true rate in the readout)` : ""; }
@@ -6458,6 +6462,8 @@ function avPlay(){
   document.getElementById("avPlay").onclick = avPlay;
   document.getElementById("avFit").onclick = () => { avFit(); avPose(); avRender(); };
   document.getElementById("avSpeed").onchange = () => { avSetSpeed(); avPose(); avRender(); };
+  document.getElementById("avFitS").oninput = () => { avSetSpeed(); avPose(); avRender(); };
+  document.getElementById("avFitS").addEventListener("keydown", e => e.stopPropagation());   // typing a number is not a replay key
   document.getElementById("avFollow").onchange = e => { AV.follow = parseInt(e.target.value); avFit(); avPose(); avRender(); };
   document.getElementById("avTrail").onchange = () => { avPose(); avRender(); };
   document.getElementById("avLinks").onchange = () => { avPose(); avRender(); };

@@ -51,6 +51,11 @@ async def s(pg):
                                    " const a = vis(); const c = document.getElementById('avHull'); c.checked = false; c.onchange(); const b = vis();"
                                    " c.checked = true; c.onchange(); return [a, b]; }")
             ok &= check(len(hv[0]) > 0 and all(hv[0]) and not any(hv[1]), hv, "hulls on, then off", "hull-toggle")
+        if dim == "3d" and "robot_arm" in rel:   # the whole run in a chosen number of seconds
+            sp = await pg.evaluate("() => { const T = AV.T; const b = document.getElementById('avFitS'); b.value = '25'; b.oninput();"
+                                   " const r25 = AV.rate; const s = document.getElementById('avSpeed'); s.value = '5'; s.onchange();"
+                                   " const r5 = [AV.rate, b.hidden]; s.value = 'fit'; s.onchange(); return [T, r25, r5]; }")
+            ok &= check(abs(sp[1] - sp[0] / 25) < 1e-9 and sp[2] == [5, True], sp, "fit to 25 s; 5x hides the seconds box", "speed")
         # scrub to the middle and to the end: a moving body is somewhere else
         p0 = await pg.evaluate("() => { const r = AV.bodies.find(r => r.b.pos && !r.b.ground); return r.g.position.toArray(); }")
         await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '1000'; e.oninput({target:e}); }")
