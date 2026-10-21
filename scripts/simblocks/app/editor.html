@@ -6073,9 +6073,13 @@ function avBuild(){
     for (const p of b.prims){
       if (p.kind === "sphere"){
         const m = new THREE.Mesh(new THREE.SphereGeometry(p.r, 28, 18), avMat(col)); m.position.set(...p.p); g.add(m);
-        if (!b.ground){                                    // a band of marks round it, so its spin shows
-          for (let k = 0; k < 6; k++){ const a_ = k * Math.PI / 3, dot = new THREE.Mesh(new THREE.SphereGeometry(p.r * 0.16, 10, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
-            dot.position.set(p.p[0] + p.r * Math.cos(a_), p.p[1], p.p[2] + p.r * Math.sin(a_)); g.add(dot); }
+        if (!b.ground){                                    // meridians like a globe's (one bold), so any turn shows
+          const ring = (fn, mat) => { const pts = []; for (let i = 0; i <= 96; i++){ const a_ = i / 96 * Math.PI * 2; pts.push(fn(Math.cos(a_), Math.sin(a_))); }
+            const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.position.set(...p.p); g.add(ln); };
+          const R = p.r * 1.004, thin = new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.45}), bold = new THREE.LineBasicMaterial({color:0xffffff});
+          for (let k = 0; k < 4; k++){ const ph = k * Math.PI / 4, cp = Math.cos(ph), sp = Math.sin(ph);
+            ring((c, s_) => new THREE.Vector3(R * c * cp, R * c * sp, R * s_), k === 0 ? bold : thin); }   // through the poles
+          ring((c, s_) => new THREE.Vector3(R * c, R * s_, 0), thin);                                         // the equator
         }
       }
       else if (p.kind === "point"){ const m = new THREE.Mesh(new THREE.SphereGeometry(ps, 12, 8), new THREE.MeshBasicMaterial({color:col})); m.position.set(...p.p); g.add(m); }
