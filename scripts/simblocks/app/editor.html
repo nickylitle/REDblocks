@@ -177,6 +177,9 @@ textarea{width:100%;resize:vertical}
 .node .hd input.nm:hover{border-color:var(--edge)}
 .node .hd .x{border:0;background:none;color:var(--ink3);padding:0;width:18px;height:18px;flex:none;display:inline-flex;align-items:center;justify-content:center;line-height:0}
 .node .hd .x:hover{color:var(--fail)}
+.node.fold .bd{display:none}
+.node.fold .hd{border-radius:6px}
+.node .hd .ib.fold{border:0;width:14px}
 .node .bd{padding:6px 0 7px}
 .row{position:relative;display:grid;grid-template-columns:86px 1fr;align-items:center;gap:6px;padding:2px 12px;min-height:24px}
 .row label{font:11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -518,7 +521,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <div id="toast" role="alert"></div>
 
 
-    <div id="help">Shift+A add · drag socket to connect · click a wire to select it · Ctrl+click adds wires or nodes · Shift+drag box select · Ctrl+Z/Y undo · Ctrl+C/V/D copy, paste, duplicate · Ctrl+G group · Tab open group · drag empty space to pan · H home view · F fit all</div>
+    <div id="help">Shift+A add · drag socket to connect · click a wire to select it · Ctrl+click adds wires or nodes · Shift+drag box select · Ctrl+Z/Y undo · Ctrl+C/V/D copy, paste, duplicate · Ctrl+G group · Tab open group · drag empty space to pan · C collapse selected · Shift+C collapse all · H home view · F fit all</div>
   </div>
   <div id="side">
     <div id="tabs">
@@ -660,6 +663,8 @@ label.cpick button{padding:0 6px;font-size:12px}
   <div class="btns"><button id="mdNo">Cancel</button><button id="mdYes" class="primary">Run it</button></div></div></div>
 <div id="findBox" hidden><input id="findQ" placeholder="Find a node by name (Enter: next)" spellcheck="false" aria-label="Find a node"><span id="findN"></span><button id="findX" aria-label="Close">✕</button></div>
 <div id="orgMenu" role="menu">
+  <button data-o="foldall"><b>Collapse blocks</b><span>Show blocks as their title bar only (the selection, or all). Wires meet the title bar. C toggles the selection, Shift+C all.</span></button>
+  <button data-o="unfoldall"><b>Expand blocks</b><span>Open collapsed blocks again (the selection, or all).</span></button>
   <button data-o="clean"><b>Clean up</b><span>Snap everything onto a tidy grid, keeping roughly where you put it.</span></button>
   <button data-o="kind"><b>Sort by kind</b><span>Grid in reading order: values, ranges, bodies, elements, results, notes.</span></button>
   <button data-o="name"><b>Sort by name</b><span>Grid in A to Z order.</span></button>
@@ -1620,6 +1625,8 @@ function toDoc(){
   const layout = {}; S.nodes.filter(n => n.kind !== "note" && n.kind !== "image" && !hiddenNet(n)).map(n => [nodeKey(n), n]).sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(([k, n]) => { layout[k] = [Math.round(n.x), Math.round(n.y)]; });
   const ed = {layout}, hn = S.nodes.filter(hiddenNet).map(n => n.data.name).sort();
   if (hn.length) ed.hidden_nets = hn;
+  const fo = S.nodes.filter(n => n.fold && n.kind !== "note" && n.kind !== "image").map(nodeKey).sort();
+  if (fo.length) ed.collapsed = fo;                    // blocks shown as their title bar only
   if ((S.groups || []).length) ed.groups = S.groups.map(g => ({name:g.name, collapsed:!!g.collapsed, x:Math.round(g.x), y:Math.round(g.y),
     members:g.members.map(id => byId(id)).filter(Boolean).map(nodeKey),
     expose:Object.fromEntries(Object.entries(g.expose || {}).map(([k, v]) => { const [id, key] = k.split("|"); const m = byId(id); return m ? [nodeKey(m) + "|" + key, v] : null; }).filter(Boolean))}));
@@ -1920,6 +1927,7 @@ function fromDoc(doc){
   if (ed.layout && typeof ed.layout === "object"){ let hit = 0;
     Object.entries(ed.layout).forEach(([k, xy]) => { const n = byKey(k); if (n && Array.isArray(xy)){ n.x = +xy[0] || 0; n.y = +xy[1] || 0; hit++; } });
     S.meta.hasLayout = hit > 0; }
+  (Array.isArray(ed.collapsed) ? ed.collapsed : []).forEach(k => { const n = byKey(String(k)); if (n) n.fold = true; });
   const hidN = new Set(Array.isArray(ed.hidden_nets) ? ed.hidden_nets.map(String) : []);
   S.nodes.filter(n => n.kind === "net").forEach(n => { if (hidN.has(n.data.name) || !(ed.layout && ("n:" + n.data.name) in ed.layout)) n.data.hidden = true; });
   (ed.notes || []).forEach(t => { const n = addNode("note", Object.assign({text:String(t.text ?? "")}, t.width ? {w:String(t.width)} : {}), +t.x || 0, +t.y || 0); });
@@ -2912,7 +2920,8 @@ function nodeHTML(n){
   const color = COL[n.kind];
   const kl = (n.kind === "value" && d.mat ? "material" : KIND_LABEL[n.kind]) + (n.kind === "element" ? " · " + esc(d.type) : "") +
     (n.kind === "part" ? " · " + esc(PART_NAME[d.ptype] || d.ptype) : "") + (n.kind === "net" && d.ground ? " · ground 0 V" : "");
-  return `<div class="hd"><span class="bar" style="background:${color}"></span><span class="kind">${kl}</span>${title}<button class="ib" data-act="info" title="What this node does" aria-label="Info"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7" fill="currentColor"/><rect x="6.5" y="6.4" width="3" height="7.6" rx="1.3" fill="currentColor"/></svg></button><button class="x" data-act="del" title="Delete node" aria-label="Delete"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div><div class="bd">${b}</div>`;
+  const fold = `<button class="ib fold" data-act="fold" title="${n.fold ? "Expand" : "Collapse"} this block (C; Shift+C: all)" aria-label="${n.fold ? "Expand" : "Collapse"}"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="${n.fold ? "M6 3 11 8 6 13" : "M3 6 8 11 13 6"}" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+  return `<div class="hd"><span class="bar" style="background:${color}"></span>${fold}<span class="kind">${kl}</span>${title}<button class="ib" data-act="info" title="What this node does" aria-label="Info"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7" fill="currentColor"/><rect x="6.5" y="6.4" width="3" height="7.6" rx="1.3" fill="currentColor"/></svg></button><button class="x" data-act="del" title="Delete node" aria-label="Delete"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div><div class="bd">${b}</div>`;
 }
 function render(){
   world.querySelectorAll(".node,.gframe").forEach(e => e.remove());
@@ -2920,7 +2929,7 @@ function render(){
   for (const n of S.nodes){
     if (hiddenIn(n.id) || hiddenNet(n)) continue;
     const el = document.createElement("div");
-    el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "");
+    el.className = "node" + (n.kind === "note" ? " note" : "") + (n.kind === "image" ? " image" : "") + (isSel(n.id) ? " sel" : "") + (errNode === n.id ? " err" : "") + (groupOf(n.id) ? " ingroup" : "") + (n.fold ? " fold" : "");
     el.dataset.id = n.id; el.style.left = n.x + "px"; el.style.top = n.y + "px";
     if (n.kind === "note" && +n.data.w > 0) el.style.width = Math.max(160, Math.min(1600, +n.data.w)) + "px";
     el.innerHTML = nodeHTML(n); world.appendChild(el); fieldSockets(el, n);
@@ -3142,6 +3151,9 @@ function fitView(){
   view = {k, x: 20 - x0 * k, y: 16 - y0 * k}; applyView(); drawWires();
 }
 function sockPos(nid, key, dir){
+  const fe = world.querySelector(`.node.fold[data-id="${nid}"] .hd`);
+  if (fe){ const r = fe.getBoundingClientRect(), c = canvas.getBoundingClientRect();   // a collapsed block: wires meet its title bar
+    return {x:((dir === "in" ? r.left : r.right) - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k}; }
   let el = world.querySelector(`.node[data-id="${nid}"] .sock.${dir}[data-s="${CSS.escape(key)}"]`) ||
            world.querySelector(`[data-m="${nid}"] .sock.${dir}[data-s="${CSS.escape(key)}"]`);
   if (!el){ const g = hiddenIn(nid); const ge = g && world.querySelector(`.node.group[data-id="${g.id}"] .hd`);
@@ -3579,6 +3591,7 @@ world.addEventListener("click", async e => {
   if (act === "folder"){ const r = await API.call("pick_folder", d.folder || ""); if (r.ok){ d.folder = r.path; changed(); }
     else if (!r.cancelled) status("bad", "Type the folder path into the box (the folder picker needs the desktop app)."); return; }
   if (act === "del"){ hideInfo(); deleteNode(n); return; }
+  if (act === "fold"){ n.fold = !n.fold; render(); changed(true); return; }
   if (act === "info"){ const box = document.getElementById("info"); if (box.dataset.node === n.id) hideInfo(); else showInfo(n, b); return; }
   if (act === "addfeat"){ const kind = b.dataset.kind, used = new Set(feats(d).map(f => f.name)); let i = 1, nm = kind === "line" ? "face" : (kind === "circle" ? "rim" : "p");
     while (used.has(nm)) nm = (kind === "line" ? "face" : (kind === "circle" ? "rim" : "p")) + (++i);
@@ -3675,6 +3688,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "Tab"){ e.preventDefault(); toggleGroup(); return; }
   if (!mod && (e.key === "Home" || k === "h")){ e.preventDefault(); viewHome(); return; }
   if (!mod && k === "f" && !e.shiftKey){ e.preventDefault(); viewFit(); return; }
+  if (!mod && k === "c"){ e.preventDefault(); foldBlocks(e.shiftKey ? null : [...selSet]); return; }
   if (e.shiftKey && k === "a"){ e.preventDefault(); showMenu(); return; }
   if ((e.key === "Delete" || e.key === "Backspace" || k === "x") && (selSet.size || wireSel.size)){ e.preventDefault(); deleteSel(); }
   if (e.key === "Escape"){ hideMenu(); hideInfo(); wireSel = new Set(); setSel([]); }
@@ -4874,7 +4888,17 @@ document.getElementById("bArrange").onclick = e => { e.stopPropagation(); const 
   if (m.style.display === "block"){ m.style.display = "none"; return; }
   const r = e.currentTarget.getBoundingClientRect(); m.style.left = Math.min(r.left, innerWidth - 270) + "px"; m.style.top = (r.bottom + 4) + "px"; m.style.display = "block";
   m.querySelector(".scope").textContent = orgUnits().scoped ? `Acts on the ${orgUnits().units.length} selected items.` : "Acts on the whole canvas. Select 2+ nodes to organize only those."; };
-document.getElementById("orgMenu").onclick = e => { const b = e.target.closest("button[data-o]"); if (!b) return; document.getElementById("orgMenu").style.display = "none"; organize(b.dataset.o); };
+document.getElementById("orgMenu").onclick = e => { const b = e.target.closest("button[data-o]"); if (!b) return; document.getElementById("orgMenu").style.display = "none";
+  if (b.dataset.o === "foldall" || b.dataset.o === "unfoldall"){ foldBlocks(selSet.size ? [...selSet] : null, b.dataset.o === "foldall"); return; }
+  organize(b.dataset.o); };
+function foldBlocks(ids, to){
+  // collapse or expand blocks: ids (null = every block); to = true / false, or toggle (all collapsed -> expand, else collapse)
+  const ns = S.nodes.filter(n => n.kind !== "note" && n.kind !== "image" && (!ids || ids.includes(n.id)));
+  if (!ns.length) return;
+  const v = to === undefined ? !ns.every(n => n.fold) : to;
+  ns.forEach(n => { n.fold = v; }); render(); changed(true);
+  status("ok", `${v ? "Collapsed" : "Expanded"} ${ns.length} block${ns.length > 1 ? "s" : ""} (C toggles the selection, Shift+C all)`);
+}
 document.addEventListener("mousedown", e => { const m = document.getElementById("orgMenu"); if (m.style.display === "block" && !m.contains(e.target) && e.target.id !== "bArrange") m.style.display = "none"; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("orgMenu").style.display = "none"; });
 document.getElementById("bEx").addEventListener("change", async e => { const name = e.target.value; e.target.value = ""; if (!name) return;
@@ -5131,6 +5155,7 @@ const GUIDE = [
   <tr><td>${K("Home")} or ${K("H")}</td><td>back to the origin at 100 % zoom</td></tr>
   <tr><td>${K("F")}</td><td>fit every node on screen</td></tr>
   <tr><td>Drag a node by its header</td><td>move it (every selected node moves together)</td></tr>
+  <tr><td><b>Collapse</b></td><td>the arrow at the left of a block's title bar folds it to just that bar (wires then meet the bar), and opens it again. <b>C</b> folds or opens the selected blocks, <b>Shift+C</b> every block; Organize has Collapse blocks and Expand blocks too. Which blocks are folded is saved with the file.</td></tr>
   <tr><td><b>Organize</b></td><td>tidy the canvas like a desktop does. <b>Clean up</b> snaps every node onto a grid near where it already is. <b>Sort by kind</b> and <b>Sort by name</b> lay everything out on a grid in that order. <b>Flow, left to right</b> follows the wires so every node sits right of what feeds it. <b>Columns by role</b> is the classic layout: inputs, modifiers, bodies, elements, results. With 2 or more nodes selected, only the selection moves. Groups move as one block. Ctrl+Z undoes it.</td></tr>
   <tr><td>Right-click, ${K("Shift+A")} or <b>+ Add</b></td><td>open the block library at the pointer</td></tr></table>
   <p>The status bar at the bottom always shows whether the model compiles, its time step and how many steps a run takes. A node with an error gets a red outline.</p>`},
