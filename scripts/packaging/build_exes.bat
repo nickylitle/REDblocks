@@ -1,5 +1,6 @@
 @echo off
-REM Builds both programs from this folder. Needs Python 3.10-3.12 from python.org on PATH. Run once per update.
+REM Builds both programs from this folder. Needs Python 3.10-3.12 from python.org on PATH. Run it to update the
+REM installed app and Claude's connection; for trying new code, packaging\dev.bat runs it from this folder without a build.
 REM   dist\REDblocks\REDblocks.exe  desktop node editor with the solver built in (Windows 10/11 WebView2 draws the window).
 REM                                folder build: starts in about 2 s (a one-file exe unpacks itself on every launch)
 REM   dist\redblocks_runner.exe     batch studies: put a *_job.yaml + its sim .py next to it, double-click,
@@ -9,10 +10,17 @@ REM Open with for .yaml models, and Settings > Apps uninstall. No administrator 
 REM Neither needs the internet or Claude to run.
 setlocal
 cd /d "%~dp0\.."
-python -m venv .build_venv || goto :err
-call .build_venv\Scripts\activate.bat
-python -m pip install --upgrade pip >nul
-if not exist simblocks\app\examples mkdir simblocks\app\examples
+REM the build environment is made once and reused (delete .build_venv to start it fresh)
+if not exist .build_venv\Scripts\python.exe (
+  python -m venv .build_venv || goto :err
+  call .build_venv\Scripts\activate.bat
+  python -m pip install --upgrade pip >nul
+) else (
+  call .build_venv\Scripts\activate.bat
+)
+REM a fresh copy of the examples every build, so one removed from examples\learn leaves the app too
+if exist simblocks\app\examples rmdir /s /q simblocks\app\examples
+mkdir simblocks\app\examples
 copy /y examples\learn\*.yaml simblocks\app\examples\ >nul
 if not exist simblocks\app\examples\data mkdir simblocks\app\examples\data
 copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul

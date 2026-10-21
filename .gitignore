@@ -1,5 +1,6 @@
 # build output (packaging/build_exes.bat)
 .build_venv/
+.dev_venv/
 build/
 dist/
 *.spec

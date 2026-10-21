@@ -40,7 +40,7 @@ simblocks batch-info spinner_vs_spinner_results.zip
 `pip install ".[app]"` then `simblocks app`. On Windows, run `packaging/build_exes.bat` once (Python 3.10-3.12): it
 builds `dist/REDblocks/REDblocks.exe` and offers to install it for you (no admin rights). After that, press the Windows
 key and type REDblocks; right-click it > Pin to taskbar to keep it there. Model files can open with it (right-click a
-.yaml > Open with > REDblocks), and it uninstalls from Settings > Apps. Re-run the .bat to update. Blender-style nodes read and write system files; Run, Study (Range and
+.yaml > Open with > REDblocks), and it uninstalls from Settings > Apps. Re-run the .bat to update the installed app (it reuses its Python environment). To try new code without a build, double-click `packaging/dev.bat`: it runs `git pull` and starts the editor straight from the folder (its environment is set up once, and only reinstalled when `pyproject.toml` changes). Blender-style nodes read and write system files; Run, Study (Range and
 Monte Carlo modifiers, all cores), Verify and Report work offline, with live results while you edit, templates,
 undo, copy/paste, groups and a personal group library, CSV export nodes, notes with LaTeX, custom materials and custom
 block folders, forgiving block search and a full in-app Help (F1). Settings live in `~/.simblocks/app.json`.
