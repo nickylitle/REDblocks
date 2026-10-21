@@ -88,3 +88,16 @@ def test_animate_watchdog_is_generous_and_stops_a_runaway(monkeypatch):
     text = re.sub(r"t_end: [^\n,}]+", "t_end: 5000 s", text, count=1)    # far longer than the 0.2 s watchdog allows
     S = scene(load_system(text), frames=100, timeout=0.2)
     assert S["timed_out"] and 0 < S["t_stopped"] < 5000 and len(S["t"]) >= 2
+
+
+def test_fast_spinners_are_split_and_frames_follow_fast_turns():
+    from simblocks.viz.anim import _max_turn_deg, MAX_STEP_DEG
+    top = _scene("learn/3d_1_spinning_top.yaml", frames=900)
+    sp = top["bodies"][0]["spin"]
+    assert sp["axis"] == [0.0, 0.0, 1.0] and max(sp["w"]) == pytest.approx(300, rel=0.02)
+    assert _max_turn_deg(top) <= MAX_STEP_DEG * 1.1 and len(top["t"]) > 900     # more frames for the fast precession
+    assert top["signals"][0]["label"] == "top spin" and top["signals"][0]["unit"] == "rpm"
+    fly = _scene("learn/1d_4_flywheel_circuit.yaml")
+    assert "spin" in fly["bodies"][0]
+    slow = _scene("learn/2d_1_pendulum.yaml")
+    assert "spin" not in slow["bodies"][0]                     # a slow swing keeps its exact orientations

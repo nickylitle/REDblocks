@@ -47,17 +47,11 @@ def _thin(H, n):
     return t[idx], idx
 
 
-def scene(system, overrides=None, frames=900, H=None, out=None, timeout="model"):
-    """The JSON-able scene: bodies, links, frames, extent. Uses the history H of a run already made (the editor's
-    last Run) when given, otherwise runs the model once (timeout: seconds of wall clock, as run_model takes it; a
-    run stopped by it is replayed as far as it got)."""
-    M = system.compile(overrides)
-    if H is None:
-        from ..compiler.model import run_model
-        from ..compiler.system import _with_blocks
-        r = run_model(M, history=True, n_log=frames, timeout=timeout)
-        out, H = _with_blocks(M, r, True)
-    out = out or {}
+MAX_FRAMES = 8000
+MAX_STEP_DEG = 20.0          # the most a body may turn between frames (its spin about its own axis aside) to blend cleanly
+
+
+def _build(M, H, out, frames):
     dim = getattr(M, "dim", "1d")
     t, idx = _thin(H, frames)
     S = dict(dim=dim, name=M.doc.get("name", "model"), t=t.tolist(), bodies=[], links=[], notes=[],
@@ -71,8 +65,79 @@ def scene(system, overrides=None, frames=900, H=None, out=None, timeout="model")
     _magnify(S)
     _extent(S)
     S["empty"] = not any(b.get("pos") for b in S["bodies"])
-    S["signals"] = _signals(M, H, idx)
+    S["signals"] = S.pop("spin_signals", []) + _signals(M, H, idx)
     return S
+
+
+def _max_turn_deg(S):
+    """The biggest turn of any body between two frames (a fast spinner's own spin left out: that is drawn apart)."""
+    worst = 0.0
+    for b in S["bodies"]:
+        Q = (b.get("spin") or {}).get("swing") or b.get("quat")
+        if not Q or len(Q) < 2 or b.get("hidden"):
+            continue
+        Q = np.asarray(Q, float); d = np.abs(np.sum(Q[1:] * Q[:-1], axis=1)).clip(0, 1)
+        worst = max(worst, float(np.degrees(2 * np.arccos(d)).max()))
+    return worst
+
+
+def scene(system, overrides=None, frames=900, H=None, out=None, timeout="model"):
+    """The JSON-able scene: bodies, links, frames, extent. Uses the history H of a run already made (the editor's
+    last Run) when given, otherwise runs the model once (timeout: seconds of wall clock, as run_model takes it; a
+    run stopped by it is replayed as far as it got). A body that turns more than 20 degrees between frames (a fast
+    precession, a tumble) gets more frames, up to 8,000, so blending between them stays true."""
+    M = system.compile(overrides)
+
+    def fresh(n):
+        from ..compiler.model import run_model
+        from ..compiler.system import _with_blocks
+        r = run_model(M, history=True, n_log=n, timeout=timeout)
+        return _with_blocks(M, r, True)
+    if H is None:
+        out, H = fresh(frames)
+    out = out or {}
+    S = _build(M, H, out, frames)
+    worst = _max_turn_deg(S)
+    if worst > MAX_STEP_DEG and frames < MAX_FRAMES and not S["timed_out"]:
+        need = int(min(MAX_FRAMES, math.ceil(frames * worst / MAX_STEP_DEG * 1.1)))
+        if len(H["t"]) < need:
+            out, H = fresh(need)
+            need = len(H["t"])                       # every logged point: even steps (thinning would skip some)
+        S = _build(M, H, out, need)
+        S["frames_note"] = need
+    return S
+
+
+def _qmul(a, b):
+    w1, x1, y1, z1 = a; w2, x2, y2, z2 = b
+    return np.array([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                     w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
+
+
+def _spin_split(body, t, Q, w_axis, axis, label):
+    """A body turning faster than the frames can follow (a top, a wheel, a flywheel: more than about a third of a turn
+    between logged frames) would seem to crawl or run backwards (the wagon-wheel effect). Its orientation is split into
+    the slow part (where its axis points: the swing, safe to blend) and the turn about its own axis, sent as a rate;
+    the viewer turns it at that rate, slowed to what a screen can show, and the readout gives the true rate."""
+    t = np.asarray(t, float); w_axis = np.asarray(w_axis, float)
+    if len(t) < 3:
+        return None
+    dt = float(np.median(np.diff(t)))
+    if not np.isfinite(w_axis).all() or float(np.max(np.abs(w_axis))) * dt < 2.0:
+        return None
+    a = np.asarray(axis, float); a = a / (np.linalg.norm(a) or 1.0)
+    sw = []
+    for q in np.asarray(Q, float):
+        p = float(q[1:] @ a); tw = np.array([q[0], *(p * a)]); n = np.linalg.norm(tw)
+        tw = tw / n if n > 1e-12 else np.array([1.0, 0, 0, 0])
+        s = _qmul(q, np.array([tw[0], -tw[1], -tw[2], -tw[3]]))
+        if sw and float(s @ sw[-1]) < 0:            # keep neighbours on the same side, so blending takes the short way
+            s = -s
+        sw.append(s)
+    body["spin"] = dict(axis=a.tolist(), w=np.round(w_axis, 6).tolist(), swing=np.round(np.array(sw), 7).tolist())
+    return dict(key=f"{label}.spin", label=f"{label} spin", unit="rpm", group="body", show=True,
+                v=np.round(w_axis * 30 / math.pi, 4).tolist(), lo=float(np.min(w_axis) * 30 / math.pi),
+                hi=float(np.max(w_axis) * 30 / math.pi))
 
 
 def _magnify(S):
@@ -315,6 +380,21 @@ def _scene3(M, H, idx, S):
             q = np.c_[[np.asarray(H[f"{b}.{k}"])[idx] for k in ("qw", "qx", "qy", "qz")]].T
             body["pos"] = np.round(pos, 7).tolist(); body["quat"] = np.round(q, 7).tolist()
             body["mass"] = float(M.arrays["mass"][i])
+            if "__" not in b:                      # a fast spinner: turned about its own axis at a readable rate
+                W = np.c_[[np.asarray(H[f"{b}.{k}"])[idx] for k in ("wx", "wy", "wz")]].T
+                ax = next((p_["axis"] for p_ in prims if p_.get("kind") in ("cylinder", "tube") and p_.get("axis")), None)
+                if ax is None and len(W):           # no round part: the way it turns in its own frame, if that is steady
+                    from ..compiler.model3d import _qR
+                    wb = np.array([_qR(qq).T @ ww for qq, ww in zip(q, W)])
+                    m = wb.mean(axis=0)
+                    if np.linalg.norm(m) > 0.95 * np.mean(np.linalg.norm(wb, axis=1)) > 0:
+                        ax = (m / np.linalg.norm(m)).tolist()
+                if ax is not None:
+                    from ..compiler.model3d import _qR
+                    wa = np.array([float((_qR(qq) @ np.asarray(ax)) @ ww) for qq, ww in zip(q, W)])
+                    sg = _spin_split(body, np.asarray(H["t"])[idx], q, wa, ax, b)
+                    if sg:
+                        S.setdefault("spin_signals", []).append(sg)
         S["bodies"].append(body)
     a = M.arrays
     for e, en in enumerate(M.el_names):
@@ -375,6 +455,10 @@ def _scene2(M, H, idx, S):
             x = np.asarray(H[f"{b}.x"])[idx]; y = np.asarray(H[f"{b}.y"])[idx]; th = np.asarray(H[f"{b}.angle"])[idx]
             body["pos"] = np.round(np.c_[x, y, np.zeros_like(x)], 7).tolist()
             body["quat"] = [_q_axis((0, 0, 1), float(v)) for v in th]
+            if f"{b}.omega" in H and "__" not in b:
+                sg = _spin_split(body, np.asarray(H["t"])[idx], body["quat"], np.asarray(H[f"{b}.omega"])[idx], [0, 0, 1], b)
+                if sg:
+                    S.setdefault("spin_signals", []).append(sg)
             body["mass"] = float(M.arrays["mass"][names.index(b)])
         S["bodies"].append(body)
     a = M.arrays
@@ -462,6 +546,10 @@ def _scene1(M, H, idx, S):
             pos = [[float(v) * scale, y, 0.0] for v in q[b]]
             quat = [[1.0, 0.0, 0.0, 0.0]] * len(idx)
         S["bodies"].append(dict(name=b, ground=False, prims=prims, pos=pos, quat=quat, rotation=rot))
+        if rot and f"{b}.velocity" in H:
+            sg = _spin_split(S["bodies"][-1], np.asarray(H["t"])[idx], quat, np.asarray(H[f"{b}.velocity"])[idx], [0, 0, 1], b)
+            if sg:
+                S.setdefault("spin_signals", []).append(sg)
     if nb == 0:                                      # a circuit (or control) only model: nothing to draw
         return
     gprims = []

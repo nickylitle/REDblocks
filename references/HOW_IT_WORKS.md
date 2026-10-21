@@ -455,6 +455,10 @@ The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies i
   point. A planet (gravity: {planet: ..}) is drawn round the origin with the top of its air; point masses are dots of
   a fixed size on screen.
 - A model with beams that moves less than 2 % of its size is drawn moving bigger (the factor is printed).
+- A body that spins faster than the frames can follow (a top, a wheel, a flywheel) is drawn as where its axis points
+  plus a turn about that axis at its true rate, slowed to what a screen shows (1.5 turns a second at the replay speed,
+  with a note); its true spin rate is in the readout. Without this it would crawl or run backwards (the wagon-wheel
+  effect). A body that turns more than 20 degrees between frames otherwise gets more frames, up to 8,000.
 - F fits everything on screen (it fits when opened), Space plays, the arrow keys step a frame (shift: ten), Home and
   End jump.
 - While the run is solved a progress card shows the stage, a bar and the time, with Stop. A watchdog stops a run that
