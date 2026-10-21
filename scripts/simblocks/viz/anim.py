@@ -148,6 +148,13 @@ def _qrot(q, v):
     return _qmul(_qmul(q, np.array([0.0, *v])), _qconj(q))[1:]
 
 
+def _smooth(x, sigma=3.0):
+    """Frames x 3 smoothed along the frames (a Gaussian of about 3 frames; the ends held)."""
+    from scipy.ndimage import gaussian_filter1d
+    x = np.asarray(x, float)
+    return gaussian_filter1d(x, sigma, axis=0, mode="nearest") if len(x) > 8 else x
+
+
 def _magnify(S):
     """What "motion x" scales: deformation only. Bodies hang in a tree from the fixed world (or, for a free machine,
     from its heaviest body) along the links that hold them: springs and beams are elastic (their relative motion is
@@ -194,10 +201,22 @@ def _magnify(S):
         else:
             Pu = np.asarray(bodies[u]["pos"], float); Qu = np.asarray(bodies[u]["quat"], float)
         r0 = _qrot(_qconj(Qu[0]), Pv[0] - Pu[0])
+        ent = dict(b=v, p=u, el=bool(el))
         if el:
+            # the deformation (pose relative to the parent, less where it started), smoothed over a few frames: a
+            # stiff link rings far faster than the frames can follow, and scaled up that ringing is only twitching
             r = np.array([_qrot(_qconj(qu), pv - pu) for qu, pv, pu in zip(Qu, Pv, Pu)])
-            worst = max(worst, float(np.max(np.linalg.norm(r - r0, axis=1))))
-        tree.append(dict(b=v, p=u, el=bool(el)))
+            q0 = _qmul(_qconj(Qu[0]), Qv[0]); rv = []
+            for qu, qv in zip(Qu, Qv):
+                dq = _qmul(_qconj(q0), _qmul(_qconj(qu), qv))
+                if dq[0] < 0:
+                    dq = -dq
+                sn = float(np.linalg.norm(dq[1:])); ang = 2 * math.atan2(sn, dq[0])
+                rv.append(dq[1:] / sn * ang if sn > 1e-15 else np.zeros(3))
+            dr = _smooth(r - r0); drv = _smooth(np.array(rv))
+            ent["dr"] = np.round(dr, 10).tolist(); ent["drot"] = np.round(drv, 10).tolist()
+            worst = max(worst, float(np.max(np.linalg.norm(dr, axis=1))))
+        tree.append(ent)
     if not any(t["el"] for t in tree):
         return
     S["deform"] = tree

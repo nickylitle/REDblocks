@@ -451,7 +451,9 @@ in perspective, with a fixed point drawn as a pin on a cone. Beams are solid tub
 heaviest body) along the links that hold them, and each one's pose relative to its parent is scaled about where it
 started when the link is elastic (a spring, a beam), kept as it is for a joint, so flying, driving and mechanisms
 move truly while stretches and bends grow. Empty is the automatic choice (about 15 % of the model's size when the
-largest deformation is under 2 % of it).
+largest deformation is under 2 % of it). The scaled deformation is smoothed over about three frames: a stiff link rings
+far faster than the frames can follow, and scaled up that ringing would only twitch. At deform x 1 the poses are the
+exact logged ones.
 - 1d: a sliding body a spring holds is scaled up so small travel shows (the scale is printed); a sliding body nothing
   holds (a car) drives along a road with distance marks and the camera follows it. A turning body's links attach at
   fixed points beside it, so they never whip round with the spin.

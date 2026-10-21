@@ -6438,11 +6438,11 @@ function avPosesAt(k, a){
     const [Pc, Qc] = raw[t.b], d0 = AV.def0[j], pu = t.p >= 0 ? raw[t.p] : null, pd = t.p >= 0 ? poses[t.p] : null;
     const Qpi = pu ? pu[1].clone().invert() : new THREE.Quaternion();
     let r = Pc.clone().sub(pu ? pu[0] : new THREE.Vector3()).applyQuaternion(Qpi), qr = Qpi.clone().multiply(Qc);
-    if (t.el){
-      r = d0.r0.clone().add(r.sub(d0.r0).multiplyScalar(f));
-      const dq = d0.q0.clone().invert().multiply(qr); if (dq.w < 0){ dq.x = -dq.x; dq.y = -dq.y; dq.z = -dq.z; dq.w = -dq.w; }
-      const ang = 2 * Math.acos(Math.min(1, dq.w)), sn = Math.sqrt(Math.max(0, 1 - dq.w * dq.w));
-      if (sn > 1e-9){ const ax = new THREE.Vector3(dq.x / sn, dq.y / sn, dq.z / sn); qr = d0.q0.clone().multiply(new THREE.Quaternion().setFromAxisAngle(ax, ang * f)); }
+    if (t.el && t.dr){                                  // the smoothed deformation from the scene, scaled
+      const k2 = Math.min(k + 1, t.dr.length - 1), lerp = (A, i) => A[k][i] + a * (A[k2][i] - A[k][i]);
+      r = d0.r0.clone().add(new THREE.Vector3(lerp(t.dr, 0), lerp(t.dr, 1), lerp(t.dr, 2)).multiplyScalar(f));
+      const rv = new THREE.Vector3(lerp(t.drot, 0), lerp(t.drot, 1), lerp(t.drot, 2)).multiplyScalar(f), ang = rv.length();
+      qr = ang > 1e-12 ? d0.q0.clone().multiply(new THREE.Quaternion().setFromAxisAngle(rv.divideScalar(ang), ang)) : d0.q0.clone();
     }
     const QD = pd ? pd[1] : new THREE.Quaternion(), PD = pd ? pd[0] : new THREE.Vector3();
     poses[t.b] = [PD.clone().add(r.applyQuaternion(QD)), QD.clone().multiply(qr)];

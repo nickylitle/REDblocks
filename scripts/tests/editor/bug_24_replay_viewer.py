@@ -47,7 +47,7 @@ async def s(pg):
         if mg[0] == "none":
             ok &= check(mg[1] is True, mg, "nothing deforms: the box is off", "motion-mult")
         else:
-            ok &= check(abs(mg[0]) + abs(mg[2]) > 0 and all(abs(mg[i + 1] - 3 * mg[i]) < 1e-6 * (1 + abs(mg[i])) for i in (0, 2)), mg, "deform x 3 triples a spring's stretch", "motion-mult")
+            ok &= check(abs(mg[0]) + abs(mg[2]) > 0 and all(abs(mg[i + 1] - 3 * mg[i]) < 0.02 * abs(mg[i]) + 1e-9 for i in (0, 2)), mg, "deform x 3 triples a spring's stretch (smoothed over 3 frames)", "motion-mult")
         if dim != "3d":                          # flat views look straight down and a drag pans, never tilts
             el0 = await pg.evaluate("() => [AV.orbit.el, AV.orbit.az]")
             box = await pg.evaluate("() => { const r = document.getElementById('avCanvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }")
