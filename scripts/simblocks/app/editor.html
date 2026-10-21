@@ -578,7 +578,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
   <label title="Beams as solid tubes of about their real thickness, or as thin lines"><input type="checkbox" id="avBeams" checked>solid beams</label>
-  <label title="How many times bigger than real the motion is drawn (about where each body starts; turns are never scaled). Empty: automatic">motion × <input id="avMag" style="width:52px" placeholder="auto"></label>
+  <label title="How many times bigger than real the motion is drawn (about where each body starts; turns are never scaled). Empty: automatic">motion × <input id="avMag" style="width:9ch;font-variant-numeric:tabular-nums" placeholder="auto"></label>
   <label title="Wrap each body's points in a see-through solid (its convex hull). It is only a sketch of where the points are: the physics touches only the points, spheres, cylinders and planes themselves"><input type="checkbox" id="avHull" checked>hulls</label>
   <label title="Loads that push on a body (forces, drag, friction, motors) as arrows, sized against the largest"><input type="checkbox" id="avForces" checked>loads</label>
   <button id="avFit" title="Fit the whole model on screen (F)">Fit</button>
@@ -6386,7 +6386,8 @@ let _qa = null, _qb = null;                      // made once three.js is loaded
 function avSetMag(){
   // motion drawn m times real: m typed, or the scene's automatic choice (1D slides scaled to a lane, tiny beam bends)
   const S = AV.S, box = document.getElementById("avMag"), base = S.mag_base || 1, auto = S.mag_auto || 1;
-  const m = parseFloat(box.value); box.placeholder = "auto (" + (+(auto.toPrecision(3))) + ")";
+  const m = parseFloat(box.value); box.placeholder = "auto " + (+(auto.toPrecision(3)));
+  box.style.width = Math.max(7, box.placeholder.length + 3, String(box.value).length + 3) + "ch";   // the whole hint shows
   AV.magF = (isFinite(m) && m > 0 ? m : auto) / base;
   for (const t of AV.trails){                           // the trails follow the same scale
     const b = t.b, arr = t.line.geometry.attributes.position.array, s0 = b.pos[0], f = AV.magF;
@@ -6540,7 +6541,7 @@ function avPlay(){
   document.getElementById("avForces").onchange = () => { avPose(); avRender(); };
   document.getElementById("avHull").onchange = () => { avPose(); avRender(); };
   document.getElementById("avBeams").onchange = () => { avPose(); avRender(); };
-  document.getElementById("avMag").oninput = () => { avSetMag(); avPose(); avRender(); };
+  document.getElementById("avMag").oninput = () => { avSetMag(); avPose(); avRender(); };   // (it also widens to fit)
   document.getElementById("avMag").addEventListener("keydown", e => e.stopPropagation());
   document.getElementById("avScrub").oninput = e => {
     const S = AV.S; if (!S) return; const T0 = S.t[0], T = S.t[S.t.length - 1];
