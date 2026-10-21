@@ -134,7 +134,7 @@ outputs:
   T_eco:     {expr: "= $t_eco + $t_fm", label: S-IVB cutoff (range time)}
 
 run:
-  t_end: 709.1 s
+  t_end: 6010 s       # insertion at 709 s, then one full orbit (about 88 min) coasting
   dt: 20 ms
 
 editor:
