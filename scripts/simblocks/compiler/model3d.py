@@ -14,6 +14,8 @@ Bodies
     v0: [vx, vy, vz]           omega0: spin rate (spin) or [wx, wy, wz] world angular velocity (rotate)
     points: {p: [x, y, z]}     spheres: {s: {at: [..], r: ..}}
     planes: {face: {at: [..], normal: [..], u: [..], size: [a, b], depth: d}}   a finite rectangular patch
+    cylinders: {tread: {at: [..], axis: [..], r: .., width: .., slices: 3}}  a wheel or roller (contact against planes:
+                               each slice is a disc whose deepest rim point touches; see expand_cyl.py)
 Measures: 'A.x - B.z + $r * C.spin' (coordinates x, y, z, spin), {distance: [A.p, B.q]}, {along: [A.p, B.q], dir: z},
 {contact: [A.tip, B.face]} (point or sphere against a plane patch or a sphere), pin (ball joint), contact_friction."""
 import math
@@ -25,10 +27,11 @@ from .loader import SpecError, line_of
 from .expr import eval_measure, ExprError
 from . import engine3d as E3
 from .engine1d import NP
+from .expand_cyl import cyl_offsets
 
 TRANS = ("x", "y", "z")
 COORDS3 = ("x", "y", "z", "spin")
-FEATURES3 = ("points", "spheres", "planes")
+FEATURES3 = ("points", "spheres", "planes", "cylinders")
 BODY_Q3 = {k: i for i, k in enumerate(("x", "y", "z", "vx", "vy", "vz", "speed", "angle", "omega", "wx", "wy", "wz",
                                       "qw", "qx", "qy", "qz"))}   # q: orientation quaternion (world from body)
 NAMED = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1), "-x": (-1, 0, 0), "-y": (0, -1, 0), "-z": (0, 0, -1)}
@@ -245,6 +248,17 @@ def compile_bodies3(doc, ctx, M):
                 if kind == "points":
                     p = np.array(_vec(fv, ctx, fw)) - sh
                     feats[(bn, fn)] = ("sphere", np.array([*p, 0.0]))
+                elif kind == "cylinders":
+                    if not isinstance(fv, dict) or not {"r", "axis"} <= set(fv):
+                        raise SpecError("a cylinder is {at: [x, y, z], axis: [ax, ay, az], r: radius, width: w, "
+                                        "slices: 3}", fw)
+                    from .expand_cyl import cyl_slices
+                    c = np.array(_vec(fv.get("at", [0, 0, 0]), ctx, fw + ".at")) - sh
+                    ax = _unit(_vec(fv["axis"], ctx, fw + ".axis"), fw + ".axis")
+                    r, wd, ns = cyl_slices(fv, ctx, fw)
+                    feats[(bn, fn)] = ("cylinder", np.array([*c, *ax, r, wd, ns]))
+                    for j, (off, _w) in enumerate(cyl_offsets(wd, ns)):
+                        feats[(bn, f"{fn}__d{j}")] = ("disc", np.array([*(c + off * ax), r, *ax]))
                 elif kind == "spheres":
                     if not isinstance(fv, dict) or "r" not in fv:
                         raise SpecError("a sphere is {at: [x, y, z], r: radius}", fw)
@@ -287,8 +301,8 @@ def feature3(ref, doc, feats, where):
         raise SpecError(f"'{ref}' is not body.feature (bodies: {', '.join(doc['bodies'])})", where)
     b, fn = m.group(1), m.group(2) or "__origin__"
     if (b, fn) not in feats:
-        have = [k[1] for k in feats if k[0] == b and k[1] != "__origin__"]
-        raise SpecError(f"body '{b}' has no point, sphere or plane called '{fn}'"
+        have = [k[1] for k in feats if k[0] == b and k[1] != "__origin__" and "__d" not in k[1]]
+        raise SpecError(f"body '{b}' has no point, sphere, plane or cylinder called '{fn}'"
                         + (f" (it has: {', '.join(have)})" if have else " (it has none)"), where)
     return b, feats[(b, fn)]
 
@@ -334,7 +348,7 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
     typ = np.zeros(ne, np.int64); one = np.zeros(ne, np.int64); act = np.ones(ne, np.int64)
     mk = np.zeros(ne, np.int64); ba = -np.ones(ne, np.int64); bb = -np.ones(ne, np.int64); ref = -np.ones(ne, np.int64)
     P = np.zeros((ne, NP)); C = np.zeros((ne, 4 * nb)); s0 = np.zeros(ne)
-    GA = np.zeros((ne, 4)); GB = np.zeros((ne, 24)); GX = np.zeros((ne, 5)); reach = np.zeros(ne)
+    GA = np.zeros((ne, 8)); GB = np.zeros((ne, 24)); GX = np.zeros((ne, 5)); reach = np.zeros(ne)
     tabs_x, tabs_F, tab_k = [], [], np.zeros(ne)
     M.el_info = {}
     nums = numeric_namespace(ctx)
@@ -498,10 +512,18 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                                     "hits)", where, line_of(d, "measure"), f)
                 if fa[0] == "plane":
                     (a_, fa), (b_, fb) = (b_, fb), (a_, fa)
+                if fa[0] == "cylinder" or fb[0] == "cylinder":
+                    raise SpecError("a cylinder's contact is split into slices before compiling (internal)", where)
+                if fb[0] == "disc":
+                    (a_, fa), (b_, fb) = (b_, fb), (a_, fa)
+                if fa[0] == "disc" and fb[0] != "plane":
+                    raise SpecError("a cylinder touches plane patches only (a floor, a wall, a wedge face): for "
+                                    "cylinder against a sphere or point, put the sphere's contact on a plane of the "
+                                    "cylinder's body", where, line_of(d, "measure"), f)
                 ia, ib = bidx(a_), bidx(b_)
-                ba[e] = ia; bb[e] = ib; GA[e] = fa[1]
+                ba[e] = ia; bb[e] = ib; GA[e, :len(fa[1])] = fa[1]
                 if fb[0] == "plane":
-                    mk[e] = E3.MK_PLANE; GB[e, :len(fb[1])] = fb[1]
+                    mk[e] = E3.MK_DISC if fa[0] == "disc" else E3.MK_PLANE; GB[e, :len(fb[1])] = fb[1]
                     c = _wp(B, ia, fa[1]); o = _wp(B, ib, fb[1][:3])
                     R = _qR(B["quat0"][ib]) if ib >= 0 else np.eye(3)
                     nw = R @ fb[1][3:6]
@@ -510,7 +532,10 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
                         pr = float(np.linalg.norm(fb[1][:3])) + math.hypot(fb[1][9], fb[1][10])
                     else:                         # unbounded plane: the contact sits near where the point is
                         pr = float(np.linalg.norm(fb[1][:3])) + float(np.linalg.norm(c - o))
-                    reach[e] = max(rr(ia, fa[1]), pr if ib >= 0 else 0.0)
+                    ra = (float(np.linalg.norm(fa[1][:3])) + float(fa[1][3])) if (fa[0] == "disc" and ia >= 0) else rr(ia, fa[1])
+                    if fa[0] == "disc":
+                        GX[e, 3] = 1.0 if float((c - o) @ nw) >= -float(fa[1][3]) else -1.0
+                    reach[e] = max(ra, pr if ib >= 0 else 0.0)
                 else:
                     if fa[1][3] == 0 and fb[1][3] == 0:
                         raise SpecError("contact between two points never touches: give one a radius (a sphere)",
@@ -645,7 +670,14 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
     for e in range(ne):
         off[e] = pos; ln[e] = len(tabs_x[e]); pos += ln[e]
     M.el_names = enames; M.reach = reach
-    return dict(typ=typ, one_sided=one, active=act, mk=mk, ba=ba, bb=bb, ref=ref, P=P, C=C, s0=s0, GA=GA, GB=GB,
+    grp = np.full(ne, -1, np.int64); gi = 0      # side-by-side elements (cylinder slices): summed every step
+    for gname, gr in (getattr(M, "groups", None) or {}).items():
+        if gr.kind == "parallel":
+            gr.gi = gi
+            for sn in gr.segs:
+                grp[enames.index(sn)] = gi
+            gi += 1
+    return dict(grp=grp, typ=typ, one_sided=one, active=act, mk=mk, ba=ba, bb=bb, ref=ref, P=P, C=C, s0=s0, GA=GA, GB=GB,
                 GX=GX, tab_off=off, tab_len=ln, tab_k=tab_k,
                 tab_x=np.concatenate(tabs_x) if pos else np.zeros(1),
                 tab_F=np.concatenate(tabs_F) if pos else np.zeros(1))

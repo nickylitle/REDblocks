@@ -5,7 +5,8 @@ from common import main, check, load
 HERE = os.path.dirname(os.path.abspath(__file__)); EX = os.path.join(HERE, "..", "..", "examples")
 SHOT = os.environ.get("REPLAY_SHOTS", "")
 CASES = [("learn/1d_1_mass_spring_damper.yaml", "1d"), ("learn/2d_3_four_bar.yaml", "2d"), ("learn/3d_3_robot_arm.yaml", "3d"),
-         ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d"), ("learn/1d_6_chua_circuit.yaml", "1d")]
+         ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d"), ("learn/1d_6_chua_circuit.yaml", "1d"),
+         ("learn/3d_4_wheel_on_a_ramp.yaml", "3d")]
 
 async def s(pg):
     ok = True
@@ -31,6 +32,9 @@ async def s(pg):
                 await pg.screenshot(path=os.path.join(SHOT, "replay_chua.png"))
             await pg.keyboard.press("Escape"); await pg.wait_for_timeout(200)
             continue
+        if "wheel_on" in rel:                    # a cylinder is drawn as one (its contact slices are not)
+            cy = await pg.evaluate("() => AV.S.bodies.flatMap(b => b.prims.map(p => p.kind))")
+            ok &= check("cylinder" in cy and "disc" not in cy, cy, "the cylinder is drawn", "cylinder")
         # scrub to the middle and to the end: a moving body is somewhere else
         p0 = await pg.evaluate("() => { const r = AV.bodies.find(r => r.b.pos && !r.b.ground); return r.g.position.toArray(); }")
         await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '1000'; e.oninput({target:e}); }")

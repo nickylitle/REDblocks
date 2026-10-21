@@ -66,8 +66,11 @@ def expand(doc, ctx):
     dim = doc.get("dim", "1d")
     els = doc.get("elements") or {}
     if dim != "1d":
+        from .expand_cyl import expand_cylinders
+        doc, cg = expand_cylinders(doc, ctx)
         from .expand_geo import expand_geo
-        return expand_geo(doc, ctx)
+        doc, gg = expand_geo(doc, ctx)
+        return doc, {**gg, **cg}
     if not any(isinstance(e, dict) and e.get("segments") not in (None, 1, "1") for e in els.values()):
         return doc, {}
     from .model import numeric_namespace

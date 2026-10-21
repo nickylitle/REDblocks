@@ -621,7 +621,21 @@ bodies:
     points: {tooth: [90 mm, 0, 12 mm]}
     spheres: {hub: {at: [0, 0, 0], r: 20 mm}}
     planes: {face: {at: [..], normal: [..], u: [..], size: [a, b], depth: d}}   # a finite rectangular patch
+    cylinders: {tread: {at: [0, 0, 0], axis: y, r: 30 mm, width: 20 mm, slices: 3}}   # a wheel or roller
 ```
+
+**Cylinders** (wheels, rollers, treads) touch plane patches. A cylinder is `slices` discs (default 3) spaced evenly
+across `width`, ends included. Each disc touches a plane at its rim point deepest into it, so a cylinder stands flat
+on its whole width, rolls about its own axis and rides onto one edge when tipped. A contact on a cylinder is split
+into one element per slice (`tire__d0`, `tire__d1`, ...), each with its trapezoid share of `k`, `c` (or hertz `K`):
+1/4, 1/2, 1/4 for three. That is a uniform line across the width: flat, it carries the full k; turning on the spot
+its friction torque is mu N w / 4, the uniform-line value. A `contact_friction` on that contact is split the same
+way with the same mu. The contact's own name answers outputs and history for the whole: **force** is the sum of
+the slices (tracked exactly every step), **measure** the deepest slice; the slices show in history as
+`tire__d0.force` and so on. Laws: spring, kelvin_voigt, dashpot, hertz, impact. Cylinder against a sphere or another
+cylinder is refused (give one side a plane). A control or a first_time output cannot read a cylinder contact while
+the run goes. A sphere is still right for a ball, a caster or a rounded edge; a sphere wheel turning on the spot
+has no scrub, and a sphere wheel tipped onto its edge stays round.
 
 - `inertia` of a rotating body: a number, `[Ixx, Iyy, Izz]`, a 3x3 list, or the CAD table
   `{Ixx: .., Iyy: .., Izz: .., Pxy: .., Pxz: .., Pyz: ..}` as SolidWorks / Onshape / Fusion print it about the centre
@@ -629,7 +643,7 @@ bodies:
   tensors are refused with the reason.
 - Measures: coordinates `A.x`, `A.y`, `A.z` and `A.spin` (spin bodies), `{distance: [A.p, B.q]}`,
   `{along: [A.p, B.q], dir: z, turns_with: A}`, `{contact: [A.tip, B.face]}` (a point or sphere against a plane patch
-  or a sphere), `{twist: [A, B], axis: z}` (B's turn relative to A about an axis fixed in A, given in world
+  or a sphere, a cylinder against a plane patch), `{twist: [A, B], axis: z}` (B's turn relative to A about an axis fixed in A, given in world
   directions at the start), `type: pin` (a ball joint) and `contact_friction` (slip in the contact plane).
 - **Tire curve** on `contact_friction` (3D): `mu` is the sliding grip; add `mu_peak` and `slip_peak` and grip follows
   slip ratio sigma = slip speed / the larger of the hub's ground speed and the tread's rolling speed (at least `v_min`,

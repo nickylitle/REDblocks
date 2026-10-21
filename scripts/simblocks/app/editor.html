@@ -1015,8 +1015,8 @@ function isRotBody(d){
   return is2d() ? d.dof !== "ground" && spinOnly(d) : d.dof === "rotation"; }
 function feats(d){ return d.feats || (d.feats = []); }
 const FEAT_KEYS = {point:["x","y"], circle:["x","y","r"], line:["x","y","x2","y2","depth"]};
-const FEAT_KEYS3 = {point:["x","y","z"], sphere:["x","y","z","r"], plane:["x","y","z","nx","ny","nz","ux","uy","uz","a","b","depth"]};
-const FEAT_KINDS = () => is3d() ? ["point","sphere","plane"] : ["point","circle","line"];
+const FEAT_KEYS3 = {point:["x","y","z"], sphere:["x","y","z","r"], cylinder:["x","y","z","nx","ny","nz","r","a","sl"], plane:["x","y","z","nx","ny","nz","ux","uy","uz","a","b","depth"]};
+const FEAT_KINDS = () => is3d() ? ["point","sphere","cylinder","plane"] : ["point","circle","line"];
 function vecOutN(vals, unit){ return vals.map(v => { const x = qv(v, unit); return x === "" ? 0 : x; }); }
 function plainOut(vals){ return vals.map(v => { const x = lit(String(v ?? "").trim()); return x === "" ? 0 : x; }); }
 function qv(num, unit){ const t = String(num ?? "").trim(); if (!t) return ""; if (t.startsWith("$") || t.startsWith("=") || !unit || !isFinite(+t)) return lit(t); return lit(t + " " + unit); }
@@ -1041,14 +1041,18 @@ function featOut3(d){ const o = {};
   feats(d).forEach(f => { if (!f.name) return; const u = f.unit;
     if (f.kind === "point") (o.points = o.points || {})[f.name] = vecOutN([f.x, f.y, f.z], u);
     else if (f.kind === "sphere") (o.spheres = o.spheres || {})[f.name] = {at:vecOutN([f.x, f.y, f.z], u), r:qv(f.r, u) === "" ? 0 : qv(f.r, u)};
+    else if (f.kind === "cylinder"){ const cy = {at:vecOutN([f.x, f.y, f.z], u), axis:plainOut([f.nx, f.ny, f.nz]), r:qv(f.r, u) === "" ? 0 : qv(f.r, u)};
+      if (String(f.a ?? "").trim()) cy.width = qv(f.a, u); if (String(f.sl ?? "").trim()) cy.slices = lit(String(f.sl).trim()); (o.cylinders = o.cylinders || {})[f.name] = cy; }
     else if (f.kind === "plane"){ const pl = {at:vecOutN([f.x, f.y, f.z], u), normal:plainOut([f.nx, f.ny, f.nz])};
       if ([f.ux, f.uy, f.uz].some(x => String(x ?? "").trim())) pl.u = plainOut([f.ux, f.uy, f.uz]);
       if (String(f.a ?? "").trim() || String(f.b ?? "").trim()) pl.size = vecOutN([f.a, f.b], u);
       if (String(f.depth ?? "").trim()) pl.depth = qv(f.depth, u); (o.planes = o.planes || {})[f.name] = pl; } });
   return o; }
-function featIn3(b){ const out = [], s3 = v => Array.isArray(v) ? v.map(x => str(x)) : [str(v), "", ""];
+function featIn3(b){ const out = [], s3 = v => Array.isArray(v) ? v.map(x => str(x)) : ({x:["1","0","0"], y:["0","1","0"], z:["0","0","1"], "-x":["-1","0","0"], "-y":["0","-1","0"], "-z":["0","0","-1"]}[String(v).trim()] || [str(v), "", ""]);
   Object.entries(b.points || {}).forEach(([k, v]) => { const c = commonUnit(v, "length"); out.push({kind:"point", name:k, x:c.nums[0], y:c.nums[1], z:c.nums[2], unit:c.unit}); });
   Object.entries(b.spheres || {}).forEach(([k, v]) => { const at = v.at || [0, 0, 0], c = commonUnit([at[0], at[1], at[2], v.r], "length"); out.push({kind:"sphere", name:k, x:c.nums[0], y:c.nums[1], z:c.nums[2], r:c.nums[3], unit:c.unit}); });
+  Object.entries(b.cylinders || {}).forEach(([k, v]) => { const at = v.at || [0, 0, 0], c = commonUnit([at[0], at[1], at[2], v.r, v.width ?? 0], "length"), ax = s3(v.axis || [0, 1, 0]);
+    out.push({kind:"cylinder", name:k, x:c.nums[0], y:c.nums[1], z:c.nums[2], nx:ax[0], ny:ax[1], nz:ax[2], r:c.nums[3], a: v.width !== undefined ? c.nums[4] : "", sl: v.slices !== undefined ? str(v.slices) : "", unit:c.unit}); });
   Object.entries(b.planes || {}).forEach(([k, v]) => { const at = v.at || [0, 0, 0], sz = v.size || ["", ""], vals = [at[0], at[1], at[2]].concat(v.size ? [sz[0], sz[1]] : []).concat(v.depth !== undefined ? [v.depth] : []);
     const c = commonUnit(vals, "length"), n = s3(v.normal || [0, 0, 1]), uu = v.u ? s3(v.u) : ["", "", ""];
     out.push({kind:"plane", name:k, x:c.nums[0], y:c.nums[1], z:c.nums[2], nx:n[0], ny:n[1], nz:n[2], ux:uu[0], uy:uu[1], uz:uu[2],
@@ -2175,12 +2179,13 @@ function featsHTML(d){
   let h = `<div class="fh"><span>geometry</span><span class="hint" style="padding:0">${d.dof === "ground" ? "world coordinates" : "in its own drawing frame"}</span></div>`;
   feats(d).forEach((f, i) => {
     const KS = is3d() ? FEAT_KEYS3 : FEAT_KEYS, ks = KS[f.kind] || KS.point;
-    const ph = {x:"x", y:"y", z:"z", r:"radius", x2:"to x", y2:"to y", depth:"depth", nx:"normal x", ny:"normal y", nz:"normal z", ux:"u x", uy:"u y", uz:"u z", a:"size u", b:"size w"};
-    h += `<div class="feat"><div class="fr"><select data-feat="${i}" data-fk="kind" title="${is3d() ? "point, sphere or plane patch" : "point, circle or line segment"}">${sel_(FEAT_KINDS(), f.kind)}</select>` +
+    const cyl = f.kind === "cylinder", ph = {x:"x", y:"y", z:"z", r:"radius", x2:"to x", y2:"to y", depth:"depth", nx:cyl ? "axis x" : "normal x", ny:cyl ? "axis y" : "normal y", nz:cyl ? "axis z" : "normal z", ux:"u x", uy:"u y", uz:"u z", a:cyl ? "width" : "size u", b:"size w", sl:"slices (3)"};
+    const gt = cyl ? ["centre", "axis it turns about (unitless)", "radius, width across the tread, and contact slices (default 3)"] : ["centre", "outward normal (unitless)", "in-plane u direction (unitless, optional)", "size along u and w, and depth"];
+    h += `<div class="feat"><div class="fr"><select data-feat="${i}" data-fk="kind" title="${is3d() ? "point, sphere, cylinder (a wheel or roller) or plane patch" : "point, circle or line segment"}">${sel_(FEAT_KINDS(), f.kind)}</select>` +
       `<input data-feat="${i}" data-fk="name" value="${esc(f.name || "")}" placeholder="name" spellcheck="false" title="name, used as ${esc(d.name)}.${esc(f.name || "name")}">` +
       `<select data-feat="${i}" data-fk="unit" title="unit for these numbers">${unitOptions("length", f.unit ?? defUnit("length"))}</select>` +
       `<button class="fx" data-act="delfeat" data-i="${i}" title="Remove">×</button></div>` +
-      (ks.length > 5 ? [ks.slice(0, 3), ks.slice(3, 6), ks.slice(6, 9), ks.slice(9)].map((g, gi) => `<div class="fr nums n3" title="${["centre", "outward normal (unitless)", "in-plane u direction (unitless, optional)", "size along u and w, and depth"][gi]}">` +
+      (ks.length > 5 ? [ks.slice(0, 3), ks.slice(3, 6), ks.slice(6, 9), ks.slice(9)].map((g, gi) => `<div class="fr nums n3" title="${gt[gi] || ""}">` +
           g.map(k => `<input data-feat="${i}" data-fk="${k}" value="${esc(f[k] ?? "")}" placeholder="${ph[k]}" title="${ph[k]}">`).join("") + `</div>`).join("")
         : `<div class="fr nums n${ks.length}">` + ks.map(k => `<input data-feat="${i}" data-fk="${k}" value="${esc(f[k] ?? "")}" placeholder="${ph[k]}" title="${ph[k]}${k === "depth" ? ": deepest contact counted (default: the line's length)" : ""}">`).join("") + `</div>`) + `</div>`;
   });
@@ -3550,8 +3555,8 @@ world.addEventListener("click", async e => {
   if (act === "info"){ const box = document.getElementById("info"); if (box.dataset.node === n.id) hideInfo(); else showInfo(n, b); return; }
   if (act === "addfeat"){ const kind = b.dataset.kind, used = new Set(feats(d).map(f => f.name)); let i = 1, nm = kind === "line" ? "face" : (kind === "circle" ? "rim" : "p");
     while (used.has(nm)) nm = (kind === "line" ? "face" : (kind === "circle" ? "rim" : "p")) + (++i);
-    const nm0 = {line:"face", plane:"face", circle:"rim", sphere:"ball"}[kind] || "p"; nm = nm0; i = 1; while (used.has(nm)) nm = nm0 + (++i);
-    feats(d).push(is3d() ? {kind, name:nm, x:"0", y:"0", z:"0", r: kind === "sphere" ? "10" : "", nx: kind === "plane" ? "0" : "", ny: kind === "plane" ? "0" : "", nz: kind === "plane" ? "1" : "", ux:"", uy:"", uz:"", a: kind === "plane" ? "20" : "", b: kind === "plane" ? "20" : "", depth:"", unit:defUnit("length")}
+    const nm0 = {line:"face", plane:"face", circle:"rim", sphere:"ball", cylinder:"tread"}[kind] || "p"; nm = nm0; i = 1; while (used.has(nm)) nm = nm0 + (++i);
+    feats(d).push(is3d() ? {kind, name:nm, x:"0", y:"0", z:"0", r: kind === "sphere" || kind === "cylinder" ? "10" : "", nx: kind === "plane" || kind === "cylinder" ? "0" : "", ny: kind === "cylinder" ? "1" : (kind === "plane" ? "0" : ""), nz: kind === "plane" ? "1" : (kind === "cylinder" ? "0" : ""), ux:"", uy:"", uz:"", a: kind === "plane" ? "20" : (kind === "cylinder" ? "10" : ""), b: kind === "plane" ? "20" : "", sl:"", depth:"", unit:defUnit("length")}
       : {kind, name:nm, x:"0", y:"0", r: kind === "circle" ? "10" : "", x2: kind === "line" ? "10" : "", y2: kind === "line" ? "0" : "", depth:"", unit:defUnit("length")}); }
   if (act === "delfeat"){ feats(d).splice(+b.dataset.i, 1); }
   if (act === "addterm"){ d.terms.push({coef: d.terms.length ? "-1" : "1"}); }
@@ -4698,7 +4703,7 @@ document.getElementById("bUnits").addEventListener("change", async e => {
 });
 document.getElementById("bDim").addEventListener("change", e => { S.meta.dim = e.target.value; syncMeta(); changed();
   if (S.meta.dim === "2d") status("ok", "2D: bodies move in x, y and spin, and carry points, circles and lines; elements measure coordinates, distances, gaps or contacts.");
-  if (S.meta.dim === "3d") status("ok", "3D: z is up. Bodies slide in x, y, z and either keep their orientation, spin about an axis, or tumble freely; they carry points, spheres and plane patches."); });
+  if (S.meta.dim === "3d") status("ok", "3D: z is up. Bodies slide in x, y, z and either keep their orientation, spin about an axis, or tumble freely; they carry points, spheres, cylinders and plane patches."); });
 document.getElementById("bCores").addEventListener("change", async e => { SETTINGS.workers = parseInt(e.target.value); await API.call("save_settings", SETTINGS); });
 document.getElementById("bRecent").addEventListener("change", async e => { const p = e.target.value; e.target.value = ""; if (!p) return;
   const r = await API.call("open_path_text", p); if (r.ok) loadText(r.text, r.path); else status("bad", "Could not open " + p + ": " + r.error); });
@@ -5175,7 +5180,7 @@ const GUIDE = [
    <li><b>spin about an axis</b>: it turns about one fixed axis through its pivot. Pick x, y, z, or <b>custom vector</b> for any direction, such as a tilted weapon shaft.</li>
    <li><b>free</b>: full 3D rotation with an inertia tensor (a number, or <code>[Ixx, Iyy, Izz]</code>). Gyroscopic effects, precession and tumbling come out of the physics.</li>
   </ul>
-  <p>Geometry is <b>points</b>, <b>spheres</b> and <b>plane patches</b> (centre, outward normal, an optional in-plane direction u, a size along u and across, and a depth). Elements measure it the same way as 2D (<a data-h="guide:twod">2D models</a>): coordinates (<code>A.x</code>, <code>A.z</code>, <code>A.spin</code>), distance, along a direction, contact, and the <b>Ball joint</b> (two along a line make a hinge). Gravity on the Model tab acts along -z.</p>
+  <p>Geometry is <b>points</b>, <b>spheres</b>, <b>cylinders</b> and <b>plane patches</b> (centre, outward normal, an optional in-plane direction u, a size along u and across, and a depth). A <b>cylinder</b> (a wheel or roller: centre, the axis it turns about, radius, width, slices) touches plane patches as a row of discs across its width, so it stands flat, rolls, and rides onto an edge when tipped; its contact's force is the sum of the slices. Elements measure it the same way as 2D (<a data-h="guide:twod">2D models</a>): coordinates (<code>A.x</code>, <code>A.z</code>, <code>A.spin</code>), distance, along a direction, contact, and the <b>Ball joint</b> (two along a line make a hinge). Gravity on the Model tab acts along -z.</p>
   <p>Outputs: x, y, z, vx, vy, vz, speed; angle and omega of a spinning body; wx, wy, wz of a freely rotating one. Example: <b>Examples → horizontal_spinner_wedge.yaml</b>.</p>`},
  {id:"loads", grp:"Building models", t:"Loads", h:`
   <p>A <b>Load</b> is a constant force on a body along its measure: gravity, a thrust, a push. Type the force, or plug a Range or Monte Carlo node into it to vary it. It is written to the file as a <code>force</code> element.</p>`},
@@ -6048,6 +6053,17 @@ function avBuild(){
           const m = new THREE.Mesh(geo, avMat(col, {transparent:true, opacity:0.35, side:THREE.DoubleSide}));
           m.applyMatrix4(avBasis(p.n, p.u)); m.position.set(...p.o); g.add(m);
           const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat); e.applyMatrix4(avBasis(p.n, p.u)); e.position.set(...p.o); g.add(e);
+        }
+      }
+      else if (p.kind === "cylinder"){                     // a wheel or roller: its tread, and a spoke on each face so its turn shows
+        const w = Math.max(p.w, p.r * 0.08, ps), ax = new THREE.Vector3(...p.axis).normalize();
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), ax);
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r, w, 40), avMat(col)); m.quaternion.copy(q); m.position.set(...p.p); g.add(m);
+        const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(p.r, p.r, w, 40), 30), edgeMat); e.quaternion.copy(q); e.position.set(...p.p); g.add(e);
+        if (!b.ground){
+          const t = new THREE.Vector3(1, 0, 0).applyQuaternion(q), sp = new THREE.MeshBasicMaterial({color:0xffffff});
+          for (const sgn of [-1, 1]){ const c = new THREE.Vector3(...p.p).addScaledVector(ax, sgn * (w / 2 + ps * 0.3));
+            g.add(avCyl(c.toArray(), c.clone().addScaledVector(t, p.r * 0.92).toArray(), ps * 0.45, sp)); }
         }
       }
       else if (p.kind === "disc"){

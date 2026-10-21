@@ -113,8 +113,9 @@ def _signals(M, H, idx):
     for i, cn in enumerate((doc.get("control") or {})):
         add(f"control.{cn}", cn, "", "control", i < 3)
     from ..compiler.exports import series_unit
-    for en in M.el_names:
-        if "__" in en or en not in (doc.get("elements") or {}):
+    known = set(M.el_names) | set(getattr(M, "groups", None) or {})
+    for en in (doc.get("elements") or {}):       # the model's own elements (a split one answers as its whole)
+        if "__" in en or en not in known:
             continue
         try:
             u = series_unit(M, doc, f"{en}.force")
@@ -161,6 +162,12 @@ def _scene3(M, H, idx, S):
         for fn, kind, g in groups.get(b, []):
             if kind == "sphere":
                 prims.append(dict(kind="sphere" if g[3] > 0 else "point", name=fn, p=g[:3].tolist(), r=float(g[3])))
+                pts.append(g[:3])
+            elif kind == "disc":                  # a cylinder's contact slices: the cylinder itself is drawn
+                continue
+            elif kind == "cylinder":
+                prims.append(dict(kind="cylinder", name=fn, p=g[:3].tolist(), axis=g[3:6].tolist(), r=float(g[6]),
+                                  w=float(g[7])))
                 pts.append(g[:3])
             else:
                 hu, hw = float(min(g[9], 1e6)), float(min(g[10], 1e6))

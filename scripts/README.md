@@ -15,7 +15,7 @@ simblocks report model.yaml      # full verification battery + PDF/HTML report
 The file format is documented in `../references/system_file.md`. Models are 1D (one coordinate per body),
 2D (rigid bodies in x, y and spin with points, circles and lines; contacts, pins, contact friction, gravity) or 3D
 (z up; bodies slide in x, y, z and keep their orientation, spin about any axis, or rotate freely with an inertia
-tensor; points, spheres and plane patches; ball joints). Examples: `examples/systems/` (1D), `examples/systems2d/`
+tensor; points, spheres, cylinders and plane patches; ball joints). Examples: `examples/systems/` (1D), `examples/systems2d/`
 and `examples/systems3d/`.
 
 ## Big studies on your own machine (all cores)

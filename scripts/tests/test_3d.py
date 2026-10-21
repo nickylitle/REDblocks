@@ -183,7 +183,7 @@ elements:
 outputs: {x: {body: m, quantity: x}}
 run: {t_end: 1 s}
 """)
-    with pytest.raises(SpecError, match="no point, sphere or plane"):
+    with pytest.raises(SpecError, match="no point, sphere, plane or cylinder"):
         load_system(HEAD + """bodies:
   g: {ground: true}
   m: {mass: 1 kg, inertia: 1e-3, points: {p: [0, 0, 0]}}

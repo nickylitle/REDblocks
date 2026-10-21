@@ -65,7 +65,7 @@ When the request is already complete, skip straight to the workflow below and st
    body, elements acting on linear measures, including lever arms like `hub + R*rotor`) or planar 2D (rigid
    bodies in x, y and spin carrying points, circles and lines; elements on distances, gaps, contacts, pins,
    contact friction; gravity) or 3D (rigid bodies sliding in x, y, z that keep their orientation, spin about any
-   axis, or rotate freely with an inertia tensor; points, spheres and plane patches; ball joints), write a YAML
+   axis, or rotate freely with an inertia tensor; points, spheres, cylinders and plane patches; ball joints), write a YAML
    system file instead of a loop. The compiler applies every reaction from one rule, generates the energy
    ledger, the automatic knockouts and the report, and the user can rerun it without Claude
    (`simblocks run|set|sweep|report model.yaml`). Give the user the YAML file as a deliverable. Check it with

@@ -24,7 +24,9 @@ async def main(script):
         await pg.expose_function("__devApi", bridge)
         await pg.goto(HTML); await pg.wait_for_timeout(2500)
         await pg.evaluate("() => { const m = document.getElementById('modal'); if (m && m.style.display === 'flex') document.getElementById('mdNo').click(); }")
-        await script(pg)
+        ok = await script(pg)
         for l in logs:
             print(l)
         await b.close()
+    if ok is False:                       # a FAIL check fails the run (pytest reads the exit code)
+        raise SystemExit(1)

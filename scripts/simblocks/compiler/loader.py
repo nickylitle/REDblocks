@@ -68,7 +68,7 @@ TOP = {"simblocks", "name", "question", "dim", "units", "params", "derived", "bo
 REQUIRED_TOP = {"simblocks", "name", "dim", "bodies", "elements", "outputs", "run"}
 BODY_KEYS = {"dof", "mass", "inertia", "shape", "x0", "v0", "ground", "label", "note", "__hidden__"}
 BODY_KEYS_3D = {"dof", "axis", "mass", "inertia", "shape", "at", "com", "orient0", "angle0", "v0", "omega0", "points", "spheres",
-                "planes", "ground", "label", "note"}
+                "planes", "cylinders", "ground", "label", "note"}
 BODY_KEYS_2D = {"dof", "mass", "inertia", "shape", "at", "com", "angle0", "v0", "omega0", "points", "circles", "lines", "ground",
                 "label", "note"}
 ELEMENT_KEYS = {

@@ -200,7 +200,7 @@ dissipated. Gravity acts at each centre of mass and its work enters the energy l
 vector), or tumbles freely with its full inertia tensor. A freely rotating body carries its angular momentum: the
 torques from every element change it, and the spin rate follows from the momentum and the body's current
 orientation. That is why a spinning weapon resists being tilted and why a top precesses instead of falling: nobody
-writes a gyroscopic term, it comes out of the same step. Geometry is points, spheres and finite plane patches, and
+writes a gyroscopic term, it comes out of the same step. Geometry is points, spheres, cylinders (disc slices) and finite plane patches, and
 the same application-point rule gives every force its true lever arm in 3D.
 
 ---

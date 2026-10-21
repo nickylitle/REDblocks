@@ -911,6 +911,17 @@ def _circ_history(M, H, LC):
 
 def _group_history(M, H):
     for name, g in (getattr(M, "groups", None) or {}).items():
+        if g.kind == "parallel":                 # cylinder slices: force (and work) add, measure is the deepest
+            for key in [k for k in list(H) if k.startswith(g.segs[0] + ".")]:
+                q = key[len(g.segs[0]) + 1:]
+                cols = [np.asarray(H[f"{sn}.{q}"], float) for sn in g.segs if f"{sn}.{q}" in H]
+                if q in ("measure", "rate", "velocity", "speed"):
+                    H[f"{name}.{q}"] = np.max(cols, axis=0)
+                elif q in ("force", "absorbed_work", "dissipated", "impulse", "friction_impulse", "power"):
+                    H[f"{name}.{q}"] = np.sum(cols, axis=0)
+                else:
+                    H[f"{name}.{q}"] = cols[0]
+            continue
         for key in [k for k in list(H) if k.startswith(g.segs[0] + ".")]:
             H[name + key[len(g.segs[0]):]] = H[key]
         if g.probe and f"{g.probe}.measure" in H:
@@ -923,6 +934,10 @@ def el_index(M, name, qn="force"):
     g = (getattr(M, "groups", None) or {}).get(name)
     if g is None:
         return M.el_names.index(name)
+    if g.kind == "parallel":
+        raise SpecError(f"'{name}' is a cylinder's contact, split into slices: its force and measure are whole-run "
+                        "outputs (final, max, min, max_abs, at, time_of_max) and history columns; a control or a "
+                        "first_time output cannot read it while the run goes")
     if qn == "measure" and g.probe:
         return M.el_names.index(g.probe)
     return M.el_names.index(g.segs[0])
@@ -1079,19 +1094,19 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
         timer.daemon = True; timer.start()
     import time as _time
     t_run = _time.perf_counter()
-    Wg = 0.0; SP = None
+    Wg = 0.0; SP = None; GT = None
     cargs = circuit_args(M)
     from .control import control_args
     kargs = control_args(M)
     try:
         if dim3:
             from . import engine3d as E3
-            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC, SGF, SGT, LS) = E3.run_engine3d(
+            (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC, SGF, SGT, LS, GT) = E3.run_engine3d(
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
                 a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
                 a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
-                adp, adf, adc, stop)
+                adp, adf, adc, stop, a["grp"])
         elif dim2:
             from . import engine2d as E2
             (q, v, KE0, KE1, A, D, IN, S0, S1, TR, BT, SP, aux, tcr, LT, LB, LE, Fe, se, Wg, KEpk, CP, CTR, LC, SGF, SGT, LS) = E2.run_engine2d(
@@ -1262,6 +1277,14 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
                 val = sum(A[e] for e in rows)
             elif qn == "dissipated":
                 val = sum((D[e] if D[e] >= 0 else A[e] - (S1[e] - S0[e])) for e in rows)
+            elif grp is not None and grp.kind == "parallel" and QALIAS.get(qn, qn) in ("force", "measure"):
+                if QALIAS.get(qn, qn) == "force":    # the sum of the slices, tracked exactly every step by the engine
+                    lo, hi, fin = (float(GT[grp.gi, 0]), float(GT[grp.gi, 1]), float(GT[grp.gi, 2])) \
+                        if GT is not None and GT[grp.gi, 0] < 1e299 else (0.0, 0.0, 0.0)
+                else:                                 # the deepest slice (its own peak, which bounds the group's)
+                    sp = [span(e) for e in rows]
+                    lo = min(x[0] for x in sp); hi = max(x[1] for x in sp); fin = max(x[2] for x in sp)
+                val = {"final": fin, "max": hi, "min": lo, "max_abs": max(abs(lo), abs(hi))}[red]; pk = max(abs(lo), abs(hi))
             else:
                 sp = [(lambda e: (0.0, 0.0, 0.0) if TR[e, 0] > 1e299 else (TR[e, 0], TR[e, 1], Fe[e]))(e) for e in rows] \
                     if (joint and qn == "moment") else [span(e) for e in rows]
@@ -1383,9 +1406,17 @@ def _at_values(M, LT, LB, LE, dim2, LS=None):
         if "control" in o:
             ser = LS[:, list(M.ctl["names"]).index(o["control"])]
         elif "element" in o:
-            base = QALIAS.get(qn, qn); e = el_index(M, o["element"], base)   # a segmented element: its group row
-            col = {"force": 0, "measure": 1}.get(base)
-            ser = LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]]
+            base = QALIAS.get(qn, qn)
+            g_ = (getattr(M, "groups", None) or {}).get(o["element"])
+            if g_ is not None and g_.kind == "parallel":   # cylinder slices: force adds, measure is the deepest
+                col = {"force": 0, "measure": 1}.get(base)
+                es = [M.el_names.index(x) for x in g_.segs]
+                cols = [LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]] for e in es]
+                ser = np.max(cols, axis=0) if base == "measure" else np.sum(cols, axis=0)
+            else:
+                e = el_index(M, o["element"], base)   # a segmented element: its group row
+                col = {"force": 0, "measure": 1}.get(base)
+                ser = LE[:, e * w + col] if col is not None else LE[:, e * w + 2 + AUX[qn]]
         elif getattr(M, "dim", "1d") == "3d":
             from .model3d import body_slot3
             _, k = body_slot3(M, o["body"], qn, f"outputs.{name}")

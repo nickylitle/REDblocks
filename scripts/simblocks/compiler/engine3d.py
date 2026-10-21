@@ -30,7 +30,7 @@ from .engine2d import _book_hits
 from .linsolve import _gauss, _lu, _lu_solve
 from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 
-MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM, MK_DISC = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
 
 @njit(cache=True, nogil=True, inline="always")
@@ -238,6 +238,36 @@ def _measure(mk, e, X, V, W, R, th, ba, bb, C, s0, GA, GB, GX, geo):
         s = r - (rx * nx + ry * ny + rz * nz)
         pu = rx * ux + ry * uy + rz * uz; pw = rx * wx + ry * wy + rz * wz
         px = cx - r * nx; py = cy - r * ny; pz = cz - r * nz
+        geo[e, 0] = px; geo[e, 1] = py; geo[e, 2] = pz; geo[e, 3] = px; geo[e, 4] = py; geo[e, 5] = pz
+        geo[e, 6] = nx; geo[e, 7] = ny; geo[e, 8] = nz
+        vax, vay, vaz = _vel(X, V, W, a, px, py, pz); vbx, vby, vbz = _vel(X, V, W, b, px, py, pz)
+        sd = nx * (vbx - vax) + ny * (vby - vay) + nz * (vbz - vaz)
+        ok = abs(pu) <= GB[e, 9] and abs(pw) <= GB[e, 10] and s > 0.0 and s < GB[e, 11]
+        return s, sd, ok
+    if mk == MK_DISC:
+        # a disc (one slice of a cylinder: centre, axis, radius) against a plane: the rim point deepest into the plane.
+        # Its rim tangent there is square to the normal, so the material point's velocity gives the exact rate.
+        cx, cy, cz = _pt(X, R, a, GA[e, 0], GA[e, 1], GA[e, 2]); r = GA[e, 3]
+        qx, qy, qz = _dir(R, a, GA[e, 4], GA[e, 5], GA[e, 6])
+        ox, oy, oz = _pt(X, R, b, GB[e, 0], GB[e, 1], GB[e, 2])
+        side = GX[e, 3]
+        nx, ny, nz = _dir(R, b, GB[e, 3] * side, GB[e, 4] * side, GB[e, 5] * side)
+        ux, uy, uz = _dir(R, b, GB[e, 6], GB[e, 7], GB[e, 8])
+        wx = ny * uz - nz * uy; wy = nz * ux - nx * uz; wz = nx * uy - ny * ux
+        na = nx * qx + ny * qy + nz * qz
+        dx = -(nx - na * qx); dy = -(ny - na * qy); dz = -(nz - na * qz)
+        L = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if L > 1e-9:
+            dx /= L; dy /= L; dz /= L
+        else:                                          # lying flat on its face: every rim point is as deep
+            if abs(qx) < 0.9:
+                dx = 0.0; dy = qz; dz = -qy
+            else:
+                dx = -qz; dy = 0.0; dz = qx
+            L = math.sqrt(dx * dx + dy * dy + dz * dz); dx /= L; dy /= L; dz /= L
+        px = cx + r * dx; py = cy + r * dy; pz = cz + r * dz
+        s = -((px - ox) * nx + (py - oy) * ny + (pz - oz) * nz)
+        pu = (px - ox) * ux + (py - oy) * uy + (pz - oz) * uz; pw = (px - ox) * wx + (py - oy) * wy + (pz - oz) * wz
         geo[e, 0] = px; geo[e, 1] = py; geo[e, 2] = pz; geo[e, 3] = px; geo[e, 4] = py; geo[e, 5] = pz
         geo[e, 6] = nx; geo[e, 7] = ny; geo[e, 8] = nz
         vax, vay, vaz = _vel(X, V, W, a, px, py, pz); vbx, vby, vbz = _vel(X, V, W, b, px, py, pz)
@@ -776,10 +806,15 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                  typ, one_sided, active, mk, ba, bb, ref, P, C, s0, GA, GB, GX,
                  tab_off, tab_len, tab_k, tab_x, tab_F, log_every, cross_src, cross_idx, cross_thr, cross_dir,
                cpt, cna, cnb, cprm, cpst0, cth, cnn, cmot,
-               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, adp, adf, adc, stop):
+               ckind, cprog, cval, crng, ccp, cssrc, csidx, cae, caslot, casig, caarr, cctlD, adp, adf, adc, stop, grp):
     """Iax: INVERSE inertia about the spin axis for spin bodies. Iinv: body-frame inverse inertia for free bodies.
     com: body-frame centre of mass (non-zero only for spin bodies turning about a pivot off their centre of mass)."""
     nb = X0.shape[0]; ne = typ.shape[0]
+    ngrp = 0
+    for e in range(ne):
+        if grp[e] + 1 > ngrp:
+            ngrp = grp[e] + 1
+    GS = np.zeros(max(ngrp, 1)); GT = np.zeros((max(ngrp, 1), 3)); GT[:, 0] = 1e300; GT[:, 1] = -1e300
     X = X0.copy(); V = V0.copy(); quat = quat0.copy(); Lw = Lw0.copy(); wsp = wsp0.copy()
     P = P.copy(); cprm = cprm.copy()                # control signals may set element fields as it runs
     nsig = ckind.shape[0]; nsen = cssrc.shape[0]
@@ -1156,7 +1191,7 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     s, sd, ok = _measure(m_, e, X, V, W, R, th, ba, bb, C, s0, GA, GB, GX, geo)
                     # entry rule: only by crossing the plane from outside; a shallow one is a hand-over from a
                     # neighbouring patch (under 0.1% of the patch size): allowed
-                    if m_ == MK_PLANE and ok and inc[e] == 0 and se[e] > 0.0 and not first:
+                    if (m_ == MK_PLANE or m_ == MK_DISC) and ok and inc[e] == 0 and se[e] > 0.0 and not first:
                         if s > 2e-3 * min(GB[e, 9], GB[e, 10], 1e3):
                             ok = False
                 sold = se[e]
@@ -1332,6 +1367,15 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                         wx = ny * uz - nz * uy; wy = nz * ux - nx * uz; wz = nx * uy - ny * ux
                         pu = (cx - ox) * ux + (cy - oy) * uy + (cz - oz) * uz
                         pw = (cx - ox) * wx + (cy - oy) * wy + (cz - oz) * wz
+                        if abs(pu) > GB[e, 9] or abs(pw) > GB[e, 10] or s >= GB[e, 11]:
+                            se[e] = s; continue
+                    elif mk[e] == MK_DISC:                   # the rim point must be over the patch
+                        ox, oy, oz = _pt(X, R, bb[e], GB[e, 0], GB[e, 1], GB[e, 2])
+                        ux, uy, uz = _dir(R, bb[e], GB[e, 6], GB[e, 7], GB[e, 8])
+                        nx = geo[e, 6]; ny = geo[e, 7]; nz = geo[e, 8]
+                        wx = ny * uz - nz * uy; wy = nz * ux - nx * uz; wz = nx * uy - ny * ux
+                        pu = (geo[e, 0] - ox) * ux + (geo[e, 1] - oy) * uy + (geo[e, 2] - oz) * uz
+                        pw = (geo[e, 0] - ox) * wx + (geo[e, 1] - oy) * wy + (geo[e, 2] - oz) * wz
                         if abs(pu) > GB[e, 9] or abs(pw) > GB[e, 10] or s >= GB[e, 11]:
                             se[e] = s; continue
                     w_ = (_inv_along(X, R, minv, rmode, Iinv, axis, Iax, ba[e], geo[e, 0], geo[e, 1], geo[e, 2],
@@ -1647,6 +1691,16 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     Fe[e] = -lam[e, 0] / dt
                 aux[e, 0] = lam[e, 0] / dt; aux[e, 1] = lam[e, 1] / dt; aux[e, 2] = lam[e, 2] / dt
         # trackers
+        if ngrp > 0:                                   # elements acting side by side (cylinder slices): their sum
+            for g_ in range(ngrp):
+                GS[g_] = 0.0
+            for e in range(ne):
+                if grp[e] >= 0:
+                    GS[grp[e]] += Fe[e]
+            for g_ in range(ngrp):
+                if GS[g_] < GT[g_, 0]: GT[g_, 0] = GS[g_]
+                if GS[g_] > GT[g_, 1]: GT[g_, 1] = GS[g_]
+                GT[g_, 2] = GS[g_]
         for e in range(ne):
             if Fe[e] < TR[e, 0]: TR[e, 0] = Fe[e]
             if Fe[e] > TR[e, 1]: TR[e, 1] = Fe[e]
@@ -1802,4 +1856,4 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
         if cctlD[e] == 1:
             D[e] = -1.0                          # a controlled spring: its stored energy is no longer its own law
     return (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, t_cross, LOGT[:j], LOGB[:j], LOGE[:j], Fe, se, Wg, Lw,
-            KEpk, cpout, CTR, LOGC[:j], sig, SG, LOGS[:j])
+            KEpk, cpout, CTR, LOGC[:j], sig, SG, LOGS[:j], GT)
