@@ -93,14 +93,6 @@ def test_3d_3_robot_arm():
     assert o["_ledger_rel"] < 0.01
 
 
-def test_3d_4_wheel_on_a_ramp():
-    o = run("3d_4_wheel_on_a_ramp.yaml")
-    th = math.radians(10)
-    assert o["speed"] == pytest.approx(2 / 3 * 9.81 * math.sin(th) * 0.5, rel=0.005)     # rolling solid disc
-    assert o["spin_rpm"] == pytest.approx(o["speed"] / 0.022 * 60 / (2 * math.pi), rel=0.005)  # no slip
-    assert o["load_N"] == pytest.approx(0.025 * 9.81 * math.cos(th), rel=0.002)
-
-
 def test_rocket_engine_block_against_published_engines():
     from simblocks.actuators.rocket import rocket_engine, ideal_performance
     f1 = rocket_engine("RP1", 2.27, 7.0e6, 16, mdot=2578.0, Isp_sl=263.0)

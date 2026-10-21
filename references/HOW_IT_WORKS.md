@@ -443,7 +443,22 @@ second the measurement (or name them with --time-col / --y-col, with --time-unit
 
 ## Replay (Animate)
 
-The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies in lanes (sliding ones scaled up so
-small travel shows, the scale is printed), 2d bodies in the x-y plane, 3d bodies with their logged orientation
-quaternions. Springs, dampers, motors and joints are drawn between their attachment points; a floor plane becomes a
-grid. It reuses the last Run's history when the model is unchanged.
+The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies in lanes, 2d bodies in the x-y plane,
+3d bodies with their logged orientation quaternions. 1d and 2d are seen straight from above and only pan and zoom.
+- 1d: a sliding body a spring holds is scaled up so small travel shows (the scale is printed); a sliding body nothing
+  holds (a car) drives along a road with distance marks and the camera follows it. A turning body's links attach at
+  fixed points beside it, so they never whip round with the spin.
+- Springs, dampers, joints and beams (solid tubes) are drawn between their points. Loads that only push (force, drag,
+  friction, motors, circuit motors) are arrows on the body, sized against the largest; a torque on a 1d turning body
+  is a curved arrow. Electronics are never drawn as lines.
+- Body shapes (box, cylinder, disc, rod, ring, tube, sphere) are drawn as solids; a 2d rod lies along its farthest
+  point. A planet (gravity: {planet: ..}) is drawn round the origin with the top of its air; point masses are dots of
+  a fixed size on screen.
+- A model with beams that moves less than 2 % of its size is drawn moving bigger (the factor is printed).
+- F fits everything on screen (it fits when opened), Space plays, the arrow keys step a frame (shift: ten), Home and
+  End jump.
+- While the run is solved a progress card shows the stage, a bar and the time, with Stop. A watchdog stops a run that
+  goes badly wrong (4x the estimate, at least 2 minutes, never shorter than the model's own timeout, even when that
+  is off); the replay then shows how far it got.
+
+It reuses the last Run's history when the model is unchanged.

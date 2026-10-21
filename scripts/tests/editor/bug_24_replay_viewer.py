@@ -6,7 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); EX = os.path.join(HERE, "..",
 SHOT = os.environ.get("REPLAY_SHOTS", "")
 CASES = [("learn/1d_1_mass_spring_damper.yaml", "1d"), ("learn/2d_3_four_bar.yaml", "2d"), ("learn/3d_3_robot_arm.yaml", "3d"),
          ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d"), ("learn/1d_6_chua_circuit.yaml", "1d"),
-         ("learn/3d_4_wheel_on_a_ramp.yaml", "3d")]
+         ("learn/3d_1_spinning_top.yaml", "3d")]
 
 async def s(pg):
     ok = True
@@ -32,9 +32,20 @@ async def s(pg):
                 await pg.screenshot(path=os.path.join(SHOT, "replay_chua.png"))
             await pg.keyboard.press("Escape"); await pg.wait_for_timeout(200)
             continue
-        if "wheel_on" in rel:                    # a cylinder is drawn as one (its contact slices are not)
+        if "spinning_top" in rel:                # a body's shape is drawn (the top's disc as a cylinder)
             cy = await pg.evaluate("() => AV.S.bodies.flatMap(b => b.prims.map(p => p.kind))")
-            ok &= check("cylinder" in cy and "disc" not in cy, cy, "the cylinder is drawn", "cylinder")
+            ok &= check("cylinder" in cy, cy, "the top's disc is drawn", "shape")
+        if dim != "3d":                          # flat views look straight down and a drag pans, never tilts
+            el0 = await pg.evaluate("() => [AV.orbit.el, AV.orbit.az]")
+            box = await pg.evaluate("() => { const r = document.getElementById('avCanvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }")
+            await pg.mouse.move(box[0], box[1]); await pg.mouse.down(); await pg.mouse.move(box[0] + 120, box[1] + 60, steps=6); await pg.mouse.up()
+            el1 = await pg.evaluate("() => [AV.orbit.el, AV.orbit.az]")
+            ok &= check(abs(el0[0] - 1.5707) < 1e-3 and el0 == el1, (el0, el1), "top-down, drag does not rotate", "flat-lock")
+        r0 = await pg.evaluate("() => AV.orbit.r")
+        await pg.evaluate("() => { AV.orbit.r *= 7; avCamera(); }")
+        await pg.keyboard.press("f")
+        r1 = await pg.evaluate("() => AV.orbit.r")
+        ok &= check(abs(r1 - r0) < 1e-6 * max(1, r0), (r0, r1), "F fits it again", "fit-key")
         # scrub to the middle and to the end: a moving body is somewhere else
         p0 = await pg.evaluate("() => { const r = AV.bodies.find(r => r.b.pos && !r.b.ground); return r.g.position.toArray(); }")
         await pg.evaluate("() => { const e = document.getElementById('avScrub'); e.value = '1000'; e.oninput({target:e}); }")

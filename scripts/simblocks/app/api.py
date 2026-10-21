@@ -247,14 +247,31 @@ class Api:
             prev = os.environ.get("SIMBLOCKS_MODEL_DIR")
             if model_path:
                 os.environ["SIMBLOCKS_MODEL_DIR"] = os.path.dirname(os.path.abspath(model_path))
+            import threading
+            from ..compiler.model import uncancel, estimate_run_s
+            tid = threading.get_ident()
+            uncancel(tid); self._run_tid = tid; self._run_stopped = False
+            _prog_begin("anim", ANIM_STAGES, "Compiling the model")
             try:
                 s = load_system(text)
                 L = _LAST_RUN
                 if L.get("text") == text and L.get("overrides") is None and "H" in L:
+                    _PROG.update(stage=2, label="Building the scene from the last run")
                     S = scene(s, frames=frames, H=L["H"], out=L["out"]); S["reused"] = True
                 else:
-                    S = scene(s, frames=frames); S["reused"] = False
+                    M = s.nominal; steps = int(round(M.t_end / M.dt)); est = estimate_run_s(M)
+                    wd = anim_watchdog(M)
+                    _PROG.update(stage=1, label=f"Solving {steps:,} time steps (watchdog {wd:.0f} s)", steps=steps,
+                                 est_s=est, solve_t0=time.time())
+                    S = scene(s, frames=frames, timeout=wd); S["reused"] = False
+                    S["watchdog_s"] = wd
+                    _PROG.update(stage=2, label="Building the scene", solve_t0=0.0)
+                S["stopped"] = bool(self._run_stopped)
             finally:
+                _PROG["active"] = False
+                if getattr(self, "_run_tid", None) == tid:
+                    self._run_tid = None
+                uncancel(tid)
                 if model_path:
                     if prev is None:
                         os.environ.pop("SIMBLOCKS_MODEL_DIR", None)
@@ -1517,6 +1534,17 @@ def custom_keys():
 # ---------------------------------------------------------------------------------------------- progress
 _PROG = dict(active=False)
 RUN_STAGES = ["Compile", "Solve", "Results"]
+ANIM_STAGES = ["Compile", "Solve", "Scene"]
+
+
+def anim_watchdog(M):
+    """Animate's own watchdog (wall-clock seconds): generous and automatic, whatever run.timeout says (even off), so a
+    run that goes badly wrong (a blow-up, a step far too small) cannot hang the replay. Four times the estimate (which
+    already runs long), at least two minutes, and never shorter than the model's own timeout."""
+    from ..compiler.model import estimate_run_s
+    to = getattr(M, "timeout", "auto")
+    own = to if isinstance(to, (int, float)) and to > 0 else 0.0
+    return float(max(120.0, 4.0 * estimate_run_s(M), own))
 
 
 def _prog_begin(kind, stages, label):

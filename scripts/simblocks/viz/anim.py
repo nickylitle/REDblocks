@@ -47,30 +47,52 @@ def _thin(H, n):
     return t[idx], idx
 
 
-def scene(system, overrides=None, frames=900, H=None, out=None):
+def scene(system, overrides=None, frames=900, H=None, out=None, timeout="model"):
     """The JSON-able scene: bodies, links, frames, extent. Uses the history H of a run already made (the editor's
-    last Run) when given, otherwise runs the model once."""
+    last Run) when given, otherwise runs the model once (timeout: seconds of wall clock, as run_model takes it; a
+    run stopped by it is replayed as far as it got)."""
     M = system.compile(overrides)
     if H is None:
         from ..compiler.model import run_model
         from ..compiler.system import _with_blocks
-        r = run_model(M, history=True, n_log=frames)
+        r = run_model(M, history=True, n_log=frames, timeout=timeout)
         out, H = _with_blocks(M, r, True)
     out = out or {}
     dim = getattr(M, "dim", "1d")
     t, idx = _thin(H, frames)
     S = dict(dim=dim, name=M.doc.get("name", "model"), t=t.tolist(), bodies=[], links=[], notes=[],
-             timed_out=bool(out.get("_timed_out")))
+             timed_out=bool(out.get("_timed_out")), t_stopped=float(out.get("_t_stopped", 0.0) or 0.0))
     if dim == "3d":
         _scene3(M, H, idx, S)
     elif dim == "2d":
         _scene2(M, H, idx, S)
     else:
         _scene1(M, H, idx, S)
+    _magnify(S)
     _extent(S)
     S["empty"] = not any(b.get("pos") for b in S["bodies"])
     S["signals"] = _signals(M, H, idx)
     return S
+
+
+def _magnify(S):
+    """A beam that bends a millimetre on a 200 mm arm looks still: when a model with beams moves less than 2 % of its
+    size, its motion is drawn bigger (about 15 % of the size), and the note says by how much. Turns are not scaled."""
+    if S["dim"] == "1d" or not any(L.get("kind") == "beam" for L in S["links"]):
+        return
+    mov = [b for b in S["bodies"] if b.get("pos")]
+    if not mov:
+        return
+    P0 = np.array([b["pos"][0] for b in mov], float)
+    span = float(np.max(np.ptp(np.vstack([P0] + [np.asarray(L["pa"], float)[None] for L in S["links"] if L["a"] < 0]), axis=0)))
+    disp = max(float(np.max(np.linalg.norm(np.asarray(b["pos"], float) - np.asarray(b["pos"][0], float), axis=1))) for b in mov)
+    if span <= 0 or disp <= 0 or disp >= 0.02 * span:
+        return
+    mag = _nice_step(0.15 * span / disp)
+    for b in mov:
+        P = np.asarray(b["pos"], float); b["pos"] = np.round(P[0] + mag * (P - P[0]), 7).tolist()
+    S["notes"].append(f"motion drawn {_nice(mag)} x bigger (it moves at most {_fmt_len(disp)})")
+    S["magnified"] = mag
 
 
 PART_Q = (("voltage", "V"), ("current", "A"), ("power", "W"), ("soc", ""), ("temperature", "°C"), ("state", ""))
@@ -131,7 +153,16 @@ def _signals(M, H, idx):
     return out
 
 
+def _label(en):
+    """The name a person gave it: a circuit motor's engine row is __circ_<part>; a joint's or beam's rows <name>__x."""
+    if en.startswith("__circ_"):
+        return en[len("__circ_"):]
+    return en.split("__")[0]
+
+
 def _el_kind(M, en):
+    if en.endswith("__probe"):                       # a beam's measuring row (no stiffness): nothing to draw
+        return None
     t = M.el_info.get(en, {}).get("type", "")
     if t in ("drive", "dc_motor", "emotor"):
         return "motor"
@@ -146,6 +177,96 @@ def _el_kind(M, en):
     return None
 
 
+# ------------------------------------------------------------------------------------------------ shapes, arrows
+ARROWY = {"force", "drag", "friction", "drive", "dc_motor", "emotor"}     # pushes on one body: drawn as an arrow
+
+
+def _shape_prims(M, bn, dim, i=None, have=()):
+    """A body's `shape` (box, cylinder, disc, rod, ...) as solid prims in its centre-of-mass frame (the shape's centre
+    is the body's centre of mass). `have`: feature kinds already drawn (a disc's or sphere's outline)."""
+    d = (M.doc.get("bodies") or {}).get(bn)
+    sh = d.get("shape") if isinstance(d, dict) else None
+    if not isinstance(sh, dict):
+        return []
+    try:
+        from ..compiler.expand_shape import shape_props
+        _m, _I, kind, kw = shape_props(sh, M.ctx, f"bodies.{bn}.shape", "3d" if dim == "3d" else "2d")
+    except Exception:
+        return []
+    g = lambda k, dflt=0.0: float(kw.get(k) if kw.get(k) is not None else dflt)
+    ax = [0.0, 0.0, 1.0]
+    if dim == "3d" and "axis" in sh and i is not None:
+        try:
+            from ..compiler.model3d import _vec, _unit, _qR
+            aw = np.asarray(_unit(_vec(sh["axis"], M.ctx, "axis"), "axis"), float)
+            ax = (_qR(M.arrays["quat0"][i]).T @ aw).tolist()
+        except Exception:
+            pass
+    o = [0.0, 0.0, 0.0]
+    if dim != "3d":                                    # flat: in the x-y plane, thin along z
+        if kind in ("disc", "ring") and "circle" in have:
+            return []
+        R = g("Ro") or g("R")
+        if kind in ("disc", "ring"):
+            return [dict(kind="disc", name="shape", p=o, r=R, solid=True)]
+        if kind == "plate":
+            a, b = g("a"), g("b")
+            return [dict(kind="block", name="shape", p=o, size=[a, b, max(g("t"), 0.05 * min(a, b))], solid=True)]
+        if kind == "rod":                          # its inertia does not say which way it lies: along its farthest point
+            L = g("L"); ang = 0.0
+            pts = [np.asarray(gg[:2], float) for (bb, fn), (kk, gg) in M.feats.items() if bb == bn and fn != "__origin__"]
+            if pts:
+                far = max(pts, key=lambda v: float(np.hypot(v[0], v[1])))
+                if np.hypot(*far) > 1e-12:
+                    ang = math.atan2(far[1], far[0])
+            return [dict(kind="block", name="shape", p=o, size=[L, L / 25, L / 25], axis=[0.0, 0.0, 1.0], turn=ang, solid=True)]
+        return []
+    if kind == "sphere":
+        return [] if "sphere" in have else [dict(kind="sphere", name="shape", p=o, r=g("R"), solid=True)]
+    if kind in ("box", "plate"):
+        a, b = g("a"), g("b"); c = g("c") if kind == "box" else (g("t") or 0.05 * min(a, b))
+        return [dict(kind="block", name="shape", p=o, size=[a, b, c], axis=ax, solid=True)]
+    if kind in ("cylinder", "disc"):
+        return [dict(kind="cylinder", name="shape", p=o, axis=ax, r=g("R"), w=g("L") if kind == "cylinder" else g("t"),
+                     solid=True)]
+    if kind in ("ring", "tube"):
+        return [dict(kind="tube", name="shape", p=o, axis=ax, ri=g("Ri"), ro=g("Ro"), w=g("L") if kind == "tube" else g("t"),
+                     solid=True)]
+    if kind == "rod":
+        L = g("L"); A = g("A"); r = math.sqrt(A / math.pi) if A > 0 else L / 40
+        return [dict(kind="cylinder", name="shape", p=o, axis=ax, r=r, w=L, solid=True, plain=True)]
+    return []
+
+
+def _force_arrows(M, H, idx, S, order, names, per_body):
+    """Loads that push on a body (a force, drag, friction, a motor on a free body) as arrows at its centre of mass:
+    the world force vector at each frame, from the element's force and its measure (a coordinate expression)."""
+    a = M.arrays; C = np.asarray(a["C"], float); dim = S["dim"]; w = 4 if dim == "3d" else 3
+    nb = len(names)
+    for e, en in enumerate(M.el_names):
+        t = M.el_info.get(en, {}).get("type", "")
+        base = _label(en)
+        if t not in ARROWY or f"{en}.force" not in H:
+            continue
+        row = C[e] if e < C.shape[0] else np.zeros(w * nb)
+        on = [i for i in range(nb) if any(row[w * i + k] != 0.0 for k in range(3 if dim == "3d" else 2))]
+        if not on or any(row[w * i + w - 1] != 0.0 for i in range(nb)):   # a turn (a torque): not drawn here
+            continue
+        F = np.asarray(H[f"{en}.force"], float)[idx]
+        for i in on:
+            if "__" in names[i]:
+                continue
+            c = row[w * i: w * i + (3 if dim == "3d" else 2)]
+            v = -np.outer(F, c)
+            if v.shape[1] == 2:
+                v = np.c_[v, np.zeros(len(F))]
+            if not np.isfinite(v).all() or not np.any(v):
+                continue
+            j = per_body.get(i, 0); per_body[i] = j + 1
+            S.setdefault("arrows", []).append(dict(name=base, b=order.index(names[i]), v=np.round(v, 6).tolist(), j=j,
+                                                  unit="N"))
+
+
 # ------------------------------------------------------------------------------------------------ 3d
 def _scene3(M, H, idx, S):
     from ..compiler import engine3d as E3
@@ -158,10 +279,15 @@ def _scene3(M, H, idx, S):
     order = names + [b for b in groups if b not in names]
     for b in order:
         moving = b in names
-        prims = []; pts = []
+        prims = []; pts = []; have = set()
         for fn, kind, g in groups.get(b, []):
             if kind == "sphere":
-                prims.append(dict(kind="sphere" if g[3] > 0 else "point", name=fn, p=g[:3].tolist(), r=float(g[3])))
+                if g[3] > 0:
+                    prims.append(dict(kind="sphere", name=fn, p=g[:3].tolist(), r=float(g[3]))); have.add("sphere")
+                elif moving:
+                    prims.append(dict(kind="point", name=fn, p=g[:3].tolist(), r=0.0))
+                else:                                # a fixed mounting point: a small anchor block
+                    prims.append(dict(kind="anchor", name=fn, p=g[:3].tolist()))
                 pts.append(g[:3])
             elif kind == "disc":                  # a cylinder's contact slices: the cylinder itself is drawn
                 continue
@@ -173,11 +299,15 @@ def _scene3(M, H, idx, S):
                 hu, hw = float(min(g[9], 1e6)), float(min(g[10], 1e6))
                 prims.append(dict(kind="plane", name=fn, o=g[:3].tolist(), n=g[3:6].tolist(), u=g[6:9].tolist(),
                                   hu=hu, hw=hw, infinite=bool(g[9] > 1e8 or g[10] > 1e8)))
+        shp = _shape_prims(M, b, "3d", names.index(b) if moving else None, have) if moving else []
+        prims = shp + prims
         body = dict(name=b, ground=not moving, prims=prims)
-        hull = _hull(pts) if moving else None
+        if "__" in b:                              # a beam's inner node: the beam is drawn, not its nodes
+            body["hidden"] = True; body["prims"] = []
+        hull = _hull(pts) if moving and not shp and "__" not in b else None
         if hull:
             body["hull"] = dict(points=[p.tolist() for p in pts], faces=hull)
-        elif moving and pts:                       # too few points for a solid: rods from the centre of mass to each
+        elif moving and pts and "__" not in b:     # too few points for a solid: rods from the centre of mass to each
             body["sticks"] = [[[0.0, 0.0, 0.0], p.tolist()] for p in pts if np.linalg.norm(p) > 0]
         if moving:
             i = names.index(b)
@@ -192,8 +322,15 @@ def _scene3(M, H, idx, S):
         mk = int(a["mk"][e])
         if kind is None or mk not in (E3.MK_DIST, E3.MK_PIN, E3.MK_BEAM, E3.MK_ALONG):
             continue
-        S["links"].append(dict(name=en.split("__")[0], kind=kind, a=_bi(order, names, a["ba"][e]),
-                               pa=a["GA"][e, :3].tolist(), b=_bi(order, names, a["bb"][e]), pb=a["GB"][e, :3].tolist()))
+        L = dict(name=en.split("__")[0], kind=kind, a=_bi(order, names, a["ba"][e]),
+                 pa=a["GA"][e, :3].tolist(), b=_bi(order, names, a["bb"][e]), pb=a["GB"][e, :3].tolist())
+        if mk == E3.MK_BEAM:                       # a tube of about the section's size (from its stiffnesses)
+            bi = (M.el_info.get(en) or {}).get("beam") or {}
+            L["kind"] = "beam"
+            if bi.get("EA"):
+                L["r"] = float(math.sqrt(2.0 * min(bi["EIy"], bi["EIz"]) / bi["EA"]))
+        S["links"].append(L)
+    _force_arrows(M, H, idx, S, order, names, {})
 
 
 def _bi(order, names, k):
@@ -214,15 +351,22 @@ def _scene2(M, H, idx, S):
     order = names + [b for b in groups if b not in names]
     for b in order:
         moving = b in names
-        prims = []; pts = []
+        prims = []; pts = []; have = set()
         for fn, kind, g in groups.get(b, []):
             if kind == "circle":
-                prims.append(dict(kind="disc" if g[2] > 0 else "point", name=fn, p=[g[0], g[1], 0.0], r=float(g[2])))
+                if g[2] > 0:
+                    prims.append(dict(kind="disc", name=fn, p=[g[0], g[1], 0.0], r=float(g[2]))); have.add("circle")
+                else:
+                    prims.append(dict(kind="point" if moving else "anchor", name=fn, p=[g[0], g[1], 0.0], r=0.0))
                 pts.append([g[0], g[1]])
             else:
                 prims.append(dict(kind="line", name=fn, a=[g[0], g[1], 0.0], b=[g[2], g[3], 0.0]))
                 pts += [[g[0], g[1]], [g[2], g[3]]]
+        shp = _shape_prims(M, b, "2d", None, have) if moving else []
+        prims = shp + prims
         body = dict(name=b, ground=not moving, prims=prims)
+        if "__" in b:
+            body["hidden"] = True; body["prims"] = []; pts = []
         if moving:
             if len(pts) >= 3:
                 body["outline"] = _hull2(pts)
@@ -238,9 +382,22 @@ def _scene2(M, H, idx, S):
         kind = _el_kind(M, en); mk = int(a["mk"][e])
         if kind is None or mk not in (E2.MK_DIST, E2.MK_PIN, E2.MK_BEAM, E2.MK_ALONG):
             continue
-        S["links"].append(dict(name=en.split("__")[0], kind=kind, a=_bi(order, names, a["ba"][e]),
-                               pa=[float(a["GA"][e, 0]), float(a["GA"][e, 1]), 0.0], b=_bi(order, names, a["bb"][e]),
-                               pb=[float(a["GB"][e, 0]), float(a["GB"][e, 1]), 0.0]))
+        L = dict(name=en.split("__")[0], kind=kind, a=_bi(order, names, a["ba"][e]),
+                 pa=[float(a["GA"][e, 0]), float(a["GA"][e, 1]), 0.0], b=_bi(order, names, a["bb"][e]),
+                 pb=[float(a["GB"][e, 0]), float(a["GB"][e, 1]), 0.0])
+        if mk == E2.MK_BEAM:
+            L["kind"] = "beam"
+        S["links"].append(L)
+    _force_arrows(M, H, idx, S, order, names, {})
+    try:                                             # a planet (gravity: {planet: ...}): drawn round its centre, the origin
+        from ..compiler.model2d import planet_of
+        pl = planet_of(M.doc, M.ctx)
+    except Exception:
+        pl = None
+    if pl is not None and pl[1] > 0:
+        S["bodies"].append(dict(name=str((M.doc.get("gravity") or {}).get("planet", "planet")), ground=True,
+                                prims=[dict(kind="planet", name="planet", p=[0.0, 0.0, 0.0], r=float(pl[1]),
+                                            air=float(100e3 if pl[3] else 0.0))]))
 
 
 def _hull2(pts):
@@ -256,17 +413,42 @@ def _hull2(pts):
 
 
 # ------------------------------------------------------------------------------------------------ 1d
+def _nice_step(x):
+    """The largest 1, 2 or 5 x 10^n at or below x."""
+    if x <= 0:
+        return 1.0
+    e = 10 ** math.floor(math.log10(x)); m = x / e
+    return (5 if m >= 5 else 2 if m >= 2 else 1) * e
+
+
 def _scene1(M, H, idx, S):
+    """Each body in its own lane. A sliding body held by springs (an oscillator) is drawn at a scale that makes its
+    travel about a lane wide; a sliding body nothing holds (a car, a cart pushed along) drives along a road with
+    distance marks, the camera riding with it. Springs and dampers to the fixed world are drawn to a wall; loads that
+    only push (a force, drag, friction, a motor) are arrows on the body (a curved arrow on a turning one), never
+    lines to the wall. A turning body's links attach at fixed points beside it, so they do not whip round with it."""
     names = list(M.body_names); nb = len(names)
     dof = list(getattr(M, "dof", ["translation"] * nb))
     q = {b: np.asarray(H[f"{b}.position"])[idx] for b in names}
     trans = [b for b, d in zip(names, dof) if d != "rotation"]
+    C = np.asarray(M.arrays["C"], float)
+    info = lambda en: M.el_info.get(en, {}).get("type", "")
+    held = set()                                     # bodies a spring holds
+    for e, en in enumerate(M.el_names):
+        if info(en) in SPRINGY or info(en.split("__")[0]) in SPRINGY:
+            row = C[e] if e < C.shape[0] else np.zeros(nb)
+            held |= {names[k] for k in range(min(nb, len(row))) if row[k] != 0.0}
     travel = max([float(np.ptp(q[b])) for b in trans] + [0.0])
     span = max([float(np.max(np.abs(q[b]))) for b in trans] + [0.0])
-    # a sliding body moves by scale x its coordinate: about one lane width of travel on screen
-    scale = 1.0 / max(span, 1e-12) if trans and span > 0 else 1.0
-    if trans and span > 0:
-        S["notes"].append(f"sliding bodies drawn at {_nice(scale)} x their real travel ({_fmt_len(travel)} peak to peak)")
+    road = bool(trans) and travel > 0 and not (set(trans) & held)
+    if road:                                         # the whole trip about 30 lane widths, marks in real distance
+        scale = 30.0 / travel
+        S["notes"].append(f"driving along: {_fmt_len(travel)} in all, marks every {_fmt_len(_nice_step(0.5 / scale) * 5)}")
+    else:
+        scale = 1.0 / max(span, 1e-12) if trans and span > 0 else 1.0
+        if trans and span > 0:
+            S["notes"].append(f"sliding bodies drawn at {_nice(scale)} x their real travel ({_fmt_len(travel)} peak to peak)")
+    S["road"] = road
     lane = {b: (nb - 1 - i) * 1.4 for i, b in enumerate(names)}
     for i, b in enumerate(names):
         rot = dof[i] == "rotation"
@@ -282,26 +464,60 @@ def _scene1(M, H, idx, S):
         S["bodies"].append(dict(name=b, ground=False, prims=prims, pos=pos, quat=quat, rotation=rot))
     if nb == 0:                                      # a circuit (or control) only model: nothing to draw
         return
-    S["bodies"].append(dict(name="ground", ground=True, prims=[dict(kind="wall", name="wall", p=[-2.0, (nb - 1) * 0.7, 0],
-                                                                      size=[0.12, nb * 1.4, 0.8])]))
+    gprims = []
+    if road:
+        minor = _nice_step(0.5 / scale)
+        for b in trans:
+            x0 = float(np.min(q[b])) * scale - 3.0; x1 = float(np.max(q[b])) * scale + 3.0
+            gprims.append(dict(kind="road", name="road", y=lane[b] - 0.25, x0=x0, x1=x1, step=minor * scale, major=5,
+                               unit_m=1.0 / scale, origin=0.0))
+    S["bodies"].append(dict(name="ground", ground=True, prims=gprims))
     gi = len(S["bodies"]) - 1
-    C = np.asarray(M.arrays["C"], float)
-    per = {}                                         # links on the same body or pair sit side by side
+    per = {}; arrows = {}                            # links on the same body or pair sit side by side
+    wall_used = False
     for e, en in enumerate(M.el_names):
-        kind = _el_kind(M, en) or ("damper" if M.el_info[en]["type"] == "friction" else "spring")
+        if en.endswith("__probe"):
+            continue
+        t = info(en); base = _label(en)
+        kind = _el_kind(M, en)
         row = C[e] if e < C.shape[0] else np.zeros(nb)
         on = [k for k in range(min(nb, len(row))) if row[k] != 0.0]
         if not on:
             continue
+        pushes = kind in (None, "motor") or t in ARROWY
+        if len(on) == 1 and road and kind == "damper":
+            pushes = True                            # rolling resistance on a car is a drag, not a link to a wall
+        if pushes:                                   # an arrow (a curved one on a turning body) at each body it acts on
+            if f"{en}.force" not in H:
+                continue
+            F = np.asarray(H[f"{en}.force"], float)[idx]
+            for k in on:
+                j = arrows.get(k, 0); arrows[k] = j + 1
+                v = (-row[k] * F)
+                S.setdefault("arrows", []).append(dict(name=base, b=k, j=j, spin=dof[k] == "rotation",
+                                                      v=np.round(np.c_[v * 1.0, 0 * v, 0 * v], 6).tolist(),
+                                                      unit="N m" if dof[k] == "rotation" else "N"))
+            continue
         key = tuple(on[:2]); j = per.get(key, 0); per[key] = j + 1
         off = [0.0, 0.14, -0.14, 0.28, -0.28][j % 5]
+        end = lambda k, side: (gi, [side * 0.47, lane[names[k]] + off, 0.0]) if dof[k] == "rotation" else \
+            (k, [side * 0.25, off, 0.0])
         if len(on) == 1:                             # to the wall (the ground body has no pose: world coordinates)
-            k = on[0]
-            S["links"].append(dict(name=en, kind=kind, a=gi, pa=[-1.94, lane[names[k]] + off, 0.0],
-                                   b=k, pb=[-0.25 if dof[k] != "rotation" else -0.45, off, 0.0]))
+            k = on[0]; wall_used = True
+            bk, pk = end(k, -1)
+            S["links"].append(dict(name=base, kind=kind or "spring", a=gi, pa=[-1.94, lane[names[k]] + off, 0.0], b=bk, pb=pk))
         else:
             k0, k1 = on[0], on[1]
-            S["links"].append(dict(name=en, kind=kind, a=k0, pa=[off, -0.25, 0.0], b=k1, pb=[off, 0.25, 0.0]))
+            if dof[k0] == "rotation" or dof[k1] == "rotation":     # side by side lanes: from one edge to the other
+                ya, yb = lane[names[k0]], lane[names[k1]]
+                up = 1 if yb > ya else -1
+                pa = (gi, [off, ya + up * 0.47, 0.0]) if dof[k0] == "rotation" else (k0, [off, up * 0.25, 0.0])
+                pb = (gi, [off, yb - up * 0.47, 0.0]) if dof[k1] == "rotation" else (k1, [off, -up * 0.25, 0.0])
+                S["links"].append(dict(name=base, kind=kind or "spring", a=pa[0], pa=pa[1], b=pb[0], pb=pb[1]))
+            else:
+                S["links"].append(dict(name=base, kind=kind or "spring", a=k0, pa=[off, -0.25, 0.0], b=k1, pb=[off, 0.25, 0.0]))
+    if wall_used:
+        S["bodies"][gi]["prims"].append(dict(kind="wall", name="wall", p=[-2.0, (nb - 1) * 0.7, 0], size=[0.12, nb * 1.4, 0.8]))
 
 
 def _nice(x):
@@ -323,7 +539,7 @@ def _extent(S):
             P = np.asarray(b["pos"], float)
             lo = np.minimum(lo, P.min(axis=0)); hi = np.maximum(hi, P.max(axis=0))
         for p in b["prims"]:
-            if b["ground"] and p.get("kind") == "plane" and p.get("infinite"):
+            if b["ground"] and ((p.get("kind") == "plane" and p.get("infinite")) or p.get("kind") in ("planet", "road")):
                 continue
             c = np.asarray(p.get("p", p.get("o", p.get("a", [0, 0, 0]))), float)
             if b["ground"]:
