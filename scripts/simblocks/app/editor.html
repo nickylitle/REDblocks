@@ -577,6 +577,8 @@ label.cpick button{padding:0 6px;font-size:12px}
   <label title="Keep the camera on one body">follow <select id="avFollow"><option value="-1">nothing</option></select></label>
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
+  <label title="Beams as solid tubes of about their real thickness, or as thin lines"><input type="checkbox" id="avBeams" checked>solid beams</label>
+  <label title="How many times bigger than real the motion is drawn (about where each body starts; turns are never scaled). Empty: automatic">motion × <input id="avMag" style="width:52px" placeholder="auto"></label>
   <label title="Wrap each body's points in a see-through solid (its convex hull). It is only a sketch of where the points are: the physics touches only the points, spheres, cylinders and planes themselves"><input type="checkbox" id="avHull" checked>hulls</label>
   <label title="Loads that push on a body (forces, drag, friction, motors) as arrows, sized against the largest"><input type="checkbox" id="avForces" checked>loads</label>
   <button id="avFit" title="Fit the whole model on screen (F)">Fit</button>
@@ -1117,6 +1119,8 @@ function parseMeasure2(m, bodyNames){
 }
 function measureOf(n){
   const d = n.data; if (d.raw) return d.raw;
+  if (n.kind === "load" && d.thrust){ const l = linkTo(n.id, "t0"); if (!l) return "";
+    return {thrust: byId(l.from.node).data.name + (d.tpt ? "." + d.tpt : ""), dir: lit(String(d.tdir || "z"))}; }
   if (isGeo()) return measure2(n);
   let s = "";
   d.terms.forEach((t, i) => {
@@ -1765,6 +1769,15 @@ function fromDoc(doc){
   });
   const two = (doc.dim || "1d") === "2d" || doc.dim === "3d";
   Object.entries(doc.elements || {}).forEach(([k, e]) => {
+    if (e.type === "force" && e.measure && typeof e.measure === "object" && !Array.isArray(e.measure) && e.measure.thrust !== undefined){
+      // a thrust (3D): pushes at a point of a body along a direction fixed in that body
+      const [bn, fn] = String(e.measure.thrust).split(".");
+      const d = {name:k, label:e.label || "", P:str(e.P), terms:[{coef:"1"}], const:"", raw:null, thrust:true, tpt:fn || "", tdir:str(e.measure.dir ?? "z")};
+      Object.assign(d, csvIn(e.csv), pulseIn(e.pulse));
+      const n = addNode("load", d); const b = byName(bn, "b");
+      if (b) S.links.push({from:{node:b.id, key:"body"}, to:{node:n.id, key:"t0"}, field:""});
+      pend.push([n.id, "P", e.P]); if (e.csv && e.csv.series) pend.push([n.id, "ser", e.csv.series]); put(3, n); return;
+    }
     if (two){
       const m = e.measure, geo = e.type === "contact_friction" || PAIR_TYPES.includes(e.type) || (m && typeof m === "object");
       if (e.type === "force" && !geo){
@@ -2760,6 +2773,15 @@ function nodeHTML(n){
     b += `<div class="row"><label>nominal</label><input data-k="nominal" value="${esc(d.nominal || "")}" placeholder="midpoint"></div>`;
     b += `<div class="row"><label>samples</label><input data-k="n" value="${esc(d.n)}" placeholder="blank: Verify only"></div>`;
     b += `<div class="hint">uniform between low and high</div>`;
+  } else if (n.kind === "load" && d.thrust){             // a thrust: at a point of one body, along a direction fixed in it
+    const l = linkTo(n.id, "t0"), bn = l ? byId(l.from.node) : null;
+    const pts = bn ? feats(bn.data).filter(f => f.name && ["point", "sphere"].includes(f.kind)).map(f => [f.name, f.name]) : [];
+    b += `<div class="row req"><span class="sock in t-body" data-s="t0" data-t="body"></span><label>${esc(bn ? bn.data.name : "body")}</label>` +
+      `<select data-k="tpt" title="the point it pushes at">${sel_([["", bn ? "its centre" : "connect a body"], ...pts], d.tpt || "")}</select></div>`;
+    b += `<div class="row"><label title="the way it pushes, in the body's own axes (it turns with the body): x, y, z, -z or [dx, dy, dz]">direction</label><input data-k="tdir" value="${esc(d.tdir || "")}" placeholder="z"></div>`;
+    b += `<div class="hint">thrust: pushes along the body's own axis and turns with it (a propeller, a jet)</div><div class="sep"></div>`;
+    b += fieldRow(n, ins.find(s => s.key === "P"), d.P, "e.g. 2 N (pushes along the direction)");
+    b += `<div class="row"><label>label</label><input data-k="label" value="${esc(d.label)}"></div><div class="sep"></div>`;
   } else if (n.kind === "load"){
     b += termsHTML(n, ins);
     b += `<div class="sep"></div>`;
@@ -5270,7 +5292,7 @@ const GUIDE = [
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
   <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
-  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
+  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. 1D and 2D are drawn flat, like a drawing; 3D is shaded in perspective. Fixed points show as supports. <b>solid beams</b> switches beams between tubes and thin lines, and <b>motion ×</b> draws all motion that many times real (empty: automatic). Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
   <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
@@ -5995,7 +6017,8 @@ function animClose(){
   avDisposeScene();                                  // the renderer (and its WebGL context) stays for next time
 }
 const avCol = i => new THREE.Color(tok("p" + (1 + i % 5)) || "#1b95d8");
-function avMat(c, o){ return new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.55, metalness:0.15}, o || {})); }
+function avMat(c, o){ return AV.flat ? new THREE.MeshBasicMaterial(Object.assign({color:c}, o || {}))      // 1D / 2D: flat drawing
+                                     : new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.55, metalness:0.15}, o || {})); }
 function avBasis(n, u){
   const N = new THREE.Vector3(...n).normalize(), U = new THREE.Vector3(...u).normalize(), W = new THREE.Vector3().crossVectors(N, U);
   return new THREE.Matrix4().makeBasis(U, W, N);
@@ -6033,6 +6056,7 @@ function avDisposeScene(){
 function avBuild(){
   const S = AV.S, E = S.extent, cv = document.getElementById("avCanvas");
   avDisposeScene();
+  AV.flat = S.dim !== "3d";                            // 1D and 2D: a flat drawing seen straight on (no perspective, no shading)
   if (!AV.R){ AV.R = new THREE.WebGLRenderer({canvas:cv, antialias:true}); AV.R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); }
   const sc = AV.scene = new THREE.Scene(); sc.background = new THREE.Color(tok("bg") || "#0b0f17");
   sc.add(new THREE.HemisphereLight(0xffffff, 0x283040, 0.55));
@@ -6055,8 +6079,21 @@ function avBuild(){
         }
       }
       else if (p.kind === "point"){ const m = new THREE.Mesh(new THREE.SphereGeometry(ps, 12, 8), new THREE.MeshBasicMaterial({color:col})); m.position.set(...p.p); g.add(m); }
-      else if (p.kind === "anchor"){                       // a fixed mounting point: a small grey block
-        const az = Math.max(ps * 5, E.size * 0.05); const m = new THREE.Mesh(new THREE.BoxGeometry(az, az, az), avMat(col)); m.position.set(...p.p); g.add(m); }
+      else if (p.kind === "anchor"){                       // a fixed point: the drawing-office support symbol
+        const az = Math.max(ps * 5, E.size * 0.045), P0 = new THREE.Vector3(...p.p);
+        if (AV.flat){                                    // a triangle under the pin, a ground line and hatching
+          const tri = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(-0.6 * az, -az), new THREE.Vector2(0.6 * az, -az)]);
+          const tm = new THREE.Mesh(new THREE.ShapeGeometry(tri), avMat(col, {transparent:true, opacity:0.35})); tm.position.copy(P0); g.add(tm);
+          const v = [0, 0, 0, -0.6 * az, -az, 0, -0.6 * az, -az, 0, 0.6 * az, -az, 0, 0.6 * az, -az, 0, 0, 0, 0, -0.9 * az, -az, 0, 0.9 * az, -az, 0];
+          for (let k = 0; k < 5; k++){ const x0 = -0.8 * az + k * 0.4 * az; v.push(x0, -az, 0, x0 - 0.25 * az, -1.3 * az, 0); }
+          const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(v), 3));
+          const ln = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({color:col})); ln.position.copy(P0); g.add(ln);
+        } else {                                         // a pin on a cone standing under it
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.55 * az, az, 24), avMat(col)); cone.rotation.x = Math.PI / 2;
+          cone.position.set(P0.x, P0.y, P0.z - 0.5 * az); g.add(cone);
+          const pin = new THREE.Mesh(new THREE.SphereGeometry(0.2 * az, 16, 12), avMat(col)); pin.position.copy(P0); g.add(pin);
+        }
+        const c0 = new THREE.Mesh(new THREE.CircleGeometry(0.16 * az, 20), new THREE.MeshBasicMaterial({color:0xffffff})); c0.position.set(P0.x, P0.y, P0.z + 1e-4); if (AV.flat) g.add(c0); }
       else if (p.kind === "tube"){                         // a ring or tube: an annulus pushed out along its axis
         const sh = new THREE.Shape(); sh.absarc(0, 0, p.ro, 0, Math.PI * 2, false);
         const hole = new THREE.Path(); hole.absarc(0, 0, Math.max(p.ri, 1e-6), 0, Math.PI * 2, true); sh.holes.push(hole);
@@ -6151,6 +6188,12 @@ function avBuild(){
       const lg = new THREE.BufferGeometry().setFromPoints([...b.outline, b.outline[0]].map(q => new THREE.Vector3(q[0], q[1], 0)));
       g.add(new THREE.Line(lg, edgeMat));
     }
+    if (AV.flat && !b.hidden){                            // flat drawing: every solid gets an outline
+      const ink = new THREE.LineBasicMaterial({color:new THREE.Color(tok("ink") || "#e8e8e8"), transparent:true, opacity:0.75}), add = [];
+      g.traverse(o => { if (o.isMesh && !o.userData.nofit && !o.userData.hull && o.geometry && o.geometry.type !== "SphereGeometry" && o.geometry.type !== "ShapeGeometry" && o.geometry.type !== "CircleGeometry"){
+        const ed = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), ink); ed.position.copy(o.position); ed.quaternion.copy(o.quaternion); ed.scale.copy(o.scale); add.push([o.parent, ed]); } });
+      add.forEach(([par, ed]) => par.add(ed));
+    }
     if (b.pos && !b.ground && !b.prims.length && !b.hull && !(b.sticks && b.sticks.length)){   // a point mass: a dot of fixed size on screen
       const dot = document.createElement("canvas"); dot.width = dot.height = 64; const dg = dot.getContext("2d");
       dg.fillStyle = "#" + col.getHexString(); dg.beginPath(); dg.arc(32, 32, 26, 0, 7); dg.fill(); dg.lineWidth = 6; dg.strokeStyle = "#ffffff"; dg.stroke();
@@ -6161,7 +6204,7 @@ function avBuild(){
     if (b.pos){
       const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(b.pos.flat()), 3));
       const tl = new THREE.Line(tg, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0.55})); tl.frustumCulled = false;
-      sc.add(tl); AV.trails.push({line:tl, n:b.pos.length});
+      sc.add(tl); AV.trails.push({line:tl, n:b.pos.length, b});
       fsel.insertAdjacentHTML("beforeend", `<option value="${bi}">${esc(b.name)}</option>`);
       if ((b.mass || 0) > hm){ hm = b.mass || 0; heavy = bi; }
     }
@@ -6169,9 +6212,11 @@ function avBuild(){
     AV.bodies.push(rec);
   });
   for (const L of S.links){
-    if (L.kind === "beam"){                                // a beam: a solid tube from node to node, moved every frame
-      const r = Math.max(L.r || 0, ps * 0.9), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), avMat(new THREE.Color(tok("ink2") || "#b8c0cc")));
-      sc.add(m); AV.links.push({L, mesh:m, n:0}); continue;
+    if (L.kind === "beam"){                                // a beam: a solid tube from node to node (or a thin line), moved every frame
+      const bc = new THREE.Color(tok("ink2") || "#b8c0cc"), r = Math.max(L.r || 0, ps * 0.9), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), avMat(bc));
+      const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+      const ln = new THREE.Line(lg, new THREE.LineBasicMaterial({color:bc})); ln.frustumCulled = false;
+      sc.add(m); sc.add(ln); AV.links.push({L, mesh:m, thin:ln, n:0}); continue;
     }
     const col = new THREE.Color(L.kind === "spring" ? tok("p2") : L.kind === "damper" ? tok("p4") : L.kind === "motor" ? tok("p5") : tok("ink"));
     const n = L.kind === "spring" ? 42 : 2;
@@ -6186,7 +6231,7 @@ function avBuild(){
   AV.arrows = []; const AR = S.arrows || [];
   const amax = {N:0, "N m":0}; AR.forEach(a => { for (const v of a.v){ const m = Math.hypot(v[0], v[1], v[2]); if (m > amax[a.unit]) amax[a.unit] = m; } });
   const bareAll = S.bodies.every(b => b.ground || b.hidden || b.bare);
-  const aLen = S.dim === "1d" ? 1.1 : (bareAll ? E.size * 0.08 : Math.max(E.body * 1.5, E.size * 0.4, ps * 20));
+  const aLen = S.dim === "1d" ? 1.1 : (bareAll ? E.size * 0.08 : Math.max(ps * 20, Math.min(Math.max(E.body * 1.5, E.size * 0.4), E.body * 2)));
   const aR = S.dim === "1d" ? 0.011 : aLen * 0.01;           // shaft thickness
   AR.forEach((a, i) => {
     const col = new THREE.Color(tok("p" + (1 + (i + 2) % 5)));
@@ -6205,14 +6250,15 @@ function avBuild(){
     (AV.arrows.length ? `<br><span style="color:var(--ink3)">loads: </span>` + AV.arrows.map(o => `<span style="color:#${o.col.getHexString()}">${esc(o.a.name)}</span>`).join(" · ") : "") +
     (S.notes.length ? `<br><span style="color:var(--ink3)">${S.notes.map(esc).join("<br>")}</span>` : "");
   // the camera: 3d from a high corner (z up); 2d and 1d from above
-  AV.cam = new THREE.PerspectiveCamera(40, 1, 1e-4, 1e5);
+  if (AV.flat){ AV.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1); AV.cam.fov = 40; AV.cam.aspect = 1; }   // flat: no perspective
+  else AV.cam = new THREE.PerspectiveCamera(40, 1, 1e-4, 1e5);
   if (S.dim === "3d") AV.cam.up.set(0, 0, 1);
   // a body far smaller than where it travels (a robot driving across the floor): follow it from the start
   const travel = E.size, bare = S.bodies.every(b => b.ground || b.hidden || b.bare);
-  const small = (!bare && E.body * 50 < travel) || (S.dim === "1d" && S.road);
+  const small = (!bare && E.body * (S.dim === "3d" ? 10 : 50) < travel) || (S.dim === "1d" && S.road);   // it travels far: follow it
   AV.follow = small && heavy >= 0 ? heavy : -1; fsel.value = String(AV.follow);
   AV.bare = bare;
-  AV.tcur = S.t[0]; AV.orbit = null;
+  AV.tcur = S.t[0]; AV.orbit = null; document.getElementById("avMag").value = ""; avSetMag();
   avResize(); avFit();                               // fitted to the screen's shape when it opens (F fits again)
   const T = S.t[S.t.length - 1] - S.t[0];
   AV.T = T; avSetSpeed(); AV.playing = false;
@@ -6305,13 +6351,17 @@ function avCamera(){
   const ce = Math.cos(o.el), se = Math.sin(o.el);
   if (S.dim === "3d") AV.cam.position.set(o.target.x + o.r * ce * Math.cos(o.az), o.target.y + o.r * ce * Math.sin(o.az), o.target.z + o.r * se);
   else { AV.cam.position.set(o.target.x + o.r * ce * Math.cos(o.az), o.target.y + o.r * ce * Math.sin(o.az), o.target.z + o.r * se); AV.cam.up.set(0, 1, 0); }
-  AV.cam.near = o.r / 2000; AV.cam.far = o.r * 2000; AV.cam.updateProjectionMatrix();
+  if (AV.cam.isOrthographicCamera){                     // the same framing as the perspective view would give at the target
+    const h = o.r * Math.tan(THREE.MathUtils.degToRad(AV.cam.fov) / 2), w = h * (AV.cam.aspect || 1);
+    AV.cam.left = -w; AV.cam.right = w; AV.cam.top = h; AV.cam.bottom = -h; AV.cam.near = -o.r * 50; AV.cam.far = o.r * 50;
+  } else { AV.cam.near = o.r / 2000; AV.cam.far = o.r * 2000; }
+  AV.cam.updateProjectionMatrix();
   AV.cam.lookAt(o.target);
 }
 function avResize(){
   if (!AV.R || !AV.cam) return;
   const box = document.getElementById("avCanvas").parentElement, w = box.clientWidth || 800, h = box.clientHeight || 500;
-  AV.R.setSize(w, h, false); AV.cam.aspect = w / h; AV.cam.updateProjectionMatrix(); avRender();
+  AV.R.setSize(w, h, false); AV.cam.aspect = w / h; if (AV.orbit) avCamera(); else AV.cam.updateProjectionMatrix(); avRender();
 }
 function avSetSpeed(){
   const v = document.getElementById("avSpeed").value, fit = v === "fit", box = document.getElementById("avFitS");
@@ -6329,6 +6379,17 @@ function avFrame(t){                                   // index and blend for si
   return [lo, (t - T[lo]) / ((T[lo + 1] - T[lo]) || 1)];
 }
 let _qa = null, _qb = null;                      // made once three.js is loaded
+function avSetMag(){
+  // motion drawn m times real: m typed, or the scene's automatic choice (1D slides scaled to a lane, tiny beam bends)
+  const S = AV.S, box = document.getElementById("avMag"), base = S.mag_base || 1, auto = S.mag_auto || 1;
+  const m = parseFloat(box.value); box.placeholder = "auto (" + (+(auto.toPrecision(3))) + ")";
+  AV.magF = (isFinite(m) && m > 0 ? m : auto) / base;
+  for (const t of AV.trails){                           // the trails follow the same scale
+    const b = t.b, arr = t.line.geometry.attributes.position.array, s0 = b.pos[0], f = AV.magF;
+    for (let i = 0; i < b.pos.length; i++) for (let c = 0; c < 3; c++) arr[3 * i + c] = s0[c] + f * (b.pos[i][c] - s0[c]);
+    t.line.geometry.attributes.position.needsUpdate = true;
+  }
+}
 const AV_SPIN_CAP = 2 * Math.PI * 1.5;              // the fastest turn a screen shows cleanly: 1.5 turns a second
 function avSpinTable(){
   // a fast spinner turns at its true rate while that is slow enough to see at the replay speed, and at the screen's
@@ -6343,6 +6404,8 @@ function avBodyPose(b, k, a, P, Q){
   if (!b.pos){ P.set(0, 0, 0); Q.set(0, 0, 0, 1); return; }
   const k2 = Math.min(k + 1, b.pos.length - 1), p0 = b.pos[k], p1 = b.pos[k2];
   P.set(p0[0] + a * (p1[0] - p0[0]), p0[1] + a * (p1[1] - p0[1]), p0[2] + a * (p1[2] - p0[2]));
+  const f = AV.magF || 1;                                 // motion drawn bigger or smaller about where it started
+  if (f !== 1){ const s0 = b.pos[0]; P.set(s0[0] + f * (P.x - s0[0]), s0[1] + f * (P.y - s0[1]), s0[2] + f * (P.z - s0[2])); }
   const sp = b.spin, qs = sp && sp.phi ? sp.swing : b.quat, q0 = qs[k], q1 = qs[k2];
   _qa.set(q0[1], q0[2], q0[3], q0[0]); _qb.set(q1[1], q1[2], q1[3], q1[0]); Q.slerpQuaternions(_qa, _qb, a);
   if (sp && sp.phi){ const ph = sp.phi[k] + a * (sp.phi[k2] - sp.phi[k]); _qb.setFromAxisAngle(sp.ax, ph); Q.multiply(_qb); }
@@ -6353,10 +6416,12 @@ function avPose(){
   const showL = document.getElementById("avLinks").checked;
   const wp = (bi, loc) => bi < 0 ? new THREE.Vector3(...loc) : new THREE.Vector3(...loc).applyQuaternion(poses[bi][1]).add(poses[bi][0]);
   for (const o of AV.links){
-    if (o.mesh){                                      // a beam tube from node to node
-      const A = wp(o.L.a, o.L.pa), B = wp(o.L.b, o.L.pb), d = B.clone().sub(A), L = d.length() || 1e-9;
+    if (o.mesh){                                      // a beam tube from node to node, or a thin line
+      const A = wp(o.L.a, o.L.pa), B = wp(o.L.b, o.L.pb), d = B.clone().sub(A), L = d.length() || 1e-9, solid = document.getElementById("avBeams").checked;
       o.mesh.position.copy(A).add(B).multiplyScalar(0.5); o.mesh.scale.set(1, L, 1);
-      o.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.divideScalar(L)); continue;
+      o.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.divideScalar(L));
+      o.mesh.visible = showL && solid; o.thin.visible = showL && !solid;
+      o.thin.geometry.attributes.position.array.set([A.x, A.y, A.z, B.x, B.y, B.z]); o.thin.geometry.attributes.position.needsUpdate = true; continue;
     }
     const A = wp(o.L.a, o.L.pa), B = wp(o.L.b, o.L.pb), arr = o.line.geometry.attributes.position.array;
     if (o.n === 2){ arr.set([A.x, A.y, A.z, B.x, B.y, B.z]); }
@@ -6376,6 +6441,7 @@ function avPose(){
   for (const o of (AV.arrows || [])){                 // load arrows: length by size against the largest of its kind
     const a = o.a, v0 = a.v[k], v1 = a.v[Math.min(k + 1, a.v.length - 1)], v = new THREE.Vector3(v0[0] + (v1[0] - v0[0]) * blend, v0[1] + (v1[1] - v0[1]) * blend, v0[2] + (v1[2] - v0[2]) * blend);
     const P = poses[a.b] ? poses[a.b][0].clone() : new THREE.Vector3(), mag = v.length(), f = mag / o.max, arr = o.line.geometry.attributes.position.array;
+    if (a.p && poses[a.b]) P.add(new THREE.Vector3(...a.p).applyQuaternion(poses[a.b][1]));     // at its point on the body
     const hs = Math.max(AV.ps * 1.4, o.L * 0.06);
     const on = showF && f > 1e-3;
     o.head.visible = on; if (o.shaft) o.shaft.visible = on; o.line.visible = on && !o.shaft;
@@ -6469,6 +6535,9 @@ function avPlay(){
   document.getElementById("avLinks").onchange = () => { avPose(); avRender(); };
   document.getElementById("avForces").onchange = () => { avPose(); avRender(); };
   document.getElementById("avHull").onchange = () => { avPose(); avRender(); };
+  document.getElementById("avBeams").onchange = () => { avPose(); avRender(); };
+  document.getElementById("avMag").oninput = () => { avSetMag(); avPose(); avRender(); };
+  document.getElementById("avMag").addEventListener("keydown", e => e.stopPropagation());
   document.getElementById("avScrub").oninput = e => {
     const S = AV.S; if (!S) return; const T0 = S.t[0], T = S.t[S.t.length - 1];
     AV.tcur = T0 + (T - T0) * parseInt(e.target.value) / 1000; avPose(); avRender();

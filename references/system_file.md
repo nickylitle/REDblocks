@@ -645,6 +645,9 @@ has no scrub, and a sphere wheel tipped onto its edge stays round.
   `{along: [A.p, B.q], dir: z, turns_with: A}`, `{contact: [A.tip, B.face]}` (a point or sphere against a plane patch
   or a sphere, a cylinder against a plane patch), `{twist: [A, B], axis: z}` (B's turn relative to A about an axis fixed in A, given in world
   directions at the start), `type: pin` (a ball joint) and `contact_friction` (slip in the contact plane).
+- **Thrust** (3D): `{type: force, P: .., measure: {thrust: motor.mount, dir: z}}` pushes at that point along a
+  direction fixed in the body (its own axes), so it tilts with the body: a propeller, a jet, a thruster. The reaction
+  goes to the fixed world. A positive P pushes along dir.
 - **Tire curve** on `contact_friction` (3D): `mu` is the sliding grip; add `mu_peak` and `slip_peak` and grip follows
   slip ratio sigma = slip speed / the larger of the hub's ground speed and the tread's rolling speed (at least `v_min`,
   default 0.05 m/s): a brush-like rise, the peak `mu_peak` at `slip_peak`, settling to `mu` at large slip.
@@ -656,8 +659,9 @@ has no scrub, and a sphere wheel tipped onto its edge stays round.
 - Free rotation is integrated on the angular momentum (exact for a torque-free body) with the orientation turned
   by the exact rotation of each step.
 
-Worked examples: `scripts/examples/learn/3d_*.yaml` (a spinning top on a ball joint, a drone arm beam under a CSV
-thrust, a robot arm with rigid hinges, a weld, a motor on a twist and a rubber stop).
+Worked examples: `scripts/examples/learn/3d_*.yaml` (a toy top on a table that precesses, slows and falls, a
+quadcopter on four carbon beam arms with thrusts and a flight controller made of control signals, a robot arm with
+rigid hinges, a weld, a motor on a twist and a rubber stop).
 
 ## Joints, ropes and beams (2d and 3d)
 

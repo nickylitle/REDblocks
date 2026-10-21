@@ -41,7 +41,7 @@ async def s(pg):
     ok &= check(msg[0] == "Run" and "Stopped at" in msg[1] and msg[2] == 0, msg, "back to Run, partial results, no confetti", "stopped")
     await pg.wait_for_timeout(600)
     await pg.evaluate("() => document.getElementById('bRun').click()")       # the next run is not cancelled
-    for _ in range(200):
+    for _ in range(900):                                                       # the whole 40 s arm run: up to 90 s
         await pg.wait_for_timeout(100)
         if not await pg.evaluate("() => runBusy"):
             break

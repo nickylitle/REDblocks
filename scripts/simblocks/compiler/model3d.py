@@ -467,6 +467,20 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             continue
         if isinstance(meas, dict) and "twist" in meas:
             pass                                       # handled above
+        elif isinstance(meas, dict) and "thrust" in meas:   # {thrust: motor.mount, dir: z}: a push fixed in the body
+            if t != "force" or set(meas) - {"thrust", "dir"}:
+                raise SpecError("thrust is {thrust: body.point, dir: z} on a force: it pushes at that point along a "
+                                "direction fixed in the body (its own axes), and turns with it", where,
+                                line_of(d, "measure"), f)
+            a_, fa = feature3(meas["thrust"], doc, feats, where + ".measure")
+            if fa[0] != "sphere" or a_ not in names:
+                raise SpecError("thrust acts at a point of a moving body", where, line_of(d, "measure"), f)
+            ia = bidx(a_)
+            mk[e] = E3.MK_ALONG; ba[e] = ia; bb[e] = -1; GA[e, :3] = fa[1][:3]; GB[e, :3] = _wp(B, ia, fa[1])
+            # stored reversed: a force's positive value pulls its measure shorter, and a positive thrust pushes along dir
+            GX[e, :3] = -np.asarray(_unit(_vec(meas.get("dir", "z"), ctx, where + ".measure.dir"), where + ".dir"))
+            GX[e, 4] = 2.0
+            reach[e] = rr(ia, fa[1])
         elif t == "pin" or isinstance(meas, dict):
             if t == "pin":
                 refs = meas.get("pin") if isinstance(meas, dict) else meas; kind = "pin"

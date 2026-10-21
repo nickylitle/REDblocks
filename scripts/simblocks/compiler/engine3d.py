@@ -209,6 +209,16 @@ def _measure(mk, e, X, V, W, R, th, ba, bb, C, s0, GA, GB, GX, geo):
                 nx = GX[e, 0]; ny = GX[e, 1]; nz = GX[e, 2]
             s = L - GX[e, 3]
         elif mk == MK_ALONG:
+            if GX[e, 4] > 1.5 and a >= 0:              # a thrust: at A's point, along a direction fixed in A, against
+                nx, ny, nz = _dir(R, a, GX[e, 0], GX[e, 1], GX[e, 2])     # the fixed world (a propeller, a jet)
+                vax, vay, vaz = _vel(X, V, W, a, ax, ay, az)
+                geo[e, 0] = ax; geo[e, 1] = ay; geo[e, 2] = az; geo[e, 3] = ax; geo[e, 4] = ay; geo[e, 5] = az
+                geo[e, 6] = nx; geo[e, 7] = ny; geo[e, 8] = nz
+                # its "stretch" is the path walked against the push (summed as the point moves, so the work it
+                # does on the body is booked right even as the direction turns): GB[e, :3] last point, GB[e, 3] sum
+                GB[e, 3] -= nx * (ax - GB[e, 0]) + ny * (ay - GB[e, 1]) + nz * (az - GB[e, 2])
+                GB[e, 0] = ax; GB[e, 1] = ay; GB[e, 2] = az
+                return GB[e, 3], -(nx * vax + ny * vay + nz * vaz), True
             if GX[e, 4] > 0.5 and a >= 0:              # direction fixed in body A: it turns with A
                 nx, ny, nz = _dir(R, a, GX[e, 0], GX[e, 1], GX[e, 2])
                 s = dx * nx + dy * ny + dz * nz - GX[e, 3]

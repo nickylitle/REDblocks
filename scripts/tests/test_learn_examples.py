@@ -79,8 +79,16 @@ def test_3d_1_spinning_top():
     assert o["rim_hit_N"] > 0 and o["_ledger_rel"] < 0.01
 
 
-def test_3d_2_drone_arm():
-    o = run("3d_2_drone_arm.yaml")
+def test_3d_2_quadcopter():
+    o = run("3d_2_quadcopter.yaml")
+    assert o["z_max"] == pytest.approx(1.5, abs=0.05) and o["x_end"] == pytest.approx(2.0, abs=0.05)
+    # hovering, each arm root carries m g / 4 x 0.12 m; the climb and the stops add a little
+    assert 0.486 * 9.81 / 4 * 0.12 < o["arm_moment"] < 1.5 * 0.486 * 9.81 / 4 * 0.12
+    assert o["_ledger_rel"] < 1e-4
+
+
+def test_single_drone_arm_beam_theory():          # the arm the quadcopter replaced, kept as a beam check
+    o = run("../../tests/fixtures/drone_arm_one_beam.yaml")
     EI = 70e9 * math.pi * (0.012 ** 4 - 0.010 ** 4) / 64
     P = 8.0 - 0.06 * 9.81
     assert o["tip_up_mm"] == pytest.approx(1000 * P * 0.2 ** 3 / (3 * EI), rel=0.15)

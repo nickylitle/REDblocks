@@ -32,9 +32,18 @@ async def s(pg):
                 await pg.screenshot(path=os.path.join(SHOT, "replay_chua.png"))
             await pg.keyboard.press("Escape"); await pg.wait_for_timeout(200)
             continue
+        if "flapjack" in rel:                    # beams solid or thin: no beams here, the box is there all the same
+            ok &= check(await pg.evaluate("() => !!document.getElementById('avBeams')"), True, "beams toggle", "beams-toggle")
         if "spinning_top" in rel:                # a body's shape is drawn (the top's disc as a cylinder)
             cy = await pg.evaluate("() => AV.S.bodies.flatMap(b => b.prims.map(p => p.kind))")
             ok &= check("cylinder" in cy, cy, "the top's disc is drawn", "shape")
+        cam = await pg.evaluate("() => !!AV.cam.isOrthographicCamera")
+        ok &= check(cam == (dim != "3d"), cam, "1D and 2D drawn flat (no perspective), 3D in perspective", "flat-style")
+        mg = await pg.evaluate("() => { const r = AV.bodies.find(x => x.b.pos && !x.b.ground && !x.b.hidden); avPose(); const a = r.g.position.clone();"
+                               " const b0 = r.b.pos[0]; const box = document.getElementById('avMag'); box.value = String((AV.S.mag_auto || 1) * 3); box.oninput();"
+                               " const b = r.g.position.clone(); box.value = ''; box.oninput();"
+                               " return [a.x - b0[0], b.x - b0[0], a.y - b0[1], b.y - b0[1], a.z - b0[2], b.z - b0[2]]; }")
+        ok &= check(all(abs(mg[i + 1] - 3 * mg[i]) < 1e-6 * (1 + abs(mg[i])) for i in (0, 2, 4)), mg, "motion x 3 triples the travel", "motion-mult")
         if dim != "3d":                          # flat views look straight down and a drag pans, never tilts
             el0 = await pg.evaluate("() => [AV.orbit.el, AV.orbit.az]")
             box = await pg.evaluate("() => { const r = document.getElementById('avCanvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }")

@@ -53,7 +53,13 @@ def test_links_on_turning_bodies_attach_at_fixed_points():
 
 
 def test_shapes_beams_and_thrust_are_drawn():
-    S = _scene("learn/3d_2_drone_arm.yaml", frames=300)
+    quad = _scene("learn/3d_2_quadcopter.yaml", frames=300)
+    assert sum(L["kind"] == "beam" for L in quad["links"]) == 4
+    thr = [a for a in quad["arrows"] if a["name"].startswith("thrust")]
+    assert len(thr) == 4 and all("p" in a for a in thr)
+    k = len(quad["t"]) // 2                                     # in flight: each pushes up, about a quarter of the weight
+    assert all(0.5 < a["v"][k][2] < 2.5 for a in thr)
+    S = _scene("../tests/fixtures/drone_arm_one_beam.yaml", frames=300)
     beams = [L for L in S["links"] if L["kind"] == "beam"]
     assert len(beams) == 6 and all(L["r"] > 0 for L in beams)
     assert not any(L["name"] == "arm" and L["kind"] == "spring" for L in S["links"])   # the beam's probe is not drawn

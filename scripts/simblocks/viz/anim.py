@@ -153,11 +153,9 @@ def _magnify(S):
     disp = max(float(np.max(np.linalg.norm(np.asarray(b["pos"], float) - np.asarray(b["pos"][0], float), axis=1))) for b in mov)
     if span <= 0 or disp <= 0 or disp >= 0.02 * span:
         return
-    mag = _nice_step(0.15 * span / disp)
-    for b in mov:
-        P = np.asarray(b["pos"], float); b["pos"] = np.round(P[0] + mag * (P - P[0]), 7).tolist()
+    mag = _nice_step(0.15 * span / disp)            # the viewer draws motion this many times bigger unless told otherwise
     S["notes"].append(f"motion drawn {_nice(mag)} x bigger (it moves at most {_fmt_len(disp)})")
-    S["magnified"] = mag
+    S["magnified"] = mag; S["mag_auto"] = mag
 
 
 PART_Q = (("voltage", "V"), ("current", "A"), ("power", "W"), ("soc", ""), ("temperature", "°C"), ("state", ""))
@@ -312,6 +310,17 @@ def _force_arrows(M, H, idx, S, order, names, per_body):
         t = M.el_info.get(en, {}).get("type", "")
         base = _label(en)
         if t not in ARROWY or f"{en}.force" not in H:
+            continue
+        if dim == "3d" and int(a["mk"][e]) == 2 and float(a["GX"][e, 4]) > 1.5:     # a thrust: at its point, turning
+            from ..compiler.model3d import _qR
+            i = int(a["ba"][e]); bn = names[i]
+            F = np.asarray(H[f"{en}.force"], float)[idx]
+            q = np.c_[[np.asarray(H[f"{bn}.{k}"])[idx] for k in ("qw", "qx", "qy", "qz")]].T
+            g = np.asarray(a["GX"][e, :3], float)
+            v = np.array([f_ * (_qR(qq) @ g) for f_, qq in zip(F, q)])
+            j = per_body.get(i, 0); per_body[i] = j + 1
+            S.setdefault("arrows", []).append(dict(name=base, b=order.index(bn), v=np.round(v, 6).tolist(), j=j, unit="N",
+                                                  p=np.asarray(a["GA"][e, :3], float).tolist()))
             continue
         row = C[e] if e < C.shape[0] else np.zeros(w * nb)
         on = [i for i in range(nb) if any(row[w * i + k] != 0.0 for k in range(3 if dim == "3d" else 2))]
@@ -533,6 +542,7 @@ def _scene1(M, H, idx, S):
         if trans and span > 0:
             S["notes"].append(f"sliding bodies drawn at {_nice(scale)} x their real travel ({_fmt_len(travel)} peak to peak)")
     S["road"] = road
+    S["mag_base"] = S["mag_auto"] = float(scale)     # positions below are already drawn at this scale
     lane = {b: (nb - 1 - i) * 1.4 for i, b in enumerate(names)}
     for i, b in enumerate(names):
         rot = dof[i] == "rotation"

@@ -1,0 +1,115 @@
+simblocks: 1
+name: 3D-2 Quadcopter on carbon arms
+question: "A 500 g quadcopter takes off, climbs to 1.5 m, flies 2 m forward and stops. How hard do its carbon arms bend, and what moment reaches the hub?"
+dim: 3d
+gravity: 9.81
+
+params:
+  d: {value: 113.1 mm, note: "motor offset in x and in y (160 mm from the centre, on the diagonals)"}
+  do: {value: 12 mm, note: "arm tube outside diameter"}
+  di: {value: 10 mm, note: "arm tube inside diameter"}
+  m_all: {value: 0.486 kg, note: "everything that flies: hub 300 g, 4 motors 40 g each, 4 arms about 6 g each"}
+  I_roll: {value: 2.3e-3 kg m^2, note: "about x or y: hub plus motors (m d^2 x 2 each way)"}
+  w_att: {value: 15 rad/s, note: "how quick the attitude loop is"}
+  w_pos: {value: 1.6 rad/s, note: "how quick the position loop is"}
+
+derived:
+  tube: {block: tube, do: $do, di: $di}
+  kp_att: "= $I_roll * $w_att**2"
+  kd_att: "= 2 * 0.8 * $w_att * $I_roll"
+
+bodies:
+  floor:
+    ground: true
+    planes: {top: {at: [0, 0, 0], normal: [0, 0, 1]}}
+  hub:
+    dof: free
+    shape: {kind: box, a: 80 mm, b: 80 mm, c: 30 mm, mass: 300 g}   # frame, battery, flight controller
+    at: [0, 0, 0.0161]
+    points: {r1: [0.0283, 0.0283, 0], r2: [-0.0283, 0.0283, 0], r3: [-0.0283, -0.0283, 0], r4: [0.0283, -0.0283, 0]}
+    spheres: {f1: {at: [0.03, 0.03, -0.015], r: 1 mm}, f2: {at: [-0.03, 0.03, -0.015], r: 1 mm},
+              f3: {at: [-0.03, -0.03, -0.015], r: 1 mm}, f4: {at: [0.03, -0.03, -0.015], r: 1 mm}}
+    note: "landing feet under the corners; arm roots 40 mm out on the diagonals"
+  m1:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 40 g}
+    at: ["= 1 * $d", "= 1 * $d", 0.0161]
+    points: {mount: [0, 0, 0]}
+  m2:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 40 g}
+    at: ["= -1 * $d", "= 1 * $d", 0.0161]
+    points: {mount: [0, 0, 0]}
+  m3:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 40 g}
+    at: ["= -1 * $d", "= -1 * $d", 0.0161]
+    points: {mount: [0, 0, 0]}
+  m4:
+    dof: free
+    shape: {kind: cylinder, R: 14 mm, L: 20 mm, mass: 40 g}
+    at: ["= 1 * $d", "= -1 * $d", 0.0161]
+    points: {mount: [0, 0, 0]}
+
+control:
+  # the flight plan: climb to 1.5 m from 0.3 s, then fly 2 m along x from 3 s (smooth steps)
+  s_up: "= clip((t - 0.3) / 1.7, 0, 1)"
+  z_cmd: "= 1.5 * s_up * s_up * (3 - 2 * s_up)"
+  s_go: "= clip((t - 3) / 2.5, 0, 1)"
+  x_cmd: "= 2 * s_go * s_go * (3 - 2 * s_go)"
+  # position loop -> total thrust and the tilt wanted (thrust tilted by theta pushes g theta sideways)
+  U: "= clip($m_all * (9.81 + $w_pos**2 * 2.2 * (z_cmd - hub.z) - 2 * 0.9 * $w_pos * 1.5 * hub.vz), 0, 16)"
+  pitch_cmd: "= clip(($w_pos**2 * (x_cmd - hub.x) - 2 * 0.9 * $w_pos * hub.vx) / 9.81, -0.35, 0.35)"
+  roll_cmd: "= clip(-($w_pos**2 * (0 - hub.y) - 2 * 0.9 * $w_pos * hub.vy) / 9.81, -0.35, 0.35)"
+  # attitude loop (small angles: 2 qy is the tilt about y, 2 qx about x) -> torques wanted
+  Ty: "= $kp_att * (pitch_cmd - 2 * hub.qy) - $kd_att * hub.wy"
+  Tx: "= $kp_att * (roll_cmd - 2 * hub.qx) - $kd_att * hub.wx"
+  # mixer: four motors share the thrust and make the torques (x torque = sum y F, y torque = - sum x F)
+  F1: "= clip(U / 4 + Tx * (1) / (4 * $d) - Ty * (1) / (4 * $d), 0, 4)"
+  F2: "= clip(U / 4 + Tx * (1) / (4 * $d) - Ty * (-1) / (4 * $d), 0, 4)"
+  F3: "= clip(U / 4 + Tx * (-1) / (4 * $d) - Ty * (-1) / (4 * $d), 0, 4)"
+  F4: "= clip(U / 4 + Tx * (-1) / (4 * $d) - Ty * (1) / (4 * $d), 0, 4)"
+
+elements:
+  arm1: {type: beam, measure: [hub.r1, m1.mount], section: $tube, E: 70 GPa, G: 5 GPa, density: 1550 kg/m^3, segments: 1, damping: 0.02, orient: z}
+  thrust1: {type: force, measure: {thrust: m1.mount, dir: z}, P: {control: F1, init: 0}, label: propeller 1}
+  arm2: {type: beam, measure: [hub.r2, m2.mount], section: $tube, E: 70 GPa, G: 5 GPa, density: 1550 kg/m^3, segments: 1, damping: 0.02, orient: z}
+  thrust2: {type: force, measure: {thrust: m2.mount, dir: z}, P: {control: F2, init: 0}, label: propeller 2}
+  arm3: {type: beam, measure: [hub.r3, m3.mount], section: $tube, E: 70 GPa, G: 5 GPa, density: 1550 kg/m^3, segments: 1, damping: 0.02, orient: z}
+  thrust3: {type: force, measure: {thrust: m3.mount, dir: z}, P: {control: F3, init: 0}, label: propeller 3}
+  arm4: {type: beam, measure: [hub.r4, m4.mount], section: $tube, E: 70 GPa, G: 5 GPa, density: 1550 kg/m^3, segments: 1, damping: 0.02, orient: z}
+  thrust4: {type: force, measure: {thrust: m4.mount, dir: z}, P: {control: F4, init: 0}, label: propeller 4}
+  foot1: {type: kelvin_voigt, k: 20 kN/m, c: 40 N s/m, measure: {contact: [hub.f1, floor.top]}}
+  foot1_slide: {type: contact_friction, contact: foot1, mu: 0.6}
+  foot2: {type: kelvin_voigt, k: 20 kN/m, c: 40 N s/m, measure: {contact: [hub.f2, floor.top]}}
+  foot2_slide: {type: contact_friction, contact: foot2, mu: 0.6}
+  foot3: {type: kelvin_voigt, k: 20 kN/m, c: 40 N s/m, measure: {contact: [hub.f3, floor.top]}}
+  foot3_slide: {type: contact_friction, contact: foot3, mu: 0.6}
+  foot4: {type: kelvin_voigt, k: 20 kN/m, c: 40 N s/m, measure: {contact: [hub.f4, floor.top]}}
+  foot4_slide: {type: contact_friction, contact: foot4, mu: 0.6}
+
+outputs:
+  z_max: {body: hub, quantity: z, reduce: max, unit: m, label: highest it climbs}
+  x_end: {body: hub, quantity: x, reduce: final, unit: m, label: where it stops}
+  arm_moment: {element: arm1, quantity: moment, reduce: max_abs, unit: N m, label: largest bending moment at an arm root}
+
+failure:
+  - {name: tube bending, metric: arm_moment, limit: 10, fails_when: above,
+     origin: "example: 12/10 mm tube, about 600 MPa allowable times Z = 0.1 cm^3 gives 10 N m (check your supplier's data)"}
+
+run:
+  t_end: 8 s
+  dt: 20 us                   # the arms' stiffness sets the critical step (65 us); 40 us gives the same flight
+
+editor:
+  notes:
+    - text: "**3D-2 Quadcopter on carbon arms.** A 486 g quad sits on the floor on four feet, takes off at 0.3 s, climbs to 1.5\
+        \ m, flies 2 m along x from 3 s and stops. Each motor hangs on a 12/10 mm carbon tube arm (a beam: it bends, twists\
+        \ and stretches) and pushes along its own axis (a *thrust* force, which tilts with the motor). The flight controller\
+        \ is ordinary control signals: a position loop picks the total thrust and the tilt it wants, an attitude loop\
+        \ (reading the hub's orientation and turn rate) picks the torques, and a mixer shares them over the four motors.\
+        \ Checks: hovering, each motor carries $m g / 4 = 1.19$ N, so an arm root sees about $1.19 \\times 0.12 = 0.14$ N m; the\
+        \ climb and the stops push it to about 0.18 N m, far under the tube's 10 N m.\n"
+      x: 30
+      y: 30
+      width: 950

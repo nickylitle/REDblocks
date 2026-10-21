@@ -1,0 +1,9 @@
+# motor thrust: spool up to hover, then a full-throttle punch
+time_s,thrust_N
+0,0
+0.1,2.5
+0.5,2.5
+0.55,8.0
+0.85,8.0
+0.9,2.5
+1.4,2.5

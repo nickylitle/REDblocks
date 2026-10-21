@@ -1150,8 +1150,8 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             (FB, quat, KE0, KE1, A, D, IN, S0, S1, TR, BT, aux, tcr, LT, LB, LE, Fe, se, Wg, Lw, KEpk, CP, CTR, LC, SGF, SGT, LS, GT) = E3.run_engine3d(
                 n, dt, a["X0"], a["V0"], a["quat0"], a["Lw0"], a["wsp0"], a["th0"], a["minv"], a["rmode"], a["Iinv"],
                 a["axis"], a["Iax"], a["mass"], a["com"], a["grav"], a["typ"], a["one_sided"], a["active"], a["mk"],
-                a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"], a["GX"],
-                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,
+                a["ba"], a["bb"], a["ref"], a["P"], a["C"], a["s0"], a["GA"], a["GB"].copy(), a["GX"],   # GB: a thrust's
+                a["tab_off"], a["tab_len"], a["tab_k"], a["tab_x"], a["tab_F"], every, cs, ci, ct, cd, *cargs, *kargs,  # running sum
                 adp, adf, adc, stop, a["grp"])
         elif dim2:
             from . import engine2d as E2

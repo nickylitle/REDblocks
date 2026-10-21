@@ -22,5 +22,5 @@ except Exception:
 @pytest.mark.skipif(not HAVE, reason="Playwright with Chromium is not installed")
 @pytest.mark.parametrize("script", SCRIPTS, ids=[os.path.basename(s) for s in SCRIPTS])
 def test_editor_regression(script):
-    r = subprocess.run([sys.executable, script], cwd=HERE, capture_output=True, text=True, timeout=300)
+    r = subprocess.run([sys.executable, script], cwd=HERE, capture_output=True, text=True, timeout=900)   # the round trip runs every example twice
     assert r.returncode == 0, (r.stdout[-2000:] + r.stderr[-2000:])

@@ -444,7 +444,11 @@ second the measurement (or name them with --time-col / --y-col, with --time-unit
 ## Replay (Animate)
 
 The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies in lanes, 2d bodies in the x-y plane,
-3d bodies with their logged orientation quaternions. 1d and 2d are seen straight from above and only pan and zoom.
+3d bodies with their logged orientation quaternions. 1d and 2d are a flat drawing (no perspective, flat colours with
+outlines, fixed points as the drawing-office support triangle) seen straight on, and only pan and zoom; 3d is shaded
+in perspective, with a fixed point drawn as a pin on a cone. Beams are solid tubes or thin lines (a toggle), and
+"motion x" draws all motion that many times real (about where each body starts; turns are never scaled; empty is the
+automatic choice).
 - 1d: a sliding body a spring holds is scaled up so small travel shows (the scale is printed); a sliding body nothing
   holds (a car) drives along a road with distance marks and the camera follows it. A turning body's links attach at
   fixed points beside it, so they never whip round with the spin.
