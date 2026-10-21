@@ -39,11 +39,15 @@ async def s(pg):
             ok &= check("cylinder" in cy, cy, "the top's disc is drawn", "shape")
         cam = await pg.evaluate("() => !!AV.cam.isOrthographicCamera")
         ok &= check(cam == (dim != "3d"), cam, "1D and 2D drawn flat (no perspective), 3D in perspective", "flat-style")
-        mg = await pg.evaluate("() => { const r = AV.bodies.find(x => x.b.pos && !x.b.ground && !x.b.hidden); avPose(); const a = r.g.position.clone();"
-                               " const b0 = r.b.pos[0]; const box = document.getElementById('avMag'); box.value = String((AV.S.mag_auto || 1) * 3); box.oninput();"
-                               " const b = r.g.position.clone(); box.value = ''; box.oninput();"
-                               " return [a.x - b0[0], b.x - b0[0], a.y - b0[1], b.y - b0[1], a.z - b0[2], b.z - b0[2]]; }")
-        ok &= check(all(abs(mg[i + 1] - 3 * mg[i]) < 1e-6 * (1 + abs(mg[i])) for i in (0, 2, 4)), mg, "motion x 3 triples the travel", "motion-mult")
+        mg = await pg.evaluate("() => { const box = document.getElementById('avMag'); if (!AV.S.deform) return ['none', box.disabled];"
+                               " const t = AV.S.deform.find(x => x.el); const r = AV.bodies[t.b]; AV.tcur = AV.S.t[Math.floor(AV.S.t.length / 3)]; avPose(); const a = r.g.position.clone();"
+                               " const p0 = avPosesAt(0, 0)[t.b][0]; box.value = String((AV.S.mag_auto || 1) * 3); box.oninput();"
+                               " const p03 = avPosesAt(0, 0)[t.b][0]; avPose(); const b = r.g.position.clone(); box.value = ''; box.oninput(); AV.tcur = AV.S.t[0]; avPose();"
+                               " return [a.x - p0.x, b.x - p03.x, a.y - p0.y, b.y - p03.y]; }")
+        if mg[0] == "none":
+            ok &= check(mg[1] is True, mg, "nothing deforms: the box is off", "motion-mult")
+        else:
+            ok &= check(abs(mg[0]) + abs(mg[2]) > 0 and all(abs(mg[i + 1] - 3 * mg[i]) < 1e-6 * (1 + abs(mg[i])) for i in (0, 2)), mg, "deform x 3 triples a spring's stretch", "motion-mult")
         if dim != "3d":                          # flat views look straight down and a drag pans, never tilts
             el0 = await pg.evaluate("() => [AV.orbit.el, AV.orbit.az]")
             box = await pg.evaluate("() => { const r = document.getElementById('avCanvas').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }")

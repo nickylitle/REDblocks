@@ -578,7 +578,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
   <label title="Beams as solid tubes of about their real thickness, or as thin lines"><input type="checkbox" id="avBeams" checked>solid beams</label>
-  <label title="How many times bigger than real the motion is drawn (about where each body starts; turns are never scaled). Empty: automatic">motion × <input id="avMag" style="width:9ch;font-variant-numeric:tabular-nums" placeholder="auto"></label>
+  <label title="How many times bigger than real the deformation is drawn: the stretch of springs and the bend of beams, relative to what each body hangs from (joints, flying and driving are drawn as they are). Empty: automatic">deform × <input id="avMag" style="width:9ch;font-variant-numeric:tabular-nums" placeholder="auto"></label>
   <label title="Wrap each body's points in a see-through solid (its convex hull). It is only a sketch of where the points are: the physics touches only the points, spheres, cylinders and planes themselves"><input type="checkbox" id="avHull" checked>hulls</label>
   <label title="Loads that push on a body (forces, drag, friction, motors) as arrows, sized against the largest"><input type="checkbox" id="avForces" checked>loads</label>
   <button id="avFit" title="Fit the whole model on screen (F)">Fit</button>
@@ -5292,7 +5292,7 @@ const GUIDE = [
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
   <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
-  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. 1D and 2D are drawn flat, like a drawing; 3D is shaded in perspective. Fixed points show as supports. <b>solid beams</b> switches beams between tubes and thin lines, and <b>motion ×</b> draws all motion that many times real (empty: automatic). Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
+  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. 1D and 2D are drawn flat, like a drawing; 3D is shaded in perspective. Fixed points show as supports. <b>solid beams</b> switches beams between tubes and thin lines, and <b>deform ×</b> draws deformation (springs stretching, beams bending, relative to what each body hangs from) that many times real while flying, driving and joints move as they do (empty: automatic; off when nothing deforms). Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
   <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
@@ -6372,7 +6372,7 @@ function avSetSpeed(){
   box.hidden = document.getElementById("avFitU").hidden = !fit;
   const secs = Math.max(0.5, parseFloat(box.value) || 10);        // the whole run plays in this many seconds
   AV.rate = fit ? (AV.T || 1) / secs : parseFloat(v);
-  avSpinTable();
+  avSpinTable(); avSetMag();                          // (spin drawing changes the poses the deformation is taken from)
   const slow = AV.bodies.filter(r => r.b.spin && r.b.spin.slowed).map(r => r.b.name), el = document.getElementById("avSlow");
   if (el){ el.hidden = !slow.length; el.textContent = slow.length ? `${slow.join(", ")} turns too fast to see at this speed: drawn turning slower (true rate in the readout)` : ""; }
 }
@@ -6384,16 +6384,45 @@ function avFrame(t){                                   // index and blend for si
 }
 let _qa = null, _qb = null;                      // made once three.js is loaded
 function avSetMag(){
-  // motion drawn m times real: m typed, or the scene's automatic choice (1D slides scaled to a lane, tiny beam bends)
+  // "motion x" scales deformation only: each body in the scene's tree (S.deform) is rebuilt from its parent's drawn
+  // pose and its own pose relative to that parent, the change of that relative pose scaled by m when the link is
+  // elastic (a spring, a beam), kept as it is for a joint (the mechanism moving). m typed, or the automatic choice.
   const S = AV.S, box = document.getElementById("avMag"), base = S.mag_base || 1, auto = S.mag_auto || 1;
   const m = parseFloat(box.value); box.placeholder = "auto " + (+(auto.toPrecision(3)));
   box.style.width = Math.max(7, box.placeholder.length + 3, String(box.value).length + 3) + "ch";   // the whole hint shows
   AV.magF = (isFinite(m) && m > 0 ? m : auto) / base;
-  for (const t of AV.trails){                           // the trails follow the same scale
-    const b = t.b, arr = t.line.geometry.attributes.position.array, s0 = b.pos[0], f = AV.magF;
-    for (let i = 0; i < b.pos.length; i++) for (let c = 0; c < 3; c++) arr[3 * i + c] = s0[c] + f * (b.pos[i][c] - s0[c]);
-    t.line.geometry.attributes.position.needsUpdate = true;
+  box.disabled = !S.deform; box.title = S.deform ? "" : "nothing in this model deforms (no springs or beams holding bodies)";
+  if (S.deform){                                        // each link's starting relative pose (frame 0)
+    const raw = avRawPoses(0, 0);
+    AV.def0 = S.deform.map(t => { const [Pc, Qc] = raw[t.b], pu = t.p >= 0 ? raw[t.p] : null;
+      const Qpi = pu ? pu[1].clone().invert() : new THREE.Quaternion();
+      return {r0: Pc.clone().sub(pu ? pu[0] : new THREE.Vector3()).applyQuaternion(Qpi), q0: Qpi.multiply(Qc)}; });
   }
+  const tr = AV.trails.map(t => [t, t.line.geometry.attributes.position.array, AV.bodies.findIndex(r => r.b === t.b)]);
+  const n = AV.S.t.length;                              // the trails follow the drawn bodies
+  for (let i = 0; i < n; i++){ const ps = avPosesAt(i, 0);
+    for (const [t, arr, bi] of tr){ if (i >= t.b.pos.length) continue; const P = ps[bi][0]; arr[3 * i] = P.x; arr[3 * i + 1] = P.y; arr[3 * i + 2] = P.z; } }
+  tr.forEach(([t]) => { t.line.geometry.attributes.position.needsUpdate = true; });
+}
+function avRawPoses(k, a){ return AV.bodies.map(r => { const P = new THREE.Vector3(), Q = new THREE.Quaternion(); avBodyPose(r.b, k, a, P, Q); return [P, Q]; }); }
+function avPosesAt(k, a){
+  const poses = avRawPoses(k, a), S = AV.S, f = AV.magF || 1;
+  if (!S.deform || !AV.def0 || f === 1) return poses;
+  const raw = poses.map(([P, Q]) => [P.clone(), Q.clone()]);
+  S.deform.forEach((t, j) => {                        // parents come first: the tree is listed from its root out
+    const [Pc, Qc] = raw[t.b], d0 = AV.def0[j], pu = t.p >= 0 ? raw[t.p] : null, pd = t.p >= 0 ? poses[t.p] : null;
+    const Qpi = pu ? pu[1].clone().invert() : new THREE.Quaternion();
+    let r = Pc.clone().sub(pu ? pu[0] : new THREE.Vector3()).applyQuaternion(Qpi), qr = Qpi.clone().multiply(Qc);
+    if (t.el){
+      r = d0.r0.clone().add(r.sub(d0.r0).multiplyScalar(f));
+      const dq = d0.q0.clone().invert().multiply(qr); if (dq.w < 0){ dq.x = -dq.x; dq.y = -dq.y; dq.z = -dq.z; dq.w = -dq.w; }
+      const ang = 2 * Math.acos(Math.min(1, dq.w)), sn = Math.sqrt(Math.max(0, 1 - dq.w * dq.w));
+      if (sn > 1e-9){ const ax = new THREE.Vector3(dq.x / sn, dq.y / sn, dq.z / sn); qr = d0.q0.clone().multiply(new THREE.Quaternion().setFromAxisAngle(ax, ang * f)); }
+    }
+    const QD = pd ? pd[1] : new THREE.Quaternion(), PD = pd ? pd[0] : new THREE.Vector3();
+    poses[t.b] = [PD.clone().add(r.applyQuaternion(QD)), QD.clone().multiply(qr)];
+  });
+  return poses;
 }
 const AV_SPIN_CAP = 2 * Math.PI * 1.5;              // the fastest turn a screen shows cleanly: 1.5 turns a second
 function avSpinTable(){
@@ -6409,15 +6438,14 @@ function avBodyPose(b, k, a, P, Q){
   if (!b.pos){ P.set(0, 0, 0); Q.set(0, 0, 0, 1); return; }
   const k2 = Math.min(k + 1, b.pos.length - 1), p0 = b.pos[k], p1 = b.pos[k2];
   P.set(p0[0] + a * (p1[0] - p0[0]), p0[1] + a * (p1[1] - p0[1]), p0[2] + a * (p1[2] - p0[2]));
-  const f = AV.magF || 1;                                 // motion drawn bigger or smaller about where it started
-  if (f !== 1){ const s0 = b.pos[0]; P.set(s0[0] + f * (P.x - s0[0]), s0[1] + f * (P.y - s0[1]), s0[2] + f * (P.z - s0[2])); }
+
   const sp = b.spin, qs = sp && sp.phi ? sp.swing : b.quat, q0 = qs[k], q1 = qs[k2];
   _qa.set(q0[1], q0[2], q0[3], q0[0]); _qb.set(q1[1], q1[2], q1[3], q1[0]); Q.slerpQuaternions(_qa, _qb, a);
   if (sp && sp.phi){ const ph = sp.phi[k] + a * (sp.phi[k2] - sp.phi[k]); _qb.setFromAxisAngle(sp.ax, ph); Q.multiply(_qb); }
 }
 function avPose(){
   const S = AV.S, [k, a] = avFrame(AV.tcur), blend = a, P = new THREE.Vector3(), Q = new THREE.Quaternion();
-  const poses = AV.bodies.map(r => { avBodyPose(r.b, k, a, P, Q); r.g.position.copy(P); r.g.quaternion.copy(Q); return [P.clone(), Q.clone()]; });
+  const poses = avPosesAt(k, a); AV.bodies.forEach((r, i) => { r.g.position.copy(poses[i][0]); r.g.quaternion.copy(poses[i][1]); });
   const showL = document.getElementById("avLinks").checked;
   const wp = (bi, loc) => bi < 0 ? new THREE.Vector3(...loc) : new THREE.Vector3(...loc).applyQuaternion(poses[bi][1]).add(poses[bi][0]);
   for (const o of AV.links){

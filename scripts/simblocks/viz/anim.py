@@ -140,22 +140,75 @@ def _spin_split(body, t, Q, w_axis, axis, label):
                 hi=float(np.max(w_axis) * 30 / math.pi))
 
 
+def _qconj(q):
+    return np.array([q[0], -q[1], -q[2], -q[3]])
+
+
+def _qrot(q, v):
+    return _qmul(_qmul(q, np.array([0.0, *v])), _qconj(q))[1:]
+
+
 def _magnify(S):
-    """A beam that bends a millimetre on a 200 mm arm looks still: when a model with beams moves less than 2 % of its
-    size, its motion is drawn bigger (about 15 % of the size), and the note says by how much. Turns are not scaled."""
-    if S["dim"] == "1d" or not any(L.get("kind") == "beam" for L in S["links"]):
-        return
-    mov = [b for b in S["bodies"] if b.get("pos")]
+    """What "motion x" scales: deformation only. Bodies hang in a tree from the fixed world (or, for a free machine,
+    from its heaviest body) along the links that hold them: springs and beams are elastic (their relative motion is
+    deformation and gets scaled), joints are not (a hinge's swing is the mechanism moving: drawn as it is, the child
+    just follows its parent). Bodies held by nothing (a car on a road, a flying point mass) move as they do. The
+    viewer rebuilds each child from its parent's drawn pose and its own pose relative to the parent, scaled about
+    where that started. auto: when the largest deformation is under 2 % of the model's size, it is drawn at about 15 %."""
+    bodies = S["bodies"]; nb = len(bodies)
+    mov = [i for i, b in enumerate(bodies) if b.get("pos")]
     if not mov:
         return
-    P0 = np.array([b["pos"][0] for b in mov], float)
-    span = float(np.max(np.ptp(np.vstack([P0] + [np.asarray(L["pa"], float)[None] for L in S["links"] if L["a"] < 0]), axis=0)))
-    disp = max(float(np.max(np.linalg.norm(np.asarray(b["pos"], float) - np.asarray(b["pos"][0], float), axis=1))) for b in mov)
-    if span <= 0 or disp <= 0 or disp >= 0.02 * span:
+    world = {i for i, b in enumerate(bodies) if not b.get("pos")}      # ground bodies: fixed, the world itself
+    adj = {}
+    for L in S["links"]:
+        if L.get("kind") not in ("spring", "beam", "joint"):
+            continue
+        a = -1 if (L["a"] < 0 or L["a"] in world) else L["a"]; b = -1 if (L["b"] < 0 or L["b"] in world) else L["b"]
+        if a == b:
+            continue
+        el = L["kind"] != "joint"
+        adj.setdefault(a, []).append((b, el)); adj.setdefault(b, []).append((a, el))
+    parent = {}; order = []
+    seen = {-1}
+    def grow(root):
+        q = [root]
+        while q:
+            u = q.pop(0)
+            for v, el in sorted(adj.get(u, []), key=lambda x: not x[1] and 0):
+                if v in seen:
+                    continue
+                seen.add(v); parent[v] = (u, el); order.append(v); q.append(v)
+    grow(-1)
+    for i in sorted(mov, key=lambda i: -(bodies[i].get("mass") or 0.0)):   # free machines: from their heaviest body
+        if i not in seen and adj.get(i):
+            seen.add(i); grow(i)
+    tree = []; worst = 0.0
+    for v in order:
+        if v < 0 or not bodies[v].get("pos"):
+            continue
+        u, el = parent[v]
+        Pv = np.asarray(bodies[v]["pos"], float); Qv = np.asarray(bodies[v]["quat"], float)
+        if u < 0:
+            Pu = np.zeros_like(Pv); Qu = np.tile([1.0, 0, 0, 0], (len(Pv), 1))
+        else:
+            Pu = np.asarray(bodies[u]["pos"], float); Qu = np.asarray(bodies[u]["quat"], float)
+        r0 = _qrot(_qconj(Qu[0]), Pv[0] - Pu[0])
+        if el:
+            r = np.array([_qrot(_qconj(qu), pv - pu) for qu, pv, pu in zip(Qu, Pv, Pu)])
+            worst = max(worst, float(np.max(np.linalg.norm(r - r0, axis=1))))
+        tree.append(dict(b=v, p=u, el=bool(el)))
+    if not any(t["el"] for t in tree):
         return
-    mag = _nice_step(0.15 * span / disp)            # the viewer draws motion this many times bigger unless told otherwise
-    S["notes"].append(f"motion drawn {_nice(mag)} x bigger (it moves at most {_fmt_len(disp)})")
-    S["magnified"] = mag; S["mag_auto"] = mag
+    S["deform"] = tree
+    if S["dim"] == "1d":                               # 1D: its slides are already drawn at a scale (mag_base)
+        return
+    P0 = np.array([bodies[i]["pos"][0] for i in mov], float)
+    span = float(np.max(np.ptp(np.vstack([P0] + [np.asarray(L["pa"], float)[None] for L in S["links"] if L["a"] < 0]), axis=0)))
+    if span > 0 and 0 < worst < 0.02 * span:
+        mag = _nice_step(0.15 * span / worst)
+        S["notes"].append(f"deformation drawn {_nice(mag)} x bigger (at most {_fmt_len(worst)})")
+        S["magnified"] = mag; S["mag_auto"] = mag
 
 
 PART_Q = (("voltage", "V"), ("current", "A"), ("power", "W"), ("soc", ""), ("temperature", "°C"), ("state", ""))

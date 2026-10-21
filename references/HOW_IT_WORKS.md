@@ -447,8 +447,11 @@ The editor's Animate button replays a run in 3D (three.js, bundled): 1d bodies i
 3d bodies with their logged orientation quaternions. 1d and 2d are a flat drawing (no perspective, flat colours with
 outlines, fixed points as the drawing-office support triangle) seen straight on, and only pan and zoom; 3d is shaded
 in perspective, with a fixed point drawn as a pin on a cone. Beams are solid tubes or thin lines (a toggle), and
-"motion x" draws all motion that many times real (about where each body starts; turns are never scaled; empty is the
-automatic choice).
+"deform x" draws deformation that many times real: bodies hang in a tree from the fixed world (or a free machine's
+heaviest body) along the links that hold them, and each one's pose relative to its parent is scaled about where it
+started when the link is elastic (a spring, a beam), kept as it is for a joint, so flying, driving and mechanisms
+move truly while stretches and bends grow. Empty is the automatic choice (about 15 % of the model's size when the
+largest deformation is under 2 % of it).
 - 1d: a sliding body a spring holds is scaled up so small travel shows (the scale is printed); a sliding body nothing
   holds (a car) drives along a road with distance marks and the camera follows it. A turning body's links attach at
   fixed points beside it, so they never whip round with the spin.
@@ -458,7 +461,6 @@ automatic choice).
 - Body shapes (box, cylinder, disc, rod, ring, tube, sphere) are drawn as solids; a 2d rod lies along its farthest
   point. A planet (gravity: {planet: ..}) is drawn round the origin with the top of its air; point masses are dots of
   a fixed size on screen.
-- A model with beams that moves less than 2 % of its size is drawn moving bigger (the factor is printed).
 - A body that spins faster than the frames can follow (a top, a wheel, a flywheel) is drawn as where its axis points
   plus a turn about that axis at its true rate, slowed to what a screen shows (1.5 turns a second at the replay speed,
   with a note); its true spin rate is in the readout. Without this it would crawl or run backwards (the wagon-wheel
