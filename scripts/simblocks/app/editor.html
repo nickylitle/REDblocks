@@ -3206,8 +3206,8 @@ function refWires(){
         const id = "F|" + m.id + "|" + inp.dataset.fs, on = wireSel.has(id), lab = ex.field && outKeyFor(n, ex.field) === "out" ? "." + ex.field : "";
         h += (on ? `<path class="halo" d="${curve(a, b)}"></path>` : "") + `<path class="${on ? "wsel" : ""}" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val" data-f="${esc(id)}"><title>${esc(nm + lab)} feeds ${esc(nodeName(m) || m.kind)} · click to select · Delete unplugs</title></path>`; return; }
       const fm = inp.value.match(new RegExp("\\$" + nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:\\.([A-Za-z_]\\w*))?")), a = aOf(fm && fm[1]); if (!a) return;
-      const r = inp.getBoundingClientRect(), er = el.getBoundingClientRect();
-      const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};
+      const er = el.getBoundingClientRect(), r = el.classList.contains("fold") ? el.querySelector(".hd").getBoundingClientRect() : inp.getBoundingClientRect();
+      const b = {x:(er.left - c.left - view.x) / view.k, y:(r.top + r.height / 2 - c.top - view.y) / view.k};   // collapsed: the title bar
       h += `<path class="ref" d="${curve(a, b)}" stroke="var(--s-val)" data-t="val"><title>${esc(nm)} is used by name in ${esc(nodeName(m) || m.kind)}</title></path>` +
            `<circle class="refend" cx="${b.x}" cy="${b.y}" r="3.2"></circle>`;
     }); });

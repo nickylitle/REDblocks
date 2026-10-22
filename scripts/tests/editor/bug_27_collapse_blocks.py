@@ -23,6 +23,14 @@ async def s(pg):
     await pg.evaluate("() => setSel([])"); await pg.keyboard.press("Shift+C"); await pg.wait_for_timeout(300)
     allf = await pg.evaluate("() => [S.nodes.filter(n => n.kind !== 'note' && n.kind !== 'image').every(n => n.fold), document.querySelectorAll('.node.fold').length]")
     ok &= check(allf[0] and allf[1] > 3, allf, "Shift+C collapses every block", "fold-all")
+    q = os.path.join(os.path.dirname(EX), "3d_2_quadcopter.yaml")      # name references ($x in a field) too
+    await load(pg, open(q).read(), os.path.dirname(q)); await pg.evaluate("() => setSel([])")
+    await pg.keyboard.press("Shift+C"); await pg.wait_for_timeout(400)
+    far = await pg.evaluate("() => { const ys = [...document.querySelectorAll('#wires path, #wiresTop path, #wires circle')].map(p => { const b = p.getBBox(); return [b.y, b.y + b.height]; });"
+                            " const nodes = [...document.querySelectorAll('.node')].map(e => [parseFloat(e.style.top), parseFloat(e.style.top) + e.offsetHeight]);"
+                            " const lo = Math.min(...nodes.map(n => n[0])) - 200, hi = Math.max(...nodes.map(n => n[1])) + 200;"
+                            " return [ys.length, ys.filter(([a, b]) => a < lo || b > hi).length]; }")
+    ok &= check(far[0] > 10 and far[1] == 0, far, "every wire stays among the blocks when all are collapsed", "wires-in-place")
     await pg.keyboard.press("Shift+C"); await pg.wait_for_timeout(300)
     none = await pg.evaluate("() => document.querySelectorAll('.node.fold').length")
     ok &= check(none == 0, none, "Shift+C again expands them", "unfold-all")
