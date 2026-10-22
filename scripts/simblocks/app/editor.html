@@ -670,7 +670,7 @@ label.cpick button{padding:0 6px;font-size:12px}
   <button data-o="name"><b>Sort by name</b><span>Grid in A to Z order.</span></button>
   <button data-o="flow"><b>Flow, left to right</b><span>Columns follow the wires: each node sits right of what feeds it.</span></button>
   <button data-o="role"><b>Columns by role</b><span>The classic Arrange: one column per node role.</span></button>
-  <button data-o="vtable"><b>Values into tables</b><span>Fold loose value nodes into compact tables: inputs in one, = expressions in another.</span></button>
+  <button data-o="vtable"><b>Values into tables</b><span>Fold loose value nodes into compact tables: inputs in one, = expressions in another. Files open this way already.</span></button>
   <button data-o="alignL"><b>Align left</b><span>Selected nodes share the leftmost one's left edge.</span></button>
   <button data-o="alignT"><b>Align top</b><span>Selected nodes share the topmost one's top edge.</span></button>
   <button data-o="distV"><b>Stack evenly</b><span>Selected nodes in a column, the same gap between each.</span></button>
@@ -3744,6 +3744,17 @@ function valTableHTML(g){
   b += `<div class="hint">${g.members.length} value${g.members.length === 1 ? "" : "s"} · each row wires out from its own socket</div>`;
   return `<div class="hd"><span class="bar" style="background:${COL.value}"></span><span class="kind">values</span><input class="nm" data-gk="name" value="${esc(g.name)}" spellcheck="false"><button class="x" data-gact="del" title="Delete the table and its values" aria-label="Delete">${X}</button></div><div class="bd">${b}</div>`;
 }
+function autoValueTables(){
+  // a file opens with its loose values folded into tables (inputs in one, = expressions in another), never as dozens
+  // of separate value nodes; values already in a group or a table stay where they are, and materials stay nodes
+  const loose = S.nodes.filter(n => n.kind === "value" && !n.data.mat && !groupOf(n.id));
+  if (loose.length < 3) return;
+  const isExpr = n => String(n.data.value || "").trim().startsWith("=");
+  const a = valTable(loose.filter(n => !isExpr(n)).map(n => n.id), "inputs"), b = valTable(loose.filter(isExpr).map(n => n.id), "derived");
+  render();
+  if (a && b){ const ea = world.querySelector(`.node[data-id="${a.id}"]`); b.x = a.x; b.y = a.y + (ea ? ea.offsetHeight : 60 + 34 * a.members.length) + 24; render(); }
+  const sv = selSet; selSet = new Set(); organize("clean"); selSet = sv;
+}
 function valTable(ids, name){
   // fold loose value nodes into one table; values already in a group stay where they are
   ids = ids.filter(id => { const m = byId(id); return m && m.kind === "value" && !groupOf(id); });
@@ -4763,7 +4774,9 @@ async function loadText(text, path, dataDir, keepView){
   // relative files (CSV loads, pictures) are read from the model's folder; an example's from where it ships
   MATP = new Set(r.mats || []); fromDoc(r.doc); filePath = path || null; await API.call("set_model_dir", filePath || (dataDir ? dataDir + "/_example.yaml" : null)); dirty = false; view = {x:20, y:10, k:0.85}; applyView(); selSet = new Set(); sel = null;
   docToken = Math.random().toString(36).slice(2); lastStudy = null; liveSlow = 0; plotKeys = null;
-  render(); if (!S.meta.hasLayout) arrange(); else unOverlap(); if (v0){ view = v0; applyView(); } else fitView(); histReset();
+  render(); if (!S.meta.hasLayout) arrange(); else unOverlap();
+  autoValueTables(); dirty = false;                    // only the layout changed: the model is as the file has it
+  if (v0){ view = v0; applyView(); } else fitView(); histReset();
   document.getElementById("fname").textContent = path ? path.split(/[\\/]/).pop() : "untitled"; check();
   stampNow();
 }
