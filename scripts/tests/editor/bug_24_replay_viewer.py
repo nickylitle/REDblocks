@@ -39,6 +39,9 @@ async def s(pg):
             ok &= check("cylinder" in cy, cy, "the top's disc is drawn", "shape")
         cam = await pg.evaluate("() => !!AV.cam.isOrthographicCamera")
         ok &= check(cam == (dim != "3d"), cam, "1D and 2D drawn flat (no perspective), 3D in perspective", "flat-style")
+        if dim != "3d":                          # flat views use flat shapes only: no boxes, balls, cylinders or cones
+            solids = await pg.evaluate("() => { const t = new Set(); AV.scene.traverse(o => { if (o.geometry && /Box|Sphere|Cylinder|Cone|Extrude/.test(o.geometry.type)) t.add(o.geometry.type); }); return [...t]; }")
+            ok &= check(not solids, solids, "no 3D solids in a 1D or 2D replay", "flat-shapes")
         mg = await pg.evaluate("() => { const box = document.getElementById('avMag'); if (!AV.S.deform) return ['none', box.disabled];"
                                " const t = AV.S.deform.find(x => x.el); const r = AV.bodies[t.b]; AV.tcur = AV.S.t[Math.floor(AV.S.t.length / 3)]; avPose(); const a = r.g.position.clone();"
                                " const p0 = avPosesAt(0, 0)[t.b][0]; box.value = String((AV.S.mag_auto || 1) * 3); box.oninput();"

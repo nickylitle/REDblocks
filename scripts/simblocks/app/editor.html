@@ -6072,7 +6072,37 @@ function avGrid(size, div, col, op){
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(v), 3));
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op, depthWrite:false}));
 }
+function av2Ring(r, col, op){                        // a circle outline in the x-y plane
+  const pts = []; for (let i = 0; i <= 72; i++){ const t = i / 72 * Math.PI * 2; pts.push(new THREE.Vector3(r * Math.cos(t), r * Math.sin(t), 0)); }
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:col, transparent:op < 1, opacity:op})); }
+function av2Rect(w, h, col, op){                      // a filled rectangle with its outline, centred, in the x-y plane
+  const grp = new THREE.Group(), geo = new THREE.PlaneGeometry(w, h);
+  grp.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:col, transparent:op < 1, opacity:op, side:THREE.DoubleSide})));
+  grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:new THREE.Color(tok("ink") || "#e8e8e8"), transparent:true, opacity:0.75})));
+  return grp; }
+function av2Prim(p, g, col, ps, b){
+  // the flat (1D / 2D) drawing of one shape: true 2D primitives, no solids. false: not a flat kind (drawn the 3D way)
+  const ink = new THREE.Color(tok("ink") || "#e8e8e8"), white = new THREE.Color(0xffffff);
+  const top = () => new THREE.MeshBasicMaterial({color:white, depthTest:false});     // marks drawn over the face they sit on
+  const disc = (r, op, spoke) => { const d = new THREE.Group();
+    d.add(new THREE.Mesh(new THREE.CircleGeometry(r, 64), new THREE.MeshBasicMaterial({color:col, transparent:op < 1, opacity:op, side:THREE.DoubleSide})));
+    d.add(av2Ring(r, ink, 0.75));
+    if (spoke && !b.ground){ const sk = avCyl([0, 0, 0], [r * 0.92, 0, 0], Math.max(r * 0.05, ps * 0.4), top()); sk.renderOrder = 3; d.add(sk); }   // shows its turn
+    return d; };
+  if (p.kind === "sphere" || p.kind === "disc"){ const d = disc(p.r, p.kind === "disc" && !p.solid ? 0.55 : 1, true); d.position.set(...p.p); g.add(d); return true; }
+  if (p.kind === "wheel"){ const d = disc(p.r, 1, false); g.add(d);
+    const sk = avCyl([0, 0, 0], [p.r * 0.95, 0, 0], p.r * 0.07, top()); sk.renderOrder = 3; g.add(sk); return true; }
+  if (p.kind === "point"){ const m = new THREE.Mesh(new THREE.CircleGeometry(ps, 20), new THREE.MeshBasicMaterial({color:col})); m.position.set(...p.p); g.add(m); return true; }
+  if (p.kind === "line"){ g.add(avCyl(p.a, p.b, ps * 0.7, new THREE.MeshBasicMaterial({color:col}))); return true; }
+  if (p.kind === "block" || p.kind === "wall"){ const r = av2Rect(p.size[0], p.size[1], col, 1); r.position.set(...p.p); if (p.turn) r.rotation.z = p.turn; g.add(r); return true; }
+  return false;
+}
 function avCyl(a, b, r, mat){
+  if (AV.flat){                                          // flat: a bar (a thin rectangle) in the x-y plane
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), L = A.distanceTo(B) || 1e-9;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2 * r, L), mat); m.material.side = THREE.DoubleSide;
+    m.position.copy(A).add(B).multiplyScalar(0.5); m.rotation.z = Math.atan2(B.y - A.y, B.x - A.x) - Math.PI / 2; return m;
+  }
   const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), L = A.distanceTo(B) || 1e-9;
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 12), mat);
   m.position.copy(A).add(B).multiplyScalar(0.5);
@@ -6109,6 +6139,7 @@ function avBuild(){
     const col = b.ground ? new THREE.Color(tok("ink3") || "#7a8597") : avCol(mi);
     const edgeMat = new THREE.LineBasicMaterial({color:col});
     for (const p of b.prims){
+      if (AV.flat && av2Prim(p, g, col, ps, b)) continue;     // 1D / 2D: drawn with flat shapes (circles, rectangles, lines)
       if (p.kind === "sphere"){
         const m = new THREE.Mesh(new THREE.SphereGeometry(p.r, 28, 18), avMat(col)); m.position.set(...p.p); g.add(m);
         if (!b.ground){                                    // meridians like a globe's (one bold), so any turn shows
@@ -6230,7 +6261,7 @@ function avBuild(){
       const lg = new THREE.BufferGeometry().setFromPoints([...b.outline, b.outline[0]].map(q => new THREE.Vector3(q[0], q[1], 0)));
       g.add(new THREE.Line(lg, edgeMat));
     }
-    if (AV.flat && !b.hidden){                            // flat drawing: every solid gets an outline
+    if (false && AV.flat && !b.hidden){                   // (flat shapes draw their own outlines)
       const ink = new THREE.LineBasicMaterial({color:new THREE.Color(tok("ink") || "#e8e8e8"), transparent:true, opacity:0.75}), add = [];
       g.traverse(o => { if (o.isMesh && !o.userData.nofit && !o.userData.hull && o.geometry && o.geometry.type !== "SphereGeometry" && o.geometry.type !== "ShapeGeometry" && o.geometry.type !== "CircleGeometry"){
         const ed = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), ink); ed.position.copy(o.position); ed.quaternion.copy(o.quaternion); ed.scale.copy(o.scale); add.push([o.parent, ed]); } });
@@ -6255,7 +6286,8 @@ function avBuild(){
   });
   for (const L of S.links){
     if (L.kind === "beam"){                                // a beam: a solid tube from node to node (or a thin line), moved every frame
-      const bc = new THREE.Color(tok("ink2") || "#b8c0cc"), r = Math.max(L.r || 0, ps * 0.9), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), avMat(bc));
+      const bc = new THREE.Color(tok("ink2") || "#b8c0cc"), r = Math.max(L.r || 0, ps * 0.9);
+      const m = new THREE.Mesh(AV.flat ? new THREE.PlaneGeometry(2 * r, 1) : new THREE.CylinderGeometry(r, r, 1, 16), AV.flat ? new THREE.MeshBasicMaterial({color:bc, side:THREE.DoubleSide}) : avMat(bc));
       const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
       const ln = new THREE.Line(lg, new THREE.LineBasicMaterial({color:bc})); ln.frustumCulled = false;
       sc.add(m); sc.add(ln); AV.links.push({L, mesh:m, thin:ln, n:0}); continue;
@@ -6265,7 +6297,7 @@ function avBuild(){
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * n), 3));
     const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:col})); line.frustumCulled = false; sc.add(line);
     let knob = null;
-    if (L.kind === "joint"){ knob = new THREE.Mesh(new THREE.SphereGeometry(ps * 1.3, 12, 8), new THREE.MeshBasicMaterial({color:col})); sc.add(knob); }
+    if (L.kind === "joint"){ knob = new THREE.Mesh(AV.flat ? new THREE.CircleGeometry(ps * 1.3, 20) : new THREE.SphereGeometry(ps * 1.3, 12, 8), new THREE.MeshBasicMaterial({color:col})); sc.add(knob); }
     AV.links.push({L, line, knob, n});
   }
   // loads that push on a body (force, drag, friction, a motor): arrows at its centre, scaled to the largest load;
@@ -6280,9 +6312,10 @@ function avBuild(){
     const mat = new THREE.LineBasicMaterial({color:col}), n = a.spin ? 48 : 2;
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * n), 3));
     const line = new THREE.Line(geo, mat); line.frustumCulled = false; sc.add(line);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(1, 2.6, 12), new THREE.MeshBasicMaterial({color:col, depthTest:false})); head.renderOrder = 6; sc.add(head);
+    const tri = new THREE.Shape([new THREE.Vector2(-1, -1.3), new THREE.Vector2(1, -1.3), new THREE.Vector2(0, 1.3)]);
+    const head = new THREE.Mesh(AV.flat ? new THREE.ShapeGeometry(tri) : new THREE.ConeGeometry(1, 2.6, 12), new THREE.MeshBasicMaterial({color:col, depthTest:false, side:THREE.DoubleSide})); head.renderOrder = 6; sc.add(head);
     let shaft = null;
-    if (!a.spin){ shaft = new THREE.Mesh(new THREE.CylinderGeometry(aR, aR, 1, 10), new THREE.MeshBasicMaterial({color:col, depthTest:false})); shaft.renderOrder = 6; sc.add(shaft); line.visible = false; }
+    if (!a.spin){ shaft = new THREE.Mesh(AV.flat ? new THREE.PlaneGeometry(2 * aR, 1) : new THREE.CylinderGeometry(aR, aR, 1, 10), new THREE.MeshBasicMaterial({color:col, depthTest:false, side:THREE.DoubleSide})); shaft.renderOrder = 6; sc.add(shaft); line.visible = false; }
     AV.arrows.push({a, line, head, shaft, n, col, max:amax[a.unit] || 1, L:aLen});
   });
   document.getElementById("avLegend").innerHTML = `<b style="color:var(--ink)">${esc(S.name)}</b> <span style="color:var(--ink3)">(${S.dim})</span><br>` +
