@@ -6130,7 +6130,7 @@ function avBuild(){
   sc.add(new THREE.HemisphereLight(0xffffff, 0x283040, 0.55));
   const dl = new THREE.DirectionalLight(0xffffff, 0.5); dl.position.set(1, -1.4, 2.2); sc.add(dl);
   const bodyScale = Math.max(E.body, 1e-3), ps = bodyScale * 0.035;      // point markers: from the bodies' own size
-  AV.ps = ps; AV.bodies = []; AV.links = []; AV.trails = [];
+  AV.ps = ps; AV.bodies = []; AV.links = []; AV.trails = []; AV.dots = [];
   const fsel = document.getElementById("avFollow"); fsel.innerHTML = `<option value="-1">nothing</option>`;
   let mi = 0, heavy = -1, hm = -1;
   S.bodies.forEach((b, bi) => {
@@ -6271,7 +6271,7 @@ function avBuild(){
       const dot = document.createElement("canvas"); dot.width = dot.height = 64; const dg = dot.getContext("2d");
       dg.fillStyle = "#" + col.getHexString(); dg.beginPath(); dg.arc(32, 32, 26, 0, 7); dg.fill(); dg.lineWidth = 6; dg.strokeStyle = "#ffffff"; dg.stroke();
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dot), sizeAttenuation:false, depthTest:false}));
-      spr.scale.set(0.028, 0.028, 1); spr.renderOrder = 5; g.add(spr); b.bare = true;
+      spr.scale.set(0.028, 0.028, 1); spr.renderOrder = 5; g.add(spr); b.bare = true; AV.dots.push(spr);
     }
     const rec = {g, b, col, idx:bi};
     if (b.pos){
@@ -6429,6 +6429,8 @@ function avCamera(){
   if (AV.cam.isOrthographicCamera){                     // the same framing as the perspective view would give at the target
     const h = o.r * Math.tan(THREE.MathUtils.degToRad(AV.cam.fov) / 2), w = h * (AV.cam.aspect || 1);
     AV.cam.left = -w; AV.cam.right = w; AV.cam.top = h; AV.cam.bottom = -h; AV.cam.near = -o.r * 50; AV.cam.far = o.r * 50;
+    // a fixed-size dot (a point mass) does not keep its screen size in a flat view by itself: size it from the view
+    for (const d of (AV.dots || [])){ const k = 0.028 / Math.tan(THREE.MathUtils.degToRad(AV.cam.fov) / 2) * h; d.scale.set(k, k, 1); }
   } else { AV.cam.near = o.r / 2000; AV.cam.far = o.r * 2000; }
   AV.cam.updateProjectionMatrix();
   AV.cam.lookAt(o.target);

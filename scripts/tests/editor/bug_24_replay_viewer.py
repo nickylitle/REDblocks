@@ -6,7 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); EX = os.path.join(HERE, "..",
 SHOT = os.environ.get("REPLAY_SHOTS", "")
 CASES = [("learn/1d_1_mass_spring_damper.yaml", "1d"), ("learn/2d_3_four_bar.yaml", "2d"), ("learn/3d_3_robot_arm.yaml", "3d"),
          ("case_studies/combat_robot/flapjack_drive_3d.yaml", "3d"), ("learn/1d_6_chua_circuit.yaml", "1d"),
-         ("learn/3d_1_spinning_top.yaml", "3d")]
+         ("learn/3d_1_spinning_top.yaml", "3d"), ("showcase/apollo11/apollo11_2_landing.yaml", "2d")]
 
 async def s(pg):
     ok = True
@@ -34,6 +34,9 @@ async def s(pg):
             continue
         if "flapjack" in rel:                    # beams solid or thin: no beams here, the box is there all the same
             ok &= check(await pg.evaluate("() => !!document.getElementById('avBeams')"), True, "beams toggle", "beams-toggle")
+        if "apollo" in rel:                      # a point mass stays a visible dot in a flat view of a whole moon
+            px = await pg.evaluate("() => { const d = AV.dots[0]; const h = AV.cam.top - AV.cam.bottom; return d ? d.scale.y / h * document.getElementById('avCanvas').clientHeight : 0; }")
+            ok &= check(px > 6, px, "the lander's dot is several pixels across", "dot-size")
         if "spinning_top" in rel:                # a body's shape is drawn (the top's disc as a cylinder)
             cy = await pg.evaluate("() => AV.S.bodies.flatMap(b => b.prims.map(p => p.kind))")
             ok &= check("cylinder" in cy, cy, "the top's disc is drawn", "shape")
