@@ -339,6 +339,67 @@ def linear_measure3(text, doc, names, nums, M):
     return C, const
 
 
+def _aero_drag3(e, en, d, where, doc, ctx, feats, B, names, bidx, typ, mk, ba, P, GA, GX, act, tabs_x, tabs_F,
+                overrides, M, f, g):
+    """aero_drag in 3D: drag from still air on one body, at its centre or a point of it.
+
+        {type: aero_drag, measure: popper, area: 60 mm^2, Cd: 1.0}
+        {type: aero_drag, measure: rod.mid, axis: x, area: 0.4 * 12 mm^2, Cd: 1.2, Cd_axial: 0.01}
+
+    Bluff (no axis): F = 1/2 rho Cd A |v| v against the velocity. Slender (axis, the body's own axis): the crossflow
+    principle, F = 1/2 rho Cd A |v_n| v_n on the speed across the axis (A = width x length) plus a skin drag
+    1/2 rho Cd_axial A_axial |v_a| v_a along it. Cd is a number or a table against Mach {mach: [...], cd: [...]} (the
+    crossflow Mach for a slender part). air_density (1.225 kg/m^3) and sound_speed (343 m/s): sea-level air.
+    scale multiplies the whole drag (0 switches it off: a $param makes it a toggle)."""
+    from .model import resolve, num, KNOCK
+    m = d.get("measure")
+    ref = str(m).strip() if isinstance(m, str) else None
+    bn = ref.split(".")[0] if ref else None
+    if bn not in names:
+        raise SpecError("an aero_drag acts on one moving body: measure: <body> or <body.point>", where,
+                        line_of(d, "measure"), f)
+    ia = bidx(bn)
+    if "." in ref:
+        _b, fa = feature3(ref, doc, feats, where + ".measure")
+        if fa[0] != "sphere":
+            raise SpecError("aero_drag acts at a point of the body", where, line_of(d, "measure"), f)
+        GA[e, :3] = fa[1][:3]
+    else:
+        GA[e, :3] = np.asarray(B["com"][ia], float) if "com" in B else 0.0
+    typ[e] = 20; mk[e] = E3.MK_AIR; ba[e] = ia
+    sc = g(d, "scale", where, 1.0)
+    rho = g(d, "air_density", where, 1.225); a_s = g(d, "sound_speed", where, 343.0)
+    area = g(d, "area", where)
+    if area is None or area < 0 or rho <= 0 or a_s <= 0 or sc < 0:
+        raise SpecError("aero_drag needs area > 0 (the area its Cd is quoted on), air_density > 0, sound_speed > 0 "
+                        "and scale >= 0", where, line_of(d, "area"), f)
+    cd = resolve(d.get("Cd"), ctx, where + ".Cd")
+    if isinstance(cd, (int, float)) and not isinstance(cd, bool):
+        tx = np.array([0.0]); tF = np.array([float(cd)])
+    elif isinstance(cd, dict) and {"mach", "cd"} <= set(cd):
+        tx = np.ascontiguousarray([float(x) for x in cd["mach"]]); tF = np.ascontiguousarray([float(x) for x in cd["cd"]])
+        if len(tx) != len(tF) or len(tx) < 1 or np.any(np.diff(tx) <= 0) or np.any(tF < 0):
+            raise SpecError("Cd: {mach: [...], cd: [...]} with rising Mach numbers, one Cd (>= 0) each", where,
+                            line_of(d, "Cd"), f)
+    else:
+        try:
+            tx = np.array([0.0]); tF = np.array([num(cd, where + ".Cd")])
+        except Exception:
+            raise SpecError("Cd is a number or a table {mach: [...], cd: [...]}", where, line_of(d, "Cd"), f)
+    P[e, 0] = 0.5 * rho * area * sc; P[e, 2] = rho; P[e, 3] = a_s
+    if "axis" in d:
+        ax = np.asarray(_unit(_vec(d["axis"], ctx, where + ".axis"), where + ".axis"), float)
+        GX[e, :3] = ax; GX[e, 3] = 1.0
+        P[e, 1] = 0.5 * rho * g(d, "area_axial", where, area) * g(d, "Cd_axial", where, 0.0) * sc
+    elif "Cd_axial" in d or "area_axial" in d:
+        raise SpecError("Cd_axial and area_axial go with axis (a slender part's own axis)", where,
+                        line_of(d, "Cd_axial") or line_of(d, "area_axial"), f)
+    if overrides.get(KNOCK + en) or overrides.get(KNOCK + en.split("__")[0]):
+        act[e] = 0
+    tabs_x.append(tx); tabs_F.append(tF)
+    M.el_info[en] = dict(type="aero_drag", measure=f"air on {ref}", params=P[e].copy(), k=None)
+
+
 def compile_elements3(doc, ctx, M, B, feats, overrides):
     from .model import resolve, num, TYPE_CODE, KNOCK, ELASTIC, numeric_namespace
     from .model2d import measure_text
@@ -382,6 +443,10 @@ def compile_elements3(doc, ctx, M, B, feats, overrides):
             if d.get("__rigid__"):
                 typ[e] = 15
             M.el_info[en] = dict(type="rotation lock", measure=f"turn of {b_} against {a_}", params=P[e].copy(), k=P[e, 0])
+            continue
+        if t == "aero_drag":                     # air drag on one body: 1/2 rho Cd A |v| v (see aero_drag3)
+            _aero_drag3(e, en, d, where, doc, ctx, feats, B, names, bidx, typ, mk, ba, P, GA, GX, act, tabs_x, tabs_F,
+                        overrides, M, f, g)
             continue
         if t == "beam":                          # co-rotational 3D beam segment (built by expand_beam)
             (a_, fa), (b_, fb) = (feature3(r, doc, feats, where + ".measure") for r in meas)

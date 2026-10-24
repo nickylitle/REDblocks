@@ -577,6 +577,7 @@ label.cpick button{padding:0 6px;font-size:12px}
     <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1">1x real time</option><option value="2">2x</option>
     <option value="5">5x</option><option value="10">10x</option><option value="100">100x</option></select>
     <input id="avFitS" type="number" min="0.5" step="1" value="10" style="width:52px" title="Seconds the whole replay takes to play"><span id="avFitU">s</span></label>
+  <label title="Slow motion where things move fastest (a crack, an impact), quicker where little happens; on by itself when the run has such a burst. With 'whole run in' it still takes that long"><input type="checkbox" id="avSlowmo">slow-mo</label>
   <label title="Keep the camera on one body">follow <select id="avFollow"><option value="-1">nothing</option></select></label>
   <label title="Draw where each body has been"><input type="checkbox" id="avTrail" checked>trails</label>
   <label title="Springs, dampers, joints and beams between bodies"><input type="checkbox" id="avLinks" checked>links</label>
@@ -5330,7 +5331,7 @@ const GUIDE = [
   <p><b>Static</b> solves for where the model settles, with no time stepping: Newton's method on the solver's own forces. Loads and drives act as they do at t = 0. You get every output at rest and how far each coordinate moved. A body nothing holds against its load is named.</p>
   <p><b>FFT</b> and <b>Shock spectrum</b> (under the time-history plot) work on the first ticked history from a full-resolution run. The FFT is the frequency content; a sine of amplitude A shows a peak of A. The shock response spectrum is the peak response of a part with natural frequency f mounted there, at 5 % damping (Smallwood's method, ISO 18431-4). A velocity history is differentiated to an acceleration first. Read it as: electronics on this mount with a 400 Hz board resonance see this peak.</p>
   <p><b>Overlay CSV</b> draws measured data over the run, dashed: time in the first column, a header such as <code>Fz [kN]</code> for units. It is saved with the model.</p>
-  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. 1D and 2D are drawn flat, like a drawing; 3D is shaded in perspective. Fixed points show as supports. <b>solid beams</b> switches beams between tubes and thin lines, and <b>deform ×</b> draws deformation (springs stretching, beams bending, relative to what each body hangs from) that many times real while flying, driving and joints move as they do (empty: automatic; off when nothing deforms). Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
+  <p><b>Animate</b> (top bar) replays the run: every body moving as the solver moved it (1d bodies in lanes; 2d in the x-y plane; 3d with its orientation). 1d and 2d are seen from straight above. A 1d body held by springs is scaled up so small travel shows; one nothing holds, like a car, drives along a road with distance marks and the camera follows it. Springs, dampers, joints and beams are drawn between their points; forces, drag, friction and motors are <b>arrows</b> on the body (curved for a torque), sized against the largest. 1D and 2D are drawn flat, like a drawing; 3D is shaded in perspective. Fixed points show as supports. <b>solid beams</b> switches beams between tubes and thin lines, and <b>deform ×</b> draws deformation (springs stretching, beams bending, relative to what each body hangs from) that many times real while flying, driving and joints move as they do (empty: automatic; off when nothing deforms). Body shapes are drawn as solids, and a planet as a disc. A body with no shape but 4 or more points (3 in 2D) is wrapped in a see-through hull of them, a sketch only (the <b>hulls</b> box turns it off): the physics touches only the points, spheres, cylinders and planes. Speed: the whole run in a number of seconds you type (10 to start), or a multiple of real time (0.001x to 100x). <b>slow-mo</b> (on by itself for a run with a burst, like a crack or an impact) slows each moment in proportion to how fast things move then. With many bodies only the one that travels farthest keeps a trail, brighter where it is faster; a body with air drag passing the speed of sound sets off a sonic-boom ring spreading at that speed. A body spinning faster than a screen can show (a top, a flywheel) is drawn turning slower, with a note, and its true rate in the readout. Keys: <b>F</b> fits it on screen, Space plays, ← → step a frame, Home / End. In 3D drag turns and shift-drag pans; in 1D and 2D drag pans. While the run is solved a progress card shows its stage and time, with Stop; a watchdog stops a run that goes badly wrong. It replays the last Run when the model has not changed since.</p>
   <p><b>Spectra for Ansys</b>: a CSV export node's <i>write</i> choice gives an FFT, a PSD or a shock response spectrum (SRS) instead of the time history, ready for harmonic, random-vibration or response-spectrum loads.</p>`},
  {id:"design", grp:"Results", t:"Optimizer, scenarios, budget and compare", h:`
   <p><b>Optimizer</b>: plug in the values it may change, each with a range; the output to minimize or maximize; and any outputs to keep at most or at least a limit. Tick failure modes to keep every failure mode passing. Study runs it: COBYLA (Powell's constrained method) moves every value at once and needs no derivatives, so a contact that starts or a part that yields does not stall it. Use these values writes the best run back. In YAML: <code>study: {optimize: {vary: {t: [1 mm, 6 mm]}, minimize: mass_total, subject_to: [{output: sf, min: 2}], failure_modes: true}}</code>.</p>
@@ -6275,9 +6276,20 @@ function avBuild(){
     }
     const rec = {g, b, col, idx:bi};
     if (b.pos){
-      const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(b.pos.flat()), 3));
-      const tl = new THREE.Line(tg, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0.55})); tl.frustumCulled = false;
-      sc.add(tl); AV.trails.push({line:tl, n:b.pos.length, b});
+      if (b.trail !== false){
+        const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(b.pos.flat()), 3));
+        let tm;
+        if (b.trail_speed && b.trail_speed.length === b.pos.length){   // brighter (to white-hot) where it goes faster
+          const vmax = Math.max(1e-12, ...b.trail_speed), hot = new THREE.Color("#fff3c4"), c3 = new Float32Array(3 * b.pos.length);
+          b.trail_speed.forEach((v, i) => { const f = Math.pow(Math.min(1, v / vmax), 1.5);
+            const c = col.clone().multiplyScalar(0.35 + 0.65 * Math.min(1, 2 * f)).lerp(hot, Math.max(0, 2 * f - 1));
+            c3[3 * i] = c.r; c3[3 * i + 1] = c.g; c3[3 * i + 2] = c.b; });
+          tg.setAttribute("color", new THREE.BufferAttribute(c3, 3));
+          tm = new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.9});
+        } else tm = new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0.55});
+        const tl = new THREE.Line(tg, tm); tl.frustumCulled = false;
+        sc.add(tl); AV.trails.push({line:tl, n:b.pos.length, b});
+      }
       fsel.insertAdjacentHTML("beforeend", `<option value="${bi}">${esc(b.name)}</option>`);
       if ((b.mass || 0) > hm){ hm = b.mass || 0; heavy = bi; }
     }
@@ -6318,8 +6330,20 @@ function avBuild(){
     if (!a.spin){ shaft = new THREE.Mesh(AV.flat ? new THREE.PlaneGeometry(2 * aR, 1) : new THREE.CylinderGeometry(aR, aR, 1, 10), new THREE.MeshBasicMaterial({color:col, depthTest:false, side:THREE.DoubleSide})); shaft.renderOrder = 6; sc.add(shaft); line.visible = false; }
     AV.arrows.push({a, line, head, shaft, n, col, max:amax[a.unit] || 1, L:aLen});
   });
+  AV.booms = (S.booms || []).map(bm => {               // sonic booms: a shock front spreading from where it went supersonic
+    const g = new THREE.Group(); g.userData.nofit = true;
+    const hot = new THREE.Color("#ffd76a");
+    const pts = []; for (let i = 0; i < 160; i++){ const q = 2 * Math.PI * i / 160; pts.push(Math.cos(q), Math.sin(q), 0); }
+    const rg = new THREE.BufferGeometry(); rg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
+    const ring = new THREE.LineLoop(rg, new THREE.LineBasicMaterial({color:hot, transparent:true, opacity:0.8, depthWrite:false, depthTest:false}));
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(1.0, 128), new THREE.MeshBasicMaterial({color:hot, transparent:true, opacity:0.08, side:THREE.DoubleSide, depthWrite:false, depthTest:false}));
+    ring.renderOrder = fill.renderOrder = 4; g.add(fill); g.add(ring); g.position.set(...bm.p); g.visible = false; sc.add(g);
+    return {bm, g, ring, fill};
+  });
   document.getElementById("avLegend").innerHTML = `<b style="color:var(--ink)">${esc(S.name)}</b> <span style="color:var(--ink3)">(${S.dim})</span><br>` +
-    S.bodies.filter(b => !b.ground && !b.hidden).map(b => `<i style="background:#${AV.bodies.find(r => r.b === b).col.getHexString()}"></i>${esc(b.name)}`).join("<br>") +
+    (() => { const vis = S.bodies.filter(b => !b.ground && !b.hidden), it = b => `<i style="background:#${AV.bodies.find(r => r.b === b).col.getHexString()}"></i>${esc(b.name)}`;
+      return vis.length > 8 ? [...vis.slice(0, 3).map(it), `<span style="color:var(--ink3)">… ${vis.length - 5} more</span>`, ...vis.slice(-2).map(it)].join("<br>")
+                            : vis.map(it).join("<br>"); })() +
     (S.links.length ? `<br><span style="color:var(--ink3)">links: ` + [["spring", "p2", "springs"], ["damper", "p4", "dampers"], ["motor", "p5", "motors"], ["joint", "ink", "joints"], ["beam", "ink2", "beams"]]
       .filter(([k]) => S.links.some(l => l.kind === k)).map(([, c, w]) => `<span style="color:${tok(c)}">${w}</span>`).join(" · ") + `</span>` : "") +
     (AV.arrows.length ? `<br><span style="color:var(--ink3)">loads: </span>` + AV.arrows.map(o => `<span style="color:#${o.col.getHexString()}">${esc(o.a.name)}</span>`).join(" · ") : "") +
@@ -6330,13 +6354,16 @@ function avBuild(){
   if (S.dim === "3d") AV.cam.up.set(0, 0, 1);
   // a body far smaller than where it travels (a robot driving across the floor): follow it from the start
   const travel = E.size, bare = S.bodies.every(b => b.ground || b.hidden || b.bare);
-  const small = (!bare && E.body * (S.dim === "3d" ? 10 : 50) < travel) || (S.dim === "1d" && S.road);   // it travels far: follow it
+  // (the body followed must itself travel far: a whip's handle turns about a fixed shoulder, its tip goes far)
+  const hp = heavy >= 0 && S.bodies[heavy] && S.bodies[heavy].pos ? S.bodies[heavy].pos : null;
+  const htravel = hp ? Math.max(...[0, 1, 2].map(k => Math.max(...hp.map(p => p[k] || 0)) - Math.min(...hp.map(p => p[k] || 0)))) : 0;
+  const small = (!bare && E.body * (S.dim === "3d" ? 10 : 50) < Math.min(travel, htravel)) || (S.dim === "1d" && S.road);   // it travels far: follow it
   AV.follow = small && heavy >= 0 ? heavy : -1; fsel.value = String(AV.follow);
   AV.bare = bare;
   AV.tcur = S.t[0]; AV.orbit = null; document.getElementById("avMag").value = ""; avSetMag();
   avResize(); avFit();                               // fitted to the screen's shape when it opens (F fits again)
   const T = S.t[S.t.length - 1] - S.t[0];
-  AV.T = T; avSetSpeed(); AV.playing = false;
+  AV.T = T; avSlowBuild(); avSetSpeed(); AV.playing = false;
   document.getElementById("avPlay").textContent = "Play";
   if (!AV.ro){ AV.ro = new ResizeObserver(avResize); AV.ro.observe(cv.parentElement); }
   avReadBuild();
@@ -6405,19 +6432,40 @@ function avFitBox(){
   }
   return box;
 }
+function avView3(E){
+  // 3D view angles: from a high corner, or square onto the plane when everything moves in one (a whip thrown
+  // overhead, a pendulum): seen edge-on from the corner a flat motion is foreshortened
+  const d = [0, 1, 2].map(k => E.hi[k] - E.lo[k]), big = Math.max(...d, 1e-12);
+  if (d[1] < 0.12 * big && d[0] > 0.3 * big && d[2] > 0.3 * big) return [-Math.PI / 2, 0.12];   // the x-z plane: from -y
+  if (d[0] < 0.12 * big && d[1] > 0.3 * big && d[2] > 0.3 * big) return [0.0, 0.12];            // the y-z plane: from +x
+  return [-0.95, 0.5];
+}
 function avFit(){
   const S = AV.S, E = S.extent, f = AV.follow;
   avPose();
   const box = avFitBox(), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
   const vf = THREE.MathUtils.degToRad(AV.cam.fov) / 2, asp = AV.cam.aspect || 1.6, hf = Math.atan(Math.tan(vf) * asp);
   let rFit;
-  if (S.dim === "3d"){ const rho = Math.max(size.length() / 2, 1e-4); rFit = rho / Math.sin(Math.min(vf, hf)) * 1.05; }
+  if (S.dim === "3d"){
+    // from the view direction it will be seen from: each corner of the box must fall inside the frame (a box's
+    // bounding sphere fits a flat or long model, like a whip swinging in a plane, far too loosely)
+    const [az, el] = avView3(E), ce = Math.cos(el), se = Math.sin(el);
+    const fw = new THREE.Vector3(-ce * Math.cos(az), -ce * Math.sin(az), -se);          // camera looks along fw
+    const rt = new THREE.Vector3().crossVectors(fw, new THREE.Vector3(0, 0, 1)).normalize(), up = new THREE.Vector3().crossVectors(rt, fw);
+    const tv = Math.tan(vf), th = Math.tan(hf); rFit = 1e-4;
+    for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]){
+      const d = new THREE.Vector3(cx, cy, cz).sub(mid), z = -d.dot(fw);              // toward the camera
+      rFit = Math.max(rFit, z + Math.abs(d.dot(rt)) / th, z + Math.abs(d.dot(up)) / tv);
+    }
+    rFit *= 1.08;
+  }
   else { const h = Math.max(size.y / 2, size.x / 2 / asp, 1e-4); rFit = h / Math.tan(vf) * 1.3 + size.z; }
   const c = f >= 0 ? new THREE.Vector3(...S.bodies[f].pos[0]) : mid;
   let r = f >= 0 ? Math.max(E.body * 8, E.size * 0.2, 1e-3) : rFit;     // following: the body and a stretch of where it goes
   if (S.dim === "1d" && S.road && f >= 0) r = Math.max(r, 6);
   // 1D and 2D are flat: seen straight from above (+z), and the view only pans and zooms, never tilts
-  AV.orbit = S.dim === "3d" ? {target:c, r, az:-0.95, el:0.5} : {target:c, r, az:-Math.PI / 2, el:Math.PI / 2 * 0.9999};
+  const [az3, el3] = avView3(E);
+  AV.orbit = S.dim === "3d" ? {target:c, r, az:az3, el:el3} : {target:c, r, az:-Math.PI / 2, el:Math.PI / 2 * 0.9999};
   AV.followOff = null;
   avCamera();
 }
@@ -6440,11 +6488,35 @@ function avResize(){
   const box = document.getElementById("avCanvas").parentElement, w = box.clientWidth || 800, h = box.clientHeight || 500;
   AV.R.setSize(w, h, false); AV.cam.aspect = w / h; if (AV.orbit) avCamera(); else AV.cam.updateProjectionMatrix(); avRender();
 }
+function avSlowBuild(){
+  // slow motion: each frame plays at typical speed / fastest body's speed now, between 1/50 and 1, eased in a
+  // few frames early so the burst is not missed. Only offered when the run has a burst (see below)
+  const S = AV.S, t = S.t, n = t.length, mv = S.bodies.filter(b => b.pos && !b.hidden && !b.ground);
+  AV.sw = null; const cb = document.getElementById("avSlowmo");
+  if (n < 5 || !mv.length){ cb.checked = false; cb.parentElement.hidden = true; return; }
+  const v = new Float64Array(n);
+  for (const b of mv) for (let k = 1; k < n; k++){
+    const p = b.pos[k], q = b.pos[k - 1], dt = t[k] - t[k - 1]; if (dt <= 0) continue;
+    const s = Math.hypot(p[0] - q[0], (p[1] || 0) - (q[1] || 0), (p[2] || 0) - (q[2] || 0)) / dt; if (s > v[k]) v[k] = s;
+  }
+  v[0] = v[1]; const srt = Array.from(v).sort((a, b) => a - b), med = srt[n >> 1], pk = srt[n - 1], T = t[n - 1] - t[0];
+  let mean = 0, hot = 0;                               // a burst: a peak over 6 x the mean speed, above half of it under 5 % of the run
+  for (let k = 1; k < n; k++){ const dt = t[k] - t[k - 1]; mean += v[k] * dt; if (v[k] > 0.5 * pk) hot += dt; }
+  mean /= Math.max(T, 1e-30);
+  if (!(pk > 6 * mean && hot < 0.05 * T && med > 0)){ cb.checked = false; cb.parentElement.hidden = true; return; }
+  cb.parentElement.hidden = false; cb.checked = true;
+  const w = new Float64Array(n), W = Math.max(3, Math.round(n / 150));
+  for (let k = 0; k < n; k++){ let m = 0; for (let j = Math.max(0, k - 1); j <= Math.min(n - 1, k + W); j++) m = Math.max(m, v[j]);
+    w[k] = Math.min(1, Math.max(1 / 50, med / Math.max(m, 1e-30))); }
+  let Tw = 0; for (let k = 1; k < n; k++) Tw += (t[k] - t[k - 1]) / w[k - 1];
+  AV.sw = w; AV.swT = Tw;
+}
 function avSetSpeed(){
   const v = document.getElementById("avSpeed").value, fit = v === "fit", box = document.getElementById("avFitS");
   box.hidden = document.getElementById("avFitU").hidden = !fit;
   const secs = Math.max(0.5, parseFloat(box.value) || 10);        // the whole run plays in this many seconds
-  AV.rate = fit ? (AV.T || 1) / secs : parseFloat(v);
+  const sm = document.getElementById("avSlowmo").checked && AV.sw;
+  AV.rate = fit ? (sm ? AV.swT : (AV.T || 1)) / secs : parseFloat(v);
   avSpinTable(); avSetMag();                          // (spin drawing changes the poses the deformation is taken from)
   const slow = AV.bodies.filter(r => r.b.spin && r.b.spin.slowed).map(r => r.b.name), el = document.getElementById("avSlow");
   if (el){ el.hidden = !slow.length; el.textContent = slow.length ? `${slow.join(", ")} turns too fast to see at this speed: drawn turning slower (true rate in the readout)` : ""; }
@@ -6519,6 +6591,12 @@ function avBodyPose(b, k, a, P, Q){
 function avPose(){
   const S = AV.S, [k, a] = avFrame(AV.tcur), blend = a, P = new THREE.Vector3(), Q = new THREE.Quaternion();
   const poses = avPosesAt(k, a); AV.bodies.forEach((r, i) => { r.g.position.copy(poses[i][0]); r.g.quaternion.copy(poses[i][1]); });
+  for (const o of (AV.booms || [])){                  // the boom's front: radius c (t - t_boom), fading as it spreads
+    const dt = AV.tcur - o.bm.t, R = o.bm.c * dt, Rmax = 1.2 * (S.extent ? S.extent.size : 1);
+    o.g.visible = dt > 0 && R < Rmax;
+    if (o.g.visible){ o.g.scale.setScalar(Math.max(R, 1e-6)); if (AV.cam) o.g.quaternion.copy(AV.cam.quaternion);
+      const fade = 1 - R / Rmax; o.ring.material.opacity = 0.85 * fade; o.fill.material.opacity = 0.1 * fade; }
+  }
   const showL = document.getElementById("avLinks").checked;
   const wp = (bi, loc) => bi < 0 ? new THREE.Vector3(...loc) : new THREE.Vector3(...loc).applyQuaternion(poses[bi][1]).add(poses[bi][0]);
   for (const o of AV.links){
@@ -6599,7 +6677,8 @@ function avTick(now){
   if (!AV.open) return;
   const S = AV.S, T = S.t[S.t.length - 1];
   if (AV.playing){
-    const dt = Math.min(0.1, (now - (AV.last || now)) / 1000); AV.tcur += dt * AV.rate;
+    const dt = Math.min(0.1, (now - (AV.last || now)) / 1000);
+    AV.tcur += dt * AV.rate * (document.getElementById("avSlowmo").checked && AV.sw ? AV.sw[avFrame(AV.tcur)[0]] : 1);
     if (AV.tcur >= T){ AV.tcur = T; AV.playing = false; document.getElementById("avPlay").textContent = "Play"; }
     avPose();
   }
@@ -6634,6 +6713,7 @@ function avPlay(){
   document.getElementById("avPlay").onclick = avPlay;
   document.getElementById("avFit").onclick = () => { avFit(); avPose(); avRender(); };
   document.getElementById("avSpeed").onchange = () => { avSetSpeed(); avPose(); avRender(); };
+  document.getElementById("avSlowmo").onchange = () => { avSetSpeed(); avPose(); avRender(); };
   document.getElementById("avFitS").oninput = () => { avSetSpeed(); avPose(); avRender(); };
   document.getElementById("avFitS").addEventListener("keydown", e => e.stopPropagation());   // typing a number is not a replay key
   document.getElementById("avFollow").onchange = e => { AV.follow = parseInt(e.target.value); avFit(); avPose(); avRender(); };

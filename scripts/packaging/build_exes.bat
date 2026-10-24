@@ -27,6 +27,7 @@ copy /y examples\learn\data\*.csv simblocks\app\examples\data\ >nul
 if not exist simblocks\app\examples\showcase mkdir simblocks\app\examples\showcase
 copy /y examples\showcase\apollo11\*.yaml simblocks\app\examples\showcase\ >nul
 copy /y examples\showcase\apollo11\apollo11.html simblocks\app\examples\showcase\ >nul
+copy /y examples\showcase\bullwhip\*.yaml simblocks\app\examples\showcase\ >nul
 REM the YAML format reference, for AI assistants connected through MCP
 if exist ..\references\system_file.md copy /y ..\references\system_file.md simblocks\docs\ >nul
 python -m pip install ".[app,mcp]" "mcp[cli]" pyinstaller || goto :err

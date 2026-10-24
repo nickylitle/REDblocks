@@ -63,10 +63,72 @@ def _build(M, H, out, frames):
     else:
         _scene1(M, H, idx, S)
     _magnify(S)
+    _trails(S)
+    _booms(M, S)
     _extent(S)
     S["empty"] = not any(b.get("pos") for b in S["bodies"])
     S["signals"] = S.pop("spin_signals", []) + _signals(M, H, idx)
     return S
+
+
+TRAILS_MAX = 6
+
+
+def _trails(S):
+    """Trails: on every moving body when there are a few; past TRAILS_MAX, only on the one that travels farthest (a
+    whip's tip, a chain's free end), so a dozen overlapping paths do not hide the motion."""
+    mv = [b for b in S["bodies"] if b.get("pos") and not b.get("hidden") and not b.get("ground")]
+    if len(mv) <= TRAILS_MAX:
+        return
+    path = lambda b: float(np.sum(np.linalg.norm(np.diff(np.asarray(b["pos"], float), axis=0), axis=1)))
+    far = max(mv, key=path)
+    for b in S["bodies"]:
+        if b.get("pos") and b is not far:
+            b["trail"] = False
+    P = np.asarray(far["pos"], float); t = np.asarray(S["t"], float)
+    if len(t) > 2 and np.all(np.diff(t) > 0):          # its speed along the trail: the trail glows where it is fastest
+        v = np.linalg.norm(np.gradient(P, t, axis=0), axis=1)
+        far["trail_speed"] = np.round(v, 4).tolist()
+        S["notes"].append(f"trail drawn for {far['name']} only (it travels farthest), brighter where it is faster "
+                          f"(up to {v.max():.4g} m/s)")
+    else:
+        S["notes"].append(f"trail drawn for {far['name']} only (it travels farthest)")
+
+
+def _booms(M, S):
+    """Sonic booms (3D): where and when a body with an aero_drag on it passes its speed of sound, a shock front the
+    viewer draws spreading from there at that speed (a whip's crack). Once more each time it falls back under Mach
+    0.9 and passes Mach 1 again."""
+    if S["dim"] != "3d":
+        return
+    a = M.arrays; t = np.asarray(S["t"], float)
+    if len(t) < 3 or not np.all(np.diff(t) > 0):
+        return
+    names = [b["name"] for b in S["bodies"]]
+    for e, en in enumerate(M.el_names):
+        if int(a["typ"][e]) != 20 or int(a["mk"][e]) != 11 or "__" in en:
+            continue
+        bn = M.body_names[int(a["ba"][e])]
+        if bn not in names:
+            continue
+        b = S["bodies"][names.index(bn)]
+        if not b.get("pos"):
+            continue
+        c = float(a["P"][e, 3]); P = np.asarray(b["pos"], float)
+        v = np.linalg.norm(np.gradient(P, t, axis=0), axis=1)
+        armed = True
+        for k in range(1, len(t)):
+            if armed and v[k] >= c > v[k - 1]:
+                f = (c - v[k - 1]) / (v[k] - v[k - 1])
+                p = P[k - 1] + f * (P[k] - P[k - 1]); tb = t[k - 1] + f * (t[k] - t[k - 1])
+                S.setdefault("booms", []).append(dict(body=bn, p=np.round(p, 6).tolist(), t=float(tb), c=c))
+                armed = False
+            elif not armed and v[k] < 0.9 * c:
+                armed = True
+    if S.get("booms"):
+        bm = S["booms"][0]
+        S["notes"].append(f"sonic boom: {bm['body']} passes the speed of sound ({bm['c']:.0f} m/s) at "
+                          f"{bm['t'] * 1e3:.4g} ms, the ring is its shock spreading at that speed")
 
 
 def _max_turn_deg(S):
@@ -219,6 +281,24 @@ def _magnify(S):
         tree.append(ent)
     if not any(t["el"] for t in tree):
         return
+    # the whole deformation, not one link's: a long chain of short elastic links (a whip, a cable) bends far though
+    # each link only moves a little against its neighbour. Each body against where it would be if everything up to
+    # its nearest joint (or the world) were rigid
+    par = {t["b"]: (t["p"], t["el"]) for t in tree}
+    for t in tree:
+        a = t["b"]
+        while a in par and par[a][1]:
+            a = par[a][0]
+        if a == t["b"]:
+            continue
+        Pv = np.asarray(bodies[t["b"]]["pos"], float)
+        if a < 0 or not bodies[a].get("pos"):
+            Pa = np.zeros_like(Pv); Qa = np.tile([1.0, 0, 0, 0], (len(Pv), 1))
+        else:
+            Pa = np.asarray(bodies[a]["pos"], float); Qa = np.asarray(bodies[a]["quat"], float)
+        r0 = _qrot(_qconj(Qa[0]), Pv[0] - Pa[0])
+        dev = max(float(np.linalg.norm(pv - pa - _qrot(qa, r0))) for pv, pa, qa in zip(Pv, Pa, Qa))
+        worst = max(worst, dev)
     S["deform"] = tree
     if S["dim"] == "1d":                               # 1D: its slides are already drawn at a scale (mag_base)
         return

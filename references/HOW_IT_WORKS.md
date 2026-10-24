@@ -451,7 +451,9 @@ in perspective, with a fixed point drawn as a pin on a cone. Beams are solid tub
 heaviest body) along the links that hold them, and each one's pose relative to its parent is scaled about where it
 started when the link is elastic (a spring, a beam), kept as it is for a joint, so flying, driving and mechanisms
 move truly while stretches and bends grow. Empty is the automatic choice (about 15 % of the model's size when the
-largest deformation is under 2 % of it). The scaled deformation is smoothed over about three frames: a stiff link rings
+largest deformation is under 2 % of it; the deformation is each body against where it would be if everything up to
+its nearest joint were rigid, so a whip or a cable of many short links, each moving little against its neighbour,
+counts as bending far and is drawn as it is). The scaled deformation is smoothed over about three frames: a stiff link rings
 far faster than the frames can follow, and scaled up that ringing would only twitch. At deform x 1 the poses are the
 exact logged ones.
 - 1d: a sliding body a spring holds is scaled up so small travel shows (the scale is printed); a sliding body nothing
@@ -467,6 +469,14 @@ exact logged ones.
   plus a turn about that axis at its true rate, slowed to what a screen shows (1.5 turns a second at the replay speed,
   with a note); its true spin rate is in the readout. Without this it would crawl or run backwards (the wagon-wheel
   effect). A body that turns more than 20 degrees between frames otherwise gets more frames, up to 8,000.
+- Trails show where bodies have been; past six moving bodies only the one that travels farthest keeps one (a whip's
+  tip), coloured brighter, up to white-hot, where it goes faster. A body with air drag on it that passes its speed of
+  sound sets off a sonic boom: a ring spreading from that point at the speed of sound (again each time it drops under
+  Mach 0.9 and passes Mach 1 again).
+- slow-mo (offered, and on, when the run has a burst: the fastest body's speed peaks above 6 times its mean, and is above half that peak for under 5 % of the run): each moment plays slower in
+  proportion to how fast things move then (down to 1/50), so a crack or an impact that lasts a millisecond can be
+  watched; "whole run in" still takes the seconds given.
+- 3d is seen from a high corner, or square onto the plane when everything moves in one (x-z or y-z).
 - F fits everything on screen (it fits when opened), Space plays, the arrow keys step a frame (shift: ten), Home and
   End jump.
 - While the run is solved a progress card shows the stage, a bar and the time, with Stop. A watchdog stops a run that

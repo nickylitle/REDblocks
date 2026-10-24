@@ -1179,6 +1179,7 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
             RATE["speed"] = math.exp(0.5 * math.log(RATE.get("speed", 1.0)) + 0.5 * math.log(f))
             _save_speed()
     # energy ledger
+    M.last_energy = dict(A=A, D=D, IN=IN, S0=S0, S1=S1, KE0=KE0, KE1=KE1, Wg=Wg)    # per element, for a breakdown
     glob = (KE1 - KE0) + A.sum() - Wg
     internal = 0.0; inputs = max(Wg, 0.0)
     for e in range(len(A)):
@@ -1199,6 +1200,9 @@ def run_model(M, dt=None, history=False, n_log=800, timeout="model", _n=None):
     scale = max(KE0, KE1, KEpk, inputs, abs(Wg), np.abs(A).sum(), float(np.abs(S1).sum()), hits, gfloor, 1e-30)
     led = (abs(glob) + internal) / scale
     R = dict(_ledger_rel=float(led))
+    if dim3 and (a["typ"] == 12).any():          # beams: the sharpest bend within one segment (rad); past about 0.5 the
+        bmax = float(np.max(aux[a["typ"] == 12, 4]))   # small-angle segment law is out of its range (more segments)
+        R["_beam_bend_max"] = float(math.asin(min(bmax, 1.0)))
     if adp[0] > 0:                                # what the adaptive step did
         R.update(_steps=float(adp[10]), _dt_smallest=float(adp[11]) if adp[11] < 1e299 else float(adp[2]),
                  _dt_largest=float(adp[12]), _contact_steps=float(adp[13]))

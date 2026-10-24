@@ -317,7 +317,7 @@ body with `dof: [x, y]`; its elements take `measure: <body>`. `gravity: {planet:
 |---|---|---|
 | `rocket` | **thrust_vac**, **mass_flow**, exit_area, start, stop, rise, tailoff, cutoff: guidance, throttle: guidance, propellant | F = level x (thrust_vac - p_amb exit_area) along the steering direction; the body loses level x mass_flow; with propellant it stops when that is burnt |
 | `jettison` | **at**, **mass** | the body's mass drops by mass at time at (a stage, an interstage, a tower) |
-| `aero_drag` | **area**, **Cd** (number or {mach: [...], cd: [...]}) | D = 1/2 rho v^2 Cd area against the air-relative velocity |
+| `aero_drag` | **area**, **Cd** (number or {mach: [...], cd: [...]}) | D = 1/2 rho v^2 Cd area against the air-relative velocity (3D: still air on any body, see the 3D section) |
 | `steering` | pitch_start, pitch_rate, pitch_end, tilt_arrest, guidance_start, target_altitude, target_speed, tgo_freeze | vertical, pitch-over, gravity turn, hold, then explicit guidance; cutoff at target_speed |
 | `landing_guidance` | **site_range**, mode (target, rate), start (time or `after`), stop, stop_below, end_before, target, schedule, freeze, tau, contact_altitude, throttle | one phase of Apollo's lunar descent guidance (below); sets the thrust direction and the level of `throttle: guidance` rockets |
 
@@ -648,6 +648,17 @@ has no scrub, and a sphere wheel tipped onto its edge stays round.
 - **Thrust** (3D): `{type: force, P: .., measure: {thrust: motor.mount, dir: z}}` pushes at that point along a
   direction fixed in the body (its own axes), so it tilts with the body: a propeller, a jet, a thruster. The reaction
   goes to the fixed world. A positive P pushes along dir.
+- **Air drag** (3D): `{type: aero_drag, measure: popper, area: 30 mm^2, Cd: 1.0}` is still air on one body (or
+  `body.point`): D = 1/2 rho Cd A |v| v against its velocity. With `axis: x` (the body's own axis) it is a slender
+  part: crossflow drag on the speed across the axis only, plus `Cd_axial` on `area_axial` along it. `Cd` is a number
+  or `{mach: [...], cd: [...]}` (the crossflow Mach for a slender part); `air_density` (1.225 kg/m^3) and
+  `sound_speed` (343 m/s) default to sea level; `scale` multiplies it all (`scale: $air` with `air: 0` is a vacuum
+  switch). Outputs: force, `dynamic_pressure`, `mach`, `air_density`. A beam takes `air_drag: {Cd: 1.2, width: ..,
+  Cd_axial: .., scale: ..}`: one slender aero_drag on each node and both ends, over its share of the length (width
+  defaults to a round bar of the section's area). The drag can never more than stop a body in one step.
+- **Beam segments** (3D): runs report `_beam_bend_max`, the sharpest turn of a segment end off its chord (rad), and
+  Verify warns above about 30 deg: past that a segment is too long for the curve it is on (the segment law is
+  small-angle) and its energy books stop closing. Give that beam more segments where it bends hardest.
 - **Tire curve** on `contact_friction` (3D): `mu` is the sliding grip; add `mu_peak` and `slip_peak` and grip follows
   slip ratio sigma = slip speed / the larger of the hub's ground speed and the tread's rolling speed (at least `v_min`,
   default 0.05 m/s): a brush-like rise, the peak `mu_peak` at `slip_peak`, settling to `mu` at large slip.
@@ -661,7 +672,8 @@ has no scrub, and a sphere wheel tipped onto its edge stays round.
 
 Worked examples: `scripts/examples/learn/3d_*.yaml` (a toy top on a table that precesses, slows and falls, a
 quadcopter on four carbon beam arms with thrusts and a flight controller made of control signals, a robot arm with
-rigid hinges, a weld, a motor on a twist and a rubber stop).
+rigid hinges, a weld, a motor on a twist and a rubber stop). `scripts/examples/showcase/bullwhip/bullwhip_crack.yaml`: a 2.5 m tapered whip of
+12 beams with air drag, thrown overhead; its tip passes the speed of sound (written by `build_whip.py` there).
 
 ## Joints, ropes and beams (2d and 3d)
 

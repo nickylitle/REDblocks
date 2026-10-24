@@ -126,7 +126,7 @@ def mass_properties(shape, mass=None, density=None, material=None, L=None, R=Non
     """Mass, centre of mass and inertia tensor of a uniform primitive shape, about its centroid.
 
     shape and dimensions (axes in brackets):
-      rod         L (length along z); slender: Ixx = Iyy = m L^2/12, Izz = 0
+      rod         L (length along z); slender: Ixx = Iyy = m L^2/12, Izz = m A / (2 pi) (a round bar; 0 without A)
       disc        R, thickness t (axis z; t only for mass from density and the transverse terms)
       ring        Ri, Ro, thickness t (annulus, axis z): Izz = m (Ri^2 + Ro^2)/2
       thin_ring   R (hoop, axis z): Izz = m R^2, Ixx = Iyy = m R^2/2; give the wire section area A for mass
@@ -166,7 +166,8 @@ def mass_properties(shape, mass=None, density=None, material=None, L=None, R=Non
     else:
         m = mass
     if sh == "rod":
-        Ixx = Iyy = I_rod_center(m, L); Izz = 0.0
+        Ixx = Iyy = I_rod_center(m, L)
+        Izz = m * A / (2.0 * math.pi) if A else 0.0       # a round section of area A: m r^2 / 2 (0 when no A)
     elif sh == "disc":
         Izz = I_disk(m, R); Ixx = Iyy = I_cylinder_transverse(m, R, tt)
     elif sh == "ring":

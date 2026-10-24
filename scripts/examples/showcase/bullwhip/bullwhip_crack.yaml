@@ -1,0 +1,153 @@
+simblocks: 1
+name: Bullwhip crack
+question: "A 2.5 m tapered whip is thrown overhead and the arm stops. A loop runs down the whip and speeds up as the
+  whip thins. How fast does the tip go? The crack is the tip passing the speed of sound (343 m/s): a small sonic boom."
+dim: 3d
+gravity: 9.81
+notes: >
+  Written by build_whip.py (change the taper or the mesh there). The whip is 12 beams, each its own round section,
+  falling from 16 mm at the handle to 1.8 mm at the tip, split finer toward the tip where the loop is
+  tightest. Every node feels crossflow air drag with a Cd that rises through Mach 1, and the cracker (the tuft of
+  thread at the end) has its own. Scenario 'vacuum' switches the air off: the loop then keeps tightening (a whip in
+  vacuum focuses its energy without limit), so that run stops just after the crack.
+sources:
+  - "McMillen T, Goriely A (2003). Whip waves. Physica D 184: 192-225 (the tapered whip, the loop, and why drag sets the tip speed)"
+  - "Krehl P, Engemann S, Schwenkel D (1998). The puzzle of whip cracking, uncovered by a correlation of whip-tip kinematics with shock wave emission. Shock Waves 8: 1-9 (tip speeds about Mach 2)"
+  - "Hoerner SF (1965). Fluid-Dynamic Drag, ch. 15-16 (crossflow drag of a cylinder, its rise near Mach 1)"
+
+params:
+  E_whip: {value: 2 GPa, note: "braided nylon, bending stiffness of the braid"}
+  G_whip: {value: 0.75 GPa}
+  rho_whip: {value: 1150 kg/m^3}
+  swing: {value: 0.14 s, note: "how long the throw takes, shoulder from behind to forward"}
+  th_start: {value: -172 deg, note: "arm and whip laid out behind, nearly level"}
+  th_end: {value: 25 deg, note: "where the arm stops: forward and a little down"}
+  kp: {value: 3000 N*m/rad, note: "how hard the shoulder follows the throw"}
+  kd: {value: 60 N*m*s/rad}
+  air: {value: 1, note: "air drag on the whip and the cracker: 1 on, 0 off (vacuum)"}
+  cracker_mass: {value: 0.2 g, note: "the tuft of thread at the tip"}
+  cracker_area: {value: 30 mm^2, note: "its frontal area, frayed threads"}
+  t_stop: {value: 0.175 s, note: "the crack comes at about 0.135 s; the rest is the follow-through"}
+
+scenarios:
+  vacuum: {air: 0, t_stop: 0.136 s}
+
+bodies:
+  shoulder:
+    ground: true
+    points: {s: [0, 0, 1.6]}
+  arm:
+    dof: free
+    shape: {kind: rod, L: 0.6 m, A: 1.2e-3 m^2, density: 1000 kg/m^3, axis: [-0.990268, 0, 0.139173]}
+    at: [-0.29708, 0, 1.641752]
+    points: {s: [0.297080, 0, -0.041752], h: [-0.297080, 0, 0.041752]}
+    label: arm and handle
+    note: "forearm, hand and handle as one rod turned about the shoulder"
+  k1:
+    dof: free
+    mass: 0.003442
+    inertia: 5.53e-06
+    at: [-0.800467, 0, 1.712498]
+    points: {c: [0, 0, 0]}
+  k2:
+    dof: free
+    mass: 0.002915
+    inertia: 4.69e-06
+    at: [-1.006773, 0, 1.741493]
+    points: {c: [0, 0, 0]}
+  k3:
+    dof: free
+    mass: 0.002431
+    inertia: 3.91e-06
+    at: [-1.213078, 0, 1.770487]
+    points: {c: [0, 0, 0]}
+  k4:
+    dof: free
+    mass: 0.00199
+    inertia: 3.2e-06
+    at: [-1.419384, 0, 1.799481]
+    points: {c: [0, 0, 0]}
+  k5:
+    dof: free
+    mass: 0.001196
+    inertia: 1.08e-06
+    at: [-1.62569, 0, 1.828476]
+    points: {c: [0, 0, 0]}
+  k6:
+    dof: free
+    mass: 0.0009316
+    inertia: 8.42e-07
+    at: [-1.831996, 0, 1.85747]
+    points: {c: [0, 0, 0]}
+  k7:
+    dof: free
+    mass: 0.0007003
+    inertia: 6.33e-07
+    at: [-2.038302, 0, 1.886465]
+    points: {c: [0, 0, 0]}
+  k8:
+    dof: free
+    mass: 0.0004016
+    inertia: 2.32e-07
+    at: [-2.244608, 0, 1.915459]
+    points: {c: [0, 0, 0]}
+  k9:
+    dof: free
+    mass: 0.0002244
+    inertia: 9.02e-08
+    at: [-2.450913, 0, 1.944453]
+    points: {c: [0, 0, 0]}
+  k10:
+    dof: free
+    mass: 0.0001167
+    inertia: 3.44e-08
+    at: [-2.657219, 0, 1.973448]
+    points: {c: [0, 0, 0]}
+  k11:
+    dof: free
+    mass: 4.652e-05
+    inertia: 8.31e-09
+    at: [-2.863525, 0, 2.002442]
+    points: {c: [0, 0, 0]}
+  cracker:
+    dof: free
+    mass: $cracker_mass
+    inertia: 1e-9
+    at: [-3.069831, 0, 2.031437]
+    points: {c: [0, 0, 0]}
+    label: cracker
+
+control:
+  # the arm's angle about the shoulder from its turn (rotation about y), and the throw: a smooth step from th_start to
+  # th_end over the swing time, followed by a stiff shoulder (PD)
+  tip_mach: "= cracker.speed / 343"
+  drive: "= $kp * ($th_start + ($th_end - $th_start) * clip(t / $swing, 0, 1) ** 2 * (3 - 2 * clip(t / $swing, 0, 1)) - $th_start - 2 * atan2(arm.qy, arm.qw)) - $kd * arm.wy"
+  arm_deg: "= ($th_start + 2 * atan2(arm.qy, arm.qw)) * 57.29578"
+
+elements:
+  shoulder_joint: {type: hinge, rigid: true, axis: y, measure: [shoulder.s, arm.s]}
+  muscle: {type: force, measure: {twist: [shoulder, arm], axis: y}, P: {control: drive, init: 0}, label: shoulder torque}
+  piece1: {type: beam, measure: [arm.h, k1.c], section: {block: circle, d: 15.41 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 3, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece2: {type: beam, measure: [k1.c, k2.c], section: {block: circle, d: 14.22 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 3, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece3: {type: beam, measure: [k2.c, k3.c], section: {block: circle, d: 13.04 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 3, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece4: {type: beam, measure: [k3.c, k4.c], section: {block: circle, d: 11.86 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 3, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece5: {type: beam, measure: [k4.c, k5.c], section: {block: circle, d: 10.68 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 4, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece6: {type: beam, measure: [k5.c, k6.c], section: {block: circle, d: 9.49 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 4, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece7: {type: beam, measure: [k6.c, k7.c], section: {block: circle, d: 8.31 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 4, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece8: {type: beam, measure: [k7.c, k8.c], section: {block: circle, d: 7.12 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 5, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece9: {type: beam, measure: [k8.c, k9.c], section: {block: circle, d: 5.94 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 5, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece10: {type: beam, measure: [k9.c, k10.c], section: {block: circle, d: 4.76 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 6, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece11: {type: beam, measure: [k10.c, k11.c], section: {block: circle, d: 3.58 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 8, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  piece12: {type: beam, measure: [k11.c, cracker.c], section: {block: circle, d: 2.39 mm}, E: $E_whip, G: $G_whip, density: $rho_whip, segments: 10, damping: 0.02, orient: y, air_drag: {Cd: {mach: [0, 0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0], cd: [1.2, 1.2, 1.3, 1.5, 1.7, 1.8, 1.7, 1.55, 1.45, 1.35]}, scale: $air}}
+  cracker_air: {type: aero_drag, measure: cracker, area: $cracker_area, Cd: {mach: [0, 0.6, 0.9, 1.0, 1.2, 2.0, 3.0], cd: [1.0, 1.05, 1.35, 1.5, 1.45, 1.3, 1.25]}, scale: $air, label: drag on the cracker}
+
+outputs:
+  tip_speed: {body: cracker, quantity: speed, reduce: max, unit: m/s, label: fastest the tip goes}
+  t_crack: {body: cracker, quantity: speed, reduce: time_of_max, unit: ms, label: when}
+  mach: {expr: "= $tip_speed / 343", label: tip speed over the speed of sound}
+  arm_rate: {body: arm, quantity: omega, reduce: max_abs, unit: rad/s, label: fastest the arm turns}
+  hand_speed: {expr: "= $arm_rate * 0.6", unit: m/s, label: fastest the hand goes (0.6 m from the shoulder)}
+  cracker_drag_max: {element: cracker_air, quantity: force, reduce: max, unit: N, label: peak air drag on the cracker}
+
+run:
+  t_end: $t_stop

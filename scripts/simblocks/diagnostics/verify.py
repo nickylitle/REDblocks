@@ -229,6 +229,12 @@ def verify_all(spec, skip=()):
                     f"worst closure residual {worst_l*100:.2g}% across {len(levels)} dt levels (tol {spec.ledger_tol*100:.0f}%)")
         else:
             rep.add("energy_ledger", WARN, "sim reports no _ledger_rel: energy closure unverified")
+        if "_beam_bend_max" in base:            # 3D beams: a segment that turns far off its chord is too long
+            bmax = base["_beam_bend_max"]       # for the curve it is on (the small-angle segment law, and the energy)
+            rep.add("beam_segments", PASS if bmax < 0.5 else WARN,
+                    f"sharpest bend within one beam segment {math.degrees(bmax):.0f} deg" +
+                    ("" if bmax < 0.5 else " (over about 30 deg a segment is too long for its curve: give that beam "
+                                           "more segments)"))
     # 7 conservation
     _stage(7)
     for c in spec.conserved:

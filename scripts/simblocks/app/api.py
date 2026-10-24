@@ -1273,11 +1273,16 @@ class Api:
         here = os.path.join(os.path.dirname(__file__), "examples")            # packaged app (copied at build time)
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "learn"))
         d = here if os.path.isdir(here) else root
-        # then the showcase: whole missions (Apollo 11) checked against real flight data
-        show = os.path.join(here, "showcase") if os.path.isdir(here) else \
-            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "showcase", "apollo11"))
+        # then the showcase: whole missions (Apollo 11) checked against real flight data, a supersonic bullwhip
+        if os.path.isdir(here):
+            shows = [os.path.join(here, "showcase")]
+        else:
+            sroot = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "examples", "showcase"))
+            order = ["apollo11", "bullwhip"]
+            subs = sorted(os.listdir(sroot), key=lambda x: (order.index(x) if x in order else 99, x)) if os.path.isdir(sroot) else []
+            shows = [os.path.join(sroot, x) for x in subs if os.path.isdir(os.path.join(sroot, x))]
         out = []
-        for folder in (d, show):
+        for folder in (d, *shows):
             if not os.path.isdir(folder):
                 continue
             for f in sorted(os.listdir(folder)):

@@ -31,6 +31,7 @@ from .linsolve import _gauss, _lu, _lu_solve
 from .engine1d import _force, NP, NAUX, motor_k, motor_scale, drive_books
 
 MK_LIN, MK_DIST, MK_ALONG, MK_PLANE, MK_SPH, MK_PIN, MK_SLIP, MK_ROT, MK_TWIST, MK_BEAM, MK_DISC = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+MK_AIR = 11          # air drag on one body (aero_drag): through still air, against its velocity
 
 
 @njit(cache=True, nogil=True, inline="always")
@@ -869,7 +870,8 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
     Eb = np.zeros((3, 3))
     exact = np.zeros(ne, np.int64)                      # geometric measures: trapezoid on the true change in s
     for e in range(ne):
-        if mk[e] != MK_LIN and mk[e] != MK_SLIP and typ[e] != 9 and mk[e] != MK_ROT and mk[e] != MK_TWIST and mk[e] != MK_BEAM:
+        if mk[e] != MK_LIN and mk[e] != MK_SLIP and typ[e] != 9 and mk[e] != MK_ROT and mk[e] != MK_TWIST and mk[e] != MK_BEAM \
+                and mk[e] != MK_AIR:
             exact[e] = 1
     geo = np.zeros((ne, 12))
     DX = np.zeros((nb, 3)); DW = np.zeros((nb, 3)); nimp = 0           # rigid impacts: catch-up this step
@@ -973,6 +975,35 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                 if (typ[e] == 10) != (sweep == 1) or typ[e] == 14 or typ[e] == 15:
                     continue
                 m_ = mk[e]
+                if m_ == MK_AIR:                         # air drag (aero_drag): 1/2 rho Cd A |v| v against the motion
+                    if active[e] == 0:
+                        Fe[e] = 0.0; continue
+                    b_ = ba[e]
+                    px, py, pz = _pt(X, R, b_, GA[e, 0], GA[e, 1], GA[e, 2])
+                    vx, vy, vz = _vel(X, V, W, b_, px, py, pz)
+                    vv = math.sqrt(vx * vx + vy * vy + vz * vz)
+                    o = tab_off[e]; Lt = tab_len[e]
+                    if GX[e, 3] > 0.5:                   # slender: crossflow on the speed across the axis, skin along it
+                        ax_, ay_, az_ = _dir(R, b_, GX[e, 0], GX[e, 1], GX[e, 2])
+                        va = vx * ax_ + vy * ay_ + vz * az_
+                        nx_ = vx - va * ax_; ny_ = vy - va * ay_; nz_ = vz - va * az_
+                        vn = math.sqrt(nx_ * nx_ + ny_ * ny_ + nz_ * nz_)
+                        cd = _yield3(vn / P[e, 3], tab_x[o:o + Lt], tab_F[o:o + Lt]) if Lt > 0 else 1.0
+                        kn = P[e, 0] * cd * vn; ka = P[e, 1] * abs(va)
+                        fx = -kn * nx_ - ka * va * ax_; fy = -kn * ny_ - ka * va * ay_; fz = -kn * nz_ - ka * va * az_
+                    else:
+                        cd = _yield3(vv / P[e, 3], tab_x[o:o + Lt], tab_F[o:o + Lt]) if Lt > 0 else 1.0
+                        kn = P[e, 0] * cd * vv
+                        fx = -kn * vx; fy = -kn * vy; fz = -kn * vz
+                    fm = math.sqrt(fx * fx + fy * fy + fz * fz)
+                    inv = float(np.max(minv[b_]))        # never more than stops the body this step (a huge Cd A
+                    if inv > 0.0 and fm * inv * dt > vv:  # on a light body would otherwise flip it back and forth)
+                        sc = vv / (fm * inv * dt); fx *= sc; fy *= sc; fz *= sc; fm *= sc
+                    _push(F, T, X, b_, px, py, pz, fx, fy, fz)
+                    fpv[e, 0] = fx; fpv[e, 1] = fy; fpv[e, 2] = fz
+                    Fe[e] = fm; se[e] = vv; inc[e] = 1
+                    aux[e, 0] = 0.5 * P[e, 2] * vv * vv; aux[e, 1] = vv / P[e, 3]; aux[e, 2] = P[e, 2]
+                    continue
                 if m_ == MK_BEAM:                        # co-rotational 3D beam
                     if active[e] == 0:
                         Fe[e] = 0.0; continue
@@ -1073,6 +1104,12 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
                     mA = math.sqrt(MyA * MyA + MzA * MzA); mB = math.sqrt(MyB * MyB + MzB * MzB)
                     aux[e, 0] = mA if mA >= mB else mB; aux[e, 1] = Tq; aux[e, 2] = math.sqrt(vy * vy + vz * vz)
                     aux[e, 3] = bst[e, 4] if bst[e, 4] > bst[e, 5] else bst[e, 5]
+                    bnd = math.sqrt(tyA * tyA + tzA * tzA)          # the most an end turned off the chord (sin of
+                    bnd2 = math.sqrt(tyB * tyB + tzB * tzB)         # the angle): a segment that bends far is too long
+                    if bnd2 > bnd:                                  # for the curve it is on (see _beam_bend_max)
+                        bnd = bnd2
+                    if bnd > aux[e, 4]:
+                        aux[e, 4] = bnd
                     continue
                 if m_ == MK_ROT:                         # rotation lock (weld; hinge = all but one axis)
                     if active[e] == 0:
@@ -1541,6 +1578,18 @@ def run_engine3d(n, dt, X0, V0, quat0, Lw0, wsp0, th0, minv, rmode, Iinv, axis, 
             if exact[e] == 1 or typ[e] == 9 or mk[e] == MK_ROT or mk[e] == MK_BEAM or typ[e] == 14 or typ[e] == 15:
                 continue
             if Fe[e] == 0.0 and Fp[e] == 0.0:
+                continue
+            if mk[e] == MK_AIR:                          # the drag's work at the new velocities: all of it lost
+                b_ = ba[e]
+                px, py, pz = _pt(X, R, b_, GA[e, 0], GA[e, 1], GA[e, 2])
+                vx, vy, vz = _vel(X, V, W, b_, px, py, pz)
+                wk = -(fpv[e, 0] * vx + fpv[e, 1] * vy + fpv[e, 2] * vz) * dt
+                A[e] += wk
+                if D[e] >= 0.0:
+                    D[e] += wk
+                Fp[e] = Fe[e]
+                if active[e] == 0:
+                    fpv[e, 0] = 0.0; fpv[e, 1] = 0.0; fpv[e, 2] = 0.0
                 continue
             if mk[e] == MK_TWIST:
                 wbx = W[bb[e], 0] if bb[e] >= 0 else 0.0; wby = W[bb[e], 1] if bb[e] >= 0 else 0.0

@@ -16,6 +16,10 @@ damping: fraction of critical in the beam's first bending mode (estimated as a c
          mode gets what was asked while the fast segment modes (which an explicit step cannot damp stably) are left
          alone; stretch and twist are damped at their own segment frequencies. Up to about 0.3.
 orient (3D): the direction of the section's h axis at the start (default world z, or x for a vertical beam).
+air_drag (3D): {Cd: 1.2, width: 12 mm, Cd_axial: 0.0, scale: 1} puts a slender aero_drag on every node and on both
+         ends (half a segment each): crossflow drag 1/2 rho Cd (width x length) |v_n| v_n on the speed across the
+         beam, and skin drag Cd_axial on the wetted area (pi width x length) along it. Cd may be a table against
+         Mach {mach: [...], cd: [...]}; width defaults to a round bar of the section's area; scale 0 turns it off.
 Bending across orient uses I (Ix of the section), bending across the other axis uses Iy; torsion uses G J."""
 import math
 
@@ -25,7 +29,8 @@ from .loader import SpecError, line_of
 from .expand import Group, _num
 
 BEAM_KEYS = ("E", "A", "I", "Iy", "Iz", "J", "G", "EA", "EI", "EIy", "EIz", "GJ", "section", "material", "density",
-             "hinge", "damping", "orient", "rotary_inertia", "mass", "segments", "end_mass")
+             "hinge", "damping", "orient", "rotary_inertia", "mass", "segments", "end_mass", "air_drag")
+AIR_KEYS = {"Cd", "width", "Cd_axial", "scale", "air_density", "sound_speed"}
 
 
 def beam_props(e, ctx, where, dim, L, f=""):
@@ -223,6 +228,8 @@ def expand_beam(en, e, doc, ctx, bodies, new, groups):
         new[sn] = dict(base, type="beam", measure=[chain[j], chain[j + 1]], __mseg__=mseg if mseg > 0 else None,
                        **({"__hidden__": True} if n > 1 else {}))
         segs.append(sn)
+    if e.get("air_drag") not in (None, False):
+        _beam_air(en, e, doc, ctx, props, chain, [RA, RB], (pB - pA) / L, Ls, new, where, f)
     # the beam's end shares of mass go onto A and B at the attachment points; the weight budget reads this record
     rec = doc.setdefault("__beam_mass__", {}).setdefault(en, {"total": float(m), "ends": {}})
     if m > 0 and e.get("end_mass", True):
@@ -249,3 +256,46 @@ def expand_beam(en, e, doc, ctx, bodies, new, groups):
         probe = f"{en}__probe"
         new[probe] = dict(type="spring", k=0.0, measure={"distance": list(refs)}, __hidden__=True)
         groups[en] = Group(en, segs, probe, kind="beam")
+
+
+def _beam_air(en, e, doc, ctx, props, chain, Rends, e1, Ls, new, where, f):
+    """Air drag on a beam: one slender aero_drag per node and per moving end, over its share of the length."""
+    from .model import resolve, num
+    if doc["dim"] != "3d":
+        raise SpecError("a beam's air_drag is 3D (in 2D give the bodies an aero_drag)", where, line_of(e, "air_drag"), f)
+    sp = e["air_drag"]
+    if sp is True:
+        sp = {}
+    if not isinstance(sp, dict):
+        raise SpecError("air_drag is {Cd: 1.2, width: .., Cd_axial: .., scale: ..}", where, line_of(e, "air_drag"), f)
+    bad = set(sp) - AIR_KEYS
+    if bad:
+        raise SpecError("unknown air_drag key(s): " + ", ".join(sorted(bad)) + " (allowed: " + ", ".join(sorted(AIR_KEYS)) + ")",
+                        where, line_of(e, "air_drag"), f)
+    g = lambda k, dflt: num(resolve(sp[k], ctx, f"{where}.air_drag.{k}"), f"{where}.air_drag.{k}") if k in sp else dflt
+    A_ = props.get("A")
+    wd = g("width", math.sqrt(4.0 * A_ / math.pi) if A_ else None)
+    if not wd or wd <= 0:
+        raise SpecError("air_drag needs width (the section gives no area to take it from)", where, line_of(e, "air_drag"), f)
+    cd = sp.get("Cd", 1.2)
+    cda = g("Cd_axial", 0.0)
+    n = len(chain) - 1
+    for j, ref in enumerate(chain):
+        b = str(ref).split(".")[0]
+        bd = doc["bodies"].get(b) or {}
+        if bd.get("ground"):
+            continue
+        share = Ls if 0 < j < n else 0.5 * Ls
+        if 0 < j < n:
+            ax = e1                                   # a node's own frame starts lined up with the world
+        else:
+            R = Rends[0 if j == 0 else 1]
+            ax = (R.T @ e1) if R is not None else e1
+        el = {"type": "aero_drag", "measure": str(ref), "axis": [float(x) for x in ax], "area": wd * share, "Cd": cd,
+              "__hidden__": True}
+        if cda:
+            el["Cd_axial"] = cda; el["area_axial"] = math.pi * wd * share
+        for k in ("scale", "air_density", "sound_speed"):
+            if k in sp:
+                el[k] = sp[k]
+        new[f"{en}__air{j}"] = el
