@@ -472,7 +472,7 @@ exact logged ones.
 - Trails show where bodies have been; past six moving bodies only the one that travels farthest keeps one (a whip's
   tip), coloured brighter, up to white-hot, where it goes faster. A body with air drag on it that passes its speed of
   sound sets off a sonic boom: a ring spreading from that point at the speed of sound (again each time it drops under
-  Mach 0.9 and passes Mach 1 again).
+  Mach 0.9 and passes Mach 1 again). The booms box, shown only when a run has one, turns the rings off.
 - slow-mo (offered, and on, when the run has a burst: the fastest body's speed peaks above 6 times its mean, and is above half that peak for under 5 % of the run): each moment plays slower in
   proportion to how fast things move then (down to 1/50), so a crack or an impact that lasts a millisecond can be
   watched; "whole run in" still takes the seconds given.

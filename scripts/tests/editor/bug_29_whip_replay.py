@@ -25,6 +25,10 @@ async def s(pg):
     bm = await pg.evaluate("() => { const o = AV.booms[0]; AV.tcur = o.bm.t + 0.002; avPose(); const a = [o.g.visible, o.g.scale.x];"
                            " AV.tcur = o.bm.t - 0.001; avPose(); return [AV.booms.length, ...a, o.g.visible]; }")
     ok &= check(bm[0] == 1 and bm[1] and abs(bm[2] - 0.686) < 1e-3 and not bm[3], bm, "the boom ring is 343 m/s x 2 ms across after, gone before", "boom")
+    off = await pg.evaluate("() => { const c = document.getElementById('avBoom'); const shown = !c.parentElement.hidden; const o = AV.booms[0];"
+                            " AV.tcur = o.bm.t + 0.002; c.checked = false; c.onchange(); const a = o.g.visible; c.checked = true; c.onchange();"
+                            " return [shown, a, o.g.visible]; }")
+    ok &= check(off == [True, False, True], off, "the booms box hides the ring and brings it back", "boom-toggle")
     ok &= check(not errs, errs, "no page errors", "errors")
     return ok
 
